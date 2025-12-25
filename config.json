@@ -1,0 +1,20 @@
+{
+  "audio": {
+    "sample_rate": 44100,
+    "duration": 2.5,
+    "channels": 1,
+    "device": null
+  },
+  "analysis": {
+    "min_frequency": 50,
+    "max_frequency": 5000,
+    "num_peaks": 5,
+    "peak_threshold": 0.1
+  },
+  "output": {
+    "directory": "output",
+    "save_audio": true,
+    "save_analysis": true,
+    "save_spectrum": true
+  }
+}
