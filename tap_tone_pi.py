@@ -8,9 +8,22 @@ import sys
 import argparse
 from pathlib import Path
 
-from audio_capture import AudioCapture
-from analyzer import AudioAnalyzer
-from output_handler import OutputHandler
+
+def import_modules():
+    """Import required modules with better error handling."""
+    try:
+        from audio_capture import AudioCapture
+        from analyzer import AudioAnalyzer
+        from output_handler import OutputHandler
+        return AudioCapture, AudioAnalyzer, OutputHandler
+    except ImportError as e:
+        print(f"Error importing modules: {e}")
+        print("\nNote: If running on a system without audio hardware,")
+        print("some dependencies may not be available.")
+        print("On Raspberry Pi, install with:")
+        print("  sudo apt-get install portaudio19-dev libsndfile1")
+        print("  pip3 install -r requirements.txt")
+        sys.exit(1)
 
 
 class TapTonePi:
@@ -23,6 +36,8 @@ class TapTonePi:
         Args:
             config_path: Path to configuration file
         """
+        AudioCapture, AudioAnalyzer, OutputHandler = import_modules()
+        
         self.config = self._load_config(config_path)
         
         # Initialize components
@@ -168,6 +183,7 @@ class TapTonePi:
         """List available audio devices."""
         print("Available Audio Devices:")
         print("=" * 60)
+        AudioCapture, _, _ = import_modules()
         devices = AudioCapture.get_available_devices()
         print(devices)
 
@@ -190,19 +206,21 @@ def main():
     
     args = parser.parse_args()
     
-    app = TapTonePi(config_path=args.config)
-    
-    if args.list_devices:
-        app.list_devices()
-    else:
-        try:
+    try:
+        app = TapTonePi(config_path=args.config)
+        
+        if args.list_devices:
+            app.list_devices()
+        else:
             app.run()
-        except KeyboardInterrupt:
-            print("\n\nInterrupted by user. Exiting...")
-            sys.exit(0)
-        except Exception as e:
-            print(f"\nError: {e}")
-            sys.exit(1)
+    except KeyboardInterrupt:
+        print("\n\nInterrupted by user. Exiting...")
+        sys.exit(0)
+    except Exception as e:
+        print(f"\nError: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == "__main__":

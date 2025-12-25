@@ -1,5 +1,7 @@
 # Output directory
 output/
+test_output/
+demo_output/
 
 # Python
 __pycache__/
