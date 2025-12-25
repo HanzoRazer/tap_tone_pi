@@ -19,7 +19,38 @@ pip install -U pip
 pip install -e .
 ```
 
-## List devices
+## Phase 1 CLI (primary)
+
+List devices:
+
+```bash
+tap-tone devices
+```
+
+Record + analyze:
+
+```bash
+tap-tone record --device 1 --seconds 2.5 --out ./captures_phase1 --label "bridge_tap"
+```
+
+Live loop:
+
+```bash
+tap-tone live --device 1 --seconds 2.5 --out ./captures_phase1 --label "live_bridge"
+```
+
+### Alternate entrypoint (exact same CLI)
+
+If you prefer module execution (no console script):
+
+```bash
+python -m tap_tone.main devices
+python -m tap_tone.main record --device 1 --seconds 2.5 --out ./captures_phase1
+```
+
+> Both entrypoints share one parser (`tap_tone/_cli_core.py`) so they cannot drift.
+
+## Phase 2: List devices for 2-channel capture
 
 ```bash
 python scripts/two_channel_coherence.py devices

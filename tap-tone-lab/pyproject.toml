@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tap-tone-lab"
-version = "0.3.0"
+version = "0.3.1"
 description = "Offline tap-tone lab: Phase 1 (single-channel) + Phase 2 (2ch coherence/phase/delay) with durable bundles."
 requires-python = ">=3.10"
 dependencies = [
@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-tap-tone = "tap_tone.main:main"
+tap-tone = "tap_tone.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
