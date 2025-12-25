@@ -10,47 +10,67 @@
     "label": { "type": ["string", "null"] },
     "sample_rate": { "type": "integer", "minimum": 8000, "maximum": 384000 },
     "channels": { "type": "integer", "minimum": 1, "maximum": 64 },
+
     "dominant_hz": { "type": ["number", "null"], "minimum": 0 },
+
     "rms": {
       "type": "array",
       "minItems": 1,
       "items": { "type": "number", "minimum": 0 },
-      "description": "Per-channel RMS. Length should equal channels (enforced in validate_bundle.py for channels.json; extend later if desired)."
+      "description": "Per-channel RMS. For Phase-1 mono, this is length 1."
     },
     "clipped": {
       "type": "array",
       "minItems": 1,
       "items": { "type": "boolean" },
-      "description": "Per-channel clip flags. Length should equal channels."
+      "description": "Per-channel clip flags. For Phase-1 mono, this is length 1."
     },
     "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+
     "peaks": {
       "type": "object",
-      "additionalProperties": {
-        "type": "array",
-        "items": { "$ref": "#/$defs/peak" }
-      }
-    },
-    "cross_channel": {
-      "type": "object",
+      "description": "Phase-1 uses peaks.ch0[]. Phase-2 may include ch0 and ch1.",
       "additionalProperties": false,
       "properties": {
-        "pair": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "integer", "minimum": 0 } },
+        "ch0": { "type": "array", "items": { "$ref": "#/$defs/peak" } },
+        "ch1": { "type": "array", "items": { "$ref": "#/$defs/peak" } },
+        "ch2": { "type": "array", "items": { "$ref": "#/$defs/peak" } },
+        "ch3": { "type": "array", "items": { "$ref": "#/$defs/peak" } }
+      }
+    },
+
+    "cross_channel": {
+      "type": "object",
+      "description": "Phase-2+ optional cross-channel metrics (delay, coherence, phase).",
+      "additionalProperties": false,
+      "properties": {
+        "pair": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "integer", "minimum": 0 }
+        },
         "delay_samples": { "type": ["integer", "null"] },
         "delay_seconds": { "type": ["number", "null"] },
-        "coherence_focus_band_hz": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number", "minimum": 0 } },
-        "coherence_focus_mean": { "type": ["number", "null"] },
+        "coherence_focus_band_hz": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "number", "minimum": 0 }
+        },
+        "coherence_focus_mean": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
         "coherence": { "type": "array", "items": { "$ref": "#/$defs/freq_value" } },
         "phase_deg": { "type": "array", "items": { "$ref": "#/$defs/freq_value" } }
       }
     },
+
     "algo": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "version": { "type": "string" },
-        "fft_size": { "type": "integer", "minimum": 1 },
-        "window": { "type": "string" },
+        "fft_size": { "type": ["integer", "null"], "minimum": 1 },
+        "window": { "type": ["string", "null"] },
         "highpass_hz": { "type": ["number", "null"], "minimum": 0 },
         "peak_min_hz": { "type": ["number", "null"], "minimum": 0 },
         "peak_max_hz": { "type": ["number", "null"], "minimum": 0 },
@@ -58,8 +78,10 @@
         "coherence_nperseg": { "type": ["integer", "null"], "minimum": 1 }
       }
     },
+
     "reserved": { "type": "object", "additionalProperties": true }
   },
+
   "$defs": {
     "peak": {
       "type": "object",

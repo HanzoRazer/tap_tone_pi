@@ -2,15 +2,17 @@ from __future__ import annotations
 
 import argparse
 
+from .config import CaptureConfig, AnalysisConfig
 from .capture import list_devices, record_audio
 from .analysis import analyze_tap
-from .config import CaptureConfig, AnalysisConfig
 from .storage import persist_capture
+from .ui_simple import print_summary
 
 
 def cmd_devices(_: argparse.Namespace) -> int:
-    for d in list_devices():
-        print(f'[{d["index"]}] {d["name"]} (in={d["max_input_channels"]}, default_sr={d["default_samplerate"]})')
+    devs = list_devices()
+    for d in devs:
+        print(f'[{d["index"]}] {d["name"]} (in={d["max_input_channels"]}, out={d["max_output_channels"]})')
     return 0
 
 
@@ -41,6 +43,8 @@ def cmd_record(args: argparse.Namespace) -> int:
         max_peaks=an_cfg.max_peaks,
     )
 
+    print_summary(args.label, res)
+
     persisted = persist_capture(
         out_dir=args.out,
         label=args.label,
@@ -48,28 +52,50 @@ def cmd_record(args: argparse.Namespace) -> int:
         audio=cap.audio,
         analysis=res,
     )
-
-    print(f"[OK] Wrote: {persisted.capture_dir}")
-    if res.dominant_hz is not None:
-        print(f"Dominant: {res.dominant_hz:.2f} Hz")
-    print(f"RMS: {res.rms:.6f}  Clipped: {res.clipped}  Confidence: {res.confidence:.2f}")
+    print(f"Wrote: {persisted.capture_dir}")
     return 0
 
 
+def cmd_live(args: argparse.Namespace) -> int:
+    print("Live mode: press Ctrl+C to stop. Tap, wait, tap...")
+    i = 0
+    while True:
+        i += 1
+        label = args.label or f"live_{i:03d}"
+        ns = argparse.Namespace(
+            device=args.device,
+            sample_rate=args.sample_rate,
+            seconds=args.seconds,
+            out=args.out,
+            label=label,
+        )
+        rc = cmd_record(ns)
+        if rc != 0:
+            return rc
+
+
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="tap-tone", description="Tap Tone Lab CLI (Phase 1)")
+    p = argparse.ArgumentParser(prog="tap-tone", description="Offline tap tone analyzer (Phase 1)")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     p_dev = sub.add_parser("devices", help="List audio devices")
     p_dev.set_defaults(fn=cmd_devices)
 
-    p_rec = sub.add_parser("record", help="Record one tap window and analyze")
-    p_rec.add_argument("--device", type=int, default=None, help="Input device index")
+    p_rec = sub.add_parser("record", help="Record one window and analyze")
+    p_rec.add_argument("--device", type=int, default=None, help="Input device index (see devices)")
     p_rec.add_argument("--sample-rate", type=int, default=48000)
     p_rec.add_argument("--seconds", type=float, default=2.5)
-    p_rec.add_argument("--out", type=str, required=True)
-    p_rec.add_argument("--label", type=str, default=None)
+    p_rec.add_argument("--out", type=str, required=True, help="Output directory root")
+    p_rec.add_argument("--label", type=str, default=None, help="Tap point label")
     p_rec.set_defaults(fn=cmd_record)
+
+    p_live = sub.add_parser("live", help="Loop record+analyze")
+    p_live.add_argument("--device", type=int, default=None)
+    p_live.add_argument("--sample-rate", type=int, default=48000)
+    p_live.add_argument("--seconds", type=float, default=2.5)
+    p_live.add_argument("--out", type=str, required=True)
+    p_live.add_argument("--label", type=str, default=None)
+    p_live.set_defaults(fn=cmd_live)
 
     return p
 
@@ -77,3 +103,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     raise SystemExit(args.fn(args))
+
+
+if __name__ == "__main__":
+    main()

@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-tap-tone = "tap_tone.cli:main"
+tap-tone = "tap_tone.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
