@@ -119,7 +119,7 @@ class TapTonePi:
         print()
         
         # Step 4: Save artifacts
-        print("Step 3: Saving artifacts...")
+        print("Step 4: Saving artifacts...")
         filename_base = self.output_handler.generate_filename_base()
         
         output_config = self.config['output']
