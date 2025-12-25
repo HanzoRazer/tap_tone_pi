@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tap-tone-lab"
-version = "0.2.1"
-description = "Offline tap-tone lab: 2-channel capture, coherence/phase/delay, artifact bundles, and validation."
+version = "0.3.0"
+description = "Offline tap-tone lab: Phase 1 (single-channel) + Phase 2 (2ch coherence/phase/delay) with durable bundles."
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.24",
@@ -15,8 +15,9 @@ dependencies = [
   "jsonschema>=4.19",
 ]
 
-[tool.setuptools]
-package-dir = {"" = "."}
+[project.scripts]
+tap-tone = "tap_tone.cli:main"
 
-# No packages yet (scripts-only repo). This makes `pip install -e .` work for deps.
-# When you add a tap_tone/ package later, remove this and add proper package discovery.
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["tap_tone*"]
