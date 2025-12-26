@@ -36,10 +36,17 @@ OVERRIDE_LABEL: str = "phase1-approved"
 ALT_OVERRIDE_LABELS: set[str] = set()
 
 # --- Strict experimental labeling rules ---
-# If any changed file matches these globs, require BOTH labels below.
+# Experimental scripts self-identify by prefix (NOT by folder).
+# If any changed file matches these globs, require BOTH labels: phase2 + experimental.
 EXPERIMENTAL_PATH_GLOBS: list[str] = [
     "scripts/wolf_*",
+    "scripts/ir_*",
+    "scripts/ods_*",
+    "scripts/exp_*",
     "scripts/**/wolf_*",
+    "scripts/**/ir_*",
+    "scripts/**/ods_*",
+    "scripts/**/exp_*",
 ]
 
 REQUIRED_EXPERIMENTAL_LABELS: set[str] = {
