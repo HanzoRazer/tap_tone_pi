@@ -49,7 +49,45 @@ This rule prevents Phase 2 research from contaminating the frozen Phase 1 instru
 
 ---
 
-## 3. Governing Principles (Non-Negotiable)
+## 3. Contributor Quick Rules (Read Before You Commit)
+
+1. **This is a measurement instrument, not a design tool.**
+   - Capture and characterize signals.
+   - Do not add interpretation, optimization, or musical judgments.
+
+2. **Phase 1 is frozen.**
+   - Any change to protected Phase 1 files requires explicit approval (`phase1-approved`).
+   - If in doubt, assume a file is protected.
+
+3. **Experimental work must self-identify by filename prefix.**
+   - Use one of: `wolf_`, `ir_`, `ods_`, `exp_`
+   - Prefixes define Phase 2 scope and trigger CI enforcement.
+
+4. **Label your intent in the PR.**
+   - Phase 2 experimental work requires both labels:
+     - `phase2`
+     - `experimental`
+   - CI will fail ambiguous or mislabeled changes.
+
+5. **Do not mutate raw evidence.**
+   - Raw audio and primary measurements are immutable.
+   - Derived analysis must be versioned and reproducible.
+
+6. **Favor determinism over cleverness.**
+   - Same input → same output.
+   - If results vary, expose variance; do not hide it.
+
+7. **Filesystem-first, API-second.**
+   - Artifacts must be understandable without a database or server.
+   - Exportability is a feature, not an afterthought.
+
+8. **When unsure, choose the safer boundary.**
+   - Use `exp_` instead of guessing permanence.
+   - Ask before modifying baseline paths.
+
+---
+
+## 4. Governing Principles (Non-Negotiable)
 
 Phase 2 work must comply with all of the following:
 
@@ -82,7 +120,7 @@ Phase 2 work must comply with all of the following:
 
 ---
 
-## 4. Scope of Phase 2
+## 5. Scope of Phase 2
 
 Phase 2 includes **advanced observation techniques** that are standard in experimental acoustics and structural dynamics.
 
@@ -120,7 +158,7 @@ Phase 2 includes **advanced observation techniques** that are standard in experi
 
 ---
 
-## 5. Explicit Non-Goals (Out of Scope)
+## 6. Explicit Non-Goals (Out of Scope)
 
 The following are **explicitly excluded** from Phase 2:
 
@@ -137,7 +175,7 @@ These belong in **separate downstream systems**, not in the measurement instrume
 
 ---
 
-## 6. Data & Schema Discipline
+## 7. Data & Schema Discipline
 
 Phase 2 **extends** but does not replace Phase 1 data contracts.
 
@@ -159,7 +197,7 @@ Any Phase 2 output that is not yet fully validated **must include**:
 
 ---
 
-## 7. Relationship to ToolBox / RMOS
+## 8. Relationship to ToolBox / RMOS
 
 Phase 2 remains **ToolBox-agnostic**.
 
@@ -175,7 +213,7 @@ Phase 2 data **may inform** design systems later, but **never dictate them**.
 
 ---
 
-## 8. Success Criteria for Phase 2 Completion
+## 9. Success Criteria for Phase 2 Completion
 
 Phase 2 can be considered complete when:
 
@@ -188,7 +226,7 @@ Phase 2 can be considered complete when:
 
 ---
 
-## 9. Phase Boundaries Going Forward
+## 10. Phase Boundaries Going Forward
 
 * **Phase 1:** Single-point frequency presence (baseline, frozen)
 * **Phase 2:** Spatial / temporal / coherence observability
@@ -198,7 +236,7 @@ No Phase 3 work may begin without a new charter.
 
 ---
 
-## 10. Final Statement
+## 11. Final Statement
 
 Phase 2 exists to **expand observability**, not authority.
 
