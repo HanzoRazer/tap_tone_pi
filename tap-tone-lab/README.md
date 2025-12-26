@@ -101,6 +101,50 @@ python scripts/reports/generate_report.py \
 
 Automatically includes (if present): metadata.json, geometry.json, grid.json, wolf_map.json, resonance_table.json, plots/*.png, manifest.json
 
+## Time-gated impulse response (Phase 2/3 extension)
+
+Generate chirp excitation:
+
+```bash
+python scripts/time_gated_ir.py generate-chirp --out ./chirp.wav --fs 48000 --duration 3.0 --f0 30 --f1 2000
+```
+
+Process captured audio with time-gating (suppresses room reflections):
+
+```bash
+python scripts/time_gated_ir.py process \
+  --audio ./captures/capture_123/audio.wav \
+  --excitation ./chirp.wav \
+  --out ./captures/capture_123 \
+  --gate-start-ms 5.0 \
+  --gate-end-ms 100.0 \
+  --window tukey \
+  --write-plots
+```
+
+Outputs: `impulse/ir_*.npy`, `impulse/gated_spectrum_*.csv`, `plots/impulse_response.png`, `plots/gated_spectrum.png`
+
+## RMOS RunArtifact export
+
+Generate RMOS-compatible artifact payload:
+
+```bash
+python scripts/rmos_export.py \
+  --bundle ./captures/capture_123 \
+  --out ./exports/export_123 \
+  --instrument-id "OM-001" \
+  --build-stage "pre_finish" \
+  --operator "Your Name"
+```
+
+With attachments for RMOS upload:
+
+```bash
+python scripts/rmos_export.py --bundle ./captures/capture_123 --out ./exports/export_123 --pack-attachments
+```
+
+Outputs: `rmos_artifact.json` (POST to RMOS API), `manifest.json`, optional `attachments/`
+
 ## Repeatability run (Phase 1 gate helper)
 
 This expects a Phase-1 style `tap_tone` module; if you aren't using it yet, skip this script until you add Phase 1 module code.
