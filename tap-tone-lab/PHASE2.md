@@ -158,20 +158,52 @@ Phase 2 includes **advanced observation techniques** that are standard in experi
 
 ---
 
-## 6. Explicit Non-Goals (Out of Scope)
+## 6. Non-Goals (Phase 2)
 
-The following are **explicitly excluded** from Phase 2:
+Phase 2 exists to **extend measurement capability**, not to evolve this project into a design advisor or musical evaluator.
 
-* ❌ Tonal grading ("warm", "bright", etc.)
-* ❌ Optimization or prescription ("remove brace mass here")
-* ❌ Guitar model awareness
-* ❌ Machine learning
-* ❌ Automated decision-making
-* ❌ Design constraints or CAM instructions
-* ❌ Real-time performance UI
-* ❌ Robotics or automated positioning (future research only)
+The following are **explicitly out of scope** for Phase 2 and must not be introduced:
 
-These belong in **separate downstream systems**, not in the measurement instrument.
+### ❌ Interpretive Features
+- Musical or tonal descriptors (e.g., "warm," "bright," "balanced")
+- Quality scoring, grading, or ranking of instruments
+- "Good vs bad" judgments of measurements
+- Auto-generated recommendations or prescriptions
+
+### ❌ Design or Optimization Logic
+- Brace thinning suggestions
+- Material selection advice
+- Geometry modification proposals
+- Closed-loop optimization or feedback into CAD/CAM
+
+### ❌ Real-Time or Player-Facing Systems
+- Real-time signal processing for performance
+- Live monitoring intended for musicians
+- Effects, EQ, compression, or enhancement
+
+### ❌ Machine Learning / Heuristics
+- ML-based pattern recognition
+- Black-box inference models
+- "Smart" classifiers or predictors
+
+### ❌ Tight ToolBox Coupling
+- Hard dependencies on Luthier's ToolBox runtime
+- Required API calls during capture or analysis
+- Assumptions about downstream consumers
+
+### ❌ Mutation of Evidence
+- Editing, normalizing, or filtering raw audio post-capture
+- Overwriting primary measurements
+- Silent reprocessing without versioning
+
+---
+
+### Rationale
+
+Phase 2 research may feel close to interpretation or optimization, but this project must remain a **forensic measurement instrument**.
+
+Interpretation belongs downstream.
+Measurement must remain neutral, reproducible, and defensible.
 
 ---
 
