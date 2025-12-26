@@ -1,0 +1,33 @@
+name: PR Phase Gate (Path-based)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled, edited]
+    branches: ["**"]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  phase-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history for diff)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Phase gate
+        env:
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          python scripts/ci/phase_gate.py
