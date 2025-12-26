@@ -22,7 +22,34 @@ Phase 2 adds **additional ways to observe physical response** under controlled e
 
 ---
 
-## 2. Governing Principles (Non-Negotiable)
+## 2. Namespace & Phase Enforcement
+
+Phase 2 work is explicitly identified by **filename prefix**, not directory structure.
+
+All experimental scripts **must** use one of the approved prefixes defined in:
+
+- `docs/NAMESPACE_POLICY.md`
+
+Approved experimental prefixes include:
+
+- `wolf_` — wolf-note / instability metrics
+- `ir_` — impulse response & time-gated analysis
+- `ods_` — operational deflection shapes / roving-grid analysis
+- `exp_` — exploratory measurement probes
+
+Any change touching these prefixed scripts is classified as **Phase 2 Experimental** and is enforced by CI
+(`scripts/ci/phase_gate.py`) to require both:
+
+- `phase2`
+- `experimental`
+
+labels on the pull request.
+
+This rule prevents Phase 2 research from contaminating the frozen Phase 1 instrumentation baseline.
+
+---
+
+## 3. Governing Principles (Non-Negotiable)
 
 Phase 2 work must comply with all of the following:
 
@@ -55,7 +82,7 @@ Phase 2 work must comply with all of the following:
 
 ---
 
-## 3. Scope of Phase 2
+## 4. Scope of Phase 2
 
 Phase 2 includes **advanced observation techniques** that are standard in experimental acoustics and structural dynamics.
 
@@ -93,7 +120,7 @@ Phase 2 includes **advanced observation techniques** that are standard in experi
 
 ---
 
-## 4. Explicit Non-Goals (Out of Scope)
+## 5. Explicit Non-Goals (Out of Scope)
 
 The following are **explicitly excluded** from Phase 2:
 
@@ -110,7 +137,7 @@ These belong in **separate downstream systems**, not in the measurement instrume
 
 ---
 
-## 5. Data & Schema Discipline
+## 6. Data & Schema Discipline
 
 Phase 2 **extends** but does not replace Phase 1 data contracts.
 
@@ -132,7 +159,7 @@ Any Phase 2 output that is not yet fully validated **must include**:
 
 ---
 
-## 6. Relationship to ToolBox / RMOS
+## 7. Relationship to ToolBox / RMOS
 
 Phase 2 remains **ToolBox-agnostic**.
 
@@ -148,7 +175,7 @@ Phase 2 data **may inform** design systems later, but **never dictate them**.
 
 ---
 
-## 7. Success Criteria for Phase 2 Completion
+## 8. Success Criteria for Phase 2 Completion
 
 Phase 2 can be considered complete when:
 
@@ -161,7 +188,7 @@ Phase 2 can be considered complete when:
 
 ---
 
-## 8. Phase Boundaries Going Forward
+## 9. Phase Boundaries Going Forward
 
 * **Phase 1:** Single-point frequency presence (baseline, frozen)
 * **Phase 2:** Spatial / temporal / coherence observability
@@ -171,12 +198,18 @@ No Phase 3 work may begin without a new charter.
 
 ---
 
-## 9. Final Statement
+## 10. Final Statement
 
 Phase 2 exists to **expand observability**, not authority.
 
 The value of `tap_tone_pi` is not that it "knows guitars,"
 but that it **measures reality cleanly enough that experts can trust it**.
+
+---
+
+See also:
+- `docs/NAMESPACE_POLICY.md` — authoritative naming and phase rules
+- `BASELINE.md` — frozen Phase 1 instrumentation contract
 
 ---
 
