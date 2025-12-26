@@ -315,6 +315,75 @@ def write_manifest(out_dir: Path, manifest: Dict[str, Any]) -> Path:
     return path
 
 
+def build_rmos_artifact(manifest: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Build a ready-to-ingest RunArtifact pointer skeleton for RMOS runs_v2.
+
+    This is intentionally NOT RMOS-internal schema-complete (run_id/status lifecycle
+    are RMOS-side concerns). It is an ingest payload that RMOS can accept and
+    convert into its canonical run_{run_id}.json form.
+    """
+    instrument = manifest.get("instrument", {})
+    domain = manifest.get("domain", {})
+    acoustics = (domain.get("acoustics") or {}) if isinstance(domain, dict) else {}
+
+    # Flatten attachments from manifest files
+    attachments = []
+    for f in manifest.get("files", []):
+        attachments.append({
+            "sha256": f.get("sha256"),
+            "relpath": f.get("relpath"),
+            "bytes": f.get("bytes"),
+            "mime": f.get("mime"),
+            "kind": f.get("kind"),
+            "point_id": f.get("point_id"),
+        })
+
+    payload = {
+        "mode": manifest.get("mode", "acoustics"),
+        "event_type": manifest.get("event_type", "tap_tone.capture"),
+        "tool_id": manifest.get("tool_id", "tap_tone_pi"),
+        "app_version": manifest.get("app_version"),
+        "units": manifest.get("units", "mm"),
+
+        # identity + dedupe keys
+        "bundle_id": manifest.get("bundle_id"),
+        "bundle_sha256": manifest.get("bundle_sha256"),
+
+        # timestamps
+        "capture_started_at_utc": manifest.get("capture_started_at_utc"),
+        "capture_finished_at_utc": manifest.get("capture_finished_at_utc"),
+        "generated_at_utc": manifest.get("generated_at_utc"),
+
+        # core indexing fields
+        "instrument_id": instrument.get("instrument_id"),
+        "build_stage": instrument.get("build_stage"),
+        "operator": instrument.get("operator"),
+
+        # evolvable namespace (RMOS dev requested this)
+        "meta": {
+            "acoustics": {
+                "phase": acoustics.get("phase"),
+                "coh_min": acoustics.get("coh_min"),
+                "bundle_root_name": manifest.get("bundle_root_name"),
+            }
+        },
+
+        # attachments (by sha, relpath, kind)
+        "attachments": attachments,
+    }
+
+    # prune Nones for cleanliness
+    def strip_nones(x: Any) -> Any:
+        if isinstance(x, dict):
+            return {k: strip_nones(v) for k, v in x.items() if v is not None}
+        if isinstance(x, list):
+            return [strip_nones(v) for v in x if v is not None]
+        return x
+
+    return strip_nones(payload)
+
+
 def pack_dir(bundle_root: Path, out_dir: Path, manifest_path: Path, files: List[Dict[str, Any]]) -> Path:
     """
     Create an attachment pack folder:
@@ -395,6 +464,8 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     ap.add_argument("--tool-id", default="tap_tone_pi", help="Tool identifier")
     ap.add_argument("--app-version", default="1.0.0", help="App version (freeze baseline v1.0.0)")
     ap.add_argument("--event-type", default="tap_tone.capture", help="Event type string (stable)")
+    ap.add_argument("--emit-rmos-artifact", action="store_true",
+                    help="Also write rmos_artifact.json payload (ready-to-ingest skeleton)")
 
     return ap.parse_args(argv)
 
@@ -434,6 +505,12 @@ def export_bundle(argv: Optional[List[str]] = None) -> int:
 
     manifest_path = write_manifest(out_dir, manifest)
     print(f"[OK] wrote {manifest_path}")
+
+    if args.emit_rmos_artifact:
+        rmos_payload = build_rmos_artifact(manifest)
+        rmos_path = out_dir / "rmos_artifact.json"
+        rmos_path.write_text(json.dumps(rmos_payload, indent=2, sort_keys=True), encoding="utf-8")
+        print(f"[OK] wrote {rmos_path}")
 
     if args.pack == "dir":
         attachments_dir = pack_dir(bundle_root, out_dir, manifest_path, manifest["files"])
