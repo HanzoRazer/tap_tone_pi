@@ -245,7 +245,192 @@ Phase 2 data **may inform** design systems later, but **never dictate them**.
 
 ---
 
-## 9. Success Criteria for Phase 2 Completion
+## 9. Phase 2 Acceptance Criteria & Definition of Done
+
+### 9.1 Phase 2 Acceptance Criteria
+
+Phase 2 is accepted **only if all criteria below are met**. Partial compliance is not sufficient.
+
+---
+
+#### 1️⃣ Measurement Integrity (Non-Negotiable)
+
+**Goal:** Extend observability without corrupting evidence.
+
+**Acceptance Criteria**
+
+* [ ] Raw audio evidence remains **immutable** once captured
+* [ ] All derived artifacts explicitly reference their source audio by SHA256
+* [ ] Any reprocessing produces **new artifacts**, never overwrites
+* [ ] Measurement units are explicit and consistent (default: millimeters, Hz, seconds)
+* [ ] Timebase consistency verified across channels (sample-accurate alignment)
+
+**Fail Condition**
+
+* Any feature alters raw audio, silently reprocesses data, or hides provenance
+
+---
+
+#### 2️⃣ Multi-Point / Multi-Channel Measurement Capability
+
+**Goal:** Observe spatial and coupling phenomena without adding mass bias.
+
+**Acceptance Criteria**
+
+* [ ] Supports at least one **reference sensor** + one **roving sensor**
+* [ ] Sequential roving measurements reconstruct a spatial dataset
+* [ ] Spatial grid is explicitly defined (grid.json or equivalent)
+* [ ] Point identity and coordinates are preserved in artifacts
+* [ ] No requirement to mount multiple sensors simultaneously
+
+**Fail Condition**
+
+* Assumes fixed multi-sensor mounting or introduces unlogged mass loading
+
+---
+
+#### 3️⃣ Deterministic Signal Characterization
+
+**Goal:** Same input → same numbers.
+
+**Acceptance Criteria**
+
+* [ ] FFT, coherence, phase, and transfer functions are deterministic
+* [ ] Windowing, FFT size, overlap, averaging are logged
+* [ ] At least one deterministic test fixture validates outputs within tolerance
+* [ ] Confidence metrics are computed from data, not heuristics
+
+**Fail Condition**
+
+* Output depends on runtime order, hidden state, or environment quirks
+
+---
+
+#### 4️⃣ Wolf / Stress Localization Metrics (Silver Idea)
+
+**Goal:** Quantify instability regions without interpretation.
+
+**Acceptance Criteria**
+
+* [ ] Implements at least one **derived metric** (e.g., WSI, gradient energy)
+* [ ] Derived metrics are mathematically defined and documented
+* [ ] Candidate regions are reported as **data**, not judgments
+* [ ] Visualization artifacts are optional and derived-only
+
+**Fail Condition**
+
+* Metrics imply "good/bad" or recommend corrective action
+
+---
+
+#### 5️⃣ Artifact & Interoperability Contract
+
+**Goal:** Phase 2 data must travel safely downstream.
+
+**Acceptance Criteria**
+
+* [ ] Bundle manifest exists and validates against schema
+* [ ] Content-addressed attachments (SHA256) are used consistently
+* [ ] RMOS-compatible export exists but is **optional**
+* [ ] Phase 2 artifacts are distinguishable from Phase 1 by metadata only
+
+**Fail Condition**
+
+* Tight coupling to ToolBox runtime or required live API calls
+
+---
+
+#### 6️⃣ Failure Semantics & Observability
+
+**Goal:** Fail loudly, safely, and informatively.
+
+**Acceptance Criteria**
+
+* [ ] Each run reports status: `OK | WARNING | ERROR`
+* [ ] Warnings and error reasons are explicit and logged
+* [ ] Partial failures preserve raw evidence
+* [ ] Operator can explain every failure mode from logs alone
+
+**Fail Condition**
+
+* Silent failures or ambiguous output states
+
+---
+
+### 9.2 Phase 2 Definition of Done
+
+Phase 2 is **complete** when all statements below are true.
+
+---
+
+#### ✅ Functional Completion
+
+* A user can:
+
+  * Capture raw acoustic response
+  * Perform multi-point / multi-channel measurement
+  * Generate deterministic derived metrics
+  * Store and export results without loss
+* No design, tonal, or optimization logic exists in the codebase
+
+---
+
+#### ✅ Scientific Defensibility
+
+* Every produced number has:
+
+  * A documented mathematical origin
+  * A traceable input artifact
+  * A reproducible computation path
+* An external reviewer could:
+
+  * Re-run the experiment
+  * Recompute results
+  * Reach the same numerical conclusions
+
+---
+
+#### ✅ Boundary Integrity
+
+* The project remains:
+
+  * A **measurement instrument**
+  * Not a design advisor
+  * Not a musical evaluator
+* Interpretation is explicitly deferred downstream
+
+---
+
+#### ✅ Governance Completion
+
+* Phase 2 code paths are:
+
+  * Namespaced and labeled
+  * Guarded by Phase 2 PR gates
+* Phase 1 remains untouched and stable
+* No Phase 3 features are partially implemented
+
+---
+
+#### 🚫 What "Done" Does NOT Mean
+
+Phase 2 is **not** done if:
+
+* There are "experimental" features without isolation
+* There are TODOs that affect measurement validity
+* There is pressure to "just add interpretation"
+* The system cannot explain its own output
+
+---
+
+### 9.3 Final Lock Statement
+
+> **Phase 2 ends when observability is maximized without interpretation.**
+> Any further work belongs to Phase 3 or downstream systems.
+
+---
+
+## 10. Success Criteria for Phase 2 Completion (Legacy)
 
 Phase 2 can be considered complete when:
 
@@ -256,9 +441,11 @@ Phase 2 can be considered complete when:
 * No Phase 1 behavior has changed
 * No interpretive language appears in outputs
 
+**Note:** This section is superseded by §9 (Acceptance Criteria & Definition of Done) but retained for historical context.
+
 ---
 
-## 10. Phase Boundaries Going Forward
+## 11. Phase Boundaries Going Forward
 
 * **Phase 1:** Single-point frequency presence (baseline, frozen)
 * **Phase 2:** Spatial / temporal / coherence observability
@@ -268,7 +455,7 @@ No Phase 3 work may begin without a new charter.
 
 ---
 
-## 11. Final Statement
+## 12. Final Statement
 
 Phase 2 exists to **expand observability**, not authority.
 
