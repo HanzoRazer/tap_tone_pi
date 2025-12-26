@@ -1,0 +1,10 @@
+{
+  "issues": [
+    {
+      "title": "Add deterministic test fixtures for v1.0 baseline verification",
+      "body": "## Problem\n\nThe v1.0 instrumentation baseline lacks deterministic regression tests. Changes to FFT, peak detection, or export logic cannot be verified for correctness.\n\n## Tasks\n\n- [ ] Add `tests/fixtures/reference_tap.wav` (controlled test signal)\n- [ ] Add `tests/test_analysis.py` with FFT determinism checks\n- [ ] Assert schema validity for all output JSON\n- [ ] Assert peak frequency tolerance (±0.1 Hz)\n- [ ] Assert manifest hash stability (bundle_sha256 determinism)\n- [ ] Add `tests/test_exporter.py` for manifest generation\n- [ ] Document test fixtures in `docs/TESTING.md`\n\n## Acceptance Criteria\n\n- [ ] CI proves mathematical stability across platforms\n- [ ] Any change to FFT output is intentional and detected\n- [ ] Export manifest produces identical bundle_sha256 for same inputs\n- [ ] Tests run in <5 seconds (unit test speed)\n\n## Context\n\nThis is the final missing piece of the v1.0 instrumentation baseline freeze (BASELINE.md, tag v1.0-instrumentation). All other v1.0 features are complete:\n\n- Phase 1-3 measurement topologies\n- JSON schemas for validation\n- Atomic bundle persistence\n- Export contract (manifest + bundle_sha256)\n- Wolf silver metrics\n\nTests ensure no regression when porting to new hardware or adding Phase 2+ features.\n\n## Implementation Notes\n\n- Use `pytest` for test framework\n- Generate reference_tap.wav programmatically (pure tone, known frequency) or use real tap sample with golden hashes\n- Run tests in GitHub Actions CI on Ubuntu/Windows/macOS\n- Store golden outputs in `tests/fixtures/golden/` for hash comparison",
+      "labels": ["testing", "v1.0-completion", "ci"],
+      "milestone": "v1.0-instrument-baseline"
+    }
+  ]
+}
