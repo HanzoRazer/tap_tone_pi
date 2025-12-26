@@ -44,6 +44,18 @@ ALT_OVERRIDE_LABELS: set[str] = {
     # e.g. "maintainer-approved",
 }
 
+# --- Strict experimental labeling rules ---
+# If any changed file matches these globs, require BOTH labels below.
+EXPERIMENTAL_PATH_GLOBS: list[str] = [
+    "scripts/wolf_*",
+    "scripts/**/wolf_*",
+]
+
+REQUIRED_EXPERIMENTAL_LABELS: set[str] = {
+    "phase2",
+    "experimental",
+}
+
 # ------------------------------------------------------
 
 
@@ -119,6 +131,26 @@ def main() -> int:
         print(f"Add one of these labels: {sorted(REQUIRED_CLASS_LABELS)}")
         print(f"Current labels: {sorted(ctx.labels) if ctx.labels else '[]'}")
         return 1
+
+    # Strict rule: wolf_* scripts must be explicitly marked phase2 + experimental
+    experimental_touched = [p for p in changed if _match_any(p, EXPERIMENTAL_PATH_GLOBS)]
+    if experimental_touched:
+        missing = REQUIRED_EXPERIMENTAL_LABELS - ctx.labels
+        if missing:
+            print("FAIL: Experimental wolf_* scripts changed without required labels.")
+            print("")
+            print("Experimental paths touched:")
+            for p in experimental_touched:
+                print(f"  - {p}")
+            print("")
+            print("Required labels for this change:")
+            for lbl in sorted(REQUIRED_EXPERIMENTAL_LABELS):
+                print(f"  - {lbl}")
+            print("")
+            print("Missing labels:")
+            for lbl in sorted(missing):
+                print(f"  - {lbl}")
+            return 1
 
     protected_touched = [p for p in changed if _match_any(p, PROTECTED_GLOBS)]
 
