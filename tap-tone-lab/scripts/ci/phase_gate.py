@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-import sys
 from dataclasses import dataclass
 from fnmatch import fnmatch
 from typing import Iterable, List, Set
@@ -23,12 +22,6 @@ PROTECTED_GLOBS: list[str] = [
     "BASELINE.md",
 ]
 
-# Optional: protect whole directories as well (uncomment if desired)
-# PROTECTED_GLOBS += [
-#     "tap_tone/*.py",
-#     "schemas/*.json",
-# ]
-
 # PR must include at least one of these "phase classification" labels
 REQUIRED_CLASS_LABELS: set[str] = {
     "phase2",
@@ -39,10 +32,8 @@ REQUIRED_CLASS_LABELS: set[str] = {
 # If protected paths are touched, require this override label to proceed
 OVERRIDE_LABEL: str = "phase1-approved"
 
-# When protected paths touched, this label is also acceptable (if you want)
-ALT_OVERRIDE_LABELS: set[str] = {
-    # e.g. "maintainer-approved",
-}
+# Alternative override labels (optional)
+ALT_OVERRIDE_LABELS: set[str] = set()
 
 # --- Strict experimental labeling rules ---
 # If any changed file matches these globs, require BOTH labels below.
@@ -55,6 +46,9 @@ REQUIRED_EXPERIMENTAL_LABELS: set[str] = {
     "phase2",
     "experimental",
 }
+
+# Symmetry: if PR has the `experimental` label, it must touch an experimental path
+EXPERIMENTAL_LABEL: str = "experimental"
 
 # ------------------------------------------------------
 
@@ -103,7 +97,6 @@ def _match_any(path: str, globs: Iterable[str]) -> bool:
 
 
 def _git_changed_files(base_sha: str, head_sha: str) -> List[str]:
-    # Ensure both SHAs exist locally (checkout fetch-depth:0 should handle this)
     # Use three-dot to compare PR head vs base merge-base behavior.
     out = _run(["git", "diff", "--name-only", f"{base_sha}...{head_sha}"])
     files = [line.strip() for line in out.splitlines() if line.strip()]
@@ -125,14 +118,14 @@ def main() -> int:
         print("OK: No changed files detected.")
         return 0
 
-    # Phase classification label check (soft but useful)
+    # Require a classification label to avoid ambiguous intent
     if not (ctx.labels & REQUIRED_CLASS_LABELS):
         print("FAIL: Missing required PR classification label.")
         print(f"Add one of these labels: {sorted(REQUIRED_CLASS_LABELS)}")
         print(f"Current labels: {sorted(ctx.labels) if ctx.labels else '[]'}")
         return 1
 
-    # Strict rule: wolf_* scripts must be explicitly marked phase2 + experimental
+    # Strict experimental rule (A): wolf_* script changes require phase2 + experimental
     experimental_touched = [p for p in changed if _match_any(p, EXPERIMENTAL_PATH_GLOBS)]
     if experimental_touched:
         missing = REQUIRED_EXPERIMENTAL_LABELS - ctx.labels
@@ -152,8 +145,19 @@ def main() -> int:
                 print(f"  - {lbl}")
             return 1
 
-    protected_touched = [p for p in changed if _match_any(p, PROTECTED_GLOBS)]
+    # Strict experimental rule (B): if PR is labeled experimental, it must touch experimental paths
+    if EXPERIMENTAL_LABEL in ctx.labels and not experimental_touched:
+        print("FAIL: PR has 'experimental' label but no experimental paths were changed.")
+        print("")
+        print("The 'experimental' label is reserved for changes under:")
+        for g in EXPERIMENTAL_PATH_GLOBS:
+            print(f"  - {g}")
+        print("")
+        print("Either remove the 'experimental' label, or ensure the change touches an experimental path.")
+        return 1
 
+    # Phase 1 protection: touching protected files requires explicit approval label
+    protected_touched = [p for p in changed if _match_any(p, PROTECTED_GLOBS)]
     if protected_touched:
         override_ok = (OVERRIDE_LABEL in ctx.labels) or bool(ctx.labels & ALT_OVERRIDE_LABELS)
         if not override_ok:
@@ -173,13 +177,9 @@ def main() -> int:
             print("Rationale: Phase 1 baseline is frozen; touching protected files requires explicit approval.")
             return 1
 
-        # If override label present, still warn loudly
         print("WARN: Protected Phase 1 files changed, but override label present.")
         for p in protected_touched:
             print(f"  - {p}")
-
-    # Optional: If labeled phase2 AND touches protected, require override (already handled)
-    # Optional: enforce experimental labeling rules via content checks (not implemented here)
 
     print("OK: Phase gate passed.")
     print(f"Changed files: {len(changed)}")
@@ -187,8 +187,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    try:
-        raise SystemExit(main())
-    except Exception as e:
-        print(f"ERROR: {e}")
-        raise
+    raise SystemExit(main())
