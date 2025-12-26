@@ -89,6 +89,18 @@ python scripts/validate_bundle.py \
 python scripts/make_manifest.py --capture-dir ./captures_phase2/capture_YYYYMMDDTHHMMSSZ
 ```
 
+## Generate a PDF lab report
+
+```bash
+python scripts/reports/generate_report.py \
+  --bundle ./captures_phase2/capture_YYYYMMDDTHHMMSSZ \
+  --out ./captures_phase2/capture_YYYYMMDDTHHMMSSZ/report.pdf \
+  --title "Tap Tone Lab Report" \
+  --author "Your Name"
+```
+
+Automatically includes (if present): metadata.json, geometry.json, grid.json, wolf_map.json, resonance_table.json, plots/*.png, manifest.json
+
 ## Repeatability run (Phase 1 gate helper)
 
 This expects a Phase-1 style `tap_tone` module; if you aren't using it yet, skip this script until you add Phase 1 module code.
@@ -99,4 +111,12 @@ python scripts/repeatability_run.py --device 3 --out ./captures_repeat --takes 1
 
 ## Docs
 
-See `docs/ADR-0001..0006` for the operating rules, boundaries, and integration plan.
+See `docs/ADR-0001..0007` for the operating rules, boundaries, and integration plan.
+
+- ADR-0001: Measurement scope and protocol v0.1
+- ADR-0002: Multi-channel expansion (Phase 2-5)
+- ADR-0003: Artifact schema for multi-channel bundles
+- ADR-0004: Acoustic vs structural boundary (claim constraints)
+- ADR-0005: Repeatability, variance, and confidence
+- ADR-0006: RMOS RunArtifact mapping (forward-compatible)
+- ADR-0007: Phase 3 roving-grid ODS methodology (research)

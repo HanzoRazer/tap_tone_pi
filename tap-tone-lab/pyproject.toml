@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tap-tone-lab"
-version = "0.3.1"
+version = "0.3.2"
 description = "Offline tap-tone lab: Phase 1 (single-channel) + Phase 2 (2ch coherence/phase/delay) with durable bundles."
 requires-python = ">=3.10"
 dependencies = [
@@ -13,6 +13,7 @@ dependencies = [
   "sounddevice>=0.4.6",
   "matplotlib>=3.7",
   "jsonschema>=4.19",
+  "reportlab>=4.0",
 ]
 
 [project.scripts]
