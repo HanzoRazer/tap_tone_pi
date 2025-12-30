@@ -1,0 +1,92 @@
+{
+  "calibration": {
+    "dial": {
+      "method": "manual_zero",
+      "zeroed": true,
+      "zeroed_at_utc": "2025-12-29T04:56:24Z"
+    },
+    "load_cell": {
+      "calibration_date_utc": "unknown",
+      "present": false
+    },
+    "session_ref": {
+      "session_calibration_relpath": "calibration/session_calibration.json",
+      "session_id": "S_TEST_LEDGER"
+    },
+    "standard_specimen": {
+      "specimen_id": "unknown",
+      "used": false
+    }
+  },
+  "fixture": {
+    "span_mm": 400.0,
+    "support_type": "unknown"
+  },
+  "provenance": {
+    "captured_at_utc": "2025-12-29T04:56:24Z",
+    "operator": "Ross",
+    "tool_id": "tap_tone_pi",
+    "tool_version": "v1.0"
+  },
+  "readings": {
+    "csv_relpath": "raw/readings.csv",
+    "replicates": [
+      {
+        "csv_relpath": "raw/replicates/replicate_01.csv",
+        "rows": [
+          {
+            "deflection": 0.22,
+            "load": 5.0
+          },
+          {
+            "deflection": 0.44,
+            "load": 10.0
+          },
+          {
+            "deflection": 0.66,
+            "load": 15.0
+          }
+        ]
+      }
+    ],
+    "rows": [
+      {
+        "deflection": 0.22,
+        "load": 5.0
+      },
+      {
+        "deflection": 0.44,
+        "load": 10.0
+      },
+      {
+        "deflection": 0.66,
+        "load": 15.0
+      }
+    ]
+  },
+  "results": {
+    "ei_method_assumptions": "EI computed using three-point bending small-deflection formula: EI=(P/\u03b4)*L^3/48. Assumes central load, linear elastic response, negligible shear deflection.",
+    "ei_n_mm2": 30303030.3030303,
+    "k_force_per_deflection": 22.727272727272727,
+    "k_r2": 1.0,
+    "warnings": []
+  },
+  "schema": {
+    "created_at_utc": "2025-12-29T04:56:24Z",
+    "name": "bending_stiffness",
+    "version": "1.1"
+  },
+  "specimen": {
+    "grain_orientation": "unknown",
+    "material_role": "unknown",
+    "specimen_id": "SPEC_001"
+  },
+  "test": {
+    "method": "three_point_bending",
+    "test_id": "bend_20251229T045624Z",
+    "units": {
+      "force": "N",
+      "length": "mm"
+    }
+  }
+}

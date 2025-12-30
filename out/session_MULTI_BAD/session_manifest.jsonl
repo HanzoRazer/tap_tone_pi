@@ -1,0 +1,9 @@
+{"bundle_id": "b001", "mode": "bend"}
+BAD LINE 1
+{"bundle_id": "b002", "mode": "bend"}
+{"bundle_id": "b003", "mode": "tap"}
+ANOTHER BAD LINE
+{"bundle_id": "b005", "mode": "tap"}
+YET ANOTHER BAD
+{"bundle_id": "b007", "mode": "bend"}
+FINAL BAD LINE

@@ -1,0 +1,11 @@
+{
+  "artifact_type": "f_vs_d_plot",
+  "plot_path": "out/test_fvd.png",
+  "fit": {
+    "slope": 23.80952380952381,
+    "intercept": 0.23809523809523303,
+    "r_squared": 1.0,
+    "units_slope": "N/mm"
+  },
+  "n_points": 4
+}

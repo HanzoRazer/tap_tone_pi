@@ -1,0 +1,59 @@
+{
+  "fixture": {
+    "span_mm": 400.0,
+    "support_type": "unknown"
+  },
+  "provenance": {
+    "captured_at_utc": "2025-12-29T02:46:28Z",
+    "operator": "Ross",
+    "tool_id": "tap_tone_pi",
+    "tool_version": "v1.0"
+  },
+  "readings": {
+    "csv_relpath": "raw/readings.csv",
+    "rows": [
+      {
+        "deflection": 0.2,
+        "load": 5.0
+      },
+      {
+        "deflection": 0.41,
+        "load": 10.0
+      },
+      {
+        "deflection": 0.62,
+        "load": 15.0
+      },
+      {
+        "deflection": 0.83,
+        "load": 20.0
+      }
+    ]
+  },
+  "results": {
+    "ei_method_assumptions": "EI computed using three-point bending small-deflection formula: EI=(P/\u03b4)*L^3/48. Assumes central load, linear elastic response, negligible shear deflection.",
+    "ei_n_mm2": 31746031.74603175,
+    "k_force_per_deflection": 23.809523809523814,
+    "k_r2": 1.0,
+    "warnings": []
+  },
+  "schema": {
+    "created_at_utc": "2025-12-29T02:46:28Z",
+    "name": "bending_stiffness",
+    "version": "1.0"
+  },
+  "specimen": {
+    "grain_orientation": "longitudinal",
+    "material_role": "top",
+    "specimen_id": "S1",
+    "wood_species": "spruce"
+  },
+  "test": {
+    "method": "three_point_bending",
+    "test_id": "bend_20251229T024628Z",
+    "units": {
+      "force": "N",
+      "length": "mm"
+    }
+  }
+}

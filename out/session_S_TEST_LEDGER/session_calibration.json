@@ -1,0 +1,26 @@
+{
+  "calibration": {
+    "dial": {
+      "method": "manual_zero",
+      "zeroed": true,
+      "zeroed_at_utc": "2025-12-29T04:56:24Z"
+    },
+    "load_cell": {
+      "calibration_date_utc": "unknown",
+      "present": false
+    },
+    "standard_specimen": {
+      "specimen_id": "unknown",
+      "used": false
+    }
+  },
+  "schema": {
+    "created_at_utc": "2025-12-29T04:56:24Z",
+    "name": "session_calibration",
+    "version": "1.0"
+  },
+  "session": {
+    "operator": "Ross",
+    "session_id": "S_TEST_LEDGER"
+  }
+}

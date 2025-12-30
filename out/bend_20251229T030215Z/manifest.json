@@ -1,0 +1,68 @@
+{
+  "bundle_id": "bend_20251229T030215Z",
+  "capture_finished_at_utc": "2025-12-29T03:02:15Z",
+  "capture_started_at_utc": "2025-12-29T03:02:15Z",
+  "files": [
+    {
+      "bytes": 43,
+      "kind": "readings",
+      "mime": "text/csv",
+      "point_id": null,
+      "relpath": "raw/readings.csv",
+      "sha256": "cecfeddd79b1c14834cfe40224b901e7cf15244c4961e1ff516821ef9d19f5a5"
+    },
+    {
+      "bytes": 43,
+      "kind": "readings_replicate",
+      "mime": "text/csv",
+      "point_id": null,
+      "relpath": "raw/replicates/replicate_01.csv",
+      "sha256": "cecfeddd79b1c14834cfe40224b901e7cf15244c4961e1ff516821ef9d19f5a5"
+    },
+    {
+      "bytes": 43,
+      "kind": "readings_replicate",
+      "mime": "text/csv",
+      "point_id": null,
+      "relpath": "raw/replicates/replicate_02.csv",
+      "sha256": "120c5f2370d08ce955a0ae7b5cf44e3208c0eeae92546a2f8b24d9e19a834844"
+    },
+    {
+      "bytes": 43,
+      "kind": "readings_replicate",
+      "mime": "text/csv",
+      "point_id": null,
+      "relpath": "raw/replicates/replicate_03.csv",
+      "sha256": "069fa0ca6b15fd29517b78b56dcaafbd22ff59e58a18e6d44b89e593bec7ec3e"
+    },
+    {
+      "bytes": 2912,
+      "kind": "analysis_summary",
+      "mime": "application/json",
+      "point_id": null,
+      "relpath": "analysis/bending_stiffness.json",
+      "sha256": "f6a5d5e8e53e86b26c0517624b3a5a85f498c21f433f0ca807d29109ae2b2a50"
+    }
+  ],
+  "manifest_version": "1.0",
+  "meta": {
+    "bundle_id": "bend_20251229T030215Z",
+    "capture_finished_at_utc": "2025-12-29T03:02:15Z",
+    "capture_started_at_utc": "2025-12-29T03:02:15Z",
+    "ci_level": 0.95,
+    "material_role": "top",
+    "method": "three_point_bending",
+    "mode": "bending_stiffness",
+    "replicates": 3,
+    "span_mm": 400.0,
+    "specimen_id": "TOP_OM_001",
+    "units": {
+      "force": "N",
+      "length": "mm"
+    }
+  },
+  "tool": {
+    "tool_id": "tap_tone_pi",
+    "tool_version": "v1.0"
+  }
+}

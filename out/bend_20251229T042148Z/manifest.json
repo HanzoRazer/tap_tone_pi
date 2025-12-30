@@ -1,0 +1,68 @@
+{
+  "bundle_id": "bend_20251229T042148Z",
+  "capture_finished_at_utc": "2025-12-29T04:21:48Z",
+  "capture_started_at_utc": "2025-12-29T04:21:48Z",
+  "files": [
+    {
+      "bytes": 43,
+      "kind": "readings",
+      "mime": "text/csv",
+      "point_id": null,
+      "relpath": "raw/readings.csv",
+      "sha256": "cecfeddd79b1c14834cfe40224b901e7cf15244c4961e1ff516821ef9d19f5a5"
+    },
+    {
+      "bytes": 43,
+      "kind": "readings_replicate",
+      "mime": "text/csv",
+      "point_id": null,
+      "relpath": "raw/replicates/replicate_01.csv",
+      "sha256": "cecfeddd79b1c14834cfe40224b901e7cf15244c4961e1ff516821ef9d19f5a5"
+    },
+    {
+      "bytes": 2248,
+      "kind": "analysis_summary",
+      "mime": "application/json",
+      "point_id": null,
+      "relpath": "analysis/bending_stiffness.json",
+      "sha256": "4d01bd5c4b214d62e3c490b5166aa3344fa6575786cb0de3c9a44ee048ae65bd"
+    },
+    {
+      "bytes": 950,
+      "kind": "session_calibration",
+      "mime": "application/json",
+      "point_id": null,
+      "relpath": "calibration/session_calibration.json",
+      "sha256": "a06db2c4db93a6a2886d37086c471a4df8bbde67d2c42b7a5a932a0774131a53"
+    }
+  ],
+  "manifest_version": "1.0",
+  "meta": {
+    "bundle_id": "bend_20251229T042148Z",
+    "calibration": {
+      "dial_zeroed": true,
+      "load_cell_calibration_date_utc": "2025-11-15",
+      "load_cell_present": true,
+      "standard_specimen_id": "STD_STRIP_01",
+      "standard_used": true
+    },
+    "capture_finished_at_utc": "2025-12-29T04:21:48Z",
+    "capture_started_at_utc": "2025-12-29T04:21:48Z",
+    "ci_level": 0.95,
+    "material_role": "unknown",
+    "method": "three_point_bending",
+    "mode": "bending_stiffness",
+    "replicates": 1,
+    "session_id": "S_20251229_A",
+    "span_mm": 400.0,
+    "specimen_id": "STD_CHECK",
+    "units": {
+      "force": "N",
+      "length": "mm"
+    }
+  },
+  "tool": {
+    "tool_id": "tap_tone_pi",
+    "tool_version": "v1.0"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "bundle_id": "bend_20251229T024628Z",
+  "capture_finished_at_utc": "2025-12-29T02:46:28Z",
+  "capture_started_at_utc": "2025-12-29T02:46:28Z",
+  "files": [
+    {
+      "bytes": 51,
+      "kind": "readings",
+      "mime": "text/csv",
+      "point_id": null,
+      "relpath": "raw/readings.csv",
+      "sha256": "736bba55daa1da78ca498c0fb6c6dfd889281dfadd096256adb571ceca4f7022"
+    },
+    {
+      "bytes": 1320,
+      "kind": "analysis_summary",
+      "mime": "application/json",
+      "point_id": null,
+      "relpath": "analysis/bending_stiffness.json",
+      "sha256": "aab70544d47ed4908eecff86edd8852b4ae91186cd3f85f424b26a84b2bf3430"
+    }
+  ],
+  "manifest_version": "1.0",
+  "meta": {
+    "bundle_id": "bend_20251229T024628Z",
+    "capture_finished_at_utc": "2025-12-29T02:46:28Z",
+    "capture_started_at_utc": "2025-12-29T02:46:28Z",
+    "material_role": "top",
+    "method": "three_point_bending",
+    "mode": "bending_stiffness",
+    "span_mm": 400.0,
+    "specimen_id": "S1",
+    "units": {
+      "force": "N",
+      "length": "mm"
+    }
+  },
+  "tool": {
+    "tool_id": "tap_tone_pi",
+    "tool_version": "v1.0"
+  }
+}
