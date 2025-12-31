@@ -1,132 +1,177 @@
-# Usage:
-#   make run-tap OUT=out/tap_tone.json DUR=4 SR=44100
-#   make bend-single OUT=out/bending_test.json
-#   make bend-batch CSV=data/deflection_runs.csv OUT=out/moe_results.csv
-#   make provenance-hash FILE=path/to/grain_field.png OUT=out/provenance.json
+# tap_tone_pi — Measurement Chain Makefile
+# =========================================
+# Usage: make <target> VAR=value ...
 
-PY ?= python
+# ---- Acquisition: serial sensor capture ----
 
-run-tap:
-	@mkdir -p $$(dirname $(OUT))
-	@$(PY) modes/tap_tone/tap_fft_logger.py --outfile $(OUT) --plot $$(dirname $(OUT))/spectrum.png --labels A0 T11 B11
-
-bend-single:
-	@mkdir -p $$(dirname $(OUT))
-	@$(PY) modes/bending_stiffness/deflection_to_moe.py \
-		--method 3point --span 400 --width 20 --thickness 3.0 \
-		--force 5.0 --deflection 0.62 --density 0.41 \
-		--out $(OUT)
-
-bend-batch:
-	@mkdir -p $$(dirname $(OUT))
-	@$(PY) modes/bending_stiffness/deflection_to_moe.py --csv $(CSV) --out $(OUT)
-
-# Force vs Displacement plot (measurement visualization)
-plot-fvd:
-	@mkdir -p $$(dirname $(OUT))
-	@$(PY) modes/bending_stiffness/plot_f_vs_d.py \
-		--pair 5,0.2 --pair 10,0.41 --pair 15,0.62 --pair 20,0.83 \
-		--out $(OUT) --title "Force vs Displacement"
-
-provenance-hash:
-	@mkdir -p $$(dirname $(OUT))
-	@$(PY) modes/provenance_import/attach_grain_provenance.py --file $(FILE) --out $(OUT)
-
-validate-schemas:
-	@$(PY) -m jsonschema -i examples/measurement/tap_tone.json schemas/measurement/tap_peaks.schema.json
-	@$(PY) -m jsonschema -i examples/measurement/bending_test.json schemas/measurement/moe_result.schema.json
-	@$(PY) -m jsonschema -i examples/measurement/manifest.json schemas/measurement/manifest.schema.json
-
-# Emit manifest.json for one run
-manifest:
-	@mkdir -p $$(dirname $(OUT))
-	@$(PY) modes/_shared/emit_manifest.py --out $(OUT) $(ARTIFACTS) $(RIG) $(NOTES)
-
-# Usage:
-# make manifest OUT=out/manifest.json \
-#   ARTIFACTS="--artifact out/tap_tone.json --artifact out/bending_test.json" \
-#   RIG="--rig fixture=3-point --rig span_mm=400 --rig operator=Ross" \
-#   NOTES="--notes Run J45-0001"
-
-# ------------------------------
-# Bending stiffness bundle CLI
-# ------------------------------
-
-bend-mode-sample:
-	@$(PY) scripts/bending_stiffness_mode.py \
-		--out ./out \
-		--specimen-id S1 \
-		--material-role top \
-		--wood-species spruce \
-		--grain-orientation longitudinal \
-		--span-mm 400 \
-		--pair 5,0.2 --pair 10,0.41 --pair 15,0.62 --pair 20,0.83 \
-		--method three_point_bending \
-		--units-length mm \
-		--units-force N
-
-bend-mode-pack:
-	@$(PY) scripts/bending_stiffness_mode.py \
-		--out ./out \
-		--specimen-id S1 \
-		--material-role top \
-		--wood-species spruce \
-		--grain-orientation longitudinal \
-		--span-mm 400 \
-		--pair 5,0.2 --pair 10,0.41 --pair 15,0.62 --pair 20,0.83 \
-		--method three_point_bending \
-		--units-length mm \
-		--units-force N \
-		--pack
-
-bend-mode-validate:
-	@LATEST=$$(ls -dt out/bend_* | head -n 1); \
-	if [ -z "$$LATEST" ]; then echo "No bundles under out/" && exit 1; fi; \
-	$(PY) - << 'PY' "$$LATEST"
-import sys, json
-from pathlib import Path
-
-try:
-    import jsonschema
-    from jsonschema import validate
-except Exception as e:
-    print("jsonschema not available; install via 'pip install jsonschema'")
-    raise SystemExit(1)
-
-bundle = Path(sys.argv[1])
-schema_path = Path("schemas/bending_stiffness.schema.json")
-data_path = bundle/"analysis"/"bending_stiffness.json"
-
-schema = json.loads(schema_path.read_text())
-data = json.loads(data_path.read_text())
-
-validate(instance=data, schema=schema)
-print("✓", str(data_path), "valid against", str(schema_path))
-PY
-
-# Offline tap from WAV
-run-tap-offline:
-	@mkdir -p $$(dirname $(OUT))
-	@$(PY) modes/tap_tone/offline_from_wav.py --wav $(WAV) --outfile $(OUT) --labels A0 T11 B11
-
-# ------------------------------
-# Bundle v4: GUI + Serial Acquisition
-# ------------------------------
-
-# GUI
-gui:
-	@$(PY) gui/app.py
-
-# Serial — Load Cell
 loadcell:
-	@$(PY) modes/acquisition/loadcell_serial.py --config $(CFG) --out $(OUT)
+	@python modes/acquisition/loadcell_serial.py \
+	  --config $(CFG) \
+	  --out $(OUT)
 
-# Serial — Dial Indicator
 dial:
-	@$(PY) modes/acquisition/dial_indicator_serial.py --port $(PORT) --out $(OUT) --unit $(UNIT) --duration $(DUR) --rate $(RATE)
+	@python modes/acquisition/dial_indicator_serial.py \
+	  --port $(PORT) --baud $(BAUD) --unit $(UNIT) \
+	  --pattern "$(PATTERN)" --scale $(SCALE) \
+	  --duration $(DUR) --rate $(RATE) \
+	  --out $(OUT)
 
-# Validate time-series schemas/examples
-validate-timeseries:
-	@$(PY) -m jsonschema -i examples/measurement/load_series.json schemas/measurement/load_series.schema.json
-	@$(PY) -m jsonschema -i examples/measurement/displacement_series.json schemas/measurement/displacement_series.schema.json
-	@echo "Time-series examples validate."
+# ---- Bending Rig: measurement chain ----
+
+bend-merge-moe:
+	@python modes/bending_rig/merge_and_moe.py \
+	  --load $(LOAD) --disp $(DISP) \
+	  --out-dir $(OUTDIR) --rate $(RATE) \
+	  --method $(METHOD) --span $(SPAN) --width $(WIDTH) --thickness $(THICKNESS) $(INNER) \
+	  --fit-pct-low $(FLO) --fit-pct-high $(FHI)
+
+plot-fvd:
+	@python modes/bending_rig/plot_f_vs_d.py \
+	  --pairs-csv $(PAIRS) --out $(OUT) \
+	  --pct-low $(FLO) --pct-high $(FHI) --title "$(TITLE)" --dpi $(DPI)
+
+manifest:
+	@python modes/_shared/emit_manifest.py --out $(OUT) $(ARTIFACTS) $(RIG) $(NOTES)
+
+# ---- Defaults (override on CLI) ----
+
+# Acquisition defaults
+CFG ?= config/devices/loadcell_example.json
+PORT ?= COM3
+BAUD ?= 9600
+UNIT ?= mm
+PATTERN ?= (-?[0-9]+\.?[0-9]*)
+SCALE ?= 1.0
+DUR ?= 10
+
+# Bending rig defaults
+RATE ?= 50
+METHOD ?= 3point
+SPAN ?= 400
+WIDTH ?= 20
+THICKNESS ?= 3.0
+INNER ?=
+FLO ?= 10
+FHI ?= 90
+DPI ?= 150
+TITLE ?= Force vs Displacement
+
+# ---- Phase 2: ODS / Grid Measurement Chain ----
+
+grid-capture:
+	@python scripts/roving_grid_capture.py capture \
+	  --device $(DEVICE) --grid $(GRID) --out $(OUT) \
+	  --seconds $(SEC) --sample-rate $(SR)
+
+ods-compute:
+	@python scripts/ods_compute.py \
+	  --capture-dir $(CAPDIR) \
+	  --frequencies $(FREQS) \
+	  --out $(CAPDIR)/derived/ods
+
+grid-coherence:
+	@python scripts/grid_coherence.py \
+	  --capture-dir $(CAPDIR) \
+	  --frequencies $(FREQS) \
+	  --out $(CAPDIR)/derived/coherence
+
+wolf-metrics:
+	@python scripts/wolf_metrics.py \
+	  --ods-dir $(CAPDIR)/derived/ods \
+	  --coherence-dir $(CAPDIR)/derived/coherence \
+	  --frequencies $(FREQS) \
+	  --wsi-threshold $(WSI_THRESH) \
+	  --out $(CAPDIR)/derived/wolf
+
+# Full Phase 2 pipeline: capture → ODS → coherence → wolf
+phase2-full: grid-capture ods-compute grid-coherence wolf-metrics
+	@echo "Phase 2 pipeline complete: $(CAPDIR)"
+
+# Phase 2 analysis only (assumes captures exist)
+phase2-analyze: ods-compute grid-coherence wolf-metrics
+	@echo "Phase 2 analysis complete: $(CAPDIR)"
+
+# ---- Phase 2 Defaults ----
+
+DEVICE ?= 1
+GRID ?= config/grids/guitar_top_35pt.json
+SEC ?= 2.0
+SR ?= 48000
+FREQS ?= 100,150,185,220,280,350
+WSI_THRESH ?= 0.6
+
+# ---- Simulators (hardware-free) ----
+
+# Simulated load cell (deterministic with SEED)
+sim-load:
+	@python modes/acquisition/loadcell_sim.py \
+	  --out $(OUT) --unit $(SIM_UNIT_F) --rate $(SIM_RATE_F) --duration $(SIM_DUR) \
+	  --amp $(SIM_AMP_F) --baseline $(SIM_BASE_F) --noise $(SIM_NOISE_F) \
+	  --freq $(SIM_FREQ) --drift $(SIM_DRIFT) \
+	  $(if $(SEED),--seed $(SEED),)
+
+# Simulated dial indicator (deterministic with SEED)
+sim-dial:
+	@python modes/acquisition/dial_indicator_sim.py \
+	  --out $(OUT) --unit $(SIM_UNIT_D) --rate $(SIM_RATE_D) --duration $(SIM_DUR) \
+	  --amp $(SIM_AMP_D) --baseline $(SIM_BASE_D) --noise $(SIM_NOISE_D) \
+	  --freq $(SIM_FREQ) --drift $(SIM_DRIFT) \
+	  $(if $(SEED),--seed $(SEED),)
+
+# Simulator defaults
+SIM_UNIT_F ?= N
+SIM_UNIT_D ?= mm
+SIM_RATE_F ?= 50
+SIM_RATE_D ?= 20
+SIM_DUR    ?= 10
+SIM_AMP_F  ?= 10.0
+SIM_AMP_D  ?= 0.5
+SIM_BASE_F ?= 0.0
+SIM_BASE_D ?= 0.0
+SIM_NOISE_F?= 0.1
+SIM_NOISE_D?= 0.005
+SIM_FREQ   ?= 0.25
+SIM_DRIFT  ?= 0.02
+SEED       ?=
+
+# ---- Help ----
+
+.PHONY: help loadcell dial bend-merge-moe plot-fvd manifest
+.PHONY: grid-capture ods-compute grid-coherence wolf-metrics phase2-full phase2-analyze
+.PHONY: sim-load sim-dial
+
+help:
+	@echo "Acquisition Targets:"
+	@echo "  loadcell        Capture load cell → load_series.json (requires CFG, OUT)"
+	@echo "  dial            Capture dial indicator → displacement_series.json (requires PORT, OUT)"
+	@echo ""
+	@echo "Bending Rig Targets:"
+	@echo "  bend-merge-moe  Merge load+disp streams → pairs.csv + bending_moe.json"
+	@echo "  plot-fvd        Plot force vs displacement with linear fit"
+	@echo "  manifest        Emit provenance manifest for run artifacts"
+	@echo ""
+	@echo "Phase 2 (ODS / Wolf Metrics) Targets:"
+	@echo "  grid-capture    Interactive 2-channel grid capture (requires DEVICE, GRID, OUT)"
+	@echo "  ods-compute     Compute ODS transfer functions (requires CAPDIR, FREQS)"
+	@echo "  grid-coherence  Compute coherence across grid (requires CAPDIR)"
+	@echo "  wolf-metrics    Compute Wolf Stress Index (requires CAPDIR)"
+	@echo "  phase2-full     Full pipeline: capture → ODS → coherence → wolf"
+	@echo "  phase2-analyze  Analysis only (ODS → coherence → wolf)"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make loadcell CFG=config/devices/loadcell_example.json OUT=out/run/load_series.json"
+	@echo "  make dial PORT=/dev/ttyUSB0 OUT=out/run/displacement_series.json UNIT=mm DUR=8"
+	@echo "  make bend-merge-moe LOAD=out/run/load_series.json DISP=out/run/displacement_series.json \\"
+	@echo "       OUTDIR=out/run/rig METHOD=3point SPAN=400 WIDTH=20 THICKNESS=3.0"
+	@echo ""
+	@echo "  make grid-capture DEVICE=1 GRID=config/grids/guitar_top_35pt.json OUT=out/grid_001"
+	@echo "  make phase2-analyze CAPDIR=out/grid_001 FREQS=100,150,185,220,280"
+	@echo ""
+	@echo "Simulator Targets (hardware-free):"
+	@echo "  sim-load        Simulated load cell → load_series.json"
+	@echo "  sim-dial        Simulated dial indicator → displacement_series.json"
+	@echo ""
+	@echo "Simulator Examples:"
+	@echo "  make sim-load OUT=out/DEMO/load_series.json SIM_AMP_F=12 SIM_BASE_F=0.5 SIM_NOISE_F=0.2"
+	@echo "  make sim-dial OUT=out/DEMO/displacement_series.json SIM_AMP_D=0.8 SIM_BASE_D=0.1"
+	@echo "  # For reproducible runs, add: SEED=1337"

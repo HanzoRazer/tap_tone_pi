@@ -1,74 +1,124 @@
 #!/usr/bin/env python3
 """
-Emit a measurement manifest.json that hashes one or more artifacts.
+emit_manifest.py — Generate provenance manifest for measurement artifacts.
 
-Examples:
-  python modes/_shared/emit_manifest.py \
-    --out out/manifest.json \
-    --artifact out/tap_tone.json \
-    --artifact out/bending_test.json \
-    --rig fixture=3-point span_mm=400 operator=Ross \
-    --notes "Tap + bending run J45-0001"
+Usage:
+    python modes/_shared/emit_manifest.py --out manifest.json \
+        --artifact load_series.json --artifact pairs.csv \
+        --rig fixture=3-point --rig span_mm=400 --rig operator=Ross \
+        --notes "Checkpoint run"
 
-Rig key=val parsing supports numbers when possible (e.g., span_mm=400 -> int).
+Output: JSON manifest with SHA-256 hashes for all artifacts.
 """
 from __future__ import annotations
-import argparse, os, sys, json
+
+import argparse
+import hashlib
+import json
+import time
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict, List
 
-# Ensure project root is on sys.path when executed via file path
-ROOT = Path(__file__).resolve().parents[2]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 
-try:
-    from .manifest import write_manifest
-except Exception:
-    from modes._shared.manifest import write_manifest
+def _sha256(p: Path) -> str:
+    """Compute SHA-256 hash of file."""
+    h = hashlib.sha256()
+    with p.open("rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
-def parse_kv_pairs(pairs: list[str]) -> Dict[str, Any]:
+
+def write_manifest(
+    out_path: str,
+    *,
+    rig: Dict[str, Any],
+    artifacts: List[str],
+    notes: str = "",
+) -> str:
+    """
+    Write a measurement manifest JSON file.
+
+    Args:
+        out_path: Destination path for manifest.json
+        rig: Dict of rig configuration (fixture, span, operator, etc.)
+        artifacts: List of artifact file paths to hash
+        notes: Optional operator notes
+
+    Returns:
+        Path to written manifest file.
+    """
+    items = []
+    for a in artifacts:
+        q = Path(a)
+        items.append({
+            "path": q.as_posix(),
+            "exists": q.exists(),
+            "bytes": q.stat().st_size if q.exists() else 0,
+            "sha256": _sha256(q) if q.exists() and q.is_file() else None,
+        })
+
+    manifest = {
+        "artifact_type": "measurement_manifest",
+        "created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "rig": rig,
+        "notes": notes,
+        "artifacts": items,
+    }
+
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(manifest, f, indent=2)
+
+    return out_path
+
+
+def _parse_kv(pairs: List[str]) -> Dict[str, Any]:
+    """Parse key=value pairs into a dict with type coercion."""
     out: Dict[str, Any] = {}
-    for item in pairs:
-        if "=" not in item:
-            raise ValueError(f"Invalid key=value pair: {item}")
-        k, v = item.split("=", 1)
+    for s in pairs:
+        if "=" not in s:
+            raise ValueError(f"Bad key=value: {s}")
+        k, v = s.split("=", 1)
         v = v.strip()
-        # best-effort cast: bool -> int -> float -> str
-        try:
-            if v.lower() in {"true","false"}:  # bool
-                out[k] = (v.lower() == "true")
-            else:
+        # Type coercion
+        if v.lower() in ("true", "false"):
+            out[k] = v.lower() == "true"
+        else:
+            try:
+                out[k] = int(v)
+            except ValueError:
                 try:
-                    out[k] = int(v)
-                except ValueError:
                     out[k] = float(v)
-        except ValueError:
-            out[k] = v
-        except Exception:
-            out[k] = v
+                except ValueError:
+                    out[k] = v
     return out
 
-def main():
-    ap = argparse.ArgumentParser(description="Emit manifest.json for measurement artifacts.")
-    ap.add_argument("--out", required=True, help="Path to manifest.json to write")
-    ap.add_argument("--artifact", action="append", default=[], help="Artifact file to include (repeatable)")
-    ap.add_argument("--rig", nargs="*", default=[], help="Rig metadata as key=value pairs (e.g., span_mm=400)")
-    ap.add_argument("--notes", default="", help="Optional free-text notes")
+
+def main() -> None:
+    ap = argparse.ArgumentParser(
+        description="Emit provenance manifest for measurement artifacts."
+    )
+    ap.add_argument("--out", required=True, help="Output manifest path")
+    ap.add_argument(
+        "--artifact",
+        action="append",
+        default=[],
+        help="Artifact file path (repeatable)",
+    )
+    ap.add_argument(
+        "--rig",
+        nargs="*",
+        default=[],
+        help="Rig config as key=value pairs",
+    )
+    ap.add_argument("--notes", default="", help="Operator notes")
     args = ap.parse_args()
 
-    if not args.artifact:
-        print("No --artifact paths provided.", file=sys.stderr)
-        sys.exit(2)
+    rig = _parse_kv(args.rig) if args.rig else {}
+    out = write_manifest(args.out, rig=rig, artifacts=args.artifact, notes=args.notes)
+    print(f"Wrote {out}")
 
-    missing = [p for p in args.artifact if not Path(p).exists()]
-    if missing:
-        print(f"Missing artifact(s): {missing}", file=sys.stderr)
-        sys.exit(2)
-
-    rig = parse_kv_pairs(args.rig) if args.rig else {}
-    outp = write_manifest(args.out, rig=rig, artifacts=args.artifact, notes=args.notes)
-    print(f"Wrote {outp}")
 
 if __name__ == "__main__":
     main()
