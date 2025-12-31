@@ -1,12 +1,27 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
 from .grid import Grid
-from .dsp import nearest_bin
+from .dsp import nearest_bin, get_dsp_provenance
+
+# Provenance constants for WSI/wolf metrics
+METRICS_ALGO_VERSION = "1.0.0"
+METRICS_ALGO_ID = "phase2_wsi_wolf"
+
+
+def get_metrics_provenance() -> Dict[str, Any]:
+    """Return provenance metadata for WSI/wolf metric computations."""
+    dsp_prov = get_dsp_provenance()
+    return {
+        "algo_id": METRICS_ALGO_ID,
+        "algo_version": METRICS_ALGO_VERSION,
+        "dsp_provenance": dsp_prov,
+        "numpy_version": np.__version__,
+    }
 
 
 @dataclass(frozen=True)
@@ -85,7 +100,18 @@ def compute_wsi(
     grad: float,
     phase_disorder: float,
     coh_mean: float,
-) -> float:
+    coherence_threshold: float = 0.7,
+) -> Tuple[float, bool]:
+    """
+    Compute Wolf Suspicion Index with coherence-based admissibility gating.
+
+    Returns:
+        (wsi, admissible): WSI score in [0,1] and whether measurement meets
+        coherence threshold for admissibility.
+
+    Admissibility: If coh_mean < coherence_threshold, the candidate is marked
+    inadmissible (measurement quality too low to trust).
+    """
     # Composite, measurement-only:
     # - Higher localization and higher gradient increase risk
     # - Higher phase disorder increases risk
@@ -96,7 +122,12 @@ def compute_wsi(
 
     # squash with logistic-like
     wsi = 1.0 - np.exp(-0.35 * float(raw))
-    return float(np.clip(wsi, 0.0, 1.0))
+    wsi_val = float(np.clip(wsi, 0.0, 1.0))
+
+    # Coherence gating: admissible only if mean coherence meets threshold
+    admissible = float(coh_mean) >= float(coherence_threshold)
+
+    return wsi_val, admissible
 
 
 def wsi_curve(
@@ -105,12 +136,23 @@ def wsi_curve(
     *,
     fmin_hz: float = 30.0,
     fmax_hz: float = 2000.0,
-) -> Tuple[np.ndarray, np.ndarray, List[Dict[str, float]]]:
+    coherence_threshold: float = 0.7,
+) -> Tuple[np.ndarray, np.ndarray, List[Dict[str, Any]]]:
     """
+    Compute WSI curve across frequency bins with coherence-based admissibility.
+
+    Args:
+        spectra: List of PointSpectrum for each grid point
+        grid: Grid definition
+        fmin_hz: Minimum frequency (Hz)
+        fmax_hz: Maximum frequency (Hz)
+        coherence_threshold: Minimum mean coherence for admissibility (default 0.7)
+
     Returns:
-      freqs: (n_bins,)
-      wsi:   (n_bins,)
-      per_bin_details: list of dict with loc/grad/phase/coh
+        freqs: (n_bins,) frequency axis
+        wsi: (n_bins,) WSI values
+        per_bin_details: list of dict with loc/grad/phase/coh/admissible
+
     Assumes all spectra share the same freq axis.
     """
     if not spectra:
@@ -153,13 +195,20 @@ def wsi_curve(
         phase_d = compute_phase_disorder(np.array(pph, dtype=np.float32))
         coh_mean = float(np.mean(pcoh)) if pcoh else 0.0
 
-        w = compute_wsi(loc=loc, grad=grad, phase_disorder=phase_d, coh_mean=coh_mean)
+        w, admissible = compute_wsi(
+            loc=loc,
+            grad=grad,
+            phase_disorder=phase_d,
+            coh_mean=coh_mean,
+            coherence_threshold=coherence_threshold,
+        )
         wsi_vals.append(w)
         details.append({
             "loc": float(loc),
             "grad": float(grad),
             "phase_disorder": float(phase_d),
             "coh_mean": float(coh_mean),
+            "admissible": admissible,
         })
 
     return freq[idxs].astype(np.float32), np.array(wsi_vals, dtype=np.float32), details

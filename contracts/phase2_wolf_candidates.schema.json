@@ -4,20 +4,36 @@
   "title": "Phase2WolfCandidates",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "wsi_threshold", "candidates"],
+  "required": ["schema_version", "wsi_threshold", "coherence_threshold", "candidates", "provenance"],
   "properties": {
-    "schema_version": { "type": "string", "const": "phase2_wolf_candidates_v1" },
+    "schema_version": { "type": "string", "const": "phase2_wolf_candidates_v2" },
     "wsi_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+    "coherence_threshold": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Minimum mean coherence for a candidate to be admissible"
+    },
 
     "candidates": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["freq_hz", "wsi", "top_points"],
+        "required": ["freq_hz", "wsi", "admissible", "coh_mean", "top_points"],
         "properties": {
           "freq_hz": { "type": "number", "exclusiveMinimum": 0 },
           "wsi": { "type": "number", "minimum": 0, "maximum": 1 },
+          "admissible": {
+            "type": "boolean",
+            "description": "True if mean coherence meets threshold; false indicates low measurement quality"
+          },
+          "coh_mean": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Mean coherence across all grid points at this frequency"
+          },
 
           "top_points": {
             "type": "array",
@@ -36,6 +52,41 @@
           },
 
           "notes": { "type": "string" }
+        }
+      }
+    },
+
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algo_id", "algo_version", "numpy_version", "computed_at_utc"],
+      "properties": {
+        "algo_id": {
+          "type": "string",
+          "description": "Algorithm identifier for reproducibility"
+        },
+        "algo_version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "description": "Semantic version of the WSI algorithm"
+        },
+        "numpy_version": {
+          "type": "string",
+          "description": "NumPy library version used"
+        },
+        "dsp_provenance": {
+          "type": "object",
+          "description": "Nested provenance from underlying DSP computations",
+          "properties": {
+            "algo_id": { "type": "string" },
+            "algo_version": { "type": "string" },
+            "scipy_version": { "type": "string" }
+          }
+        },
+        "computed_at_utc": {
+          "type": "string",
+          "minLength": 10,
+          "description": "ISO 8601 UTC timestamp of computation"
         }
       }
     }

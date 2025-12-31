@@ -1,13 +1,27 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Tuple
+from typing import Dict, Literal, Tuple
 
 import numpy as np
+import scipy
 from scipy.signal import get_window, csd, welch
 
+# Provenance constants for reproducibility audit trail
+DSP_ALGO_VERSION = "1.0.0"
+DSP_ALGO_ID = "phase2_transfer_coherence"
 
 WindowName = Literal["hann", "hamming", "blackman", "boxcar"]
+
+
+def get_dsp_provenance() -> Dict[str, str]:
+    """Return provenance metadata for DSP computations."""
+    return {
+        "algo_id": DSP_ALGO_ID,
+        "algo_version": DSP_ALGO_VERSION,
+        "numpy_version": np.__version__,
+        "scipy_version": scipy.__version__,
+    }
 
 
 @dataclass(frozen=True)
