@@ -33,8 +33,10 @@ env/
 *.swo
 *~
 
-# Captures
+# Captures & test outputs
 captures/
+out/
+runs_phase2/
 *.wav
 
 # OS
