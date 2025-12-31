@@ -1,19 +1,46 @@
-# Tap Tone PI (Desktop)
+# tap_tone_pi — Instrumentation (Measurement-Only)
 
-A small Raspberry Pi desktop utility to record a tap impulse with a USB mic, analyze resonant peaks, and save artifacts.
+This repo is a **measurement instrument toolchain** for luthier lab work:
+- Phase 1: single-mic tap tone capture + FFT peaks
+- Phase 2: roving-grid 2-channel capture + ODS (transfer functions) + coherence + wolf metrics (WSI)
+- Bending rig: bending stiffness measurements (EI / k) with defensible metadata
 
-## Install (Pi)
+> **Boundary:** This project measures and summarizes signals. It does **not** interpret "tone quality"
+> or prescribe structural modifications. See `docs/MEASUREMENT_BOUNDARY.md`.
 
+---
+
+## What this repo is (and is not)
+
+### ✅ IS
+- evidence capture (WAV + capture metadata)
+- deterministic DSP summaries (FFT peaks, transfer function H(f), coherence γ²(f))
+- robust bundle persistence (session folders, derived artifacts)
+- schemas and validation contracts for outputs
+
+### ❌ IS NOT
+- "design optimizer"
+- "tone grader"
+- structural modification advisor
+- ToolBox/RMOS backend (interop is export-only)
+
+---
+
+## Quickstart
+
+### Install (Pi or desktop)
 ```bash
 sudo apt-get update
 sudo apt-get install -y portaudio19-dev python3-dev
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # or .venv\Scripts\Activate.ps1 on Windows
 pip install -U pip
 pip install -e .
 ```
 
-## Run
+---
+
+## Phase 1 — Single-mic tap tone
 
 List audio devices:
 ```bash
@@ -34,7 +61,7 @@ Live mode (simple loop):
 python -m tap_tone.main live --device 1 --out ./captures/live
 ```
 
-## Outputs
+### Outputs
 
 Each capture produces:
 
@@ -43,149 +70,102 @@ Each capture produces:
 * `spectrum.csv` (freq_hz, magnitude)
 * `session.jsonl` (append-only log)
 
-## Measurement Bundle Quickstart (Modes + Makefile)
+---
 
-Install dependencies for measurement modes:
+## Phase 2 — Roving-grid ODS + coherence + wolf metrics
 
-```bash
-pip install -r requirements.txt
-```
+### Canonical Phase 2 CLI
 
-Run tap-tone (writes JSON + spectrum PNG):
-
-```bash
-make run-tap OUT=out/tap_tone.json DUR=3 SR=44100
-```
-
-Single MOE fact (3-point bend):
+**Main executable:** `scripts/phase2_slice.py`
+**Canonical package:** `scripts/phase2/`
+**Canonical grid:** `config/grids/guitar_top_35pt.json`
 
 ```bash
-make bend-single OUT=out/bending_test.json
+python scripts/phase2_slice.py --help
 ```
 
-Batch MOE from CSV:
+### Typical run directory
+
+```
+runs_phase2/
+  session_YYYYMMDDTHHMMSSZ/
+    grid.json
+    metadata.json
+    points/
+      point_A1/
+        audio.wav
+        capture_meta.json
+        analysis.json
+        spectrum.csv
+    derived/
+      ods_snapshot.json
+      wolf_candidates.json
+      wsi_curve.csv
+    plots/
+      *.png
+```
+
+### Common workflow
 
 ```bash
-make bend-batch CSV=data/deflection_runs.csv OUT=out/moe_results.csv
+# Synthetic validation (no hardware)
+python scripts/phase2_slice.py run \
+  --grid examples/phase2_grid_mm.json \
+  --out ./runs_phase2 \
+  --synthetic
+
+# Hardware capture
+python scripts/phase2_slice.py devices
+python scripts/phase2_slice.py run \
+  --grid config/grids/guitar_top_35pt.json \
+  --out ./runs_phase2 \
+  --device 1
 ```
 
-Provenance hashing (no computation):
-
-```bash
-make provenance-hash FILE=path/to/grain_field.png OUT=out/provenance.json
-```
-
-Emit a manifest.json for one run:
-
-```bash
-make manifest OUT=out/manifest.json \
-  ARTIFACTS="--artifact out/tap_tone.json --artifact out/bending_test.json" \
-  RIG="--rig fixture=3-point --rig span_mm=400 --rig operator=Ross" \
-  NOTES="--notes Tap + bending run"
-```
-
-Validate example artifacts against schemas:
-
-```bash
-make validate-schemas
-```
-
-Notes:
-- Measurement-only: modes under `modes/` emit facts (peaks, MOE, provenance) and manifests; no advisory or design recommendations.
-- Schemas live in `schemas/measurement/`; tiny fixtures in `examples/measurement/`.
-
-## Bending Stiffness Bundle CLI
-
-Generate a full bending stiffness bundle (raw readings + analysis + manifest):
-
-```bash
-make bend-mode-sample
-```
-
-Pack the latest sample as a ZIP:
-
-```bash
-make bend-mode-pack
-```
-
-Validate the latest bundle against the bending schema:
-
-```bash
-make bend-mode-validate
-```
-
-Direct CLI usage (inline pairs or CSV):
-
-```bash
-python3 scripts/bending_stiffness_mode.py \
-  --out ./out \
-  --specimen-id S1 \
-  --material-role top \
-  --wood-species spruce \
-  --grain-orientation longitudinal \
-  --span-mm 400 \
-  --pair 5,0.2 --pair 10,0.41 --pair 15,0.62 --pair 20,0.83 \
-  --method three_point_bending \
-  --units-length mm \
-  --units-force N
-```
-
-Or from CSV with headers `load,deflection`:
-
-```bash
-python3 scripts/bending_stiffness_mode.py \
-  --out ./out \
-  --specimen-id S2 \
-  --material-role brace_stock \
-  --span-mm 380 \
-  --readings-csv ./data/readings.csv \
-  --method three_point_bending \
-  --units-length mm \
-  --units-force N
-```
-
-## Measurement Bundle v2 (Offline + Tests + CI)
-
-See [docs/MEASUREMENT_README.md](docs/MEASUREMENT_README.md) for:
-- Offline tap analysis from WAV files
-- Batch deflection template + CSV loader
-- Unit tests (pytest)
-- GitHub Actions workflows (CI validation)
-
-Quick start:
-
-Offline tap:
-```bash
-make run-tap-offline WAV=data/sample_tap.wav OUT=out/tap_offline.json
-```
-
-Tests (local):
-```bash
-pip install pytest
-pytest -q tests/test_measurement_schemas.py
-```
-
-All CI workflows:
-- `no_logic_creep.yml` — grep guardrail (no advisory terms in modes/)
-- `schemas_validate.yml` — schema validation for examples
-- `examples_matrix.yml` — detailed measurement example validation
-- `bending_stiffness_validate.yml` — bending bundle with uncertainty
-- `boundary_guard.yml` — prevents importing ToolBox namespaces
+See `docs/phase2/README.md` for full documentation.
 
 ---
 
-<a id="boundary-rules"></a>
-## 🔒 Boundary Rules (Enforced by CI)
+## Bending rig workflow
 
-This repository enforces a hard architectural boundary.
+Bending stiffness measurements are documented in `docs/MEASUREMENT_README.md`.
 
-❌ Cross-repo imports are not allowed.  
-✅ Integration must happen via artifacts, schemas, or HTTP APIs.
+### Simulated demo (no hardware)
 
-If CI fails with a boundary violation:
-- Do NOT add an exception.
-- Do NOT "just import it".
-- Instead, define or extend a contract between systems.
+```bash
+make sim-load OUT=out/DEMO/load_series.json SIM_AMP_F=12 SIM_BASE_F=0.5 SEED=1337
+make sim-dial OUT=out/DEMO/displacement_series.json SIM_AMP_D=0.8 SEED=1337
 
-See [docs/architecture/BoundarySpec.md](docs/architecture/BoundarySpec.md) for rationale.
+make bend-merge-moe LOAD=out/DEMO/load_series.json DISP=out/DEMO/displacement_series.json \
+  OUTDIR=out/DEMO/rig METHOD=3point SPAN=400 WIDTH=20 THICKNESS=3.0
+
+make plot-fvd PAIRS=out/DEMO/rig/pairs.csv OUT=out/DEMO/rig/f_vs_d.png
+```
+
+---
+
+## Validation & Contracts
+
+Machine-readable output contracts live in `contracts/`.
+
+Key Phase 2 schemas:
+* `contracts/phase2_grid.schema.json`
+* `contracts/phase2_session_meta.schema.json`
+* `contracts/phase2_point_capture_meta.schema.json`
+* `contracts/phase2_ods_snapshot.schema.json`
+* `contracts/phase2_wolf_candidates.schema.json`
+
+---
+
+## Policies / governance
+
+* Measurement boundary: `docs/MEASUREMENT_BOUNDARY.md`
+* Agent guidance: `.github/copilot-instructions.md`
+* ADR trail: `docs/ADR-0001-measurement-scope.md` … `docs/ADR-0007_PHASE2_ODS_COHERENCE.md`
+
+---
+
+## Contributing
+
+See `CONTRIBUTING.md`.
 
