@@ -134,11 +134,56 @@ SIM_FREQ   ?= 0.25
 SIM_DRIFT  ?= 0.02
 SEED       ?=
 
+# ---- Chladni v1 (facts only) ----
+
+chladni-peaks:
+	@python modes/chladni/peaks_from_wav.py \
+	  --wav $(WAV) --out $(OUT) \
+	  --min-hz $(MINH) --max-hz $(MAXH) --prominence $(PROM)
+
+chladni-index:
+	@python modes/chladni/index_patterns.py \
+	  --peaks-json $(PEAKS) \
+	  --images $(IMGS) \
+	  --plate-id "$(PLATE)" \
+	  $(if $(TEMP),--tempC $(TEMP),) \
+	  $(if $(RH),--rh $(RH),) \
+	  --out $(OUT)
+
+# Chladni defaults
+MINH  ?= 50
+MAXH  ?= 2000
+PROM  ?= 0.02
+PEAKS ?=
+IMGS  ?=
+PLATE ?= UNKNOWN
+TEMP  ?=
+RH    ?=
+
+# ---- Validation & CI ----
+
+# Validate output artifacts against contract schemas
+validate-schemas:
+	@python scripts/validate_schemas.py --out-root $(OUT_ROOT) --schemas-root $(SCHEMAS_ROOT)
+
+# Run pytest suite (CI minimum bar)
+test:
+	@python -m pytest tests/ -v
+
+# Run WAV I/O tests specifically
+test-wav-io:
+	@python -m pytest tests/test_wav_io.py tests/test_wav_io_roundtrip.py -v
+
+# Validation defaults
+OUT_ROOT     ?= out
+SCHEMAS_ROOT ?= contracts/schemas
+
 # ---- Help ----
 
 .PHONY: help loadcell dial bend-merge-moe plot-fvd manifest
 .PHONY: grid-capture ods-compute grid-coherence wolf-metrics phase2-full phase2-analyze
-.PHONY: sim-load sim-dial
+.PHONY: sim-load sim-dial chladni-peaks chladni-index
+.PHONY: validate-schemas test test-wav-io
 
 help:
 	@echo "Acquisition Targets:"
@@ -158,6 +203,11 @@ help:
 	@echo "  phase2-full     Full pipeline: capture → ODS → coherence → wolf"
 	@echo "  phase2-analyze  Analysis only (ODS → coherence → wolf)"
 	@echo ""
+	@echo "Validation Targets (CI minimum bar):"
+	@echo "  validate-schemas  Validate out/** artifacts against contracts/schemas"
+	@echo "  test              Run pytest suite"
+	@echo "  test-wav-io       Run WAV I/O tests only"
+	@echo ""
 	@echo "Examples:"
 	@echo "  make loadcell CFG=config/devices/loadcell_example.json OUT=out/run/load_series.json"
 	@echo "  make dial PORT=/dev/ttyUSB0 OUT=out/run/displacement_series.json UNIT=mm DUR=8"
@@ -171,7 +221,17 @@ help:
 	@echo "  sim-load        Simulated load cell → load_series.json"
 	@echo "  sim-dial        Simulated dial indicator → displacement_series.json"
 	@echo ""
+	@echo "Chladni v1 Targets (facts only):"
+	@echo "  chladni-peaks   Extract peak frequencies from sweep/stepped WAV"
+	@echo "  chladni-index   Index pattern images to frequencies → chladni_run.json"
+	@echo ""
 	@echo "Simulator Examples:"
 	@echo "  make sim-load OUT=out/DEMO/load_series.json SIM_AMP_F=12 SIM_BASE_F=0.5 SIM_NOISE_F=0.2"
 	@echo "  make sim-dial OUT=out/DEMO/displacement_series.json SIM_AMP_D=0.8 SIM_BASE_D=0.1"
 	@echo "  # For reproducible runs, add: SEED=1337"
+	@echo ""
+	@echo "Chladni Examples:"
+	@echo "  make chladni-peaks WAV=out/DEMO/chladni/capture.wav OUT=out/DEMO/chladni/peaks.json"
+	@echo "  make chladni-index PEAKS=out/DEMO/chladni/peaks.json \\"
+	@echo "       IMGS=\"out/DEMO/chladni/F0148.png out/DEMO/chladni/F0226.png\" \\"
+	@echo "       PLATE=J45_TOP_2025_12_31_A TEMP=22.0 RH=45.0 OUT=out/DEMO/chladni/chladni_run.json"

@@ -6,7 +6,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 import numpy as np
-from scipy.io import wavfile
+
+# Canonical WAV I/O
+from modes._shared.wav_io import write_wav_mono
 
 from .analysis import AnalysisResult, analysis_to_json_dict
 
@@ -51,10 +53,8 @@ def persist_capture(
     spectrum_path = cap_dir / "spectrum.csv"
     session_log_path = root / "session.jsonl"
 
-    # WAV wants int16 typically; keep conversion explicit
-    x = np.clip(audio, -1.0, 1.0)
-    x_i16 = (x * 32767.0).astype(np.int16)
-    wavfile.write(str(audio_path), sample_rate, x_i16)
+    # Write WAV using canonical layer
+    write_wav_mono(audio_path, sample_rate, audio)
 
     analysis_obj = analysis_to_json_dict(analysis)
     analysis_obj["label"] = label

@@ -27,8 +27,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from scipy.fft import rfft, rfftfreq
-from scipy.io import wavfile
 from scipy.signal import butter, filtfilt
+
+# Canonical WAV I/O
+from modes._shared.wav_io import read_wav_2ch
 
 
 def _highpass(x: np.ndarray, fs: int, hz: float = 20.0) -> np.ndarray:
@@ -44,15 +46,10 @@ def _highpass(x: np.ndarray, fs: int, hz: float = 20.0) -> np.ndarray:
 def load_point_audio(point_dir: Path) -> Tuple[np.ndarray, int]:
     """Load 2-channel audio from a point directory."""
     audio_path = point_dir / "audio.wav"
-    sample_rate, audio = wavfile.read(str(audio_path))
-    
-    # Convert to float32 [-1, 1]
-    if audio.dtype == np.int16:
-        audio = audio.astype(np.float32) / 32767.0
-    elif audio.dtype == np.int32:
-        audio = audio.astype(np.float32) / 2147483647.0
-    
-    return audio, sample_rate
+    meta, ref, rov = read_wav_2ch(audio_path)
+    # Stack back to (n, 2) for downstream compatibility
+    audio = np.stack([ref, rov], axis=1)
+    return audio, meta.sample_rate
 
 
 def compute_transfer_function(

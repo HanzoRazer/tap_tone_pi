@@ -39,8 +39,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from phase2.grid import load_grid
 from phase2.io_wav import write_wav_2ch, read_wav_2ch
-from phase2.dsp import compute_transfer_and_coherence, nearest_bin
-from phase2.metrics import PointSpectrum, wsi_curve
+from phase2.dsp import compute_transfer_and_coherence, nearest_bin, get_dsp_provenance
+from phase2.metrics import PointSpectrum, wsi_curve, get_metrics_provenance
 from phase2.viz import heatmap_scatter, plot_curve
 
 
@@ -257,52 +257,117 @@ def cmd_run(args: argparse.Namespace) -> int:
     # 3) WSI curve + candidates
     freqs, wsi, details = wsi_curve(spectra, grid, fmin_hz=args.fmin_hz, fmax_hz=args.fmax_hz)
 
-    # CSV curve
+    # CSV curve (includes admissible flag)
     rows = []
     for f, w, d in zip(freqs, wsi, details):
-        rows.append(f"{float(f):.6f},{float(w):.6f},{d['loc']:.6f},{d['grad']:.6f},{d['phase_disorder']:.6f},{d['coh_mean']:.6f}")
+        rows.append(f"{float(f):.6f},{float(w):.6f},{d['loc']:.6f},{d['grad']:.6f},{d['phase_disorder']:.6f},{d['coh_mean']:.6f},{d['admissible']}")
     save_csv(
         derived_dir / "wsi_curve.csv",
-        "freq_hz,wsi,loc,grad,phase_disorder,coh_mean",
+        "freq_hz,wsi,loc,grad,phase_disorder,coh_mean,admissible",
         rows,
     )
 
-    # candidates (top N by WSI with coherence guard)
+    # candidates (top N by WSI with coherence gating)
     N = int(args.top_n)
     order = np.argsort(-wsi)  # descending
-    candidates = []
+    candidates_admissible: List[Dict[str, Any]] = []
+    candidates_low_quality: List[Dict[str, Any]] = []
     for idx in order[: max(N, 1)]:
-        candidates.append({
+        cand = {
             "frequency_hz": float(freqs[idx]),
             "wsi": float(wsi[idx]),
             "loc": float(details[idx]["loc"]),
             "grad": float(details[idx]["grad"]),
             "phase_disorder": float(details[idx]["phase_disorder"]),
             "coh_mean": float(details[idx]["coh_mean"]),
+            "admissible": details[idx]["admissible"],
             "note": "Measurement-only. Interpretation deferred.",
-        })
-    save_json(derived_dir / "wolf_candidates.json", {
-        "session_id": session_id,
-        "top_n": N,
-        "candidates": candidates,
-    })
+        }
+        if details[idx]["admissible"]:
+            candidates_admissible.append(cand)
+        else:
+            candidates_low_quality.append(cand)
 
-    # 4) One ODS snapshot at a target frequency (default 185 Hz)
+    # capdir = logical ID (session folder name), not absolute path
+    capdir_logical = session_dir.name
+
+    # Combine all candidates for summary stats
+    all_candidates = candidates_admissible + candidates_low_quality
+
+    # top_points: best coherence points at ODS target frequency (UI/triage helper)
     target = float(args.ods_target_hz)
     bi = nearest_bin(spectra[0].freq_hz, target)
     target_actual = float(spectra[0].freq_hz[bi])
 
+    points_for_top = [
+        {
+            "point_id": s.point_id,
+            "x": s.x_mm,
+            "y": s.y_mm,
+            "H_mag": float(s.H_mag[bi]),
+            "coherence": float(s.coherence[bi]),
+        }
+        for s in spectra
+    ]
+    top_points = sorted(
+        points_for_top,
+        key=lambda p: (p["coherence"], p["H_mag"]),
+        reverse=True,
+    )[:10]
+
+    # coh_mean summary
+    coh_mean_admissible = (
+        sum(c["coh_mean"] for c in candidates_admissible) / len(candidates_admissible)
+        if candidates_admissible else 0.0
+    )
+    coh_mean_all = (
+        sum(c["coh_mean"] for c in all_candidates) / len(all_candidates)
+        if all_candidates else 0.0
+    )
+
+    save_json(derived_dir / "wolf_candidates.json", {
+        "schema_version": "phase2_wolf_candidates_v2",
+        "capdir": capdir_logical,
+        "session_id": session_id,
+        "wsi_threshold": 0.5,
+        "coherence_threshold": 0.8,
+        "top_n": N,
+        "candidates": candidates_admissible,
+        "candidates_low_quality": candidates_low_quality,
+        "admissible": candidates_admissible,  # explicit list per audit
+        "coh_mean": {
+            "admissible": coh_mean_admissible,
+            "all": coh_mean_all,
+        },
+        "top_points": top_points,
+        "provenance": {
+            "algo_id": "phase2_wsi_wolf",
+            "algo_version": "2.0.0",
+            "dsp_provenance": get_dsp_provenance(),
+            "metrics_provenance": get_metrics_provenance(),
+        },
+    })
+
+    # 4) One ODS snapshot at a target frequency (default 185 Hz)
     mag_by_id = {s.point_id: float(s.H_mag[bi]) for s in spectra}
     coh_by_id = {s.point_id: float(s.coherence[bi]) for s in spectra}
 
     save_json(derived_dir / "ods_snapshot.json", {
-        "frequency_hz_requested": target,
-        "frequency_hz_actual": target_actual,
+        "schema_version": "phase2_ods_snapshot_v2",
+        "capdir": capdir_logical,
+        "session_id": session_id,
         "grid_units": grid.units,
-        "values": [
+        "freqs_hz_requested": [target],
+        "freqs_hz_actual": [target_actual],
+        "points": [
             {"point_id": p.id, "x": p.x, "y": p.y, "H_mag": mag_by_id[p.id], "coherence": coh_by_id[p.id]}
             for p in grid.points
-        ]
+        ],
+        "provenance": {
+            "algo_id": "phase2_transfer_coherence",
+            "algo_version": "2.0.0",
+            "dsp_provenance": get_dsp_provenance(),
+        },
     })
 
     # Plots (optional but useful)

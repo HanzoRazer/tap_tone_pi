@@ -189,3 +189,37 @@ For sensor capture (not yet implemented):
 - `modes/acquisition/dial_indicator_serial.py` → `displacement_series.json`
 
 Say **"add capture scripts"** if you need these.
+
+---
+
+## WAV I/O Policy & Tests
+
+**Canonical module:** `modes/_shared/wav_io.py`
+
+### Policy
+
+- Readers return **float32** in **[-1, 1]** (best effort normalization).
+- `read_wav_mono()` uses **channel 0** if the file is stereo (policy knob lives here).
+- Writers (`write_wav_mono`, `write_wav_2ch`) accept float32 in [-1, 1] and write **PCM int16**.
+- If we ever switch to 24-bit, we will do it **only in this module**.
+
+### Why This Matters
+
+- Eliminates int16↔float scaling drift across tools.
+- One place to adjust stereo/mono policy used by every mode.
+
+### Tests
+
+Run with **pytest**:
+
+```bash
+pytest -q tests/test_wav_io.py tests/test_wav_io_roundtrip.py
+```
+
+The suite verifies:
+
+- Mono and 2-channel **round-trip** (level within ~0.2 dB, corr > 0.999)
+- Mono-from-stereo **policy** (channel-0 selection)
+- Import **normalization** from raw int16 WAVs
+- `level_dbfs` utility sanity
+- **Int16 quantization tolerance** (max abs error ≤ 2.5e-4)

@@ -8,8 +8,10 @@ from typing import Any, Dict, List, Tuple
 
 import numpy as np
 from numpy.fft import rfft, rfftfreq
-from scipy.io import wavfile
 from scipy.signal import find_peaks
+
+# Canonical WAV I/O
+from modes._shared.wav_io import read_wav_mono
 
 
 def analyze(
@@ -60,10 +62,9 @@ def main() -> None:
     ap.add_argument("--outfile", required=True, help="Output JSON path")
     a = ap.parse_args()
 
-    # Read WAV
-    sr, y = wavfile.read(a.wav)
-    if y.ndim > 1:
-        y = y[:, 0]  # First channel
+    # Read WAV using canonical layer
+    meta, y = read_wav_mono(pathlib.Path(a.wav))
+    sr = meta.sample_rate
 
     # Analyze
     freqs, Y, top = analyze(y, sr, a.peaks)

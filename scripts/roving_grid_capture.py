@@ -35,7 +35,9 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 import sounddevice as sd
-from scipy.io import wavfile
+
+# Canonical WAV I/O
+from modes._shared.wav_io import write_wav_2ch
 
 
 @dataclass
@@ -104,10 +106,9 @@ def save_point_capture(
     point_dir = out_dir / "points" / point.id
     point_dir.mkdir(parents=True, exist_ok=True)
     
-    # Save audio as 2-channel WAV
+    # Save audio as 2-channel WAV using canonical layer
     audio_path = point_dir / "audio.wav"
-    audio_i16 = (np.clip(audio, -1.0, 1.0) * 32767).astype(np.int16)
-    wavfile.write(str(audio_path), sample_rate, audio_i16)
+    write_wav_2ch(audio_path, sample_rate, audio[:, 0], audio[:, 1])
     
     # Save metadata
     meta = {
