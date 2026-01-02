@@ -21,6 +21,28 @@ This phase produces **objective measurements**:
 - Package: `scripts/phase2/`
 - Canonical grid: `config/grids/guitar_top_35pt.json`
 
+---
+
+## Running Phase 2
+
+**Supported method** (avoids PYTHONPATH issues):
+
+```bash
+# Synthetic validation run (no hardware)
+python tools/run_phase2.py run --grid examples/phase2_grid_mm.json --out ./runs_phase2 --synthetic
+
+# List audio devices
+python tools/run_phase2.py devices
+
+# Hardware capture
+python tools/run_phase2.py run --grid config/grids/guitar_top_35pt.json --out ./runs_phase2 --device 1
+```
+
+> **Note:** Direct invocation of `scripts/phase2_slice.py` requires `PYTHONPATH` to include the project root.
+> Use `tools/run_phase2.py` until the package is properly installable.
+
+---
+
 Legacy scripts exist but are superseded:
 - `scripts/roving_grid_capture.py`
 - `scripts/ods_compute.py`
