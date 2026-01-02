@@ -25,10 +25,12 @@ class Wav2Ch:
 
 def read_wav_2ch(path: Path) -> Wav2Ch:
     """Read 2-channel WAV file. Delegates to canonical layer."""
-    meta, ref, rov = _read_wav_2ch(path)
+    # Canonical signature returns: (ref, rov, meta)
+    ref, rov, meta = _read_wav_2ch(path)
     return Wav2Ch(sample_rate=meta.sample_rate, x_ref=ref, x_rov=rov)
 
 
 def write_wav_2ch(path: Path, fs: int, x_ref: np.ndarray, x_rov: np.ndarray) -> None:
     """Write 2-channel WAV file. Delegates to canonical layer."""
-    _write_wav_2ch(path, fs, x_ref, x_rov)
+    # Canonical signature: write_wav_2ch(path, x_ref, x_rov, fs)
+    _write_wav_2ch(path, x_ref, x_rov, fs)

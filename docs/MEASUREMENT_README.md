@@ -154,6 +154,8 @@ python modes/_shared/emit_manifest.py \
 
 ## Output Schema Summary
 
+> **Schema Registry:** All validators must source schema file locations and versions from `contracts/schema_registry.json` (no hardcoded maps).
+
 ### bending_moe.json
 
 ```json
@@ -223,3 +225,36 @@ The suite verifies:
 - Import **normalization** from raw int16 WAVs
 - `level_dbfs` utility sanity
 - **Int16 quantization tolerance** (max abs error ≤ 2.5e-4)
+
+---
+
+## Chladni Pattern Indexing
+
+**Module:** `modes/chladni/`
+
+### Frequency Mismatch Policy
+
+**Mismatch policy:** warn + keep, **fail** if `delta_hz` exceeds `CHLADNI_FREQ_TOLERANCE_HZ` (default 5 Hz).
+
+- Each pattern record includes `nearest_detected_hz` and `delta_hz`
+- Warnings are recorded in `_warnings` array
+- Exit code 2 if worst delta exceeds tolerance
+- Override via `--tolerance-hz` flag or `CHLADNI_FREQ_TOLERANCE_HZ` env var
+
+### Usage
+
+```bash
+# Extract peaks from sweep WAV
+python modes/chladni/peaks_from_wav.py \
+  --wav out/RUN/capture.wav \
+  --out out/RUN/peaks.json \
+  --min-hz 50 --max-hz 2000
+
+# Index pattern images to frequencies
+python modes/chladni/index_patterns.py \
+  --peaks-json out/RUN/peaks.json \
+  --images out/RUN/F0148.png out/RUN/F0226.png \
+  --plate-id PLATE_001 \
+  --tempC 22.0 --rh 45.0 \
+  --out out/RUN/chladni_run.json
+```

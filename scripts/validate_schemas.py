@@ -17,21 +17,47 @@ from typing import Dict, Tuple
 
 from jsonschema import Draft202012Validator, validate
 
-SCHEMA_MAP: Dict[Tuple[str, str], str] = {
+# Fallback map for environments where registry is unavailable
+_FALLBACK_SCHEMA_MAP: Dict[Tuple[str, str], str] = {
     ("tap_peaks", "1.0"): "tap_peaks.schema.json",
     ("moe_result", "1.0"): "moe_result.schema.json",
     ("measurement_manifest", "1.0"): "manifest.schema.json",
     ("chladni_run", "1.0"): "chladni_run.schema.json",
 }
 
-def load_schema_index(schemas_root: Path) -> Dict[Tuple[str, str], dict]:
+
+def load_registry(schemas_root: Path) -> Dict[Tuple[str, str], dict]:
+    """Load schemas from schema_registry.json (authoritative source)."""
+    registry_path = schemas_root.parent / "schema_registry.json"
+    if not registry_path.exists():
+        # Fallback to hardcoded map if registry not present
+        return _load_from_fallback(schemas_root)
+    
+    reg = json.loads(registry_path.read_text(encoding="utf-8"))
     loaded = {}
-    for (schema_id, version), fname in SCHEMA_MAP.items():
+    for ent in reg["schemas"]:
+        sid, ver, f = ent["schema_id"], ent["version"], ent["file"]
+        schema_path = Path(f)
+        if not schema_path.exists():
+            raise FileNotFoundError(f"Registry references missing schema: {f}")
+        loaded[(sid, ver)] = json.loads(schema_path.read_text(encoding="utf-8"))
+    return loaded
+
+
+def _load_from_fallback(schemas_root: Path) -> Dict[Tuple[str, str], dict]:
+    """Fallback loader using hardcoded map."""
+    loaded = {}
+    for (schema_id, version), fname in _FALLBACK_SCHEMA_MAP.items():
         p = schemas_root / fname
         if not p.exists():
             raise FileNotFoundError(f"Missing schema file: {p}")
         loaded[(schema_id, version)] = json.loads(p.read_text(encoding="utf-8"))
     return loaded
+
+
+def load_schema_index(schemas_root: Path) -> Dict[Tuple[str, str], dict]:
+    """Load schemas - prefer registry, fallback to hardcoded map."""
+    return load_registry(schemas_root)
 
 def discover_json_files(out_root: Path):
     for p in out_root.rglob("*.json"):

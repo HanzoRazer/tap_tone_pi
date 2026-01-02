@@ -2,6 +2,13 @@
 # =========================================
 # Usage: make <target> VAR=value ...
 
+.PHONY: validate-schemas
+
+# Validate Analyzer artifacts in out/** against contracts/schemas/*
+# Exits 0 if no artifacts exist (keeps CI green on fresh repos).
+validate-schemas:
+	@python scripts/validate_schemas.py --out-root out --schemas-root contracts/schemas
+
 # ---- Acquisition: serial sensor capture ----
 
 loadcell:

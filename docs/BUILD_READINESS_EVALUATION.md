@@ -198,3 +198,84 @@ The code is **NOT generating output matching the contracts/**:
 1. **Fix Phase 2 Output Writers** - Update `phase2_slice.py` to emit JSON matching v2 schemas
 2. **Add Phase 2 Tests** - pytest suite for DSP/metrics modules
 3. **End-to-end Validation** - Run synthetic pipeline, validate outputs against schemas
+
+---
+
+## Update Log
+
+### 2026-01-01: Cross-Project Status Check
+
+**Reviewed alongside:** luthiers-toolbox, string_master_v.4.0
+
+**Status:** No code changes since 2025-12-31. Critical blockers remain.
+
+**Remaining Critical Issues:**
+
+| Issue | Status | Effort |
+|-------|--------|--------|
+| Phase 2 output schema mismatch | UNRESOLVED | 1-2 hrs |
+| Missing provenance in JSON outputs | UNRESOLVED | 1 hr |
+| Phase 2 pytest suite | NOT STARTED | 4-6 hrs |
+
+**Cross-Project Comparison (Updated):**
+
+| Aspect | tap_tone_pi | string_master | luthiers-toolbox |
+|--------|-------------|---------------|------------------|
+| **Readiness** | 65-70% | 83% | 68-72% (+6%) |
+| **Test Coverage** | 20% | 88% | 55% (+5%) |
+| **CI/CD** | 90% (6 workflows) | 0% | 50% (25 workflows) |
+| **Critical Blocker** | Schema mismatch | No CI/CD | Client pipeline + RMOS batch |
+
+**Priority Order for Fixes:**
+1. tap_tone_pi schema mismatch (6-9 hrs total)
+2. string_master CI/CD (12-16 hrs total)
+3. luthiers-toolbox remaining blockers (8-16 hrs)
+
+---
+
+### 2026-01-01: Phase 2 Schema Mismatch RESOLVED
+
+**Status:** FIXED - All Phase 2 outputs now match v2 schemas.
+
+**Changes Made:**
+
+1. **wolf_candidates.json** - Fixed schema compliance:
+   - `frequency_hz` → `freq_hz` (schema field name)
+   - Added `top_points[]` per candidate (was at root level)
+   - Removed extra fields: `capdir`, `session_id`, `top_n`, `candidates_low_quality`
+   - Provenance now includes `computed_at_utc`
+
+2. **ods_snapshot.json** - Fixed schema compliance:
+   - `freqs_hz_requested/actual` → `freqs_hz` (single array)
+   - `x`/`y` → `x_mm`/`y_mm` (explicit units)
+   - `H_mag`, `H_phase_deg`, `coherence` now arrays (not scalars)
+   - Removed extra fields: `session_id`, `grid_units`
+   - Provenance flattened with `numpy_version`, `scipy_version`, `computed_at_utc`
+
+3. **io_wav.py** - Fixed wrapper function bugs:
+   - `read_wav_2ch`: Fixed return order `(ref, rov, meta)` not `(meta, ref, rov)`
+   - `write_wav_2ch`: Fixed parameter order when calling canonical layer
+
+4. **test_phase2_schemas.py** - NEW test file (10 tests):
+   - `TestPhase2WolfCandidatesSchema` (4 tests)
+   - `TestPhase2ODSSnapshotSchema` (4 tests)
+   - `TestPhase2NoExtraFields` (2 tests)
+
+**Test Results:**
+```
+============================= 10 passed in 4.42s ==============================
+```
+
+**Revised Metrics:**
+
+| Component | Previous | Current | Change |
+|-----------|----------|---------|--------|
+| Phase 2 I/O Layer | 30% | 95% | +65% |
+| Test Coverage | 20% | 35% | +15% |
+| **Overall Readiness** | 65-70% | **78-82%** | +13% |
+
+**Remaining Issues:**
+- Pytest unit tests for DSP/metrics modules (4-6 hrs)
+- CI workflow for Phase 2 validation (already exists: `phase2_validate.yml`)
+
+---

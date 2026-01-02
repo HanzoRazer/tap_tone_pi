@@ -128,6 +128,8 @@ docs/schemas/       # Core measurement schemas
 contracts/          # Cross-repo interface schemas
 ```
 
+**All validators MUST source schema file locations and versions from `contracts/schema_registry.json` (no hardcoded maps).**
+
 Each schema file MUST include:
 
 - schema name
@@ -188,6 +190,14 @@ measurement artifacts, not interpretations.
 - Image-to-grid mismatch tolerance MUST be explicitly declared
 - Multiple images per excitation MAY be supported but MUST be declared in schema
 - Environmental conditions (lighting, contrast agents) MUST be logged if required
+
+### Frequency Mismatch Policy
+
+**Mismatch policy:** warn + keep, **fail** if `delta_hz` exceeds `CHLADNI_FREQ_TOLERANCE_HZ` (default 5 Hz).
+
+- Each pattern record includes `nearest_detected_hz` and `delta_hz`
+- Warnings are recorded in `_warnings` array
+- Exit code 2 if worst delta exceeds tolerance
 
 ### Interpretation Boundary
 
@@ -285,6 +295,118 @@ without governance approval.
               │ ✅ merge  │               │ ❌ blocked    │
               └───────────┘               └───────────────┘
 ```
+
+---
+
+## 9. Analysis vs. Interpretation Boundary Doctrine
+
+The Desktop Analyzer and associated instrumentation tools may perform **objective analytical transformations** (e.g., FFTs, transfer functions, coherence, statistical summaries) on captured measurement data in order to produce **verifiable, reproducible descriptors**. These analytical outputs are **measurement facts**, not judgments.
+
+**Interpretation, evaluation, optimization, or prescriptive guidance**—including tonal assessment, structural recommendations, or design decisions—**are explicitly out of scope** for this system and must occur only in downstream tools or human-in-the-loop workflows.
+
+> *Analysis is permitted; interpretation is prohibited.*
+
+---
+
+## 10. Spectral View UX Contract
+
+### Purpose
+
+The Spectral View exists to **visualize measured data and analytical results** so that users can verify signal quality, repeatability, and objective features of the measurement.
+
+It is **not** a tone-grading or decision interface.
+
+---
+
+### What the Spectral View MAY Show (Allowed)
+
+These are **raw facts** or direct mathematical transforms.
+
+#### Time Domain
+
+- Raw waveform (mono or channel-separated)
+- Time scale (seconds)
+- Amplitude scale (normalized or physical units)
+- Clipping indicators
+
+**Label:** *Raw measurement — time domain*
+
+#### Frequency Domain
+
+- Magnitude spectrum (FFT / PSD)
+- Frequency axis (Hz)
+- Amplitude axis (linear or dB, explicitly labeled)
+- Peak markers (frequency + magnitude only)
+
+**Label:** *Measured frequency content (FFT)*
+
+#### Transfer / Coherence (Phase 2)
+
+- |H(f)| magnitude
+- Phase (degrees)
+- Coherence γ²(f)
+
+**Label:** *Derived analytical quantities (transfer function, coherence)*
+
+#### Spatial / ODS
+
+- Grid heatmaps
+- Mode-shape amplitude distributions
+- Localization indices
+
+**Label:** *Spatial distribution of measured response*
+
+#### Metadata / Provenance
+
+- Sample rate
+- Window type
+- FFT size
+- Device ID
+- Capture timestamp
+
+**Label:** *Measurement configuration*
+
+---
+
+### What the Spectral View MUST NOT Show (Prohibited)
+
+These are interpretive or prescriptive and **must never appear** in this UI:
+
+| Prohibited | Reason |
+|------------|--------|
+| ❌ "Good / bad" indicators | Value judgment |
+| ❌ "Optimal" frequencies | Prescriptive |
+| ❌ "Too stiff / too loose" | Design guidance |
+| ❌ "This area should be thinned" | Prescriptive |
+| ❌ Tone adjectives (warm, bright, dead, etc.) | Subjective interpretation |
+| ❌ Scores, rankings, or grades | Value judgment |
+| ❌ Automated comparisons to "ideal" guitars | Prescriptive |
+
+If a value can't be defended as a **direct output of math on measured data**, it doesn't belong here.
+
+---
+
+### Mandatory UX Labeling Rules
+
+Every Spectral View must include:
+
+1. **Mode Banner**
+
+   ```
+   Measurement View — No Interpretation Applied
+   ```
+
+2. **Legend Discipline**
+
+   - Units must be explicit (Hz, dB, seconds, mm)
+   - Axes must be labeled
+   - No unlabeled color scales
+
+3. **Provenance Footer**
+
+   - Capture timestamp
+   - Device/channel info
+   - Schema version (if applicable)
 
 ---
 
