@@ -1,8 +1,9 @@
 # tap_tone_pi Build Readiness Evaluation
 
-**Date:** 2025-12-31
+**Date:** 2026-01-01
 **Evaluated by:** Claude Code
-**Overall Readiness:** 65-70%
+**Overall Readiness:** 92%
+**Release Tag:** `v2.0-instrumentation`
 
 ---
 
@@ -11,12 +12,14 @@
 | Component | % Complete | Status | Notes |
 |-----------|-----------|--------|-------|
 | **Phase 1 (tap_tone/)** | 95% | Ready | CLI complete, capture + analysis working |
-| **Phase 2 DSP/Metrics** | 95% | Ready | Coherence, WSI, provenance all implemented |
-| **Phase 2 I/O Layer** | 30% | **BLOCKED** | Outputs don't match v2 schemas |
+| **Phase 2 DSP/Metrics** | 100% | ✅ Complete | Coherence, WSI, provenance all implemented |
+| **Phase 2 I/O Layer** | 100% | ✅ Complete | v2 schema-compliant outputs verified |
+| **Phase 2 Tooling** | 100% | ✅ Complete | `tools/run_phase2.py` runner |
 | **Bending Rig** | 85% | Ready | Complete with serial + simulators |
 | **Dependencies** | 100% | Ready | pyproject.toml fully configured |
 | **CI/Workflows** | 90% | Mature | 6 workflows, path-based gates |
-| **Tests** | 20% | Poor | Only Phase 1 schema tests exist |
+| **Tests** | 55% | Good | 23 tests passing (WAV I/O, Phase 2 schemas, Chladni) |
+| **Documentation** | 95% | ✅ Complete | Handoff doc, governance, promotion checklist |
 
 ---
 
@@ -277,5 +280,68 @@ The code is **NOT generating output matching the contracts/**:
 **Remaining Issues:**
 - Pytest unit tests for DSP/metrics modules (4-6 hrs)
 - CI workflow for Phase 2 validation (already exists: `phase2_validate.yml`)
+
+---
+
+### 2026-01-01: v2.0-instrumentation Tag Released
+
+**Status:** RELEASE TAG CREATED
+
+**Tag:** `v2.0-instrumentation`
+**Commit:** `7e0d710`
+**Message:** "Phase 2 v2 schemas + synthetic proof pass"
+
+**What's Included in This Release:**
+
+1. **Phase 2 v2 Schema Compliance** — All outputs validated against contracts:
+   - `ods_snapshot.json` — `schema_version`, `capdir`, `freqs_hz[]`, array fields, provenance
+   - `wolf_candidates.json` — `schema_version`, thresholds, `admissible`, `top_points[]`, nested provenance
+
+2. **Schema Registry** — `contracts/schema_registry.json`:
+   - Single source of truth for all 9 schemas
+   - Version tracking, ownership, policies
+
+3. **Cross-Repo Handoff Documentation** — `docs/DEVELOPER_HANDOFF_CROSS_REPO.md`:
+   - Sections A-G covering canonical decisions
+   - DSP architecture decisions (Q1-Q3)
+   - Pipeline validation report (G.4)
+
+4. **Phase 2 Tooling** — `tools/run_phase2.py`:
+   - Avoids PYTHONPATH issues
+   - Forwards all args to `scripts/phase2_slice.py`
+
+5. **Tests** — 23 passing:
+   - Phase 2 schema validation (8 tests)
+   - Chladni frequency tolerance policy (4 tests)
+   - WAV I/O round-trip (6 tests)
+   - Measurement schemas (3 tests)
+   - Additional WAV tolerance tests (2 tests)
+
+6. **Governance Updates**:
+   - Chladni frequency mismatch policy (5Hz tolerance)
+   - Phase-2 promotion gate checklist
+   - Schema version bump approval process
+
+**Synthetic Proof Pass:**
+```
+Session: runs_phase2/session_20260101T234237Z/
+- ods_snapshot.json: v2 compliant ✅
+- wolf_candidates.json: v2 compliant ✅
+- All 23 tests passing ✅
+```
+
+**Final Metrics:**
+
+| Metric | Value |
+|--------|-------|
+| Overall Readiness | 92% |
+| Test Count | 23 |
+| Schema Compliance | 100% |
+| Documentation | 95% |
+
+**Remaining for Future Releases:**
+- DSP/metrics unit tests (Phase 2.1)
+- Package installability fix (flat-layout issue)
+- Hardware integration tests (optional, CI-exempt)
 
 ---
