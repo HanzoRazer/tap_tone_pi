@@ -425,7 +425,7 @@ def build_audit_record(
         "full_bytes": full_bytes,
         "scanned_bytes": scanned_bytes,
         "coverage_ratio": coverage,
-        "coverage_percent": round(coverage * 100, 2),
+        "repo_coverage_percent": round(coverage * 100, 2),
         "threshold": threshold,
         "status": status,  # "pass" | "fail"
         # Optional CI metadata (if running in GitHub Actions, etc.)
@@ -637,6 +637,10 @@ jobs:
 |-----|------|-------|
 | 1.0 | 2026-01-01 | Initial release. Establishes ≥95% coverage rule, STOP CONDITIONS, structured input preference, immutability rules, audit declaration requirement, and implementation scripts. |
 | 1.1 | 2026-01-02 | Added repo-enforced CI gates, patch packet format validation, enhanced scripts with improved error handling, and operational rules. |
+| 1.2 | 2026-01-03 | Added Section 23: PR-Level Enforcement (CBSP21 as real repo gate with manifest validation, `check_cbsp21_gate.py` script, and `cbsp21_gate.yml` workflow). |
+| 1.3 | 2026-01-03 | Added Section 24: Diff Review Gate (pre-commit behavior change review, redundancy check protocol, recovery procedure). |
+| 1.4 | 2026-01-03 | Added Sections 25-27: Enhanced Patch Input Manifest with diff articulation requirements, behavior preservation gate, and `check_cbsp21_patch_input.py` CI enforcement. |
+| 1.5 | 2026-01-03 | Added Section 25.3 Diff-Range Lock; updated Section 27 with diff_range enforcement; renamed coverage metrics to `repo_coverage_percent` (byte ratio) vs `file_context_coverage_percent` (per-file manifest coverage). |
 
 ---
 
@@ -804,7 +808,7 @@ def audit_record(
         "full_bytes": full_bytes,
         "scanned_bytes": scanned_bytes,
         "coverage_ratio": coverage,
-        "coverage_percent": round(coverage * 100, 2),
+        "repo_coverage_percent": round(coverage * 100, 2),
         "threshold": threshold,
         "status": status,  # "pass" | "fail"
         # Optional CI metadata (GitHub Actions)
@@ -1112,4 +1116,432 @@ This is not enabled by default because it can block everyday development unless 
 
 ---
 
+## 23. PR-Level Enforcement: CBSP21 as a Real Repo Gate
+
+CBSP21 serves **two complementary functions**:
+
+1. **Prevents under-scanning** — ensures AI systems don't reason from partial inputs
+2. **Catches redundant/regressive patches** — detects when sandbox patches duplicate or conflict with existing code
+
+To make this enforceable at the PR level (not just a reminder), the following components are provided:
+
+### 23.1 PR Manifest: `.cbsp21/patch_input.json`
+
+Every PR that modifies code/config must include a manifest declaring:
+- Which files were changed
+- What source files were scanned to produce the changes
+- Coverage metrics per changed file
+
+**Template:** `.cbsp21/patch_input.json.example`
+
+```json
+{
+  "$schema": "cbsp21_patch_input_v1",
+  "pr_title": "ci(governance): add artifact contract validator",
+  "changed_files": [
+    {
+      "path": "scripts/governance/validate_run_artifact_contract.py",
+      "action": "add",
+      "scanned_sources": ["docs/ENDPOINT_TRUTH_MAP.md", "services/api/app/rmos/runs_router.py"],
+      "file_context_coverage_percent": 97.2
+    },
+    {
+      "path": ".github/workflows/run_artifact_contract_gate.yml",
+      "action": "add",
+      "scanned_sources": [".github/workflows/artifact_linkage.yml"],
+      "file_context_coverage_percent": 100.0
+    }
+  ],
+  "overall_file_context_coverage": 98.6,
+  "notes": "Validator reads existing artifacts; does not create them."
+}
+```
+
+### 23.2 Gate Script: `scripts/ci/check_cbsp21_gate.py`
+
+This script:
+- Detects code/config changes in the PR (via `git diff`)
+- Requires `.cbsp21/patch_input.json` manifest
+- Enforces **file-level coverage** (default min `0.95`) for every changed "code" file
+- Exits non-zero if coverage requirements not met
+
+```python
+#!/usr/bin/env python3
+"""
+CBSP21 PR Gate
+
+Validates that PRs touching code/config have a valid patch_input.json manifest
+with sufficient coverage declarations.
+
+Env:
+  CBSP21_MIN_COVERAGE     default 0.95
+  CBSP21_MANIFEST_PATH    default .cbsp21/patch_input.json
+  CBSP21_SKIP_EXTENSIONS  default .md,.txt,.json (non-code files)
+
+Usage:
+  python scripts/ci/check_cbsp21_gate.py
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any, Dict, List, Set
+
+
+def get_changed_files() -> List[str]:
+    """Get files changed in this PR (vs origin/main)."""
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--name-only", "origin/main...HEAD"],
+            capture_output=True, text=True, check=True
+        )
+        return [f.strip() for f in result.stdout.strip().split("\n") if f.strip()]
+    except subprocess.CalledProcessError:
+        # Fallback: compare to HEAD~1
+        result = subprocess.run(
+            ["git", "diff", "--name-only", "HEAD~1"],
+            capture_output=True, text=True, check=True
+        )
+        return [f.strip() for f in result.stdout.strip().split("\n") if f.strip()]
+
+
+def is_code_file(path: str, skip_exts: Set[str]) -> bool:
+    """Check if file is a code file (not docs, not config-only)."""
+    ext = Path(path).suffix.lower()
+    if ext in skip_exts:
+        return False
+    # Code file extensions
+    code_exts = {".py", ".ts", ".tsx", ".js", ".jsx", ".vue", ".yaml", ".yml", ".sh", ".ps1"}
+    return ext in code_exts
+
+
+def main() -> int:
+    min_coverage = float(os.getenv("CBSP21_MIN_COVERAGE", "0.95"))
+    manifest_path = Path(os.getenv("CBSP21_MANIFEST_PATH", ".cbsp21/patch_input.json"))
+    skip_exts_raw = os.getenv("CBSP21_SKIP_EXTENSIONS", ".md,.txt")
+    skip_exts = {s.strip().lower() for s in skip_exts_raw.split(",") if s.strip()}
+
+    changed_files = get_changed_files()
+    code_files = [f for f in changed_files if is_code_file(f, skip_exts)]
+
+    if not code_files:
+        print("CBSP21 GATE: No code files changed - skipping manifest check.")
+        return 0
+
+    print(f"CBSP21 GATE: {len(code_files)} code file(s) changed:")
+    for f in code_files:
+        print(f"  - {f}")
+
+    if not manifest_path.exists():
+        print(f"\n❌ CBSP21 GATE FAIL: Missing manifest at {manifest_path}")
+        print("   PRs changing code must include a patch_input.json manifest.")
+        print("   See .cbsp21/patch_input.json.example for template.")
+        return 1
+
+    try:
+        manifest: Dict[str, Any] = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"❌ CBSP21 GATE FAIL: Invalid manifest: {e}")
+        return 1
+
+    # Check that all code files are declared in manifest
+    declared_paths = {cf["path"] for cf in manifest.get("changed_files", [])}
+    missing = [f for f in code_files if f not in declared_paths]
+
+    if missing:
+        print(f"\n❌ CBSP21 GATE FAIL: Changed files not declared in manifest:")
+        for m in missing:
+            print(f"  - {m}")
+        return 1
+
+    # Check coverage per file
+    violations: List[str] = []
+    for cf in manifest.get("changed_files", []):
+        path = cf.get("path", "")
+        cov = cf.get("file_context_coverage_percent", 0)
+        if cov is None:
+            cov = 0
+        cov_ratio = cov / 100.0 if cov > 1 else cov
+
+        if path in code_files and cov_ratio < min_coverage:
+            violations.append(f"{path}: {cov_ratio*100:.1f}% < {min_coverage*100:.1f}%")
+
+    if violations:
+        print(f"\n❌ CBSP21 GATE FAIL: Coverage below threshold ({min_coverage*100:.0f}%):")
+        for v in violations:
+            print(f"  - {v}")
+        return 1
+
+    overall = manifest.get("overall_file_context_coverage", 100)
+    print(f"\n✅ CBSP21 GATE PASS: All code files declared with sufficient coverage.")
+    print(f"   Overall file context coverage: {overall}%")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+```
+
+### 23.3 CI Workflow: `cbsp21_gate.yml`
+
+**Path:** `.github/workflows/cbsp21_gate.yml`
+
+```yaml
+name: CBSP21 PR Gate
+
+on:
+  pull_request:
+    paths:
+      - "services/**"
+      - "packages/**"
+      - "scripts/**"
+      - ".github/workflows/**"
+
+jobs:
+  cbsp21-pr-gate:
+    runs-on: ubuntu-latest
+
+    env:
+      CBSP21_MIN_COVERAGE: "0.95"
+      CBSP21_MANIFEST_PATH: ".cbsp21/patch_input.json"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need history for git diff
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: CBSP21 PR Gate Check
+        run: python scripts/ci/check_cbsp21_gate.py
+```
+
+### 23.4 Workflow Integration
+
+When contributing code changes:
+
+1. **Before PR:** Create `.cbsp21/patch_input.json` declaring:
+   - Changed files
+   - Sources scanned (context gathered)
+   - Coverage percentages
+
+2. **On PR:** CI runs `check_cbsp21_gate.py`:
+   - Validates manifest exists
+   - Confirms all changed code files are declared
+   - Enforces coverage threshold per file
+
+3. **On Failure:** Either:
+   - Add missing context scans and update manifest
+   - Or request exemption via documented exception process (Section 14)
+
+### 23.5 Exemptions
+
+Some PRs legitimately don't need full coverage validation:
+- Pure documentation changes (`.md`, `.txt`)
+- Auto-generated files (declared in `.cbsp21/exemptions.json`)
+- Emergency hotfixes (require post-merge audit)
+
+To exempt specific paths, add to `.cbsp21/exemptions.json`:
+
+```json
+{
+  "exempt_patterns": [
+    "**/*.generated.ts",
+    "**/migrations/**",
+    "docs/**"
+  ]
+}
+```
+
+---
+
+## 24. Diff Review Gate: Pre-Commit Behavior Change Review
+
+### 24.1 Purpose
+
+This section addresses a critical failure mode: **AI agents declaring patches "redundant" based on keyword matches, then applying changes that silently alter or restrict existing functionality**.
+
+The Diff Review Gate requires:
+1. **Explicit diff presentation** before commits with behavior changes
+2. **User confirmation** for any changes that add guards, restrictions, or alter control flow
+3. **Functional coverage verification** — not just keyword presence
+
+### 24.2 When Diff Review is Required
+
+| Risk Level | Trigger | Requirement |
+|------------|---------|-------------|
+| **Low** | Pure additions (new files, new functions) | No diff review required |
+| **Medium** | Modifications to existing functions | Show diff, await confirmation |
+| **High** | Changes that add guards, disable features, alter control flow | Show diff + explain impact, await explicit approval |
+
+### 24.3 Redundancy Check Protocol
+
+Before declaring a patch "REDUNDANT", the AI agent MUST:
+
+1. **Keyword scan**: Search for function/variable names from patch
+2. **Functional equivalence check**: Verify the *behavior* matches, not just the *presence*
+3. **Coverage analysis**: For each feature in the patch, confirm:
+   - Feature exists AND
+   - Feature is complete AND
+   - No gaps in implementation
+
+Example of **incomplete implementation** (incorrectly flagged as redundant):
+```
+Patch requests: Full decision_history list in hover
+Codebase has: auditHoverText() exists — but only shows LAST record
+Result: NOT redundant — patch adds missing functionality
+```
+
+### 24.4 Pre-Commit Checklist for Behavior Changes
+
+Before committing changes with `behavior_change: "medium"` or `"high"`:
+
+```markdown
+## Pre-Commit Review
+
+- [ ] Diff shown to user (not just described)
+- [ ] Behavior change clearly explained
+- [ ] Impact on existing workflows documented
+- [ ] User explicitly approved (not just silence)
+
+If any guard/restriction is added:
+- [ ] Existing functionality preserved OR explicitly deprecated
+- [ ] Fallback behavior documented
+- [ ] Migration path provided if breaking
+```
+
+### 24.5 Recovery Procedure
+
+If a behavior-changing commit was pushed without review:
+
+1. **Identify**: `git diff HEAD~1 HEAD -- <file>`
+2. **Assess impact**: What functionality was altered?
+3. **Decide**: Revert, amend, or accept with documentation
+4. **Document**: Add to `.cbsp21/incident_log.json` if functionality was lost
+
+### 24.6 Revision Notes Update
+
+| Rev | Date | Notes |
+|-----|------|-------|
+| 1.3 | 2026-01-03 | Added Section 24: Diff Review Gate (pre-commit behavior change review, redundancy check protocol, recovery procedure). |
+
+---
+
+## 25. Patch Input Manifest (Required)
+
+Every non-trivial change MUST include a patch manifest at:
+
+```
+.cbsp21/patch_input.json
+```
+
+This is the **first line of defense** against:
+
+- under-scanning (missing the real change)
+- falsely declaring a patch "redundant" when it contains small but important deltas
+- regressions introduced by "helpful" guardrails that subtly change behavior
+
+The manifest is the reviewer-facing contract. It must be **updated whenever the diff changes**.
+
+### 25.1 Required Fields (v1)
+
+- `schema_version`: `"cbsp21_patch_input_v1"`
+- `patch_id`: short stable ID for the patch (e.g., `BUNDLE_12`, `FIX_409_GUARD`, etc.)
+- `title`: one line
+- `intent`: 1–3 sentences
+- `change_type`: `code|docs|ci|mixed`
+- `behavior_change`: `none|compatible|breaking`
+- `risk_level`: `low|medium|high`
+- `scope.paths_in_scope`: directories this patch is allowed to touch
+- `scope.files_expected_to_change`: explicit list of files you expect to touch
+- `diff_articulation.what_changed`: 5–15 bullets of what actually changed
+- `diff_articulation.why_not_redundant`: explain what is different vs prior implementation
+- `verification.commands_run`: commands run (or "not run: <reason>")
+
+### 25.2 Hard Rule
+
+If you touch a file that is **not** listed in `files_expected_to_change` or `paths_in_scope`, the patch is **not eligible** until the manifest is updated.
+
+(Reason: this is how we stop "drive-by" edits from slipping in unnoticed.)
+
+### 25.3 Diff-Range Lock (Required)
+
+Every patch manifest MUST declare the diff range used to compute changed files, and must include the exact changed-file list derived from that range.
+
+**Required fields:**
+
+- `diff_range.base`: e.g. `"origin/main"`
+- `diff_range.head`: e.g. `"HEAD"`
+- `changed_files_count`: integer
+- `changed_files_exact`: string[] (paths)
+
+**Hard rule:**
+
+CI MUST compute changed files from `diff_range` and require that:
+
+1. `set(changed_files_exact) == set(actual_changed_files)`
+2. All code files are covered by the manifest
+
+This is the mechanical "no circling" lock — you cannot claim a diff range and then omit files from it.
+
+---
+
+## 26. Diff Review Gate (Behavior Preservation)
+
+Before merging (or before accepting a bot-generated patch), you MUST complete a **Diff Review Gate**:
+
+### 26.1 Show the Diff
+
+- Provide `git diff` (or a patch file) for review.
+- Call out any changes that alter conditions/guards/defaults, even if "minor".
+
+### 26.2 State Behavior Impact Explicitly
+
+You must answer these in the manifest (`diff_articulation` + `behavior_change`):
+
+- What inputs now fail that previously passed?
+- What outputs changed (shape, fields, ordering, defaults)?
+- What edge cases were tightened/relaxed?
+
+### 26.3 No "Redundant" Declaration Without Proof
+
+A change can only be labeled "redundant" if **one** of these is true:
+
+- `git diff` is empty, OR
+- the changes are purely formatting/comments, OR
+- you provide a short equivalence argument **plus** at least one validation command that demonstrates no behavior change.
+
+Anything else is "non-redundant" by definition.
+
+---
+
+## 27. Repo-Enforced Gate — Patch Input + Diff Articulation
+
+CI MUST fail if:
+
+- `.cbsp21/patch_input.json` is missing, OR
+- required fields are missing/invalid, OR
+- files changed are not declared in `files_expected_to_change` or `paths_in_scope`, OR
+- `behavior_change != "none"` but `diff_articulation.why_not_redundant` is empty or too short, OR
+- `diff_range` is missing, OR
+- `changed_files_exact` differs from actual git diff result for the declared `diff_range`.
+
+Reference implementation (repo scripts):
+
+- `scripts/ci/check_cbsp21_patch_input.py`
+- workflow: `.github/workflows/cbsp21_patch_input_gate.yml`
+
+This gate is intentionally small and mechanical: it doesn't "judge" the code — it enforces that we *described* the code change accurately.
+
+---
+
 **End of CBSP21**
+
