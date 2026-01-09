@@ -64,7 +64,7 @@ KIND_BY_RELPATH_RULES: List[Tuple[re.Pattern, str]] = [
     (re.compile(r"^coherence/.+\.json$", re.I), "coherence"),
     (re.compile(r"^ods/.+\.json$", re.I), "transfer_function"),  # ODS = transfer_function
     (re.compile(r"^wolf/.+candidates\.json$", re.I), "wolf_candidates"),
-    (re.compile(r"^wolf/.+\.csv$", re.I), "wsi_curve"),
+    (re.compile(r"^wolf/wsi_curve\.csv$", re.I), "wsi_curve"),
     (re.compile(r"^provenance/.+\.json$", re.I), "provenance"),
     (re.compile(r"^plots/.+\.png$", re.I), "plot_png"),
     (re.compile(r"^meta/.+\.json$", re.I), "session_meta"),
@@ -258,7 +258,7 @@ def export_viewer_pack(
         "contents": {
             "audio": any(e.relpath.startswith("audio/") for e in files),
             "spectra": any(e.relpath.startswith("spectra/") for e in files),
-            "coherence": any(e.relpath.startswith("coherence/") or e.relpath.startswith("ods/") for e in files),
+            "coherence": any(e.relpath.startswith("coherence/") for e in files),
             "ods": any(e.relpath.startswith("ods/") for e in files),
             "wolf": any(e.relpath.startswith("wolf/") for e in files),
             "plots": any(e.relpath.startswith("plots/") for e in files),
