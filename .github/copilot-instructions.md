@@ -1,158 +1,77 @@
 # Tap Tone Pi — AI Coding Agent Instructions
 
-## Mission & Boundaries
-**Acoustic measurement instrument for luthiers** — produces reproducible FFT/peak data, NOT voicing advice.
+## Mission (Non-Negotiable)
+**Acoustic measurement instrument** — outputs facts (peaks, coherence, phase, RMS), NOT design advice.
+- ✅ FFT spectra, ODS transfer functions, Wolf Stress Index, MOE values
+- ❌ NO tone scoring, voicing recommendations, or optimization suggestions
 
-- ✅ Output facts: peak frequencies, coherence, phase, RMS, spectra, ODS shapes, Wolf Stress Index
-- ❌ NO design recommendations, tone scoring, or optimization suggestions
-- See [MEASUREMENT_BOUNDARY.md](../docs/MEASUREMENT_BOUNDARY.md) for full policy
-
-## Repository Structure
-```
-tap_tone_pi/
-├── tap_tone/           # Phase 1: Core single-channel CLI (frozen baseline)
-│   ├── capture.py      # sounddevice audio I/O
-│   ├── analysis.py     # FFT + peak detection (pure functions)
-│   ├── storage.py      # Artifact persistence (WAV/JSON/CSV)
-│   └── main.py         # CLI entrypoint
-├── scripts/            # Phase 2: ODS/Coherence/Wolf metrics
-│   ├── roving_grid_capture.py    # 2-channel grid capture
-│   ├── ods_compute.py            # Transfer functions H(f)
-│   ├── grid_coherence.py         # γ²(f) coherence analysis
-│   └── wolf_metrics.py           # WSI(f) wolf stress index
-├── modes/              # Specialized measurement modes
-│   ├── bending_rig/    # MOE from load+displacement streams
-│   ├── acquisition/    # Serial capture (loadcell, dial indicator)
-│   └── _shared/        # emit_manifest.py, common utilities
-├── config/             # Device and grid configurations
-│   ├── devices/        # loadcell_example.json, dial_indicator_example.json
-│   └── grids/          # guitar_top_35pt.json (ODS grid definitions)
-├── docs/schemas/       # JSON schemas for artifact validation
-├── contracts/          # External interface schemas
-└── Makefile            # Measurement chain targets
-```
-
-**Two packages exist**: `tap_tone/` (stable v1.0) and `tap-tone-lab/` (experimental). Check which you're modifying.
-
-## Key Commands
+## CI Boundary — Will Fail Build
 ```bash
-# Install
-pip install -e .
+python ci/check_boundary_imports.py --preset analyzer  # Runs in CI
+```
+**Forbidden imports:** `app.*`, `services.*`, `packages.*` (Luthier's ToolBox namespaces)  
+**Pass data via artifacts** (JSON/CSV/WAV + manifests), never Python imports.
 
-# Phase 1 CLI (tap tone)
-tap-tone devices                           # List audio inputs
-tap-tone record --device 1 --seconds 2.5 --out ./captures --label "bridge_tap"
-tap-tone live --device 1 --out ./captures  # Continuous loop
+## Architecture
+```
+tap_tone/          # Phase 1 CLI (frozen v1.0) — single-channel tap tone
+scripts/phase2/    # Phase 2 package — 2-channel ODS, coherence, wolf metrics
+modes/             # Specialized modes: bending_rig/, chladni/, acquisition/
+contracts/         # Schema registry + *.schema.json output contracts
+```
+**Two packages:** `tap_tone/` is stable; `tap-tone-lab/` is experimental. Know which you're editing.
 
-# Phase 2: ODS / Wolf Metrics (Makefile)
-make grid-capture DEVICE=1 GRID=config/grids/guitar_top_35pt.json OUT=out/grid_001
-make phase2-analyze CAPDIR=out/grid_001 FREQS=100,150,185,220,280
-# Or individual steps:
-make ods-compute CAPDIR=out/grid_001 FREQS=100,150,185,220,280
-make grid-coherence CAPDIR=out/grid_001 FREQS=100,150,185,220,280
-make wolf-metrics CAPDIR=out/grid_001 WSI_THRESH=0.6
-
-# Bending Rig (MOE measurement)
-make loadcell CFG=config/devices/loadcell_example.json OUT=out/run/load_series.json
-make dial PORT=COM3 OUT=out/run/displacement_series.json UNIT=mm DUR=8
-make bend-merge-moe LOAD=out/run/load_series.json DISP=out/run/displacement_series.json \
-     OUTDIR=out/run/rig METHOD=3point SPAN=400 WIDTH=20 THICKNESS=3.0
-make plot-fvd PAIRS=out/run/rig/pairs.csv OUT=out/run/rig/f_vs_d.png
-make manifest OUT=out/run/manifest.json ARTIFACTS="--artifact ..." RIG="--rig k=v"
+## Commands
+```bash
+pip install -e .                                    # Install
+make test                                           # pytest suite
+python scripts/phase2_slice.py run --synthetic \    # Validate without hardware
+  --grid examples/phase2_grid_mm.json --out ./runs_phase2
 ```
 
-See [docs/MEASUREMENT_README.md](../docs/MEASUREMENT_README.md) for full bending rig workflow.
+## Code Patterns (Enforced)
 
-## Artifact Contract (Non-Negotiable)
-Every capture produces a timestamped folder:
-```
-capture_20251231T120000Z/
-├── audio.wav       # int16, mono or multi-channel
-├── analysis.json   # ts_utc, dominant_hz, peaks[], rms, clipped, confidence
-├── spectrum.csv    # freq_hz,magnitude (for reprocessing)
-└── session.jsonl   # Append-only session log (at parent dir)
-```
-
-Phase 2 grid captures produce:
-```
-grid_run_001/
-├── grid.json               # Grid definition (copied)
-├── points/                 # Per-point captures
-│   ├── A1/audio.wav        # 2-channel: ref + roving
-│   ├── A1/capture_meta.json
-│   └── ...
-└── derived/                # Computed outputs
-    ├── ods/ods_summary.json
-    ├── coherence/coherence_summary.json
-    └── wolf/wolf_candidates.json
-```
-
-Schema validation: `python scripts/validate_bundle.py --schemas-dir ./docs/schemas`
-
-## Code Patterns
-
-### DSP Functions Must Be Pure
+### Pure DSP Functions — No I/O in Analysis
 ```python
-# ✅ Good: analysis.py returns data, no I/O
+# tap_tone/analysis.py — returns dataclass, never writes files
 def analyze_tap(audio: np.ndarray, sample_rate: int, **params) -> AnalysisResult: ...
-
-# ❌ Bad: mixing analysis with file writes
-def analyze_and_save(audio, path): ...
 ```
+All file writes go through `storage.py` or `modes/_shared/emit_manifest.py`.
 
-### Dataclasses for Structured Results
+### WAV I/O — Single Source of Truth
+```python
+from modes._shared.wav_io import read_wav_mono, read_wav_2ch, write_wav_mono, write_wav_2ch
+# Readers: float32 [-1, 1] | Writers: accept float32, emit int16 PCM
+```
+Do NOT use `scipy.io.wavfile` directly elsewhere — causes int16↔float drift.
+
+### Frozen Dataclasses for Results
 ```python
 @dataclass(frozen=True)
-class Peak:
-    freq_hz: float
-    magnitude: float
-
-@dataclass(frozen=True)  
-class AnalysisResult:
-    dominant_hz: float | None
-    peaks: list[Peak]
-    spectrum_freq_hz: np.ndarray  # Always return full spectrum
-    spectrum_mag: np.ndarray
+class TFResult:  # scripts/phase2/dsp.py
+    freq_hz: np.ndarray
+    H_mag: np.ndarray
+    H_phase_deg: np.ndarray
+    coherence: np.ndarray
 ```
+Always return full spectrum arrays for downstream reprocessing.
 
-### Storage Layer Handles All I/O
-`storage.py` writes artifacts — analysis code should never touch filesystem.
+## Artifact Outputs
+Phase 2 sessions produce (`runs_phase2/session_*/`):
+- `points/point_*/audio.wav` — 2-channel (ch0=reference, ch1=roving)
+- `derived/ods_snapshot.json` — transfer function per point  
+- `derived/wolf_candidates.json` — WSI candidates
 
-## Technical Stack
-- Python 3.10+ (Pi OS compatibility)
-- `sounddevice` for audio (NOT PyAudio)
-- `scipy.signal` for FFT, filtering, peak detection, coherence
-- `scipy.fft.rfft` with Hanning window
-- Butterworth 2nd-order highpass at 20Hz
-- `pyserial` for hardware acquisition
-- `matplotlib` for plotting
+**Schema validation:** All outputs validated against `contracts/*.schema.json`.  
+**Registry:** `contracts/schema_registry.json` — bump version on schema changes.
 
-## When Modifying Code
+## When Adding Features
+1. **DSP:** Pure functions → frozen dataclass output → test with synthetic sine bursts
+2. **New output field:** Update schema, bump `schema_registry.json` version
+3. **Multi-channel:** Requires shared-clock interface (not independent USB mics)
+4. **Breaking change:** Document in `docs/ADR-*.md`
 
-### Adding DSP Features
-1. Keep functions pure — input arrays, output dataclasses
-2. Return full spectrum arrays (not just peaks) for downstream reprocessing
-3. Test with synthetic signals: `np.sin(2*np.pi*freq*t)` at known frequencies
-4. Update schema if adding new output fields
-
-### Multi-Channel Work (Phase 2+)
-- Requires single audio interface with shared clock (no independent USB mics)
-- Phase accuracy is critical — verify with `scripts/grid_coherence.py`
-- ODS: `H(f) = FFT(roving) / FFT(reference)` — reference is channel 0
-- Wolf metrics: WSI = weighted sum of gradient energy, phase entropy, localization, coherence
-
-### Schema Changes
-1. Update `docs/schemas/*.schema.json`
-2. Run `python scripts/validate_bundle.py` against existing captures
-3. Document in ADR if breaking backward compatibility
-
-## Hardware Context
-- Primary target: Raspberry Pi 4/5 with USB measurement mic (UMIK-1 class)
-- Test on Pi — ALSA behavior differs from desktop
-- Aim for RMS 0.01–0.05, avoid clipping (flagged in `analysis.json`)
-
-## Related Documentation
-- [BASELINE.md](../tap-tone-lab/BASELINE.md) — v1.0 frozen baseline definition
+## Key References
+- [docs/MEASUREMENT_BOUNDARY.md](../docs/MEASUREMENT_BOUNDARY.md) — Scope policy
+- [docs/MEASUREMENT_README.md](../docs/MEASUREMENT_README.md) — Bending rig quickstart
 - [DEV_HANDOFF.md](../DEV_HANDOFF.md) — Architecture overview
-- [ADR-0001](../docs/ADR-0001-measurement-scope.md) — Measurement-only boundary rationale
-- [MEASUREMENT_README.md](../docs/MEASUREMENT_README.md) — Bending rig quick-start
