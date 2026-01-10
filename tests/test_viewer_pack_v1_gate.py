@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
-Viewer Pack v1 Validation Gate (Producer Side)
+VIEWER_PACK_V1_CONTRACT_GATE (Producer Side)
 
-This gate ensures:
+Gate ID: VIEWER_PACK_V1_CONTRACT_GATE
+
+This is a CONTRACT GATE, not a feature test. It ensures:
   "If we export from real Phase 2 sessions, the pack validates."
 
 Gate layers:
@@ -14,7 +16,8 @@ Exit behavior:
   - Uses committed fixture sessions (deterministic CI)
   - Falls back to minimal synthetic session if fixtures unavailable
 
-Part of the cross-repo contract with luthiers-toolbox (ToolBox).
+Cross-repo contract with luthiers-toolbox (ToolBox).
+See: ToolBox docs/gates/VIEWER_PACK_V1_GATE.md
 """
 from __future__ import annotations
 
@@ -189,10 +192,10 @@ def get_available_sessions() -> list[Path]:
 
 class TestViewerPackV1Gate:
     """
-    Viewer Pack v1 Validation Gate.
+    VIEWER_PACK_V1_CONTRACT_GATE - Producer Export Tests.
 
-    This is the authoritative producer-side gate that ensures
-    exported packs validate against the contract.
+    Authoritative producer-side gate ensuring exported packs
+    validate against the contract.
     """
 
     def test_validator_cli_exists(self):
@@ -328,7 +331,9 @@ class TestViewerPackV1Gate:
 
 class TestViewerPackSchemaFreeze:
     """
-    Schema freeze tests to prevent accidental contract drift.
+    VIEWER_PACK_V1_CONTRACT_GATE - Schema Freeze Tests.
+
+    Prevent accidental contract drift in the canonical schema.
     """
 
     def test_schema_version_is_v1(self):
