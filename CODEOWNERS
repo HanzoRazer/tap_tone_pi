@@ -1,0 +1,2 @@
+# Require schema-owner review for any contract changes
+/contracts/** @acoustics-team @measurement-team @chladni-team
