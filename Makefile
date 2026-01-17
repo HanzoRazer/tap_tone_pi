@@ -192,6 +192,14 @@ examples-chladni-demo:
 	  --out out/DEMO/chladni/chladni_run.json
 	@$(MAKE) validate-schemas OUT_ROOT=out/DEMO SCHEMAS_ROOT=contracts/schemas
 
+# Hardware-free Phase-2 demo:
+#  - creates canonical filenames (metadata.json, grid.json, etc.)
+#  - validates against Phase-2 contracts
+.PHONY: examples-phase2-demo
+examples-phase2-demo:
+	@python examples/phase2/make_demo.py
+	@python scripts/validate_schemas.py --out-root runs_phase2/DEMO --schemas-root contracts
+
 # ---- Validation & CI ----
 
 # Validate viewer pack ZIP integrity

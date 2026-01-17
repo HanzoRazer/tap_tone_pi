@@ -48,6 +48,9 @@ jobs:
       - name: Run hardware-free Chladni demo
         run: make examples-chladni-demo
 
+      - name: Run hardware-free Phase-2 demo
+        run: make examples-phase2-demo
+
       - name: Validate Analyzer schemas (out/**)
         run: make validate-schemas
 
