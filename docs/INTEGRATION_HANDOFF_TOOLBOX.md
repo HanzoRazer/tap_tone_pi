@@ -278,3 +278,147 @@ print('QA examples valid')
 PY
 ```
 - Wire your retopo runner to record real `RetopoMetrics` after execution and re‑write the sidecar.
+
+---
+
+## Attachment Meta Index Integration (RMOS Acoustics)
+
+This section documents the contract for ToolBox endpoints that consume the attachment meta index produced by tap_tone_pi viewer packs.
+
+### Source Contract (Analyzer-side)
+
+The analyzer exports `viewer_pack_v1` ZIPs containing `viewer_pack.json` manifests. The ToolBox ingests these and builds an attachment meta index.
+
+**Index fields available for faceting/filtering:**
+
+| Field | Type | Source | Description |
+|-------|------|--------|-------------|
+| `kind` | string | `files[].kind` | Viewer-facing classification (non-interpretive) |
+| `mime` | string | `files[].mime` | MIME type |
+| `bytes` | int | `files[].bytes` | File size |
+| `sha256` | string | `files[].sha256` | Content hash |
+| `relpath` | string | `files[].relpath` | Path within ZIP |
+
+**Valid `kind` values** (from `contracts/viewer_pack_v1.schema.json`):
+```
+audio_raw, spectrum_csv, analysis_peaks, coherence,
+transfer_function, wolf_candidates, wsi_curve,
+provenance, plot_png, session_meta, manifest, unknown
+```
+
+### ToolBox Endpoint: Attachment Meta Facets
+
+**Purpose:** Return counts and unique values over the attachment meta index for UI orientation.
+
+**Route:**
+```
+GET /api/rmos/acoustics/index/attachment_meta/facets
+```
+
+**Response Schema:**
+```json
+{
+  "facets": {
+    "kind": {
+      "audio_raw": 128,
+      "spectrum_csv": 128,
+      "analysis_peaks": 128,
+      "wsi_curve": 16,
+      "wolf_candidates": 16,
+      "plot_png": 64
+    },
+    "mime": {
+      "audio/wav": 128,
+      "text/csv": 144,
+      "application/json": 64,
+      "image/png": 64
+    }
+  },
+  "total_attachments": 448,
+  "index_version": "attachment_meta_v1"
+}
+```
+
+**Rules (measurement-only):**
+- Counts only, no interpretation
+- Keys come directly from indexed metadata
+- Missing categories omitted (no zero rows)
+- Deterministic ordering (sorted keys)
+- No filesystem access — index-only
+- No shard paths disclosed
+
+**Pydantic schemas for ToolBox:**
+```python
+# services/api/app/rmos/acoustics/acoustics_schemas.py
+
+from pydantic import BaseModel
+from typing import Dict
+
+class AttachmentMetaFacetCounts(BaseModel):
+    kind: Dict[str, int]
+    mime: Dict[str, int]
+
+class AttachmentMetaFacetsOut(BaseModel):
+    facets: AttachmentMetaFacetCounts
+    total_attachments: int
+    index_version: str
+```
+
+**Implementation sketch:**
+```python
+# services/api/app/rmos/acoustics/attachment_meta.py
+
+from collections import Counter
+from typing import Dict, Any
+
+def compute_facets(index: list[dict]) -> dict:
+    """Compute facet counts from attachment meta index.
+    
+    Args:
+        index: List of attachment meta records (from ingested viewer packs)
+        
+    Returns:
+        Facet counts dict suitable for AttachmentMetaFacetsOut
+    """
+    kind_counts: Counter = Counter()
+    mime_counts: Counter = Counter()
+    
+    for record in index:
+        kind_counts[record.get("kind", "unknown")] += 1
+        mime_counts[record.get("mime", "application/octet-stream")] += 1
+    
+    return {
+        "facets": {
+            "kind": dict(sorted(kind_counts.items())),
+            "mime": dict(sorted(mime_counts.items())),
+        },
+        "total_attachments": len(index),
+        "index_version": "attachment_meta_v1",
+    }
+```
+
+**Router addition:**
+```python
+# services/api/app/rmos/acoustics/acoustics_router.py
+
+@router.get("/index/attachment_meta/facets", response_model=AttachmentMetaFacetsOut)
+async def get_attachment_meta_facets():
+    """Return facet counts for attachment meta index."""
+    index = load_attachment_meta_index()  # Your index loader
+    return compute_facets(index)
+```
+
+### Future: Recent Attachments Endpoint
+
+After facets, the next endpoint reuses the same index:
+
+```
+GET /api/rmos/acoustics/index/attachment_meta/recent?kind=...&limit=...
+```
+
+**Query params:**
+- `kind`: Filter by attachment kind (optional)
+- `limit`: Max results (default 20, max 100)
+
+**Response:** Same structure as browse, ordered by ingestion timestamp descending.
+

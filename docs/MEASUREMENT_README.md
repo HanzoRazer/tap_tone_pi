@@ -183,6 +183,43 @@ python modes/_shared/emit_manifest.py \
 
 ---
 
+## Viewer Pack Validation & Comparison
+
+### Validate a Viewer Pack ZIP
+
+```bash
+python scripts/viewer_pack_validate.py pack.zip
+# or via make:
+make validate-pack PACK=viewer_pack_session123.zip
+```
+
+Checks:
+- `viewer_pack.json` exists and validates against schema
+- All listed files exist in ZIP
+- SHA-256 and byte counts match manifest
+- bundle_sha256 integrity
+
+### Compare Two Viewer Packs (Measurement Regression)
+
+Use for before/after wood removal analysis:
+
+```bash
+python scripts/viewer_pack_diff.py baseline.zip after.zip --out diff_out/
+# or via make:
+make diff-packs BASELINE=pre.zip MODIFIED=post.zip DIFF_OUT=results/ PLOTS=1
+```
+
+Outputs (measurement-only, no interpretation):
+- `delta_summary.json` — alignment info + summary statistics
+- `delta_curves.csv` — per-frequency mean deltas
+- `plots/*.png` — overlay visualizations (with `--plots`)
+
+**Requirements:**
+- Same grid point IDs (fails if point sets differ)
+- Same frequency bins (fails if misaligned beyond 0.1 Hz)
+
+---
+
 ## Future: Acquisition Scripts
 
 For sensor capture (not yet implemented):

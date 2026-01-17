@@ -173,6 +173,14 @@ RH    ?=
 validate-schemas:
 	@python scripts/validate_schemas.py --out-root $(OUT_ROOT) --schemas-root $(SCHEMAS_ROOT)
 
+# Validate viewer pack ZIP integrity
+validate-pack:
+	@python scripts/viewer_pack_validate.py $(PACK)
+
+# Compare two viewer packs (measurement regression)
+diff-packs:
+	@python scripts/viewer_pack_diff.py $(BASELINE) $(MODIFIED) --out $(DIFF_OUT) $(if $(PLOTS),--plots,)
+
 # Run pytest suite (CI minimum bar)
 test:
 	@python -m pytest tests/ -v
@@ -184,13 +192,18 @@ test-wav-io:
 # Validation defaults
 OUT_ROOT     ?= out
 SCHEMAS_ROOT ?= contracts/schemas
+PACK         ?=
+BASELINE     ?=
+MODIFIED     ?=
+DIFF_OUT     ?= diff_out
+PLOTS        ?=
 
 # ---- Help ----
 
 .PHONY: help loadcell dial bend-merge-moe plot-fvd manifest
 .PHONY: grid-capture ods-compute grid-coherence wolf-metrics phase2-full phase2-analyze
 .PHONY: sim-load sim-dial chladni-peaks chladni-index
-.PHONY: validate-schemas test test-wav-io
+.PHONY: validate-schemas validate-pack diff-packs test test-wav-io
 
 help:
 	@echo "Acquisition Targets:"
@@ -212,6 +225,8 @@ help:
 	@echo ""
 	@echo "Validation Targets (CI minimum bar):"
 	@echo "  validate-schemas  Validate out/** artifacts against contracts/schemas"
+	@echo "  validate-pack     Validate viewer pack ZIP integrity (requires PACK)"
+	@echo "  diff-packs        Compare two viewer packs (requires BASELINE, MODIFIED)"
 	@echo "  test              Run pytest suite"
 	@echo "  test-wav-io       Run WAV I/O tests only"
 	@echo ""
@@ -223,6 +238,11 @@ help:
 	@echo ""
 	@echo "  make grid-capture DEVICE=1 GRID=config/grids/guitar_top_35pt.json OUT=out/grid_001"
 	@echo "  make phase2-analyze CAPDIR=out/grid_001 FREQS=100,150,185,220,280"
+	@echo ""
+	@echo "Viewer Pack Validation/Diff Examples:"
+	@echo "  make validate-pack PACK=viewer_pack_session123.zip"
+	@echo "  make diff-packs BASELINE=pre_intervention.zip MODIFIED=post_intervention.zip"
+	@echo "  make diff-packs BASELINE=pre.zip MODIFIED=post.zip DIFF_OUT=results/ PLOTS=1"
 	@echo ""
 	@echo "Simulator Targets (hardware-free):"
 	@echo "  sim-load        Simulated load cell → load_series.json"
