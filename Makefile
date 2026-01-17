@@ -173,9 +173,13 @@ RH    ?=
 validate-schemas:
 	@python scripts/validate_schemas.py --out-root $(OUT_ROOT) --schemas-root $(SCHEMAS_ROOT)
 
-# Validate viewer pack ZIP integrity
+# Validate viewer pack ZIP integrity (post-export)
 validate-pack:
 	@python scripts/viewer_pack_validate.py $(PACK)
+
+# Validate staged pack directory (pre-export)
+validate-staged-pack:
+	@python -m tap_tone.validate.viewer_pack_v1 $(STAGED_PACK) $(if $(REPORT),--report $(REPORT),) $(if $(AUDIO_REQUIRED),--audio-required,)
 
 # Compare two viewer packs (measurement regression)
 diff-packs:
@@ -190,13 +194,16 @@ test-wav-io:
 	@python -m pytest tests/test_wav_io.py tests/test_wav_io_roundtrip.py -v
 
 # Validation defaults
-OUT_ROOT     ?= out
-SCHEMAS_ROOT ?= contracts/schemas
-PACK         ?=
-BASELINE     ?=
-MODIFIED     ?=
-DIFF_OUT     ?= diff_out
-PLOTS        ?=
+OUT_ROOT       ?= out
+SCHEMAS_ROOT   ?= contracts/schemas
+PACK           ?=
+STAGED_PACK    ?=
+REPORT         ?=
+AUDIO_REQUIRED ?=
+BASELINE       ?=
+MODIFIED       ?=
+DIFF_OUT       ?= diff_out
+PLOTS          ?=
 
 # ---- Help ----
 
