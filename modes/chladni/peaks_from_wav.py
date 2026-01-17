@@ -50,7 +50,7 @@ def main() -> None:
     args = ap.parse_args()
 
     # Read WAV using canonical layer
-    meta, x = read_wav_mono(pathlib.Path(args.wav))
+    x, meta = read_wav_mono(pathlib.Path(args.wav))
     fs = meta.sample_rate
 
     N = len(x)

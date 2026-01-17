@@ -2,7 +2,7 @@
 from __future__ import annotations
 import pytest
 
-from modes.chladni.index_patterns import attach_pattern_record, finalize_run
+from modes.chladni.policy import attach_pattern_record, finalize_run
 
 
 def test_chladni_tolerance_warn_and_pass(monkeypatch):

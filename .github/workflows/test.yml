@@ -45,6 +45,9 @@ jobs:
         run: |
           python -m pytest tests/ -v --tb=short
 
+      - name: Run hardware-free Chladni demo
+        run: make examples-chladni-demo
+
       - name: Validate Analyzer schemas (out/**)
         run: make validate-schemas
 

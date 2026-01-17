@@ -2,12 +2,19 @@
 # =========================================
 # Usage: make <target> VAR=value ...
 
+# Ensure repo root is in Python path for imports
+export PYTHONPATH := $(CURDIR)
+
+# Schema validation defaults
+OUT_ROOT     ?= out
+SCHEMAS_ROOT ?= contracts/schemas
+
 .PHONY: validate-schemas
 
 # Validate Analyzer artifacts in out/** against contracts/schemas/*
 # Exits 0 if no artifacts exist (keeps CI green on fresh repos).
 validate-schemas:
-	@python scripts/validate_schemas.py --out-root out --schemas-root contracts/schemas
+	@python scripts/validate_schemas.py --out-root $(OUT_ROOT) --schemas-root $(SCHEMAS_ROOT)
 
 # ---- Acquisition: serial sensor capture ----
 
@@ -167,11 +174,25 @@ PLATE ?= UNKNOWN
 TEMP  ?=
 RH    ?=
 
-# ---- Validation & CI ----
+# Hardware-free Chladni demo:
+#  - generates a tiny WAV with two tones and two placeholder PNGs
+#  - extracts peaks and indexes images into chladni_run.json
+#  - validates artifacts against contracts
+.PHONY: examples-chladni-demo
+examples-chladni-demo:
+	@python examples/chladni/make_demo.py
+	@python modes/chladni/peaks_from_wav.py \
+	  --wav out/DEMO/chladni/capture.wav \
+	  --out out/DEMO/chladni/peaks.json \
+	  --min-hz 100 --max-hz 400 --prominence 0.02
+	@python modes/chladni/index_patterns.py \
+	  --peaks-json out/DEMO/chladni/peaks.json \
+	  --images out/DEMO/chladni/F0148.png out/DEMO/chladni/F0226.png \
+	  --plate-id DEMO_PLATE --tempC 22 --rh 45 \
+	  --out out/DEMO/chladni/chladni_run.json
+	@$(MAKE) validate-schemas OUT_ROOT=out/DEMO SCHEMAS_ROOT=contracts/schemas
 
-# Validate output artifacts against contract schemas
-validate-schemas:
-	@python scripts/validate_schemas.py --out-root $(OUT_ROOT) --schemas-root $(SCHEMAS_ROOT)
+# ---- Validation & CI ----
 
 # Validate viewer pack ZIP integrity
 validate-pack:
