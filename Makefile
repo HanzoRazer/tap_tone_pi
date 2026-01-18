@@ -193,6 +193,25 @@ test:
 test-wav-io:
 	@python -m pytest tests/test_wav_io.py tests/test_wav_io_roundtrip.py -v
 
+# ---- Hardware-free Demos ----
+
+.PHONY: examples-chladni-demo examples-phase2-demo examples-moe-demo
+
+# Chladni v1 demo (creates capture.wav + peaks.json + images + chladni_run.json + manifest)
+examples-chladni-demo:
+	@python examples/chladni/make_demo.py
+	@python scripts/validate_schemas.py --out-root out --schemas-root contracts/schemas
+
+# Phase-2 ODS demo (creates session with canonical filenames)
+examples-phase2-demo:
+	@python examples/phase2/make_demo.py
+	@python scripts/validate_schemas.py --out-root runs_phase2 --schemas-root contracts/schemas
+
+# Hardware-free MOE demo (creates moe_result.json and validates)
+examples-moe-demo:
+	@python examples/moe/make_demo.py
+	@python scripts/validate_schemas.py --out-root out --schemas-root contracts/schemas
+
 # Validation defaults
 OUT_ROOT       ?= out
 SCHEMAS_ROOT   ?= contracts/schemas
