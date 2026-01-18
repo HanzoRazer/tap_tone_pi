@@ -26,10 +26,130 @@ import os
 import pathlib
 import re
 import time
+from datetime import datetime, timezone
+from typing import Iterable, List
 
 # Frequency mismatch tolerance (Hz) - configurable via environment
 CHLADNI_FREQ_TOLERANCE_HZ = float(os.getenv("CHLADNI_FREQ_TOLERANCE_HZ", "5.0"))
 
+
+# ---------------------------------------------------------------------------
+# Manifest helpers
+# ---------------------------------------------------------------------------
+
+def _sha256_file(path: pathlib.Path) -> str:
+    """Compute SHA-256 hash of a file."""
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _now_utc_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def append_chladni_to_run_manifest(
+    run_dir: str | pathlib.Path,
+    *,
+    wav_path: str | pathlib.Path,
+    peaks_json_path: str | pathlib.Path,
+    image_paths: Iterable[str | pathlib.Path],
+    chladni_run_json_path: str | pathlib.Path,
+    manifest_name: str = "manifest.json",
+) -> pathlib.Path:
+    """
+    Append Chladni artifacts to the run-level manifest out/<RUN_ID>/manifest.json.
+
+    Artifacts added (with SHA-256):
+      - WAV microphone capture
+      - peaks JSON (from peaks_from_wav)
+      - each Chladni PNG image
+      - chladni_run.json (the run index)
+
+    If modes/_shared/emit_manifest.py exists and provides append/save utilities,
+    those are used. Otherwise, this function maintains a minimal 'measurement_manifest'
+    document with fields:
+      { schema_id, schema_version, created_utc, artifacts: [ {path, sha256, artifact_type} ] }
+
+    Returns:
+      Path to the manifest.json that was written.
+    """
+    run_dir = pathlib.Path(run_dir)
+    run_dir.mkdir(parents=True, exist_ok=True)
+    manifest_path = run_dir / manifest_name
+
+    # Build entries (relative paths, deterministic order).
+    # Artifact types are descriptive but remain "facts-only".
+    def rel(p: str | pathlib.Path) -> str:
+        return os.path.relpath(pathlib.Path(p), start=run_dir)
+
+    images: List[pathlib.Path] = [pathlib.Path(p) for p in image_paths]
+    entries = [
+        {"path": rel(wav_path),             "sha256": _sha256_file(pathlib.Path(wav_path)),             "artifact_type": "chladni_wav"},
+        {"path": rel(peaks_json_path),      "sha256": _sha256_file(pathlib.Path(peaks_json_path)),      "artifact_type": "chladni_peaks"},
+        *[
+            {"path": rel(ip),               "sha256": _sha256_file(ip),                                  "artifact_type": "chladni_image"}
+            for ip in sorted(images, key=lambda x: x.name.lower())
+        ],
+        {"path": rel(chladni_run_json_path),"sha256": _sha256_file(pathlib.Path(chladni_run_json_path)),"artifact_type": "chladni_run"},
+    ]
+
+    # Try to use the shared manifest utility if it exists.
+    try:
+        from modes._shared import emit_manifest  # type: ignore
+
+        # Load or initialize via shared utility if available.
+        if manifest_path.exists():
+            doc = json.loads(manifest_path.read_text(encoding="utf-8"))
+        else:
+            doc = emit_manifest.new_manifest()  # expected to set schema_id/version/created_utc
+        # Append entries without duplication.
+        for e in entries:
+            emit_manifest.append_entry(doc, e["path"], e["sha256"], e.get("artifact_type"))
+        emit_manifest.save_manifest(doc, manifest_path)
+        return manifest_path
+
+    except Exception:
+        # Fallback: minimal manifest writer (no dependency on emit_manifest).
+        if manifest_path.exists():
+            try:
+                doc = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except Exception:
+                doc = {}
+        else:
+            doc = {}
+
+        # Initialize minimal manifest if missing.
+        if not isinstance(doc, dict) or "schema_id" not in doc:
+            doc = {
+                "schema_id": "measurement_manifest",
+                "schema_version": "1.0",
+                "created_utc": _now_utc_iso(),
+                "artifacts": [],
+            }
+
+        # Ensure artifacts list exists.
+        arts = doc.get("artifacts")
+        if not isinstance(arts, list):
+            arts = []
+            doc["artifacts"] = arts
+
+        # Idempotent append: skip if same path already present (any SHA).
+        existing_paths = {a["path"] for a in arts if isinstance(a, dict) and "path" in a}
+        for e in entries:
+            if e["path"] not in existing_paths:
+                arts.append(e)
+
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+        return manifest_path
+
+
+# ---------------------------------------------------------------------------
+# Core functions
+# ---------------------------------------------------------------------------
 
 def sha256(path: str) -> str:
     h = hashlib.sha256()
