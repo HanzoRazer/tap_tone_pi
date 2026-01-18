@@ -295,3 +295,19 @@ python modes/chladni/index_patterns.py \
   --tempC 22.0 --rh 45.0 \
   --out out/RUN/chladni_run.json
 ```
+
+---
+
+## Local CI Dry Run
+
+To reproduce the CI pipeline locally (tests → coverage → demos → schema validation):
+
+```bash
+make ci-dry-run
+```
+
+This runs:
+1. `pytest -q`
+2. `pytest --cov=modes --cov=scripts --cov-report=xml -q` (coverage ≥ 80% required)
+3. `make examples-chladni-demo && make examples-phase2-demo`
+4. `make validate-schemas`

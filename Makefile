@@ -262,3 +262,25 @@ help:
 	@echo "  make chladni-index PEAKS=out/DEMO/chladni/peaks.json \\"
 	@echo "       IMGS=\"out/DEMO/chladni/F0148.png out/DEMO/chladni/F0226.png\" \\"
 	@echo "       PLATE=J45_TOP_2025_12_31_A TEMP=22.0 RH=45.0 OUT=out/DEMO/chladni/chladni_run.json"
+
+# ---- Local CI Dry Run ----
+
+.PHONY: ci-dry-run examples-chladni-demo examples-phase2-demo
+
+# Runs the same steps you'd expect in CI, locally:
+#  - pytest
+#  - coverage (>=80% gate)
+#  - hardware-free demos (Chladni + Phase-2)
+#  - schema validation
+ci-dry-run:
+	@bash scripts/ci_dry_run.sh
+
+# Hardware-free Chladni demo (deterministic)
+examples-chladni-demo:
+	@python examples/chladni/make_demo.py
+	@$(MAKE) validate-schemas OUT_ROOT=out
+
+# Hardware-free Phase-2 demo (deterministic)
+examples-phase2-demo:
+	@python examples/phase2/make_demo.py
+	@$(MAKE) validate-schemas OUT_ROOT=runs_phase2
