@@ -88,31 +88,48 @@ def main():
 
     print(f"Wrote {len(point_ids)} point captures")
 
-    # Create minimal ODS snapshot
+    # Create minimal ODS snapshot (matches phase2_ods_snapshot.schema.json)
+    # Points as array with x_mm, y_mm; capdir and provenance required
+    grid_coords = {"A1": (0.0, 0.0), "A2": (50.0, 0.0), "B1": (0.0, 50.0)}
     ods_snapshot = {
-        "schema_id": "phase2_ods_snapshot",
         "schema_version": "phase2_ods_snapshot_v2",
-        "created_utc": now(),
-        "freq_hz": [100.0, 150.0, 200.0, 250.0],
-        "points": {
-            pid: {
+        "capdir": str(points_dir),
+        "freqs_hz": [100.0, 150.0, 200.0, 250.0],
+        "points": [
+            {
+                "point_id": pid,
+                "x_mm": grid_coords[pid][0],
+                "y_mm": grid_coords[pid][1],
                 "H_mag": [0.5, 0.8, 1.0, 0.6],
                 "H_phase_deg": [10.0, 20.0, 30.0, 40.0],
                 "coherence": [0.9, 0.95, 0.98, 0.85],
             }
             for pid in point_ids
+        ],
+        "provenance": {
+            "algo_id": "phase2_demo_synth",
+            "algo_version": "1.0.0",
+            "numpy_version": np.__version__,
+            "scipy_version": "1.11.0",
+            "computed_at_utc": now(),
         },
     }
     write_json(derived_dir / "ods_snapshot.json", ods_snapshot)
     print(f"Wrote ods_snapshot.json")
 
-    # Create minimal wolf candidates
+    # Create minimal wolf candidates (matches phase2_wolf_candidates.schema.json)
+    # Flat thresholds, not nested; provenance required
     wolf_candidates = {
-        "schema_id": "phase2_wolf_candidates",
         "schema_version": "phase2_wolf_candidates_v2",
-        "created_utc": now(),
-        "thresholds": {"wsi_threshold": 0.6, "coherence_threshold": 0.7},
+        "wsi_threshold": 0.6,
+        "coherence_threshold": 0.7,
         "candidates": [],  # No wolves in demo
+        "provenance": {
+            "algo_id": "phase2_wsi_demo",
+            "algo_version": "1.0.0",
+            "numpy_version": np.__version__,
+            "computed_at_utc": now(),
+        },
     }
     write_json(derived_dir / "wolf_candidates.json", wolf_candidates)
     print(f"Wrote wolf_candidates.json")

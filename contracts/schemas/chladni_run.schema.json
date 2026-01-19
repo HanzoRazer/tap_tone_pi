@@ -64,6 +64,25 @@
         "mic_wav_sha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" }
       },
       "required": ["peaks_json_path", "peaks_sha256"]
+    },
+
+    "_policy": {
+      "type": "object",
+      "description": "Operational policy metadata (not part of core contract)",
+      "properties": {
+        "freq_tolerance_hz": { "type": "number", "minimum": 0 },
+        "worst_delta_hz": { "type": "number", "minimum": 0 }
+      }
+    },
+    "_warnings": {
+      "type": "array",
+      "description": "Non-fatal warnings from policy checks",
+      "items": { "type": "string" }
+    },
+    "_errors": {
+      "type": "array",
+      "description": "Fatal errors from policy checks",
+      "items": { "type": "string" }
     }
   },
   "required": [
