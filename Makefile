@@ -2,6 +2,26 @@
 # =========================================
 # Usage: make <target> VAR=value ...
 
+# ---- Build & Distribution ----
+
+.PHONY: build dist clean-dist lint typecheck
+
+build:
+	python -m build
+
+dist: clean-dist build
+	@echo "Wheel + sdist ready in dist/"
+
+clean-dist:
+	rm -rf dist/ build/ *.egg-info
+
+lint:
+	ruff check .
+	ruff format --check .
+
+typecheck:
+	mypy tap_tone modes scripts --config-file mypy.ini
+
 # ---- Acquisition: serial sensor capture ----
 
 loadcell:
