@@ -43,7 +43,7 @@ jobs:
 
       - name: Run pytest suite with coverage
         run: |
-          python -m pytest tests/ -v --tb=short --cov=tap_tone --cov=modes --cov-report=term-missing 
+          python -m pytest tests/ -v --tb=short --cov=tap_tone --cov=modes --cov-report=term-missing --cov-fail-under=20 
 
       - name: Run hardware-free Chladni demo
         run: make examples-chladni-demo
