@@ -1,0 +1,80 @@
+# ────────────────────────────────────────────────────────────────────────────────
+# Dispatch ToolBox Ingest Smoke Tests on Analyzer Release
+# ────────────────────────────────────────────────────────────────────────────────
+#
+# When a new analyzer-v* tag is pushed, dispatches to the ToolBox repo to trigger
+# ingest smoke tests that validate cross-repo compatibility.
+#
+# Required secrets:
+#   TOOLBOX_DISPATCH_TOKEN - Fine-grained PAT with "Contents: Read and write"
+#                            permission for the ToolBox repo, OR a classic PAT
+#                            with "repo" scope.
+#
+# ────────────────────────────────────────────────────────────────────────────────
+
+name: Dispatch ToolBox Ingest
+
+on:
+  push:
+    tags:
+      - 'analyzer-v*'
+
+  # Manual trigger for testing the dispatch mechanism
+  workflow_dispatch:
+    inputs:
+      tag_override:
+        description: "Tag to send (defaults to latest analyzer-v* tag)"
+        required: false
+        default: ""
+
+jobs:
+  dispatch:
+    name: "Dispatch to ToolBox"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (for tag resolution)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            # Tag push - use the pushed tag
+            TAG="${GITHUB_REF#refs/tags/}"
+          elif [[ -n "${{ github.event.inputs.tag_override }}" ]]; then
+            # Manual with override
+            TAG="${{ github.event.inputs.tag_override }}"
+          else
+            # Manual without override - find latest analyzer-v* tag
+            TAG=$(git tag -l 'analyzer-v*' --sort=-v:refname | head -n1)
+            if [[ -z "$TAG" ]]; then
+              echo "::error::No analyzer-v* tags found"
+              exit 1
+            fi
+          fi
+
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Resolved tag: $TAG"
+
+      - name: Dispatch to ToolBox
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.TOOLBOX_DISPATCH_TOKEN }}
+          repository: HanzoRazer/luthiers-toolbox
+          event-type: analyzer-release
+          client-payload: '{"analyzer_tag": "${{ steps.tag.outputs.tag }}", "triggered_by": "${{ github.actor }}", "source_sha": "${{ github.sha }}"}'
+
+      - name: Summary
+        run: |
+          echo "## Dispatch Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Tag | \`${{ steps.tag.outputs.tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Target Repo | HanzoRazer/luthiers-toolbox |" >> $GITHUB_STEP_SUMMARY
+          echo "| Event Type | \`analyzer-release\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Triggered By | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The ToolBox repo should now run its **Analyzer Release Ingest Smoke** workflow." >> $GITHUB_STEP_SUMMARY
