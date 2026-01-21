@@ -300,9 +300,21 @@ def export_viewer_pack(
     report_path = write_validation_report(pack_root, report)
 
     if not report.passed:
+        excerpt = []
+        for e in (report.errors or [])[:3]:
+            rule = e.get("rule", "?")
+            msg = e.get("message", "")
+            path = e.get("path")
+            if path:
+                excerpt.append(f"{rule}: {msg} ({path})")
+            else:
+                excerpt.append(f"{rule}: {msg}")
+
+        excerpt_txt = "; ".join(excerpt) if excerpt else "No error details available."
         raise ValueError(
             f"viewer_pack_v1 validation failed: "
             f"errors={len(report.errors)} warnings={len(report.warnings)}. "
+            f"{excerpt_txt}. "
             f"See {report_path}"
         )
 

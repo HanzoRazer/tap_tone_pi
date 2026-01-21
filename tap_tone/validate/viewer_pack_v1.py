@@ -106,20 +106,41 @@ def validate_pack(
     Returns:
         ValidationReport with errors, warnings, and stats
     """
+    pack = Path(pack_path).resolve()
+
     report = ValidationReport(
         validated_at_utc=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        pack_path=str(pack_path),
+        pack_path=str(pack),
     )
 
     stats = {
+        "point_count_manifest": 0,
         "points_checked": 0,
+
+        "spectrum_files_expected": 0,
+        "spectrum_files_found": 0,
         "spectra_valid": 0,
+
+        "analysis_files_expected": 0,
+        "analysis_files_found": 0,
         "peaks_aligned": 0,
+
+        "audio_files_expected": 0,
+        "audio_files_found": 0,
         "audio_present": 0,
+
+        "wsi_present": 0,
         "wsi_valid": 0,
+
+        "error_count": 0,
+        "warning_count": 0,
     }
 
-    pack = Path(pack_path)
+    def _finalize() -> ValidationReport:
+        stats["error_count"] = len(report.errors)
+        stats["warning_count"] = len(report.warnings)
+        report.stats = stats
+        return report
 
     # ========================================
     # M-001: Manifest Existence
@@ -127,8 +148,7 @@ def validate_pack(
     manifest_path = pack / "viewer_pack.json"
     if not manifest_path.exists():
         report.add_error("M-001", "Manifest viewer_pack.json not found at pack root", "viewer_pack.json")
-        report.stats = stats
-        return report
+        return _finalize()
 
     # Load manifest
     try:
@@ -136,8 +156,7 @@ def validate_pack(
             manifest = json.load(f)
     except json.JSONDecodeError as e:
         report.add_error("M-001", f"Manifest is not valid JSON: {e}", "viewer_pack.json")
-        report.stats = stats
-        return report
+        return _finalize()
 
     # ========================================
     # M-002: Schema Identity
@@ -157,9 +176,9 @@ def validate_pack(
     points = manifest.get("points", [])
     if not points or not isinstance(points, list):
         report.add_error("M-003", "Points list empty or missing", "viewer_pack.json")
-        report.stats = stats
-        return report
+        return _finalize()
 
+    stats["point_count_manifest"] = len(points)
     stats["points_checked"] = len(points)
 
     # ========================================
@@ -410,8 +429,7 @@ def validate_pack(
             except json.JSONDecodeError as e:
                 report.add_warning("O-001", f"Optional file is not valid JSON: {e}", str(opt_path.relative_to(pack)))
 
-    report.stats = stats
-    return report
+    return _finalize()
 
 
 def write_validation_report(pack_path: Path, report: ValidationReport) -> Path:
