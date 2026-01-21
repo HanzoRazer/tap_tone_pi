@@ -414,6 +414,21 @@ def validate_pack(
     return report
 
 
+def write_validation_report(pack_path: Path, report: ValidationReport) -> Path:
+    """Persist validation_report.json into the pack root directory.
+
+    Args:
+        pack_path: Path to the staged pack directory
+        report: ValidationReport to persist
+
+    Returns:
+        Path to the written validation_report.json file
+    """
+    out = Path(pack_path) / "validation_report.json"
+    out.write_text(json.dumps(report.to_dict(), indent=2, sort_keys=False), encoding="utf-8")
+    return out
+
+
 def main() -> int:
     """CLI entry point."""
     parser = argparse.ArgumentParser(

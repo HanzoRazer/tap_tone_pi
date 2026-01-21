@@ -39,6 +39,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from zipfile import ZipFile, ZIP_DEFLATED
 
+# Pre-export validation gate
+from tap_tone.validate.viewer_pack_v1 import validate_pack, write_validation_report
+
 
 # Canonical kind vocabulary (single source of truth)
 # ToolBox viewer dispatches on these exact strings
@@ -283,6 +286,25 @@ def export_viewer_pack(
     manifest["bundle_sha256"] = bundle_sha
     manifest_path = pack_root / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+
+    # ========================================
+    # Pre-export validation gate
+    # ========================================
+    # Manifest uses viewer_pack.json internally but validator expects it
+    # Rename for validation compatibility
+    viewer_pack_json = pack_root / "viewer_pack.json"
+    if not viewer_pack_json.exists():
+        shutil.copy2(manifest_path, viewer_pack_json)
+
+    report = validate_pack(pack_root)
+    report_path = write_validation_report(pack_root, report)
+
+    if not report.passed:
+        raise ValueError(
+            f"viewer_pack_v1 validation failed: "
+            f"errors={len(report.errors)} warnings={len(report.warnings)}. "
+            f"See {report_path}"
+        )
 
     # Zip if requested
     if as_zip:
