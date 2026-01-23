@@ -2,6 +2,36 @@
 # =========================================
 # Usage: make <target> VAR=value ...
 
+# ---- Dev Environment ----
+
+.PHONY: install-dev
+install-dev:
+	@python -m pip install --upgrade pip
+	@pip install -r requirements-dev.txt
+	@pre-commit install
+	@echo "✅ Dev env ready. Pre-commit hooks installed."
+
+.PHONY: schema-guard
+schema-guard:
+	@python scripts/ci_guard_schema_bump.py
+
+.PHONY: run-tests
+run-tests:
+	@pytest -q
+
+.PHONY: precommit
+precommit:
+	@pre-commit run --all-files --show-diff-on-failure
+
+.PHONY: format
+format:
+	@ruff check --fix .
+	@black .
+
+.PHONY: run-id-demo
+run-id-demo:
+	@python -c "from modes._shared.run_id import new_run_dir; print(new_run_dir('out'))"
+
 # ---- Build & Distribution ----
 
 .PHONY: build dist clean-dist lint typecheck
@@ -77,6 +107,38 @@ DPI ?= 150
 TITLE ?= Force vs Displacement
 
 # ---- Phase 2: ODS / Grid Measurement Chain ----
+
+# Gold-Run: one-command automated measurement (dry-run by default in Makefile)
+gold-run:
+	@python -m tap_tone.cli.gold_run \
+	  --specimen-id $(SPECIMEN) \
+	  --device $(DEVICE) \
+	  --out-dir $(GOLD_OUT) \
+	  --points $(GOLD_POINTS) \
+	  $(if $(GOLD_SESSION),--session-id $(GOLD_SESSION),) \
+	  $(if $(GOLD_BATCH),--batch-label $(GOLD_BATCH),) \
+	  $(if $(GOLD_DRY),--dry-run,) \
+	  $(if $(GOLD_JSON),--json,) \
+	  $(if $(GOLD_INGEST),--ingest,)
+
+# Gold-Run: dry-run (safe preview)
+gold-run-dry:
+	@python -m tap_tone.cli.gold_run \
+	  --specimen-id $(SPECIMEN) \
+	  --device $(DEVICE) \
+	  --out-dir $(GOLD_OUT) \
+	  --points $(GOLD_POINTS) \
+	  --dry-run
+
+# Gold-Run defaults
+SPECIMEN     ?= test_plate
+GOLD_OUT     ?= ./exports
+GOLD_POINTS  ?= 3
+GOLD_SESSION ?=
+GOLD_BATCH   ?=
+GOLD_DRY     ?=
+GOLD_JSON    ?=
+GOLD_INGEST  ?=
 
 grid-capture:
 	@python scripts/roving_grid_capture.py capture \

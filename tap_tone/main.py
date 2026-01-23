@@ -76,6 +76,29 @@ def cmd_live(args: argparse.Namespace) -> int:
         print("\nStopped.")
         return 0
 
+def cmd_gold_run(args: argparse.Namespace) -> int:
+    """Dispatch to gold-run module."""
+    from .cli.gold_run import main as gold_run_main
+    # Pass remaining args to gold-run's own parser
+    gold_argv = []
+    gold_argv.extend(["--specimen-id", args.specimen_id])
+    gold_argv.extend(["--device", str(args.device)])
+    gold_argv.extend(["--out-dir", str(args.out_dir)])
+    if args.points != 3:
+        gold_argv.extend(["--points", str(args.points)])
+    if args.dry_run:
+        gold_argv.append("--dry-run")
+    if args.json:
+        gold_argv.append("--json")
+    if args.ingest:
+        gold_argv.append("--ingest")
+    if args.session_id:
+        gold_argv.extend(["--session-id", args.session_id])
+    if args.batch_label:
+        gold_argv.extend(["--batch-label", args.batch_label])
+    return gold_run_main(gold_argv)
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="tap-tone", description="Offline tap tone analyzer")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -100,6 +123,18 @@ def build_parser() -> argparse.ArgumentParser:
     p_live.add_argument("--out", type=str, required=True)
     p_live.add_argument("--label", type=str, default=None)
     p_live.set_defaults(fn=cmd_live)
+
+    p_gold = sub.add_parser("gold-run", help="One-command Gold Standard Run")
+    p_gold.add_argument("--specimen-id", required=True, help="Specimen identifier")
+    p_gold.add_argument("--device", required=True, help="Audio device (index or name)")
+    p_gold.add_argument("--out-dir", required=True, help="Output directory for ZIP")
+    p_gold.add_argument("--points", type=int, default=3, help="Number of points (default: 3)")
+    p_gold.add_argument("--session-id", help="Custom session ID")
+    p_gold.add_argument("--batch-label", help="Batch label for grouping")
+    p_gold.add_argument("--dry-run", action="store_true", help="Preview mode, no capture")
+    p_gold.add_argument("--json", action="store_true", help="Output JSON summary")
+    p_gold.add_argument("--ingest", action="store_true", help="Ingest to ToolBox")
+    p_gold.set_defaults(fn=cmd_gold_run)
 
     return p
 
