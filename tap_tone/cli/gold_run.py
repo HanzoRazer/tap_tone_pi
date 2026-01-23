@@ -552,6 +552,10 @@ def run_gold_run(cfg: GoldRunConfig) -> GoldRunResult:
                 # Always print the canonical URL for copy/share
                 print(f"    URL: {url}")
 
+                # Print shortened bundle SHA for quick identity verification
+                if bundle_sha:
+                    print(f"    Bundle SHA: {bundle_sha[:16]}…")
+
                 opened = try_open_url(url)
                 if opened:
                     print("    Browser: opened")
