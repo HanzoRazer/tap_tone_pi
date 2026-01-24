@@ -35,8 +35,14 @@ def load_registry(schemas_root: Path) -> Dict[Tuple[str, str], dict]:
     
     reg = json.loads(registry_path.read_text(encoding="utf-8"))
     loaded = {}
-    for ent in reg["schemas"]:
-        sid, ver, f = ent["schema_id"], ent["version"], ent["file"]
+    schemas = reg["schemas"]
+    # Handle both list format and dict format
+    if isinstance(schemas, dict):
+        items = [(k, v) for k, v in schemas.items()]
+    else:
+        items = [(ent["schema_id"], ent) for ent in schemas]
+    for sid, ent in items:
+        ver, f = ent["version"], ent.get("path") or ent["file"]
         schema_path = Path(f)
         if not schema_path.exists():
             raise FileNotFoundError(f"Registry references missing schema: {f}")
