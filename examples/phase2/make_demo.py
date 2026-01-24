@@ -50,16 +50,14 @@ def main():
     points_dir.mkdir(parents=True, exist_ok=True)
     derived_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create session metadata
+    # Create session metadata (matches phase2_session_meta.schema.json)
     session_meta = {
-        "schema_id": "phase2_session_meta",
         "schema_version": "phase2_session_meta_v1",
-        "session_id": "session_0001",
-        "created_utc": now(),
-        "grid_id": "demo_3pt",
+        "phase": 2,
+        "created_at_utc": now(),
         "operator": "DEMO",
         "channel_roles": {"ch0": "reference", "ch1": "roving"},
-        "environment": {"temp_C": 22.0, "rh_pct": 45.0},
+        "environment": {"temp_c": 22.0, "humidity_rh": 45.0},
     }
     write_json(OUT / "session_meta.json", session_meta)
     print(f"Wrote session_meta.json")
@@ -74,15 +72,16 @@ def main():
         ref, rov = synth_2ch(200.0 + hash(pid) % 50)
         write_wav_2ch(str(pt_dir / "audio.wav"), ref, rov, FS)
 
-        # Capture metadata
+        # Capture metadata (matches phase2_point_capture_meta.schema.json)
         capture_meta = {
-            "schema_id": "phase2_point_capture_meta",
             "schema_version": "phase2_point_capture_meta_v1",
             "point_id": pid,
-            "captured_utc": now(),
+            "created_at_utc": now(),
             "sample_rate_hz": FS,
-            "duration_s": DUR,
-            "excitation_type": "tap",
+            "channels": 2,
+            "seconds": DUR,
+            "channel_roles": {"ch0": "reference", "ch1": "roving"},
+            "excitation": {"type": "tap_impulse"},
         }
         write_json(pt_dir / "capture_meta.json", capture_meta)
 
