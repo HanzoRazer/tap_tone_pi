@@ -69,6 +69,18 @@ def discover_json_files(out_root: Path):
     for p in out_root.rglob("*.json"):
         yield p
 
+# Aliases: map output schema_id to registry key
+_SCHEMA_ALIASES = {
+    "measurement_manifest": "manifest",
+}
+
+def _normalize_version(v: str) -> str:
+    """Normalize version: 1.0 -> 1.0.0"""
+    parts = v.split(".")
+    while len(parts) < 3:
+        parts.append("0")
+    return ".".join(parts[:3])
+
 def identify(doc: dict) -> Tuple[str, str]:
     # Flexible: MOE uses artifact_type 'bending_moe' but schema_id 'moe_result'
     schema_id = str(doc.get("schema_id") or "").strip()
@@ -85,6 +97,12 @@ def identify(doc: dict) -> Tuple[str, str]:
             schema_id = "tap_peaks"
         elif at == "measurement_manifest":
             schema_id = "measurement_manifest"
+
+    # Apply aliases
+    schema_id = _SCHEMA_ALIASES.get(schema_id, schema_id)
+    # Normalize version
+    if version:
+        version = _normalize_version(version)
 
     return schema_id, version
 
