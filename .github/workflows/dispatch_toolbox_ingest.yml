@@ -73,7 +73,7 @@ jobs:
             -X POST \
             -H "Accept: application/vnd.github+json" \
             -f event_type='analyzer-release' \
-            -f client_payload:='{"analyzer_tag":"'"${ANALYZER_TAG}"'","triggered_by":"'"${GITHUB_ACTOR}"'","source_sha":"'"${GITHUB_SHA}"'"}'
+            -F client_payload='{"analyzer_tag":"'"${ANALYZER_TAG}"'","triggered_by":"'"${GITHUB_ACTOR}"'","source_sha":"'"${GITHUB_SHA}"'"}'
 
       - name: Summary
         run: |
