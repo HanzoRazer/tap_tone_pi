@@ -46,7 +46,12 @@ def load_registry(schemas_root: Path) -> Dict[Tuple[str, str], dict]:
         schema_path = Path(f)
         if not schema_path.exists():
             raise FileNotFoundError(f"Registry references missing schema: {f}")
-        loaded[(sid, ver)] = json.loads(schema_path.read_text(encoding="utf-8"))
+        schema_content = json.loads(schema_path.read_text(encoding="utf-8"))
+        # Key by (schema_id, version)
+        loaded[(sid, ver)] = schema_content
+        # Also key by schema_version_const if present (phase2 uses these)
+        if "schema_version_const" in ent:
+            loaded[(sid, ent["schema_version_const"])] = schema_content
     return loaded
 
 
@@ -75,8 +80,14 @@ _SCHEMA_ALIASES = {
 }
 
 def _normalize_version(v: str) -> str:
-    """Normalize version: 1.0 -> 1.0.0"""
+    """Normalize version: 1.0 -> 1.0.0, but leave version consts unchanged."""
+    # If it looks like a version const (contains letters after numbers), don't normalize
+    if not v or not v[0].isdigit():
+        return v
     parts = v.split(".")
+    # Only normalize if all parts are numeric
+    if not all(p.isdigit() for p in parts):
+        return v
     while len(parts) < 3:
         parts.append("0")
     return ".".join(parts[:3])
