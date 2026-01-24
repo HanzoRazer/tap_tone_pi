@@ -69,17 +69,16 @@ jobs:
             exit 1
           fi
           echo "-> Dispatching analyzer-release to ${TOOLBOX_REPO} for ${ANALYZER_TAG}"
-          # Build JSON payload with jq (proper escaping)
-          PAYLOAD=$(jq -n \
+          # Build complete JSON body with jq and pipe through stdin
+          jq -n \
             --arg tag "${ANALYZER_TAG}" \
             --arg by "${GITHUB_ACTOR}" \
             --arg sha "${GITHUB_SHA}" \
-            '{analyzer_tag: $tag, triggered_by: $by, source_sha: $sha}')
+            '{event_type: "analyzer-release", client_payload: {analyzer_tag: $tag, triggered_by: $by, source_sha: $sha}}' | \
           gh api repos/${TOOLBOX_REPO}/dispatches \
             -X POST \
             -H "Accept: application/vnd.github+json" \
-            -f event_type='analyzer-release' \
-            -F client_payload="${PAYLOAD}"
+            --input -
 
       - name: Summary
         run: |
