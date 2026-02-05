@@ -54,7 +54,7 @@ def persist_capture(
     session_log_path = root / "session.jsonl"
 
     # Write WAV using canonical layer
-    write_wav_mono(audio_path, sample_rate, audio)
+    write_wav_mono(audio_path, audio, sample_rate)
 
     analysis_obj = analysis_to_json_dict(analysis)
     analysis_obj["label"] = label

@@ -2,6 +2,30 @@
 
 All notable changes to this project are documented here. This file follows [Keep a Changelog](https://keepachangelog.com/) style and [Semantic Versioning](https://semver.org/).
 
+## [2.0.0] — 2026-02-05
+
+### Breaking Changes
+- **Package restructure** — consolidated package namespace from `tap_tone` to `tap_tone_pi`
+- Import paths changed: `from tap_tone.analysis import analyze_tap` → `from tap_tone_pi.core.analysis import analyze_tap`
+- Deprecation stubs provided for backward compatibility (one release cycle)
+
+### Fixed
+- **Bug 2: WAV write argument transposition** — `storage.py:57` had `write_wav_mono(path, sample_rate, audio)` instead of `write_wav_mono(path, audio, sample_rate)`. All Phase 1 captures now produce valid WAV files.
+
+### Added
+- Regression test for storage.py WAV write path (`test_storage_wav_roundtrip.py`)
+- Unified CLI entry points: `ttp` (short) and `tap-tone` (discoverable)
+- Schema location documented: `contracts/schemas/` is canonical (per `schema_registry.json`)
+
+### Changed
+- Removed 64 stale measurement files from git tracking (`out/` directory)
+- GUI rewritten to use direct imports instead of subprocess calls
+- GUI binding bug fixed (form values now captured at callback time, not construction)
+
+[2.0.0]: https://github.com/HanzoRazer/tap_tone_pi/compare/analyzer-v1.2.0...analyzer-v2.0.0
+
+---
+
 ## [1.2.0] — 2026-01-21
 
 ### Added
