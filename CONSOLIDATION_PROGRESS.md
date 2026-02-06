@@ -56,13 +56,15 @@
 ## Pending Phases
 
 ### Phase 5: Cleanup
-- [ ] Add deprecation stubs to old locations
+- [ ] Add deprecation stubs to old locations (if needed)
 - [ ] Update imports in remaining scripts
-- [ ] Consider removing old directories (tap-tone-lab, modes, scripts)
+- [ ] Delete old directories (tap-tone-lab, modes) — verified no external imports
 
-### Phase 6: Schema Compliance (Separate PR)
+### Phase 6: Schema Compliance + GUI Enhancements (Separate PR)
 - [ ] Validate all outputs against `contracts/schemas/*.schema.json`
 - [ ] Add schema validation to CI
+- [ ] GUI: Replace subprocess calls with direct Python imports
+- [ ] GUI: Add matplotlib inline spectrum visualization
 
 ---
 
@@ -70,9 +72,9 @@
 
 | Metric | Count |
 |--------|-------|
-| Collected | 170+ |
-| Passed | 170 |
-| Failed | 13 (env-dependent: ingest/toolbox) |
+| Collected | 190+ |
+| Passed | 190 |
+| Failed | 0 |
 | Errors | 7 (viewer pack import paths) |
 
 ---
