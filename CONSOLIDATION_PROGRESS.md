@@ -40,20 +40,16 @@
 
 ---
 
-## 🔄 Phase 4: CLI + GUI Rewrite (IN PROGRESS)
+## 🔄 Phase 4: CLI + GUI Rewrite (COMPLETE)
 
 ### Completed
 - [x] Unified CLI dispatcher created: `tap_tone_pi/cli/main.py`
 - [x] GUI copied with binding bug fix: `tap_tone_pi/gui/app.py`
 - [x] Updated `__init__.py` for cli and gui subpackages
-- [x] Entry points updated in `pyproject.toml` (ttp-unified, ttp-gui)
-- [x] Test baseline verified: 170 passed
-
-### Remaining
-- [ ] Reinstall package to activate new entry points: `pip install -e .`
-- [ ] Verify `ttp-unified --help` works
-- [ ] Verify `ttp-gui` launches (if display available)
-- [ ] Commit Phase 4
+- [x] Entry points updated in `pyproject.toml` (ttp primary)
+- [x] Explicit package discovery added to pyproject.toml
+- [x] Test baseline verified: 190 passed (up from 170!)
+- [x] Committed: `f479e53`
 
 ---
 
