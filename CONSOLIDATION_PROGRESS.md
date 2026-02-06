@@ -55,10 +55,12 @@
 
 ## Pending Phases
 
-### Phase 5: Cleanup
-- [ ] Add deprecation stubs to old locations (if needed)
-- [ ] Update imports in remaining scripts
-- [ ] Delete old directories (tap-tone-lab, modes) — verified no external imports
+### Phase 5: Cleanup (COMPLETE)
+- [x] Deleted `tap-tone-lab/` directory (49 files, migrated to tap_tone_pi/)
+- [x] Verified no imports broke (190 tests pass)
+- [x] `modes/` kept — still imported by tests/scripts (future migration)
+- [x] `gui/` kept — fallback import in CLI works
+- [x] Committed: (pending)
 
 ### Phase 6: Schema Compliance + GUI Enhancements (Separate PR)
 - [ ] Validate all outputs against `contracts/schemas/*.schema.json`
