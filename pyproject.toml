@@ -26,5 +26,10 @@ dev = [
 ]
 
 [project.scripts]
+# Primary entry point (new unified CLI)
+ttp = "tap_tone_pi.cli.main:main"
+# Legacy alias (backward compatibility)
 tap-tone = "tap_tone.main:main"
-ttp = "tap_tone.main:main"
+
+[tool.setuptools.packages.find]
+include = ["tap_tone", "tap_tone.*", "tap_tone_pi", "tap_tone_pi.*", "modes", "modes.*", "scripts", "scripts.*"]
