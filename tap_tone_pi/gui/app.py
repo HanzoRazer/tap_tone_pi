@@ -8,6 +8,10 @@ Migration: Canonical location is now tap_tone_pi.gui.app
 Bug Fix: The binding bug in group() has been fixed. Form values are now
          captured at callback time, not at widget construction time.
 
+Phase 6 Enhancements:
+- Direct Python imports (no subprocess for core analysis)
+- Matplotlib inline spectrum visualization
+
 Runs:
 - Tap-tone (live / offline WAV)
 - Bending stiffness → MOE (single / batch)
@@ -21,6 +25,7 @@ No advisory or design logic. Facts only.
 from __future__ import annotations
 
 import datetime
+import json
 import os
 import pathlib
 import shlex
@@ -28,11 +33,85 @@ import subprocess
 import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog
+from typing import TYPE_CHECKING
 
 # Resolve project root
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 OUT = ROOT / "out"
 DATA = ROOT / "data"
+
+# Optional matplotlib for spectrum visualization
+try:
+    import matplotlib
+    matplotlib.use("TkAgg")
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+    from matplotlib.figure import Figure
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
+
+# Direct imports from tap_tone_pi (Phase 6 enhancement)
+try:
+    from tap_tone_pi.core.analysis import analyze_tap, AnalysisResult, Peak
+    from tap_tone_pi.io.wav import read_wav_mono
+    HAS_DIRECT_ANALYSIS = True
+except ImportError:
+    HAS_DIRECT_ANALYSIS = False
+
+
+class SpectrumViewer(tk.Toplevel):
+    """Matplotlib spectrum viewer window (Phase 6 enhancement)."""
+    
+    def __init__(self, parent: tk.Tk, result: "AnalysisResult", title: str = "Spectrum") -> None:
+        super().__init__(parent)
+        self.title(title)
+        self.geometry("800x500")
+        
+        if not HAS_MATPLOTLIB:
+            tk.Label(self, text="matplotlib not installed").pack(pady=20)
+            return
+        
+        # Create figure
+        fig = Figure(figsize=(8, 4.5), dpi=100)
+        ax = fig.add_subplot(111)
+        
+        # Plot spectrum
+        freq = result.spectrum_freq_hz
+        mag = result.spectrum_mag
+        ax.semilogy(freq, mag + 1e-10, 'b-', linewidth=0.5, alpha=0.7)
+        
+        # Mark peaks
+        for peak in result.peaks:
+            ax.axvline(peak.freq_hz, color='r', linestyle='--', alpha=0.5, linewidth=0.8)
+            ax.annotate(
+                f"{peak.freq_hz:.1f} Hz",
+                xy=(peak.freq_hz, peak.magnitude),
+                xytext=(5, 5),
+                textcoords='offset points',
+                fontsize=8,
+                color='red'
+            )
+        
+        ax.set_xlabel("Frequency (Hz)")
+        ax.set_ylabel("Magnitude (log scale)")
+        ax.set_xlim(20, 2000)
+        ax.set_title(f"Dominant: {result.dominant_hz:.1f} Hz | Confidence: {result.confidence:.2f}")
+        ax.grid(True, alpha=0.3)
+        fig.tight_layout()
+        
+        # Embed in Tkinter
+        canvas = FigureCanvasTkAgg(fig, master=self)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        
+        # Info panel
+        info_frame = tk.Frame(self)
+        info_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        info_text = f"Peaks: {len(result.peaks)} | RMS: {result.rms:.4f} | Clipped: {result.clipped}"
+        tk.Label(info_frame, text=info_text, font=("Courier", 10)).pack(side=tk.LEFT)
+        
+        tk.Button(info_frame, text="Close", command=self.destroy).pack(side=tk.RIGHT)
 
 
 def run(cmd: str) -> None:
@@ -146,14 +225,47 @@ class App(tk.Tk):
         run(cmd)
 
     def do_tap_offline(self, path_var: tk.StringVar) -> None:
-        """Run offline tap-tone analysis on a WAV file."""
+        """Run offline tap-tone analysis on a WAV file.
+        
+        Phase 6 Enhancement: Uses direct Python imports when available,
+        with inline matplotlib spectrum visualization.
+        """
+        wav_path = pathlib.Path(path_var.get())
         outdir = self.outdir()
-        cmd = (
-            f"python modes/tap_tone/offline_from_wav.py "
-            f"--wav {path_var.get()} "
-            f"--outfile {outdir/'tap_tone_offline.json'} --labels A0 T11 B11"
-        )
-        run(cmd)
+        
+        if HAS_DIRECT_ANALYSIS and HAS_MATPLOTLIB:
+            # Direct analysis with spectrum viewer (Phase 6)
+            try:
+                audio, sr = read_wav_mono(wav_path)
+                result = analyze_tap(audio, sr)
+                
+                # Save JSON result
+                out_json = outdir / "tap_tone_offline.json"
+                result_dict = {
+                    "dominant_hz": result.dominant_hz,
+                    "peaks": [{"freq_hz": p.freq_hz, "magnitude": p.magnitude} for p in result.peaks],
+                    "clipped": result.clipped,
+                    "rms": result.rms,
+                    "confidence": result.confidence,
+                    "source_wav": str(wav_path),
+                }
+                with open(out_json, "w") as f:
+                    json.dump(result_dict, f, indent=2)
+                
+                # Show spectrum viewer
+                SpectrumViewer(self, result, title=f"Spectrum: {wav_path.name}")
+                messagebox.showinfo("Done", f"Analysis saved to:\n{out_json}")
+                
+            except Exception as e:
+                messagebox.showerror("Error", f"Analysis failed: {e}")
+        else:
+            # Fallback to subprocess
+            cmd = (
+                f"python modes/tap_tone/offline_from_wav.py "
+                f"--wav {path_var.get()} "
+                f"--outfile {outdir/'tap_tone_offline.json'} --labels A0 T11 B11"
+            )
+            run(cmd)
 
     def do_moe_single(self, var_dict: dict[str, tk.StringVar]) -> None:
         """Calculate MOE from single measurement.

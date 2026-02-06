@@ -60,13 +60,14 @@
 - [x] Verified no imports broke (190 tests pass)
 - [x] `modes/` kept — still imported by tests/scripts (future migration)
 - [x] `gui/` kept — fallback import in CLI works
-- [x] Committed: (pending)
+- [x] Committed: `993417a`
 
-### Phase 6: Schema Compliance + GUI Enhancements (Separate PR)
-- [ ] Validate all outputs against `contracts/schemas/*.schema.json`
-- [ ] Add schema validation to CI
-- [ ] GUI: Replace subprocess calls with direct Python imports
-- [ ] GUI: Add matplotlib inline spectrum visualization
+### Phase 6: Schema Compliance + GUI Enhancements (IN PROGRESS - PR branch)
+- [x] Schema validation already in CI (`contracts-validate.yml`, `schemas_validate.yml`)
+- [x] GUI: Direct Python imports (`tap_tone_pi.core.analysis`, `tap_tone_pi.io.wav`)
+- [x] GUI: Matplotlib inline spectrum visualization (`SpectrumViewer` class)
+- [x] Graceful fallback to subprocess when direct imports unavailable
+- [ ] Create PR for review
 
 ---
 

@@ -21,6 +21,8 @@ All notable changes to this project are documented here. This file follows [Keep
 - Removed 64 stale measurement files from git tracking (`out/` directory)
 - GUI rewritten to use direct imports instead of subprocess calls
 - GUI binding bug fixed (form values now captured at callback time, not construction)
+- **Matplotlib spectrum viewer** — inline visualization with peak annotations (Phase 6)
+- Deleted `tap-tone-lab/` directory (49 files, content migrated to `tap_tone_pi/`)
 
 [2.0.0]: https://github.com/HanzoRazer/tap_tone_pi/compare/analyzer-v1.2.0...analyzer-v2.0.0
 
