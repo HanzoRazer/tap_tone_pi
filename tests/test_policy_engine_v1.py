@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import pytest
 
-POLICY_IMPORT_PATH = "app.agentic.spine.policy"
+POLICY_IMPORT_PATH = "tap_tone_pi.agentic.spine.policy"
 
 
 def _import_decider():

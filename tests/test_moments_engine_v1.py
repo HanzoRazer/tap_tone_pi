@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import pytest
 
-MOMENTS_IMPORT_PATH = "app.agentic.spine.moments"
+MOMENTS_IMPORT_PATH = "tap_tone_pi.agentic.spine.moments"
 
 
 def _import_detector():
