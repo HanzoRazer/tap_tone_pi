@@ -15,7 +15,14 @@ All notable changes to this project are documented here. This file follows [Keep
     - Stage-appropriate hints, detail limits, action suggestions
   - CLI and GUI renderers (`render_cli`, `render_gui`, `render_compact`)
   - History tracking: rule counts, consecutive hits, escalation logic
-- 120 tests for agent layer (types, message spec, FTUE, selector, render, integration)
+- **Integrated Agent Messages** — `tap_tone_pi.agent.messages` module
+  - Uses real `quality_policy` types (`QualityVerdict`, `TriggeredRule`, `Severity`)
+  - Frozen dataclasses for immutability (`AgentContext`, `AgentMessage`, `SuggestedAction`)
+  - `format_verdict_summary_agent()` — drop-in replacement for `format_verdict_summary()`
+  - **Unknown rule fallback** — gracefully handles future rule IDs not in RULE_SPECS
+  - **No imports from `quality_gate`** — policy-safe, no circular dependency pressure
+- **Dual API** — standalone (mock-friendly) + integrated (production) exports
+- 192 tests for agent layer (types, message spec, FTUE, selector, render, integration, messages)
 
 ### Architecture
 The agent wraps existing components horizontally, not vertically:
@@ -38,6 +45,12 @@ The agent NEVER:
 - Invents interpretations
 - Auto-adjusts parameters
 - Makes silent decisions
+
+### Hardening
+- **Stable imports / no cycles** — agent imports only from `quality_policy`, not `quality_gate`
+- **Guaranteed behavior on unknown rule IDs** — falls back to `TriggeredRule.message` and `rule.severity`
+- **Strict determinism** — HARD rules sorted before SOFT, then lexical by rule_id; actions de-duped by `action_id`
+- **No UI assumptions** — structured `AgentMessage` output with separate CLI renderer
 
 [2.1.0]: https://github.com/HanzoRazer/tap_tone_pi/compare/analyzer-v2.0.0...analyzer-v2.1.0
 
