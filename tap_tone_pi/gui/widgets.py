@@ -206,7 +206,11 @@ class AudioLevelMeter(tk.Canvas):
 
     def _draw(self) -> None:
         """Redraw the meter."""
-        self.delete("all")
+        try:
+            self.delete("all")
+        except tk.TclError:
+            # Widget was destroyed
+            return
 
         # Background
         self.create_rectangle(0, 0, self._width, self._height, fill="#1a1a1a", outline="")
@@ -407,6 +411,9 @@ class SetupWizardDialog(tk.Toplevel):
         # Load existing config if available
         self._load_existing()
 
+        # Handle window close
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
+
     def _build_ui(self) -> None:
         """Build the wizard UI."""
         # Main container with padding
@@ -519,6 +526,14 @@ class SetupWizardDialog(tk.Toplevel):
         except Exception:
             pass
 
+    def _on_close(self) -> None:
+        """Handle window close - stop recording first."""
+        self._recording = False
+        # Give thread a moment to stop
+        if self._test_thread and self._test_thread.is_alive():
+            self._test_thread.join(timeout=0.5)
+        self.destroy()
+
     def _on_device_changed(self, device: dict | None) -> None:
         """Handle device selection change."""
         self._selected_device = device
@@ -579,8 +594,12 @@ class SetupWizardDialog(tk.Toplevel):
                 if rms > 500:
                     good_samples += 1
 
-                # Update meter on main thread
-                self.after(0, lambda l=normalized: self.meter.set_level(l))
+                # Update meter on main thread (check if still recording)
+                if self._recording:
+                    try:
+                        self.after(0, lambda l=normalized: self.meter.set_level(l) if self._recording else None)
+                    except tk.TclError:
+                        break  # Widget destroyed
 
             except Exception as e:
                 self.after(0, lambda: self.test_status.configure(
