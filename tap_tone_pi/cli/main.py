@@ -7,8 +7,10 @@ Canonical location: tap_tone_pi.cli.main
 Usage:
     ttp setup                # Hardware setup wizard (run first!)
     ttp devices              # List audio devices
-    ttp record --out ./out   # Record single tap
+    ttp measure --out ./out  # Quality-gated measurement (recommended)
+    ttp record --out ./out   # Record single tap (no quality gate)
     ttp live --out ./out     # Continuous recording
+    ttp quick                # Zero-config quick capture
     ttp gold-run ...         # Gold standard run
     ttp gui                  # Launch Tkinter GUI
     ttp phase2 ...           # Phase 2 ODS workflow
@@ -16,7 +18,6 @@ Usage:
     ttp bending ...          # Bending MOE calculation
     ttp last                 # Show most recent session
     ttp sessions             # List all sessions
-    ttp quick                # Zero-config quick capture
 """
 from __future__ import annotations
 
@@ -214,6 +215,124 @@ def cmd_quick(args: argparse.Namespace) -> int:
             print("(matplotlib not installed, skipping plot)")
 
     return 0
+
+
+def cmd_measure(args: argparse.Namespace) -> int:
+    """Quality-gated measurement with operator loop."""
+    from tap_tone_pi.core.user_config import get_saved_device
+    from tap_tone_pi.core.quality_gate import format_verdict_summary
+    from tap_tone_pi.core.quality_policy import Verdict
+    from tap_tone_pi.workflow import OperatorLoop, LoopState
+
+    # Resolve device
+    device = args.device
+    sample_rate = args.sample_rate
+    if device is None:
+        saved = get_saved_device()
+        if saved:
+            device = saved.index
+            sample_rate = saved.sample_rate
+            print(f"Using saved device: [{device}] {saved.name}")
+
+    # Create session directory
+    session_dir = Path(args.out)
+    session_dir.mkdir(parents=True, exist_ok=True)
+
+    # State callback for CLI feedback
+    def on_state(state: LoopState, data: dict) -> None:
+        if state == LoopState.PREFLIGHT:
+            print("Preflight checks...")
+        elif state == LoopState.READY:
+            print(f"Ready for capture: {data.get('point_id')} (attempt {data.get('attempt')})")
+        elif state == LoopState.CAPTURING:
+            print(f"Recording {args.seconds}s...")
+        elif state == LoopState.ANALYZING:
+            print("Analyzing...")
+        elif state == LoopState.GATING:
+            print("Checking quality...")
+
+    # Create operator loop
+    loop = OperatorLoop(session_dir=session_dir, callback=on_state)
+
+    # Run measurement loop with retries
+    max_attempts = args.max_attempts
+    point_id = args.point or "point_001"
+
+    for attempt_num in range(1, max_attempts + 1):
+        print(f"\n--- Attempt {attempt_num}/{max_attempts} ---")
+
+        result = loop.run_single(
+            point_id=point_id,
+            device=device,
+            sample_rate=sample_rate,
+            duration=args.seconds,
+        )
+
+        if result.error:
+            print(f"\nERROR: {result.error}")
+            if attempt_num < max_attempts:
+                retry = input("Retry? [Y/n]: ").strip().lower()
+                if retry in ("n", "no"):
+                    print("Measurement aborted.")
+                    return 1
+                continue
+            else:
+                print("Max attempts reached.")
+                return 1
+
+        # Show analysis summary
+        if result.analysis:
+            print(f"\nDominant: {result.analysis.dominant_hz or 'n/a'} Hz")
+            print(f"RMS: {result.analysis.rms:.4f}  Confidence: {result.analysis.confidence:.2f}")
+            if result.analysis.peaks:
+                print("Top peaks:")
+                for p in result.analysis.peaks[:5]:
+                    print(f"  - {p.freq_hz:7.1f} Hz  (mag: {p.magnitude:.3f})")
+
+        # Show quality verdict
+        if result.verdict:
+            print(f"\n{format_verdict_summary(result.verdict)}")
+
+        # Handle verdict
+        if result.verdict.verdict == Verdict.PASS:
+            print(f"\nMeasurement ACCEPTED.")
+            print(f"Saved to: {loop.store.get_attempt_dir(result.attempt)}")
+            return 0
+
+        elif result.verdict.verdict == Verdict.WARN:
+            print(f"\nMeasurement has warnings.")
+            accept = input("Accept anyway? [Y/n]: ").strip().lower()
+            if accept not in ("n", "no"):
+                print(f"Measurement ACCEPTED (with warnings).")
+                print(f"Saved to: {loop.store.get_attempt_dir(result.attempt)}")
+                return 0
+            # else: continue to retry
+
+        else:  # FAIL
+            print(f"\nMeasurement FAILED quality gate.")
+            if attempt_num < max_attempts:
+                retry = input("Retry? [Y/n]: ").strip().lower()
+                if retry in ("n", "no"):
+                    # Offer override
+                    override = input("Override with reason? [leave blank to abort]: ").strip()
+                    if override:
+                        loop.override_failed(point_id, override)
+                        print(f"Measurement OVERRIDDEN: {override}")
+                        print(f"Saved to: {loop.store.get_attempt_dir(result.attempt)}")
+                        return 0
+                    print("Measurement aborted.")
+                    return 1
+            else:
+                # Max attempts - offer override
+                override = input("Max attempts reached. Override with reason? [leave blank to fail]: ").strip()
+                if override:
+                    loop.override_failed(point_id, override)
+                    print(f"Measurement OVERRIDDEN: {override}")
+                    return 0
+                print("Measurement FAILED.")
+                return 1
+
+    return 1
 
 
 def cmd_last(args: argparse.Namespace) -> int:
@@ -475,7 +594,7 @@ def _bash_completion() -> str:
     """Generate bash completion script."""
     return '''
 _ttp_completions() {
-    local commands="setup devices record live quick gold-run gui phase2 chladni bending last sessions completion"
+    local commands="setup devices measure record live quick gold-run gui phase2 chladni bending last sessions completion"
     COMPREPLY=($(compgen -W "$commands" -- "${COMP_WORDS[COMP_CWORD]}"))
 }
 complete -F _ttp_completions ttp
@@ -492,6 +611,7 @@ _ttp() {
     local commands=(
         'setup:Hardware setup wizard (run first!)'
         'devices:List audio devices'
+        'measure:Quality-gated measurement (recommended)'
         'record:Record one window and analyze'
         'live:Loop record+analyze'
         'quick:Zero-config quick capture'
@@ -516,6 +636,7 @@ def _fish_completion() -> str:
     return '''
 complete -c ttp -f -n "__fish_use_subcommand" -a setup -d "Hardware setup wizard (run first!)"
 complete -c ttp -f -n "__fish_use_subcommand" -a devices -d "List audio devices"
+complete -c ttp -f -n "__fish_use_subcommand" -a measure -d "Quality-gated measurement (recommended)"
 complete -c ttp -f -n "__fish_use_subcommand" -a record -d "Record one window and analyze"
 complete -c ttp -f -n "__fish_use_subcommand" -a live -d "Loop record+analyze"
 complete -c ttp -f -n "__fish_use_subcommand" -a quick -d "Zero-config quick capture"
@@ -575,6 +696,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_quick = sub.add_parser("quick", help="Zero-config quick capture (auto-detect device)")
     p_quick.add_argument("--plot", action="store_true", help="Show spectrum plot")
     p_quick.set_defaults(fn=cmd_quick)
+
+    # measure (NEW! - quality-gated)
+    p_meas = sub.add_parser("measure", help="Quality-gated measurement with operator loop")
+    p_meas.add_argument("--device", type=int, default=None, help="Input device index")
+    p_meas.add_argument("--sample-rate", type=int, default=48000, help="Sample rate Hz")
+    p_meas.add_argument("--seconds", type=float, default=2.5, help="Capture duration")
+    p_meas.add_argument("--out", type=str, required=True, help="Session output directory")
+    p_meas.add_argument("--point", type=str, default=None, help="Point ID (default: point_001)")
+    p_meas.add_argument("--max-attempts", type=int, default=3, help="Max retry attempts")
+    p_meas.set_defaults(fn=cmd_measure)
 
     # gold-run
     p_gold = sub.add_parser("gold-run", help="One-command Gold Standard Run")

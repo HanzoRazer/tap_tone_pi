@@ -58,6 +58,14 @@ try:
 except ImportError:
     HAS_DIRECT_ANALYSIS = False
 
+# Quality gate imports (Phase 7 enhancement)
+try:
+    from tap_tone_pi.core.quality_gate import check_quality, format_verdict_summary
+    from tap_tone_pi.core.quality_policy import Verdict, QualityVerdict, Severity
+    HAS_QUALITY_GATE = True
+except ImportError:
+    HAS_QUALITY_GATE = False
+
 
 class SpectrumViewer(tk.Toplevel):
     """Matplotlib spectrum viewer window (Phase 6 enhancement)."""
@@ -114,6 +122,144 @@ class SpectrumViewer(tk.Toplevel):
         tk.Button(info_frame, text="Close", command=self.destroy).pack(side=tk.RIGHT)
 
 
+class QualityVerdictViewer(tk.Toplevel):
+    """Quality gate verdict viewer window (Phase 7 enhancement)."""
+
+    def __init__(
+        self,
+        parent: tk.Tk,
+        verdict: "QualityVerdict",
+        result: "AnalysisResult",
+        on_accept: callable = None,
+        on_retry: callable = None,
+        on_override: callable = None,
+        title: str = "Quality Gate"
+    ) -> None:
+        super().__init__(parent)
+        self.title(title)
+        self.geometry("500x400")
+        self.verdict = verdict
+        self.on_accept = on_accept
+        self.on_retry = on_retry
+        self.on_override = on_override
+
+        # Main frame
+        main = tk.Frame(self, padx=10, pady=10)
+        main.pack(fill=tk.BOTH, expand=True)
+
+        # Verdict banner
+        if verdict.verdict == Verdict.PASS:
+            banner_bg = "#4CAF50"  # Green
+            banner_text = "PASS"
+        elif verdict.verdict == Verdict.WARN:
+            banner_bg = "#FFC107"  # Yellow
+            banner_text = "WARNING"
+        else:
+            banner_bg = "#F44336"  # Red
+            banner_text = "FAIL"
+
+        banner = tk.Label(
+            main,
+            text=banner_text,
+            bg=banner_bg,
+            fg="white",
+            font=("Helvetica", 24, "bold"),
+            pady=10
+        )
+        banner.pack(fill=tk.X)
+
+        # Analysis summary
+        summary_frame = tk.LabelFrame(main, text="Measurement Summary", padx=5, pady=5)
+        summary_frame.pack(fill=tk.X, pady=10)
+
+        summary_text = (
+            f"Dominant: {result.dominant_hz:.1f} Hz\n"
+            f"RMS: {result.rms:.4f}\n"
+            f"Confidence: {result.confidence:.2f}\n"
+            f"Peaks: {len(result.peaks)}\n"
+            f"Clipped: {'Yes' if result.clipped else 'No'}"
+        )
+        tk.Label(summary_frame, text=summary_text, justify=tk.LEFT, font=("Courier", 10)).pack(anchor=tk.W)
+
+        # Triggered rules
+        if verdict.triggered_rules:
+            rules_frame = tk.LabelFrame(main, text="Triggered Rules", padx=5, pady=5)
+            rules_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+
+            rules_list = tk.Listbox(rules_frame, height=6, font=("Courier", 9))
+            rules_list.pack(fill=tk.BOTH, expand=True)
+
+            for tr in verdict.triggered_rules:
+                severity = "ERROR" if tr.rule.severity == Severity.HARD else "WARN"
+                rules_list.insert(tk.END, f"[{severity}] {tr.rule.rule_id}: {tr.message}")
+
+        # Action buttons
+        btn_frame = tk.Frame(main)
+        btn_frame.pack(fill=tk.X, pady=10)
+
+        if verdict.verdict == Verdict.PASS:
+            tk.Button(
+                btn_frame,
+                text="Accept",
+                command=self._do_accept,
+                bg="#4CAF50",
+                fg="white",
+                width=15
+            ).pack(side=tk.LEFT, padx=5)
+        elif verdict.verdict == Verdict.WARN:
+            tk.Button(
+                btn_frame,
+                text="Accept (with warnings)",
+                command=self._do_accept,
+                bg="#FFC107",
+                width=20
+            ).pack(side=tk.LEFT, padx=5)
+            tk.Button(
+                btn_frame,
+                text="Retry",
+                command=self._do_retry,
+                width=10
+            ).pack(side=tk.LEFT, padx=5)
+        else:  # FAIL
+            tk.Button(
+                btn_frame,
+                text="Retry",
+                command=self._do_retry,
+                bg="#2196F3",
+                fg="white",
+                width=15
+            ).pack(side=tk.LEFT, padx=5)
+            tk.Button(
+                btn_frame,
+                text="Override...",
+                command=self._do_override,
+                width=15
+            ).pack(side=tk.LEFT, padx=5)
+
+        tk.Button(btn_frame, text="Close", command=self.destroy, width=10).pack(side=tk.RIGHT, padx=5)
+
+    def _do_accept(self) -> None:
+        if self.on_accept:
+            self.on_accept()
+        self.destroy()
+
+    def _do_retry(self) -> None:
+        if self.on_retry:
+            self.on_retry()
+        self.destroy()
+
+    def _do_override(self) -> None:
+        reason = simpledialog.askstring(
+            "Override Reason",
+            "Enter reason for overriding the failed quality gate:",
+            parent=self
+        )
+        if reason and reason.strip():
+            if self.on_override:
+                self.on_override(reason.strip())
+            self.destroy()
+
+
 def run(cmd: str) -> None:
     """Execute a shell command and show result dialog."""
     try:
@@ -146,6 +292,14 @@ class App(tk.Tk):
         rrow.pack(fill="x", pady=4)
         tk.Label(rrow, text="Run ID (folder under out/)").pack(side="left")
         tk.Entry(rrow, textvariable=self.run_id, width=20).pack(side="left", padx=6)
+
+        # --- Quality-gated measurement (Phase 7 - recommended)
+        if HAS_QUALITY_GATE and HAS_DIRECT_ANALYSIS:
+            self.measure_vars = group(frm, "Quality-Gated Measurement (recommended)", [
+                ("Duration (s)", "2.5"),
+                ("Sample rate", "48000"),
+                ("Point ID", "point_001"),
+            ], self.do_quality_measure)
 
         # --- Tap-tone live
         self.tap_live_vars = group(frm, "Tap-tone (live)", [
@@ -210,6 +364,107 @@ class App(tk.Tk):
         return p
 
     # --- Callbacks ---
+
+    def do_quality_measure(self, entry_vars: list[tk.StringVar]) -> None:
+        """Run quality-gated measurement (Phase 7 enhancement)."""
+        if not HAS_QUALITY_GATE or not HAS_DIRECT_ANALYSIS:
+            messagebox.showerror("Error", "Quality gate modules not available")
+            return
+
+        from tap_tone_pi.capture import record_audio
+        from tap_tone_pi.core.user_config import get_saved_device
+
+        outdir = self.outdir()
+        duration = float(entry_vars[0].get())
+        sample_rate = int(entry_vars[1].get())
+        point_id = entry_vars[2].get().strip() or "point_001"
+
+        # Try to use saved device
+        saved = get_saved_device()
+        device = saved.index if saved else None
+        if saved:
+            sample_rate = saved.sample_rate
+
+        # Create point directory
+        point_dir = outdir / point_id
+        point_dir.mkdir(parents=True, exist_ok=True)
+
+        # Find next attempt number
+        existing = [d for d in point_dir.iterdir() if d.name.startswith("attempt_")] if point_dir.exists() else []
+        attempt_num = len(existing) + 1
+        attempt_dir = point_dir / f"attempt_{attempt_num:03d}"
+        attempt_dir.mkdir(parents=True, exist_ok=True)
+
+        try:
+            # Capture
+            cap = record_audio(
+                device=device,
+                sample_rate=sample_rate,
+                channels=1,
+                seconds=duration,
+            )
+
+            # Analyze
+            result = analyze_tap(cap.audio, cap.sample_rate)
+
+            # Quality check
+            verdict = check_quality(
+                analysis=result,
+                sample_rate=cap.sample_rate,
+                audio=cap.audio,
+            )
+
+            # Save audio
+            from scipy.io import wavfile
+            audio_path = attempt_dir / "audio.wav"
+            wavfile.write(str(audio_path), cap.sample_rate, cap.audio)
+
+            # Save analysis
+            analysis_path = attempt_dir / "analysis.json"
+            with open(analysis_path, "w") as f:
+                json.dump({
+                    "dominant_hz": result.dominant_hz,
+                    "rms": float(result.rms),
+                    "confidence": float(result.confidence),
+                    "clipped": result.clipped,
+                    "peaks": [{"freq_hz": p.freq_hz, "magnitude": float(p.magnitude)} for p in result.peaks[:20]],
+                }, f, indent=2)
+
+            # Save quality check
+            quality_path = attempt_dir / "quality_check.json"
+            with open(quality_path, "w") as f:
+                json.dump(verdict.to_dict(), f, indent=2)
+
+            # Show verdict viewer
+            def on_accept():
+                messagebox.showinfo("Accepted", f"Measurement saved to:\n{attempt_dir}")
+                # Show spectrum too
+                if HAS_MATPLOTLIB:
+                    SpectrumViewer(self, result, title=f"Spectrum: {point_id}")
+
+            def on_retry():
+                # Re-run the measurement
+                self.do_quality_measure(entry_vars)
+
+            def on_override(reason: str):
+                # Save override reason
+                override_path = attempt_dir / "override.json"
+                with open(override_path, "w") as f:
+                    json.dump({"reason": reason, "timestamp": datetime.datetime.utcnow().isoformat()}, f, indent=2)
+                messagebox.showinfo("Overridden", f"Measurement overridden and saved to:\n{attempt_dir}")
+
+            QualityVerdictViewer(
+                self,
+                verdict=verdict,
+                result=result,
+                on_accept=on_accept,
+                on_retry=on_retry,
+                on_override=on_override,
+                title=f"Quality Gate: {point_id} (attempt {attempt_num})"
+            )
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Measurement failed: {e}")
 
     def do_tap_live(self, entry_vars: list[tk.StringVar]) -> None:
         """Run live tap-tone capture."""
