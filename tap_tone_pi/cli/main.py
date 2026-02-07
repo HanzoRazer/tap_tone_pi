@@ -5,6 +5,7 @@ tap_tone_pi CLI — Unified command dispatcher.
 Canonical location: tap_tone_pi.cli.main
 
 Usage:
+    ttp setup                # Hardware setup wizard (run first!)
     ttp devices              # List audio devices
     ttp record --out ./out   # Record single tap
     ttp live --out ./out     # Continuous recording
@@ -72,10 +73,21 @@ def cmd_record(args: argparse.Namespace) -> int:
     from tap_tone_pi.core.config import CaptureConfig, AnalysisConfig
     from tap_tone_pi.core.analysis import analyze_tap
     from tap_tone_pi.io.storage import persist_capture
+    from tap_tone_pi.core.user_config import get_saved_device
+
+    # Use saved device config if no device specified
+    device = args.device
+    sample_rate = args.sample_rate
+    if device is None:
+        saved = get_saved_device()
+        if saved:
+            device = saved.index
+            sample_rate = saved.sample_rate
+            print(f"Using saved device: [{device}] {saved.name}")
 
     cap_cfg = CaptureConfig(
-        device=args.device,
-        sample_rate=args.sample_rate,
+        device=device,
+        sample_rate=sample_rate,
         channels=args.channels,
         seconds=args.seconds,
     )
@@ -117,6 +129,18 @@ def cmd_record(args: argparse.Namespace) -> int:
 
 def cmd_live(args: argparse.Namespace) -> int:
     """Continuous tap recording mode."""
+    from tap_tone_pi.core.user_config import get_saved_device
+
+    # Use saved config if no device specified
+    device = args.device
+    sample_rate = args.sample_rate
+    if device is None:
+        saved = get_saved_device()
+        if saved:
+            device = saved.index
+            sample_rate = saved.sample_rate
+            print(f"Using saved device: [{device}] {saved.name}")
+
     print("Live mode: press Ctrl+C to stop. Tap, wait, tap...")
     i = 0
     try:
@@ -124,8 +148,8 @@ def cmd_live(args: argparse.Namespace) -> int:
             i += 1
             label = args.label or f"live_{i:03d}"
             ns = argparse.Namespace(
-                device=args.device,
-                sample_rate=args.sample_rate,
+                device=device,
+                sample_rate=sample_rate,
                 channels=args.channels,
                 seconds=args.seconds,
                 out=args.out,
@@ -143,15 +167,24 @@ def cmd_quick(args: argparse.Namespace) -> int:
     """Zero-config quick capture: auto-detect device, capture, analyze, display."""
     from tap_tone_pi.capture import auto_detect_device, record_audio
     from tap_tone_pi.core.analysis import analyze_tap
+    from tap_tone_pi.core.user_config import get_saved_device
 
-    # Auto-detect device
-    device = auto_detect_device()
-    device_name = "system default" if device is None else f"device {device}"
-    print(f"Quick capture: using {device_name}")
+    # Try saved config first, then auto-detect
+    saved = get_saved_device()
+    if saved:
+        device = saved.index
+        sample_rate = saved.sample_rate
+        print(f"Quick capture: using saved device [{device}] {saved.name}")
+    else:
+        device = auto_detect_device()
+        sample_rate = 48000
+        device_name = "system default" if device is None else f"device {device}"
+        print(f"Quick capture: using {device_name}")
+        print("  (Tip: run 'ttp setup' to save your preferred device)")
 
     # Capture
     print(f"Recording 2.5s...")
-    cap = record_audio(device=device, sample_rate=48000, channels=1, seconds=2.5)
+    cap = record_audio(device=device, sample_rate=sample_rate, channels=1, seconds=2.5)
 
     # Analyze
     print("Analyzing...")
@@ -442,7 +475,7 @@ def _bash_completion() -> str:
     """Generate bash completion script."""
     return '''
 _ttp_completions() {
-    local commands="devices record live quick gold-run gui phase2 chladni bending last sessions completion"
+    local commands="setup devices record live quick gold-run gui phase2 chladni bending last sessions completion"
     COMPREPLY=($(compgen -W "$commands" -- "${COMP_WORDS[COMP_CWORD]}"))
 }
 complete -F _ttp_completions ttp
@@ -457,6 +490,7 @@ def _zsh_completion() -> str:
 
 _ttp() {
     local commands=(
+        'setup:Hardware setup wizard (run first!)'
         'devices:List audio devices'
         'record:Record one window and analyze'
         'live:Loop record+analyze'
@@ -480,6 +514,7 @@ compdef _ttp ttp tap-tone
 def _fish_completion() -> str:
     """Generate fish completion script."""
     return '''
+complete -c ttp -f -n "__fish_use_subcommand" -a setup -d "Hardware setup wizard (run first!)"
 complete -c ttp -f -n "__fish_use_subcommand" -a devices -d "List audio devices"
 complete -c ttp -f -n "__fish_use_subcommand" -a record -d "Record one window and analyze"
 complete -c ttp -f -n "__fish_use_subcommand" -a live -d "Loop record+analyze"
@@ -504,6 +539,13 @@ def build_parser() -> argparse.ArgumentParser:
         description="Tap Tone Pi — Acoustic measurement instrument (v2.0.0)"
     )
     sub = p.add_subparsers(dest="cmd", required=True)
+
+    # setup (wizard) - run first!
+    from tap_tone_pi.cli.wizard import run_wizard
+    p_setup = sub.add_parser("setup", help="Hardware setup wizard (run first!)")
+    p_setup.add_argument("--reset", action="store_true", help="Clear saved config and re-run")
+    p_setup.add_argument("--show", action="store_true", help="Show current saved config")
+    p_setup.set_defaults(fn=run_wizard)
 
     # devices
     p_dev = sub.add_parser("devices", help="List audio devices")
