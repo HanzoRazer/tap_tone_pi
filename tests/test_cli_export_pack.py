@@ -344,3 +344,77 @@ class TestExportPackReturnCodePropagation:
 
         assert rc == 3
         assert calls["n"] == 2  # Both were called
+
+
+class TestExportPackMissingScripts:
+    """Test that missing scripts produce clear error messages."""
+
+    def test_missing_exporter_script_returns_error(self, monkeypatch, tmp_path, capsys):
+        """Missing exporter script returns error with clear message."""
+        import sys
+
+        calls = []
+        monkeypatch.setattr(subprocess, "call", lambda *a, **kw: calls.append(a) or 0)
+
+        # Create fake PROJECT_ROOT WITHOUT script stubs
+        fake_root = tmp_path / "empty_repo"
+        fake_root.mkdir()
+
+        main_module = sys.modules["tap_tone_pi.cli.main"]
+        monkeypatch.setattr(main_module, "PROJECT_ROOT", fake_root)
+
+        # Create valid session
+        session_dir = fake_root / "runs_phase2" / "session_0001"
+        session_dir.mkdir(parents=True)
+        (session_dir / "grid.json").write_text("{}")
+
+        rc = cmd_export_pack(_args(
+            str(Path("runs_phase2") / "session_0001"),
+            str(tmp_path / "out.zip"),
+            validate=False,
+        ))
+
+        assert rc == 1
+        assert len(calls) == 0  # subprocess never called
+        captured = capsys.readouterr()
+        assert "Exporter script not found" in captured.err
+
+    def test_missing_validator_script_returns_error(self, monkeypatch, tmp_path, capsys):
+        """Missing validator script returns error after successful export."""
+        import sys
+
+        call_count = [0]
+
+        def fake_call(argv, cwd=None):
+            call_count[0] += 1
+            return 0
+
+        monkeypatch.setattr(subprocess, "call", fake_call)
+
+        # Create fake PROJECT_ROOT with ONLY exporter stub (no validator)
+        fake_root = tmp_path / "partial_repo"
+        fake_root.mkdir()
+
+        export_script = fake_root / "scripts" / "export" / "viewer_pack_v1_export.py"
+        export_script.parent.mkdir(parents=True)
+        export_script.write_text("# stub")
+        # NOTE: validator script intentionally NOT created
+
+        main_module = sys.modules["tap_tone_pi.cli.main"]
+        monkeypatch.setattr(main_module, "PROJECT_ROOT", fake_root)
+
+        # Create valid session
+        session_dir = fake_root / "runs_phase2" / "session_0001"
+        session_dir.mkdir(parents=True)
+        (session_dir / "grid.json").write_text("{}")
+
+        rc = cmd_export_pack(_args(
+            str(Path("runs_phase2") / "session_0001"),
+            str(tmp_path / "out.zip"),
+            validate=True,  # This triggers validator check
+        ))
+
+        assert rc == 1
+        assert call_count[0] == 1  # Exporter called, then validator check failed
+        captured = capsys.readouterr()
+        assert "ZIP validator script not found" in captured.err
