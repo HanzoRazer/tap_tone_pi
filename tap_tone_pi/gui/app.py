@@ -12,6 +12,12 @@ Phase 6 Enhancements:
 - Direct Python imports (no subprocess for core analysis)
 - Matplotlib inline spectrum visualization
 
+Phase 8 Enhancements (UI Polish):
+- StatusBar for operation feedback
+- AudioLevelMeter for real-time level visualization
+- SetupWizardDialog for in-GUI hardware configuration
+- CaptureProgressDialog for visual feedback during capture
+
 Runs:
 - Tap-tone (live / offline WAV)
 - Bending stiffness → MOE (single / batch)
@@ -65,6 +71,19 @@ try:
     HAS_QUALITY_GATE = True
 except ImportError:
     HAS_QUALITY_GATE = False
+
+# UI widgets (Phase 8 enhancement)
+try:
+    from tap_tone_pi.gui.widgets import (
+        StatusBar,
+        StatusLevel,
+        AudioLevelMeter,
+        SetupWizardDialog,
+        CaptureProgressDialog,
+    )
+    HAS_WIDGETS = True
+except ImportError:
+    HAS_WIDGETS = False
 
 
 class SpectrumViewer(tk.Toplevel):
@@ -123,7 +142,15 @@ class SpectrumViewer(tk.Toplevel):
 
 
 class QualityVerdictViewer(tk.Toplevel):
-    """Quality gate verdict viewer window (Phase 7 enhancement)."""
+    """
+    Quality gate verdict viewer window (Phase 7 + Phase 8 enhancements).
+
+    Phase 8 improvements:
+    - Better visual hierarchy with icons
+    - Color-coded rule list items
+    - Improved button styling
+    - Dominant frequency prominently displayed
+    """
 
     def __init__(
         self,
@@ -137,106 +164,221 @@ class QualityVerdictViewer(tk.Toplevel):
     ) -> None:
         super().__init__(parent)
         self.title(title)
-        self.geometry("500x400")
+        self.geometry("520x480")
+        self.resizable(False, False)
         self.verdict = verdict
         self.on_accept = on_accept
         self.on_retry = on_retry
         self.on_override = on_override
 
-        # Main frame
-        main = tk.Frame(self, padx=10, pady=10)
+        # Main frame with better padding
+        main = tk.Frame(self, padx=15, pady=15)
         main.pack(fill=tk.BOTH, expand=True)
 
-        # Verdict banner
+        # Verdict banner with icon
         if verdict.verdict == Verdict.PASS:
             banner_bg = "#4CAF50"  # Green
             banner_text = "PASS"
+            banner_icon = "✓"
         elif verdict.verdict == Verdict.WARN:
-            banner_bg = "#FFC107"  # Yellow
+            banner_bg = "#FF9800"  # Orange (better contrast than yellow)
             banner_text = "WARNING"
+            banner_icon = "⚠"
         else:
             banner_bg = "#F44336"  # Red
             banner_text = "FAIL"
+            banner_icon = "✗"
+
+        banner_frame = tk.Frame(main, bg=banner_bg)
+        banner_frame.pack(fill=tk.X, pady=(0, 15))
 
         banner = tk.Label(
-            main,
-            text=banner_text,
+            banner_frame,
+            text=f" {banner_icon}  {banner_text}",
             bg=banner_bg,
             fg="white",
-            font=("Helvetica", 24, "bold"),
-            pady=10
+            font=("Helvetica", 28, "bold"),
+            pady=12,
         )
         banner.pack(fill=tk.X)
 
-        # Analysis summary
-        summary_frame = tk.LabelFrame(main, text="Measurement Summary", padx=5, pady=5)
-        summary_frame.pack(fill=tk.X, pady=10)
+        # Dominant frequency - prominently displayed
+        freq_frame = tk.Frame(main, bg="#f5f5f5", relief=tk.GROOVE, bd=1)
+        freq_frame.pack(fill=tk.X, pady=(0, 10))
 
-        summary_text = (
-            f"Dominant: {result.dominant_hz:.1f} Hz\n"
-            f"RMS: {result.rms:.4f}\n"
-            f"Confidence: {result.confidence:.2f}\n"
-            f"Peaks: {len(result.peaks)}\n"
-            f"Clipped: {'Yes' if result.clipped else 'No'}"
-        )
-        tk.Label(summary_frame, text=summary_text, justify=tk.LEFT, font=("Courier", 10)).pack(anchor=tk.W)
+        tk.Label(
+            freq_frame,
+            text=f"{result.dominant_hz:.1f} Hz",
+            font=("Helvetica", 32, "bold"),
+            fg="#1976D2",
+            bg="#f5f5f5",
+            pady=8,
+        ).pack()
 
-        # Triggered rules
+        tk.Label(
+            freq_frame,
+            text="Dominant Frequency",
+            font=("Helvetica", 10),
+            fg="#666",
+            bg="#f5f5f5",
+            pady=(0, 8),
+        ).pack()
+
+        # Analysis summary in a grid
+        summary_frame = tk.LabelFrame(main, text="Measurement Details", padx=10, pady=8)
+        summary_frame.pack(fill=tk.X, pady=5)
+
+        details = [
+            ("RMS Level", f"{result.rms:.4f}"),
+            ("Confidence", f"{result.confidence:.1%}"),
+            ("Peak Count", str(len(result.peaks))),
+            ("Clipping", "Yes ⚠" if result.clipped else "No ✓"),
+        ]
+
+        for i, (label, value) in enumerate(details):
+            row = i // 2
+            col = i % 2
+            cell = tk.Frame(summary_frame)
+            cell.grid(row=row, column=col, sticky="w", padx=10, pady=3)
+
+            tk.Label(cell, text=f"{label}:", font=("Helvetica", 9, "bold"), fg="#555").pack(side=tk.LEFT)
+
+            fg_color = "#d32f2f" if "⚠" in value else "#333"
+            tk.Label(cell, text=f" {value}", font=("Helvetica", 9), fg=fg_color).pack(side=tk.LEFT)
+
+        # Triggered rules with color coding
         if verdict.triggered_rules:
-            rules_frame = tk.LabelFrame(main, text="Triggered Rules", padx=5, pady=5)
+            rules_frame = tk.LabelFrame(main, text="Triggered Quality Rules", padx=8, pady=8)
             rules_frame.pack(fill=tk.BOTH, expand=True, pady=5)
 
-            rules_list = tk.Listbox(rules_frame, height=6, font=("Courier", 9))
-            rules_list.pack(fill=tk.BOTH, expand=True)
+            # Create a canvas with scrollbar for the rules
+            canvas = tk.Canvas(rules_frame, height=100, highlightthickness=0)
+            scrollbar = tk.Scrollbar(rules_frame, orient=tk.VERTICAL, command=canvas.yview)
+            rules_container = tk.Frame(canvas)
+
+            canvas.configure(yscrollcommand=scrollbar.set)
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            canvas.create_window((0, 0), window=rules_container, anchor=tk.NW)
 
             for tr in verdict.triggered_rules:
-                severity = "ERROR" if tr.rule.severity == Severity.HARD else "WARN"
-                rules_list.insert(tk.END, f"[{severity}] {tr.rule.rule_id}: {tr.message}")
+                is_hard = tr.rule.severity == Severity.HARD
+                rule_bg = "#ffebee" if is_hard else "#fff3e0"
+                rule_fg = "#c62828" if is_hard else "#e65100"
+                icon = "⛔" if is_hard else "⚡"
 
-        # Action buttons
+                rule_row = tk.Frame(rules_container, bg=rule_bg, pady=4, padx=6)
+                rule_row.pack(fill=tk.X, pady=2)
+
+                tk.Label(
+                    rule_row,
+                    text=f"{icon} [{tr.rule.rule_id}]",
+                    font=("Courier", 9, "bold"),
+                    fg=rule_fg,
+                    bg=rule_bg,
+                ).pack(side=tk.LEFT)
+
+                tk.Label(
+                    rule_row,
+                    text=f" {tr.message}",
+                    font=("Helvetica", 9),
+                    fg="#333",
+                    bg=rule_bg,
+                    wraplength=380,
+                    justify=tk.LEFT,
+                ).pack(side=tk.LEFT, fill=tk.X)
+
+            rules_container.update_idletasks()
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        else:
+            # No rules triggered
+            no_rules = tk.Label(
+                main,
+                text="✓ No quality rules triggered",
+                font=("Helvetica", 10),
+                fg="#4CAF50",
+            )
+            no_rules.pack(pady=10)
+
+        # Action buttons with improved styling
         btn_frame = tk.Frame(main)
-        btn_frame.pack(fill=tk.X, pady=10)
+        btn_frame.pack(fill=tk.X, pady=(15, 5))
 
         if verdict.verdict == Verdict.PASS:
-            tk.Button(
+            accept_btn = tk.Button(
                 btn_frame,
-                text="Accept",
+                text="✓ Accept",
                 command=self._do_accept,
                 bg="#4CAF50",
                 fg="white",
-                width=15
-            ).pack(side=tk.LEFT, padx=5)
+                font=("Helvetica", 11, "bold"),
+                width=15,
+                relief=tk.FLAT,
+                cursor="hand2",
+            )
+            accept_btn.pack(side=tk.LEFT, padx=5)
         elif verdict.verdict == Verdict.WARN:
-            tk.Button(
+            accept_btn = tk.Button(
                 btn_frame,
-                text="Accept (with warnings)",
+                text="Accept with Warnings",
                 command=self._do_accept,
-                bg="#FFC107",
-                width=20
-            ).pack(side=tk.LEFT, padx=5)
-            tk.Button(
+                bg="#FF9800",
+                fg="white",
+                font=("Helvetica", 10, "bold"),
+                width=20,
+                relief=tk.FLAT,
+                cursor="hand2",
+            )
+            accept_btn.pack(side=tk.LEFT, padx=5)
+
+            retry_btn = tk.Button(
                 btn_frame,
-                text="Retry",
+                text="↻ Retry",
                 command=self._do_retry,
-                width=10
-            ).pack(side=tk.LEFT, padx=5)
+                bg="#607D8B",
+                fg="white",
+                font=("Helvetica", 10),
+                width=10,
+                relief=tk.FLAT,
+                cursor="hand2",
+            )
+            retry_btn.pack(side=tk.LEFT, padx=5)
         else:  # FAIL
-            tk.Button(
+            retry_btn = tk.Button(
                 btn_frame,
-                text="Retry",
+                text="↻ Retry",
                 command=self._do_retry,
                 bg="#2196F3",
                 fg="white",
-                width=15
-            ).pack(side=tk.LEFT, padx=5)
-            tk.Button(
+                font=("Helvetica", 11, "bold"),
+                width=15,
+                relief=tk.FLAT,
+                cursor="hand2",
+            )
+            retry_btn.pack(side=tk.LEFT, padx=5)
+
+            override_btn = tk.Button(
                 btn_frame,
                 text="Override...",
                 command=self._do_override,
-                width=15
-            ).pack(side=tk.LEFT, padx=5)
+                bg="#9E9E9E",
+                fg="white",
+                font=("Helvetica", 10),
+                width=12,
+                relief=tk.FLAT,
+                cursor="hand2",
+            )
+            override_btn.pack(side=tk.LEFT, padx=5)
 
-        tk.Button(btn_frame, text="Close", command=self.destroy, width=10).pack(side=tk.RIGHT, padx=5)
+        close_btn = tk.Button(
+            btn_frame,
+            text="Close",
+            command=self.destroy,
+            font=("Helvetica", 10),
+            width=8,
+            cursor="hand2",
+        )
+        close_btn.pack(side=tk.RIGHT, padx=5)
 
     def _do_accept(self) -> None:
         if self.on_accept:
@@ -251,7 +393,8 @@ class QualityVerdictViewer(tk.Toplevel):
     def _do_override(self) -> None:
         reason = simpledialog.askstring(
             "Override Reason",
-            "Enter reason for overriding the failed quality gate:",
+            "Enter reason for overriding the failed quality gate:\n\n"
+            "(This will be recorded in the audit trail)",
             parent=self
         )
         if reason and reason.strip():
@@ -281,17 +424,38 @@ class App(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("tap_tone_pi — Measurement GUI (v2.0.0)")
-        self.geometry("640x520")
+        self.geometry("680x600")
         self.run_id = tk.StringVar(value=default_run_id())
 
+        # Menu bar
+        self._create_menu()
+
+        # Main content frame
         frm = tk.Frame(self)
         frm.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # Run ID
+        # Status bar at bottom (Phase 8)
+        if HAS_WIDGETS:
+            self.status_bar = StatusBar(self)
+            self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+        else:
+            self.status_bar = None
+
+        # Run ID row with Setup button
         rrow = tk.Frame(frm)
         rrow.pack(fill="x", pady=4)
         tk.Label(rrow, text="Run ID (folder under out/)").pack(side="left")
         tk.Entry(rrow, textvariable=self.run_id, width=20).pack(side="left", padx=6)
+
+        # Setup Wizard button (Phase 8)
+        if HAS_WIDGETS:
+            tk.Button(
+                rrow,
+                text="Setup Wizard",
+                command=self.do_setup_wizard,
+                bg="#9C27B0",
+                fg="white",
+            ).pack(side="right", padx=5)
 
         # --- Quality-gated measurement (Phase 7 - recommended)
         if HAS_QUALITY_GATE and HAS_DIRECT_ANALYSIS:
@@ -357,6 +521,77 @@ class App(tk.Tk):
             width=50
         ).pack(pady=4)
 
+    def _create_menu(self) -> None:
+        """Create the application menu bar."""
+        menubar = tk.Menu(self)
+        self.config(menu=menubar)
+
+        # File menu
+        file_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="Open Output Folder", command=self._open_output_folder)
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.quit)
+
+        # Tools menu
+        tools_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Tools", menu=tools_menu)
+        if HAS_WIDGETS:
+            tools_menu.add_command(label="Setup Wizard...", command=self.do_setup_wizard)
+        tools_menu.add_command(label="Chladni Wizard...", command=self.do_chladni_wizard)
+
+        # Help menu
+        help_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        help_menu.add_command(label="About", command=self._show_about)
+
+    def _open_output_folder(self) -> None:
+        """Open the output folder in file manager."""
+        import subprocess
+        import platform
+
+        folder = self.outdir()
+        if platform.system() == "Windows":
+            subprocess.run(["explorer", str(folder)])
+        elif platform.system() == "Darwin":
+            subprocess.run(["open", str(folder)])
+        else:
+            subprocess.run(["xdg-open", str(folder)])
+
+    def _show_about(self) -> None:
+        """Show about dialog."""
+        messagebox.showinfo(
+            "About tap_tone_pi",
+            "tap_tone_pi — Measurement GUI\n"
+            "Version 2.0.0\n\n"
+            "Acoustic measurement and quality control\n"
+            "for lutherie applications.\n\n"
+            "Phase 8: UI Polish"
+        )
+
+    def _set_status(self, text: str, level: str = "info") -> None:
+        """Set status bar message."""
+        if self.status_bar:
+            level_map = {
+                "info": StatusLevel.INFO,
+                "success": StatusLevel.SUCCESS,
+                "warning": StatusLevel.WARNING,
+                "error": StatusLevel.ERROR,
+                "progress": StatusLevel.PROGRESS,
+            }
+            self.status_bar.set(text, level_map.get(level, StatusLevel.INFO))
+
+    def do_setup_wizard(self) -> None:
+        """Open the hardware setup wizard."""
+        if not HAS_WIDGETS:
+            messagebox.showerror("Error", "Widgets module not available")
+            return
+
+        def on_complete(device_config):
+            self._set_status(f"Configured: {device_config.name}", "success")
+
+        SetupWizardDialog(self, on_complete=on_complete)
+
     def outdir(self) -> pathlib.Path:
         """Get or create the output directory for current run."""
         p = OUT / self.run_id.get().strip()
@@ -366,7 +601,7 @@ class App(tk.Tk):
     # --- Callbacks ---
 
     def do_quality_measure(self, entry_vars: list[tk.StringVar]) -> None:
-        """Run quality-gated measurement (Phase 7 enhancement)."""
+        """Run quality-gated measurement (Phase 7 + Phase 8 enhancements)."""
         if not HAS_QUALITY_GATE or not HAS_DIRECT_ANALYSIS:
             messagebox.showerror("Error", "Quality gate modules not available")
             return
@@ -395,8 +630,27 @@ class App(tk.Tk):
         attempt_dir = point_dir / f"attempt_{attempt_num:03d}"
         attempt_dir.mkdir(parents=True, exist_ok=True)
 
+        # Phase 8: Show progress dialog
+        progress_dlg = None
+        if HAS_WIDGETS:
+            progress_dlg = CaptureProgressDialog(
+                self,
+                title=f"Capturing: {point_id} (attempt {attempt_num})"
+            )
+
         try:
-            # Capture
+            # Stage 0: Preflight
+            self._set_status(f"Preflight check for {point_id}...", "progress")
+            if progress_dlg:
+                progress_dlg.set_stage(0, "Checking device...")
+                self.update()
+
+            # Stage 1: Capture
+            self._set_status(f"Capturing {point_id}...", "progress")
+            if progress_dlg:
+                progress_dlg.set_stage(1, f"Recording for {duration}s...")
+                self.update()
+
             cap = record_audio(
                 device=device,
                 sample_rate=sample_rate,
@@ -404,15 +658,30 @@ class App(tk.Tk):
                 seconds=duration,
             )
 
-            # Analyze
+            # Stage 2: Analyze
+            self._set_status(f"Analyzing {point_id}...", "progress")
+            if progress_dlg:
+                progress_dlg.set_stage(2, "Running FFT analysis...")
+                self.update()
+
             result = analyze_tap(cap.audio, cap.sample_rate)
 
-            # Quality check
+            # Stage 3: Quality check
+            self._set_status(f"Quality check for {point_id}...", "progress")
+            if progress_dlg:
+                progress_dlg.set_stage(3, "Evaluating quality rules...")
+                self.update()
+
             verdict = check_quality(
                 analysis=result,
                 sample_rate=cap.sample_rate,
                 audio=cap.audio,
             )
+
+            # Close progress dialog
+            if progress_dlg:
+                progress_dlg.destroy()
+                progress_dlg = None
 
             # Save audio
             from scipy.io import wavfile
@@ -435,8 +704,17 @@ class App(tk.Tk):
             with open(quality_path, "w") as f:
                 json.dump(verdict.to_dict(), f, indent=2)
 
+            # Update status based on verdict
+            if verdict.verdict == Verdict.PASS:
+                self._set_status(f"{point_id}: PASSED ({result.dominant_hz:.1f} Hz)", "success")
+            elif verdict.verdict == Verdict.WARN:
+                self._set_status(f"{point_id}: WARNING - review required", "warning")
+            else:
+                self._set_status(f"{point_id}: FAILED - retry or override", "error")
+
             # Show verdict viewer
             def on_accept():
+                self._set_status(f"{point_id} accepted", "success")
                 messagebox.showinfo("Accepted", f"Measurement saved to:\n{attempt_dir}")
                 # Show spectrum too
                 if HAS_MATPLOTLIB:
@@ -451,6 +729,7 @@ class App(tk.Tk):
                 override_path = attempt_dir / "override.json"
                 with open(override_path, "w") as f:
                     json.dump({"reason": reason, "timestamp": datetime.datetime.utcnow().isoformat()}, f, indent=2)
+                self._set_status(f"{point_id} overridden", "warning")
                 messagebox.showinfo("Overridden", f"Measurement overridden and saved to:\n{attempt_dir}")
 
             QualityVerdictViewer(
@@ -464,6 +743,9 @@ class App(tk.Tk):
             )
 
         except Exception as e:
+            if progress_dlg:
+                progress_dlg.destroy()
+            self._set_status(f"Error: {e}", "error")
             messagebox.showerror("Error", f"Measurement failed: {e}")
 
     def do_tap_live(self, entry_vars: list[tk.StringVar]) -> None:
