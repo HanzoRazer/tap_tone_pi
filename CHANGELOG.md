@@ -8,13 +8,29 @@ All notable changes to this project are documented here. This file follows [Keep
 - **Package restructure** — consolidated package namespace from `tap_tone` to `tap_tone_pi`
 - Import paths changed: `from tap_tone.analysis import analyze_tap` → `from tap_tone_pi.core.analysis import analyze_tap`
 - Deprecation stubs provided for backward compatibility (one release cycle)
+- CLI entry point renamed: `ttp` is now primary (replaces `tap-tone`)
 
 ### Fixed
 - **Bug 2: WAV write argument transposition** — `storage.py:57` had `write_wav_mono(path, sample_rate, audio)` instead of `write_wav_mono(path, audio, sample_rate)`. All Phase 1 captures now produce valid WAV files.
 
 ### Added
+- **Quality Gate system** — `tap_tone_pi.core.quality_gate` and `tap_tone_pi.core.quality_policy`
+  - HARD rules (Q001-Q005): clipping, silent, no peaks, low confidence, invalid sample rate → FAIL
+  - SOFT rules (Q010-Q013): quiet, near-clipping, marginal confidence, few peaks → WARN
+  - `quality_check.json` emitted for every capture (evidence layer)
+- **Operator Loop** — `tap_tone_pi.workflow.operator_loop`
+  - State machine: IDLE → PREFLIGHT → READY → CAPTURING → ANALYZING → GATING → PASS/WARN/FAIL
+  - Retry support with attempt numbering (attempt_001, attempt_002, etc.)
+  - Override support for FAILED attempts with required reason
+- **Attempt tracking** — `tap_tone_pi.workflow.attempt`
+  - `Attempt` dataclass with full lifecycle tracking
+  - `AttemptStore` for session persistence
+- **CLI commands**
+  - `ttp record` — record single tap (QC recorded, not gated)
+  - `ttp measure` — quality-gated measurement (blocks on FAIL)
+  - `ttp export-pack` — export viewer pack ZIP with validation
 - Regression test for storage.py WAV write path (`test_storage_wav_roundtrip.py`)
-- Unified CLI entry points: `ttp` (short) and `tap-tone` (discoverable)
+- 89 tests for quality gate + workflow + CLI integration
 - Schema location documented: `contracts/schemas/` is canonical (per `schema_registry.json`)
 
 ### Changed
@@ -23,6 +39,11 @@ All notable changes to this project are documented here. This file follows [Keep
 - GUI binding bug fixed (form values now captured at callback time, not construction)
 - **Matplotlib spectrum viewer** — inline visualization with peak annotations (Phase 6)
 - Deleted `tap-tone-lab/` directory (49 files, content migrated to `tap_tone_pi/`)
+
+### Governance
+- **Evidence always produced** — `quality_check.json` written even when not gating
+- **Gating is a workflow decision** — `record` = evidence only; `measure` = blocking gate
+- **Artifact contract** — guaranteed per capture: `audio.wav`, `analysis.json`, `quality_check.json`
 
 [2.0.0]: https://github.com/HanzoRazer/tap_tone_pi/compare/analyzer-v1.2.0...analyzer-v2.0.0
 

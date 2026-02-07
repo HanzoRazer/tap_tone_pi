@@ -71,6 +71,69 @@
 | Packages | 3 fragmented | 1 unified |
 | CLI entry points | tap-tone | ttp (primary) |
 | Known bugs | 2 | 0 |
+| Schema location | scattered | `contracts/schemas/` (canonical) |
+| Artifact contract | implicit | explicit (schemas + pack) |
+
+---
+
+## Breaking Changes / Migration Notes
+
+| Change | Impact | Action |
+|--------|--------|--------|
+| CLI entry point renamed | `tap-tone` → `ttp` (primary) | Update scripts/aliases |
+| `out/` no longer tracked | Build artifacts excluded from git | Use `.gitignore`, create locally |
+| `tap-tone-lab/` deleted | Old lab package removed | Import from `tap_tone_pi.*` |
+| `quality_check.json` added | New evidence file per capture | Update validators/consumers |
+
+**Shims retained (not extended):**
+- `tap_tone/` — legacy imports still work, but add new code to `tap_tone_pi/`
+- `gui/` fallback — CLI checks `tap_tone_pi.gui` first, falls back to `gui.app`
+
+---
+
+## Governance / Contract
+
+**Canonical schema location:** `contracts/schemas/`
+
+**Pack schema:** `viewer_pack_v1` (see `contracts/viewer_pack_v1.schema.json`)
+
+**Guaranteed artifacts per capture:**
+
+| File | Status | Description |
+|------|--------|-------------|
+| `audio.wav` | Required | PCM int16 WAV |
+| `analysis.json` | Required | FFT peaks, dominant_hz, confidence |
+| `quality_check.json` | Required | Verdict + triggered rules |
+| `capture_meta.json` | Required | Device, sample rate, timestamp |
+| `spectrum.png` | Optional | Visual spectrum plot |
+
+**Schema policy:** `additionalProperties: true` — new files/fields may be added without breaking downstream consumers (ToolBox, validators).
+
+**Evidence governance:**
+- `ttp record` — QC recorded, not gated (evidence always produced)
+- `ttp measure` — QC gated (blocks on FAIL, allows retry/override)
+
+---
+
+## Migration Scope
+
+### Not Migrated (Intentional)
+
+- `modes/` — retained for backwards compatibility with tests/scripts
+- `tap_tone/` — shim layer retained, not extended
+- `gui/` (legacy) — fallback import path, not primary
+
+### Canonical Going Forward
+
+| Purpose | Canonical Import |
+|---------|------------------|
+| Analysis | `tap_tone_pi.core.analysis.analyze_tap` |
+| Capture | `tap_tone_pi.capture.record_audio` |
+| Quality Gate | `tap_tone_pi.core.quality_gate.check_quality` |
+| CLI | `tap_tone_pi.cli.main` (`ttp` entry point) |
+| WAV I/O | `tap_tone_pi.io.wav` |
+
+New code should be added to `tap_tone_pi/`, not legacy locations.
 
 ---
 
@@ -108,7 +171,10 @@ pip install -e .
 # Run CLI
 ttp --help
 ttp devices
-ttp record --duration 4
+ttp record --seconds 2.5 --out ./out
+
+# Quality-gated measurement (blocks on FAIL)
+ttp measure --out ./out
 
 # Run GUI
 ttp gui
@@ -118,6 +184,47 @@ python -m tap_tone_pi.cli.main gui
 # Run tests
 python -m pytest
 ```
+
+---
+
+## Verification Checklist (Raspberry Pi Deployments)
+
+Run these after install to confirm working setup:
+
+```bash
+# 1. Device detection
+ttp devices
+# ✓ Should show at least one input device with "*" marker
+
+# 2. Device persistence
+ttp setup
+# ✓ Stores device by name (survives index changes on reboot)
+
+# 3. Basic capture with QC evidence
+ttp record --seconds 2.5 --out ./out --label test
+# ✓ Creates capture directory with:
+#   - audio.wav
+#   - analysis.json
+#   - quality_check.json
+
+# 4. Pack export (if Phase 2 session exists)
+ttp export-pack --session runs_phase2/session_0001 --out pack.zip --validate --strict
+# ✓ Creates validated viewer pack ZIP
+```
+
+---
+
+## Next Steps
+
+**v2.0.0 is consolidation + baseline.** UX/governance work continues:
+
+| Phase | Status | Description |
+|-------|--------|-------------|
+| Quality gate evidence | ✅ Done | `quality_check.json` everywhere |
+| Operator loop | ✅ Done | PASS/WARN/FAIL with retry/override |
+| Workflow tests | ✅ Done | 40 tests for attempt + operator loop |
+| UI polish | 🔜 Next | Meters, setup wizard, session browser |
+| Pack diff tooling | 🔜 Next | Before/after comparison |
 
 ---
 
