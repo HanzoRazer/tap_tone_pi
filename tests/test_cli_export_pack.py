@@ -8,13 +8,40 @@ from __future__ import annotations
 
 import argparse
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
 # Import the command handler and PROJECT_ROOT
 from tap_tone_pi.cli.main import cmd_export_pack, PROJECT_ROOT
+
+
+def _args(session: str, out: str, validate=False, strict=False, json=False):
+    """Helper to create argparse.Namespace for export-pack tests."""
+    return argparse.Namespace(
+        session=session,
+        out=out,
+        validate=validate,
+        strict=strict,
+        json=json,
+    )
+
+
+def _setup_fake_project_root(tmp_path: Path) -> Path:
+    """Create a fake PROJECT_ROOT with required script stubs."""
+    fake_root = tmp_path / "fake_repo"
+    fake_root.mkdir()
+
+    # Create script stubs that cmd_export_pack checks for existence
+    export_script = fake_root / "scripts" / "export" / "viewer_pack_v1_export.py"
+    export_script.parent.mkdir(parents=True)
+    export_script.write_text("# stub")
+
+    validate_script = fake_root / "scripts" / "viewer_pack_validate.py"
+    validate_script.parent.mkdir(parents=True, exist_ok=True)
+    validate_script.write_text("# stub")
+
+    return fake_root
 
 
 class TestExportPackSubprocessWiring:
@@ -208,7 +235,11 @@ class TestExportPackPathResolution:
     """Test that session and output paths are resolved correctly."""
 
     def test_relative_session_resolved_against_project_root(self, monkeypatch, tmp_path):
-        """Relative session paths resolve against PROJECT_ROOT, not CWD."""
+        """Relative session paths resolve against PROJECT_ROOT, not CWD.
+
+        This test is hermetic: PROJECT_ROOT is patched to tmp_path.
+        """
+        import sys
         calls = []
 
         def fake_call(argv, cwd=None):
@@ -217,35 +248,33 @@ class TestExportPackPathResolution:
 
         monkeypatch.setattr(subprocess, "call", fake_call)
 
-        # Create session relative to PROJECT_ROOT
-        session_name = "runs_phase2/test_session"
-        session_dir = PROJECT_ROOT / session_name
-        session_dir.mkdir(parents=True, exist_ok=True)
-        (session_dir / "grid.json").write_text("{}")
+        # Create a fake PROJECT_ROOT with script stubs
+        fake_root = _setup_fake_project_root(tmp_path)
 
-        try:
-            args = argparse.Namespace(
-                session=session_name,  # Relative path
-                out=str(tmp_path / "out.zip"),
-                validate=False,
-                strict=False,
-                json=False,
-            )
+        # Patch PROJECT_ROOT in the module where it's used (via sys.modules)
+        main_module = sys.modules["tap_tone_pi.cli.main"]
+        monkeypatch.setattr(main_module, "PROJECT_ROOT", fake_root)
 
-            rc = cmd_export_pack(args)
+        # Create a repo-relative session under patched PROJECT_ROOT
+        rel_session = Path("runs_phase2") / "session_0001"
+        abs_session = fake_root / rel_session
+        abs_session.mkdir(parents=True)
+        (abs_session / "grid.json").write_text("{}")
 
-            assert rc == 0
-            export_argv = calls[0][0]
-            # Session path in argv should be resolved absolute path
-            session_in_argv = export_argv[export_argv.index("--session") + 1]
-            assert Path(session_in_argv).is_absolute()
-            assert session_name.replace("/", "\\") in session_in_argv or session_name in session_in_argv
+        out_zip = tmp_path / "out.zip"
 
-        finally:
-            # Cleanup: remove test session from PROJECT_ROOT
-            import shutil
-            if session_dir.exists():
-                shutil.rmtree(session_dir)
+        rc = cmd_export_pack(_args(str(rel_session), str(out_zip), validate=False))
+
+        assert rc == 0
+        export_argv, export_cwd = calls[0]
+
+        # Session path in argv should be resolved absolute path
+        session_in_argv = export_argv[export_argv.index("--session") + 1]
+        assert Path(session_in_argv).is_absolute()
+        assert str(abs_session) == session_in_argv
+
+        # Subprocess runs with patched PROJECT_ROOT as cwd
+        assert str(fake_root) == str(export_cwd)
 
     def test_cwd_used_for_subprocess(self, monkeypatch, tmp_path):
         """subprocess.call is invoked with PROJECT_ROOT as cwd."""
@@ -261,15 +290,57 @@ class TestExportPackPathResolution:
         session_dir.mkdir(parents=True)
         (session_dir / "grid.json").write_text("{}")
 
-        args = argparse.Namespace(
-            session=str(session_dir),
-            out=str(tmp_path / "out.zip"),
-            validate=False,
-            strict=False,
-            json=False,
-        )
-
-        cmd_export_pack(args)
+        cmd_export_pack(_args(str(session_dir), str(tmp_path / "out.zip"), validate=False))
 
         _, cwd = calls[0]
         assert cwd == str(PROJECT_ROOT)
+
+
+class TestExportPackReturnCodePropagation:
+    """Test that subprocess return codes are correctly propagated."""
+
+    def test_propagates_exporter_nonzero_return_code(self, monkeypatch, tmp_path):
+        """Exporter exit code 2 is propagated as command exit code."""
+        session_dir = tmp_path / "session_0001"
+        session_dir.mkdir(parents=True)
+        (session_dir / "grid.json").write_text("{}")
+
+        def fake_call(argv, cwd=None):
+            return 2  # Exporter fails with code 2
+
+        monkeypatch.setattr(subprocess, "call", fake_call)
+
+        rc = cmd_export_pack(_args(
+            str(session_dir),
+            str(tmp_path / "out.zip"),
+            validate=True,
+            strict=True,
+            json=True,
+        ))
+
+        assert rc == 2
+
+    def test_propagates_validator_nonzero_return_code(self, monkeypatch, tmp_path):
+        """Validator exit code 3 is propagated after successful export."""
+        session_dir = tmp_path / "session_0001"
+        session_dir.mkdir(parents=True)
+        (session_dir / "grid.json").write_text("{}")
+
+        calls = {"n": 0}
+
+        def fake_call(argv, cwd=None):
+            calls["n"] += 1
+            return 0 if calls["n"] == 1 else 3  # Export ok, validate fails with 3
+
+        monkeypatch.setattr(subprocess, "call", fake_call)
+
+        rc = cmd_export_pack(_args(
+            str(session_dir),
+            str(tmp_path / "out.zip"),
+            validate=True,
+            strict=True,
+            json=True,
+        ))
+
+        assert rc == 3
+        assert calls["n"] == 2  # Both were called
