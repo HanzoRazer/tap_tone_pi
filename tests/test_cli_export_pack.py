@@ -27,9 +27,11 @@ def _args(session: str, out: str, validate=False, strict=False, json=False):
     )
 
 
-def _get_argv_value(argv: list, flag: str) -> str:
+def _get_argv_value(argv: list[str], flag: str) -> str:
     """Get the value following a flag in argv list."""
+    assert flag in argv, f"Missing flag in argv: {flag}. argv={argv}"
     i = argv.index(flag)
+    assert i + 1 < len(argv), f"Missing value after {flag}. argv={argv}"
     return argv[i + 1]
 
 
