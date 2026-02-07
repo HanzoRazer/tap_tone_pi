@@ -7,8 +7,8 @@ Canonical location: tap_tone_pi.cli.main
 Usage:
     ttp setup                # Hardware setup wizard (run first!)
     ttp devices              # List audio devices
-    ttp measure --out ./out  # Quality-gated measurement (recommended)
-    ttp record --out ./out   # Record single tap (no quality gate)
+    ttp measure --out ./out  # Quality-gated measurement (blocks on FAIL)
+    ttp record --out ./out   # Record single tap (QC recorded, not gated)
     ttp live --out ./out     # Continuous recording
     ttp quick                # Zero-config quick capture
     ttp gold-run ...         # Gold standard run
@@ -70,8 +70,7 @@ def cmd_devices(_args: argparse.Namespace) -> int:
 
 
 def cmd_record(args: argparse.Namespace) -> int:
-    """Record a single tap and analyze."""
-    import json
+    """Record a single tap and analyze (QC recorded, not gated)."""
     from tap_tone_pi.capture import record_audio
     from tap_tone_pi.core.config import CaptureConfig, AnalysisConfig
     from tap_tone_pi.core.analysis import analyze_tap
@@ -119,6 +118,8 @@ def cmd_record(args: argparse.Namespace) -> int:
     )
 
     # Quality Gate check
+    # NOTE: cmd_record always emits QC evidence but does not block on FAIL.
+    # Gating (block/override loop) belongs in cmd_measure/operator loop.
     qc = check_quality(res, sample_rate=cap.sample_rate, audio=cap.audio)
 
     _print_summary(args.label, res)
@@ -131,12 +132,14 @@ def cmd_record(args: argparse.Namespace) -> int:
         analysis=res,
     )
 
-    # Write quality_check.json alongside analysis.json/audio.wav
+    # Write quality_check.json alongside analysis.json/audio.wav (atomic write)
     qc_path = persisted.capture_dir / "quality_check.json"
-    qc_path.write_text(
+    qc_tmp = qc_path.with_suffix(".json.tmp")
+    qc_tmp.write_text(
         json.dumps(qc.to_dict(), indent=2, sort_keys=True),
         encoding="utf-8",
     )
+    qc_tmp.replace(qc_path)
 
     # Console QC summary (keeps headless workflows friendly)
     rules = ",".join([tr.rule.rule_id for tr in qc.triggered_rules]) if qc.triggered_rules else "none"
