@@ -90,8 +90,8 @@ class TestExportPackSubprocessWiring:
 
         # Exporter invoked with correct args (structural parsing, resolved paths)
         assert any("viewer_pack_v1_export.py" in str(x) for x in export_argv)
-        assert Path(_get_argv_value(export_argv, "--session")).resolve() == session_dir.resolve()
-        assert Path(_get_argv_value(export_argv, "--out")).resolve() == out_zip.resolve()
+        assert Path(_get_argv_value(export_argv, "--session")).resolve(strict=False) == session_dir.resolve(strict=False)
+        assert Path(_get_argv_value(export_argv, "--out")).resolve(strict=False) == out_zip.resolve(strict=False)
 
         # Validator invoked with passthrough flags
         assert any("viewer_pack_validate.py" in str(x) for x in validate_argv)
@@ -127,6 +127,40 @@ class TestExportPackSubprocessWiring:
         assert rc == 0
         assert len(calls) == 1  # Only exporter, no validator
         assert any("viewer_pack_v1_export.py" in str(x) for x in calls[0][0])
+
+    def test_strict_json_without_validate_does_not_invoke_validator(self, monkeypatch, tmp_path):
+        """--strict and --json without --validate invoke only exporter (wiring contract)."""
+        calls = []
+
+        def fake_call(argv, cwd=None):
+            calls.append((argv, cwd))
+            return 0
+
+        monkeypatch.setattr(subprocess, "call", fake_call)
+
+        session_dir = tmp_path / "session_0001"
+        session_dir.mkdir(parents=True)
+        (session_dir / "grid.json").write_text("{}")
+
+        out_zip = tmp_path / "out.zip"
+
+        args = argparse.Namespace(
+            session=str(session_dir),
+            out=str(out_zip),
+            validate=False,  # No --validate
+            strict=True,     # --strict set
+            json=True,       # --json set
+        )
+
+        rc = cmd_export_pack(args)
+
+        assert rc == 0
+        assert len(calls) == 1  # Only exporter, validator NOT invoked
+        export_argv = calls[0][0]
+        assert any("viewer_pack_v1_export.py" in str(x) for x in export_argv)
+        # --strict and --json are NOT passed to exporter (they're validator flags)
+        assert "--strict" not in export_argv
+        assert "--json" not in export_argv
 
     def test_propagates_exporter_failure(self, monkeypatch, tmp_path):
         """Exporter failure (non-zero rc) is propagated, validator not called."""
@@ -277,10 +311,10 @@ class TestExportPackPathResolution:
         # Session path in argv should be resolved absolute path
         session_in_argv = _get_argv_value(export_argv, "--session")
         assert Path(session_in_argv).is_absolute()
-        assert Path(session_in_argv).resolve() == abs_session.resolve()
+        assert Path(session_in_argv).resolve(strict=False) == abs_session.resolve(strict=False)
 
         # Subprocess runs with patched PROJECT_ROOT as cwd
-        assert Path(export_cwd).resolve() == fake_root.resolve()
+        assert Path(export_cwd).resolve(strict=False) == fake_root.resolve(strict=False)
 
     def test_cwd_used_for_subprocess(self, monkeypatch, tmp_path):
         """subprocess.call is invoked with PROJECT_ROOT as cwd."""
