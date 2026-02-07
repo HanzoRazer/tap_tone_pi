@@ -71,9 +71,11 @@ def cmd_devices(_args: argparse.Namespace) -> int:
 
 def cmd_record(args: argparse.Namespace) -> int:
     """Record a single tap and analyze."""
+    import json
     from tap_tone_pi.capture import record_audio
     from tap_tone_pi.core.config import CaptureConfig, AnalysisConfig
     from tap_tone_pi.core.analysis import analyze_tap
+    from tap_tone_pi.core.quality_gate import check_quality
     from tap_tone_pi.io.storage import persist_capture
     from tap_tone_pi.core.user_config import get_saved_device
 
@@ -116,6 +118,9 @@ def cmd_record(args: argparse.Namespace) -> int:
         max_peaks=an_cfg.max_peaks,
     )
 
+    # Quality Gate check
+    qc = check_quality(res, sample_rate=cap.sample_rate, audio=cap.audio)
+
     _print_summary(args.label, res)
 
     persisted = persist_capture(
@@ -125,6 +130,17 @@ def cmd_record(args: argparse.Namespace) -> int:
         audio=cap.audio,
         analysis=res,
     )
+
+    # Write quality_check.json alongside analysis.json/audio.wav
+    qc_path = persisted.capture_dir / "quality_check.json"
+    qc_path.write_text(
+        json.dumps(qc.to_dict(), indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+
+    # Console QC summary (keeps headless workflows friendly)
+    rules = ",".join([tr.rule.rule_id for tr in qc.triggered_rules]) if qc.triggered_rules else "none"
+    print(f"QC: {qc.verdict.value.upper()} rules={rules}")
     print(f"Wrote: {persisted.capture_dir}")
     return 0
 
