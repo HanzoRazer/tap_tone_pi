@@ -80,6 +80,7 @@ try:
         AudioLevelMeter,
         SetupWizardDialog,
         CaptureProgressDialog,
+        SessionBrowserDialog,
     )
     HAS_WIDGETS = True
 except ImportError:
@@ -447,13 +448,21 @@ class App(tk.Tk):
         tk.Label(rrow, text="Run ID (folder under out/)").pack(side="left")
         tk.Entry(rrow, textvariable=self.run_id, width=20).pack(side="left", padx=6)
 
-        # Setup Wizard button (Phase 8)
+        # Toolbar buttons (Phase 8)
         if HAS_WIDGETS:
             tk.Button(
                 rrow,
                 text="Setup Wizard",
                 command=self.do_setup_wizard,
                 bg="#9C27B0",
+                fg="white",
+            ).pack(side="right", padx=5)
+
+            tk.Button(
+                rrow,
+                text="Browse Sessions",
+                command=self.do_browse_sessions,
+                bg="#607D8B",
                 fg="white",
             ).pack(side="right", padx=5)
 
@@ -529,6 +538,8 @@ class App(tk.Tk):
         # File menu
         file_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="File", menu=file_menu)
+        if HAS_WIDGETS:
+            file_menu.add_command(label="Browse Sessions...", command=self.do_browse_sessions)
         file_menu.add_command(label="Open Output Folder", command=self._open_output_folder)
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.quit)
@@ -591,6 +602,23 @@ class App(tk.Tk):
             self._set_status(f"Configured: {device_config.name}", "success")
 
         SetupWizardDialog(self, on_complete=on_complete)
+
+    def do_browse_sessions(self) -> None:
+        """Open the session browser dialog."""
+        if not HAS_WIDGETS:
+            messagebox.showerror("Error", "Widgets module not available")
+            return
+
+        def on_session_selected(session_info):
+            # Set the run ID to the selected session
+            self.run_id.set(session_info.name)
+            self._set_status(f"Selected: {session_info.name}", "success")
+
+        SessionBrowserDialog(
+            self,
+            output_dir=OUT,
+            on_session_selected=on_session_selected,
+        )
 
     def outdir(self) -> pathlib.Path:
         """Get or create the output directory for current run."""

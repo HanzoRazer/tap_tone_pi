@@ -113,3 +113,85 @@ class TestCaptureProgressDialogStages:
         assert "Capturing" in stages
         assert "Analyzing" in stages
         assert "Quality Check" in stages
+
+
+class TestSessionInfo:
+    """Test SessionInfo dataclass."""
+
+    def test_import(self):
+        """SessionInfo should be importable."""
+        from tap_tone_pi.gui.widgets import SessionInfo
+        assert hasattr(SessionInfo, "from_path")
+
+    def test_size_display_bytes(self):
+        """Test size display for small files."""
+        from tap_tone_pi.gui.widgets import SessionInfo
+        from pathlib import Path
+        from datetime import datetime
+
+        info = SessionInfo(
+            path=Path("."),
+            name="test",
+            modified=datetime.now(),
+            size_bytes=500,
+        )
+        assert info.size_display == "500 B"
+
+    def test_size_display_kb(self):
+        """Test size display for KB range."""
+        from tap_tone_pi.gui.widgets import SessionInfo
+        from pathlib import Path
+        from datetime import datetime
+
+        info = SessionInfo(
+            path=Path("."),
+            name="test",
+            modified=datetime.now(),
+            size_bytes=2048,
+        )
+        assert info.size_display == "2.0 KB"
+
+    def test_size_display_mb(self):
+        """Test size display for MB range."""
+        from tap_tone_pi.gui.widgets import SessionInfo
+        from pathlib import Path
+        from datetime import datetime
+
+        info = SessionInfo(
+            path=Path("."),
+            name="test",
+            modified=datetime.now(),
+            size_bytes=1024 * 1024 * 5,
+        )
+        assert info.size_display == "5.0 MB"
+
+    def test_type_icons(self):
+        """Test type icons for different session types."""
+        from tap_tone_pi.gui.widgets import SessionInfo
+        from pathlib import Path
+        from datetime import datetime
+
+        for session_type, expected_icon in [
+            ("quality_gated", "🎯"),
+            ("chladni", "🔊"),
+            ("bending", "📏"),
+            ("moe", "📊"),
+            ("tap_tone", "🎵"),
+            ("unknown", "📁"),
+        ]:
+            info = SessionInfo(
+                path=Path("."),
+                name="test",
+                modified=datetime.now(),
+                session_type=session_type,
+            )
+            assert info.type_icon == expected_icon
+
+
+class TestSessionBrowserDialog:
+    """Test SessionBrowserDialog."""
+
+    def test_import(self):
+        """SessionBrowserDialog should be importable."""
+        from tap_tone_pi.gui.widgets import SessionBrowserDialog
+        assert hasattr(SessionBrowserDialog, "__init__")
