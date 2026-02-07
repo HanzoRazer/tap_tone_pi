@@ -121,22 +121,31 @@ class AgentEventV1:
 
     def to_dict(self) -> dict:
         """Convert to JSON-serializable dict."""
-        return {
-            "event_id": self.event_id,
-            "event_type": self.event_type.value,
-            "source": {
+        # Handle both enum and string event_type (for backward compat)
+        event_type_value = self.event_type.value if hasattr(self.event_type, 'value') else self.event_type
+
+        # Handle source as either EventSource dataclass or dict
+        if isinstance(self.source, dict):
+            source_dict = self.source
+        else:
+            source_dict = {
                 "repo": self.source.repo,
                 "component": self.source.component,
                 "version": self.source.version,
-            },
-            "payload": dict(self.payload),
+            }
+
+        return {
+            "event_id": self.event_id,
+            "event_type": event_type_value,
+            "source": source_dict,
+            "payload": dict(self.payload) if self.payload else {},
             "privacy_layer": self.privacy_layer,
-            "redacted_fields": list(self.redacted_fields),
+            "redacted_fields": list(self.redacted_fields) if self.redacted_fields else [],
             "correlation_id": self.correlation_id,
             "causation_id": self.causation_id,
             "parent_event_id": self.parent_event_id,
             "occurred_at": self.occurred_at,
             "recorded_at": self.recorded_at,
-            "tags": list(self.tags),
+            "tags": list(self.tags) if self.tags else [],
             "schema_version": self.schema_version,
         }

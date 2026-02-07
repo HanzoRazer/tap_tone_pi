@@ -2,8 +2,7 @@
 """
 tap_tone_pi CLI — Unified command dispatcher.
 
-Migration: Canonical location is now tap_tone_pi.cli.main
-           (previously tap_tone/main.py)
+Canonical location: tap_tone_pi.cli.main
 
 Usage:
     ttp devices              # List audio devices
@@ -14,41 +13,66 @@ Usage:
     ttp phase2 ...           # Phase 2 ODS workflow
     ttp chladni ...          # Chladni pattern analysis
     ttp bending ...          # Bending MOE calculation
+    ttp last                 # Show most recent session
+    ttp sessions             # List all sessions
+    ttp quick                # Zero-config quick capture
 """
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import sys
+from datetime import datetime
+from pathlib import Path
 from typing import Callable
+
+
+# Resolve project root for session directories
+def _get_project_root() -> Path:
+    """Find project root by looking for pyproject.toml or .git."""
+    current = Path(__file__).resolve()
+    for parent in [current] + list(current.parents):
+        if (parent / "pyproject.toml").exists() or (parent / ".git").exists():
+            return parent
+    return current.parent.parent.parent
+
+
+PROJECT_ROOT = _get_project_root()
+SESSION_ROOTS = [
+    PROJECT_ROOT / "out",
+    PROJECT_ROOT / "runs_phase2",
+    PROJECT_ROOT / "runs",
+]
 
 
 def cmd_devices(_args: argparse.Namespace) -> int:
     """List available audio devices."""
-    try:
-        from tap_tone_pi.capture import list_devices
-    except ImportError:
-        # Fallback to legacy location
-        from tap_tone.capture import list_devices
-    
+    from tap_tone_pi.capture import list_devices
+
     devs = list_devices()
+    if not devs:
+        print("No audio devices found.")
+        return 1
+
+    print("\nAvailable audio devices:\n")
     for d in devs:
-        print(f'[{d["index"]}] {d["name"]} (in={d["max_input_channels"]}, out={d["max_output_channels"]})')
+        inputs = d["max_input_channels"]
+        outputs = d["max_output_channels"]
+        marker = " *" if inputs > 0 else ""
+        print(f'  [{d["index"]:2d}] {d["name"]}{marker}')
+        print(f'       in={inputs}, out={outputs}, rate={d["default_samplerate"]}')
+    print("\n  * = has input channels (usable for capture)\n")
     return 0
 
 
 def cmd_record(args: argparse.Namespace) -> int:
     """Record a single tap and analyze."""
-    try:
-        from tap_tone_pi.core.config import CaptureConfig, AnalysisConfig
-        from tap_tone_pi.core.analysis import analyze_tap
-        from tap_tone.capture import record_audio  # Capture still in legacy
-        from tap_tone.storage import persist_capture
-    except ImportError:
-        from tap_tone.config import CaptureConfig, AnalysisConfig
-        from tap_tone.analysis import analyze_tap
-        from tap_tone.capture import record_audio
-        from tap_tone.storage import persist_capture
-    
+    from tap_tone_pi.capture import record_audio
+    from tap_tone_pi.core.config import CaptureConfig, AnalysisConfig
+    from tap_tone_pi.core.analysis import analyze_tap
+    from tap_tone_pi.io.storage import persist_capture
+
     cap_cfg = CaptureConfig(
         device=args.device,
         sample_rate=args.sample_rate,
@@ -57,6 +81,8 @@ def cmd_record(args: argparse.Namespace) -> int:
     )
     an_cfg = AnalysisConfig()
 
+    print(f"Recording {cap_cfg.seconds}s from device {cap_cfg.device or 'default'}...")
+
     cap = record_audio(
         device=cap_cfg.device,
         sample_rate=cap_cfg.sample_rate,
@@ -64,6 +90,7 @@ def cmd_record(args: argparse.Namespace) -> int:
         seconds=cap_cfg.seconds,
     )
 
+    print("Analyzing...")
     res = analyze_tap(
         cap.audio,
         cap.sample_rate,
@@ -112,10 +139,128 @@ def cmd_live(args: argparse.Namespace) -> int:
         return 0
 
 
+def cmd_quick(args: argparse.Namespace) -> int:
+    """Zero-config quick capture: auto-detect device, capture, analyze, display."""
+    from tap_tone_pi.capture import auto_detect_device, record_audio
+    from tap_tone_pi.core.analysis import analyze_tap
+
+    # Auto-detect device
+    device = auto_detect_device()
+    device_name = "system default" if device is None else f"device {device}"
+    print(f"Quick capture: using {device_name}")
+
+    # Capture
+    print(f"Recording 2.5s...")
+    cap = record_audio(device=device, sample_rate=48000, channels=1, seconds=2.5)
+
+    # Analyze
+    print("Analyzing...")
+    res = analyze_tap(cap.audio, cap.sample_rate)
+
+    # Print results
+    _print_summary(None, res)
+
+    # Optionally show spectrum
+    if args.plot:
+        try:
+            import matplotlib.pyplot as plt
+            plt.figure(figsize=(10, 4))
+            plt.semilogy(res.spectrum_freq_hz, res.spectrum_mag + 1e-10, 'b-', linewidth=0.5)
+            for peak in res.peaks[:5]:
+                plt.axvline(peak.freq_hz, color='r', linestyle='--', alpha=0.5)
+                plt.annotate(f"{peak.freq_hz:.0f} Hz", (peak.freq_hz, peak.magnitude),
+                            xytext=(5, 5), textcoords='offset points', fontsize=8, color='red')
+            plt.xlabel("Frequency (Hz)")
+            plt.ylabel("Magnitude")
+            plt.xlim(20, 2000)
+            plt.title(f"Quick Capture — Dominant: {res.dominant_hz:.1f} Hz")
+            plt.grid(True, alpha=0.3)
+            plt.tight_layout()
+            plt.show()
+        except ImportError:
+            print("(matplotlib not installed, skipping plot)")
+
+    return 0
+
+
+def cmd_last(args: argparse.Namespace) -> int:
+    """Show/open the most recent session directory."""
+    sessions = _find_all_sessions()
+
+    if not sessions:
+        print("No sessions found.")
+        return 1
+
+    latest = max(sessions, key=lambda p: p.stat().st_mtime)
+    mtime = datetime.fromtimestamp(latest.stat().st_mtime)
+
+    print(f"\nLatest session: {latest}")
+    print(f"  Modified: {mtime.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"  Contents:")
+
+    total_size = 0
+    for f in sorted(latest.rglob("*")):
+        if f.is_file():
+            rel = f.relative_to(latest)
+            size = f.stat().st_size
+            total_size += size
+            size_str = _format_size(size)
+            print(f"    {rel}  ({size_str})")
+
+    print(f"  Total: {_format_size(total_size)}\n")
+
+    if args.open:
+        _open_path(latest)
+
+    return 0
+
+
+def cmd_sessions(args: argparse.Namespace) -> int:
+    """List all sessions with metadata."""
+    sessions = _find_all_sessions()
+
+    if not sessions:
+        print("No sessions found.")
+        return 1
+
+    # Sort by modification time (newest first)
+    sessions.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+
+    # Limit if specified
+    if args.limit:
+        sessions = sessions[:args.limit]
+
+    print(f"\n{'#':>3}  {'Type':<10}  {'Date':<20}  {'Path'}")
+    print("-" * 80)
+
+    for i, session in enumerate(sessions, 1):
+        mtime = datetime.fromtimestamp(session.stat().st_mtime)
+
+        # Determine session type
+        if "phase2" in str(session).lower():
+            stype = "phase2"
+        elif "bend" in session.name.lower():
+            stype = "bending"
+        elif "chladni" in session.name.lower():
+            stype = "chladni"
+        else:
+            stype = "tap"
+
+        # Try to get point count from session.jsonl
+        point_count = _count_session_points(session)
+        points_str = f" ({point_count} pts)" if point_count else ""
+
+        rel_path = session.relative_to(PROJECT_ROOT) if session.is_relative_to(PROJECT_ROOT) else session
+        print(f"{i:3d}  {stype:<10}  {mtime.strftime('%Y-%m-%d %H:%M'):<20}  {rel_path}{points_str}")
+
+    print()
+    return 0
+
+
 def cmd_gold_run(args: argparse.Namespace) -> int:
     """Dispatch to gold-run module."""
     from tap_tone.cli.gold_run import main as gold_run_main
-    
+
     gold_argv = []
     gold_argv.extend(["--specimen-id", args.specimen_id])
     gold_argv.extend(["--device", str(args.device)])
@@ -137,11 +282,8 @@ def cmd_gold_run(args: argparse.Namespace) -> int:
 
 def cmd_gui(_args: argparse.Namespace) -> int:
     """Launch the Tkinter GUI."""
-    try:
-        from tap_tone_pi.gui.app import App
-    except ImportError:
-        from gui.app import App
-    
+    from tap_tone_pi.gui.app import App
+
     app = App()
     app.mainloop()
     return 0
@@ -150,8 +292,7 @@ def cmd_gui(_args: argparse.Namespace) -> int:
 def cmd_phase2(args: argparse.Namespace) -> int:
     """Run Phase 2 ODS workflow."""
     import subprocess
-    import sys
-    
+
     argv = [sys.executable, "scripts/phase2_slice.py", "run"]
     if args.synthetic:
         argv.append("--synthetic")
@@ -161,15 +302,14 @@ def cmd_phase2(args: argparse.Namespace) -> int:
         argv.extend(["--out", args.out])
     if args.device:
         argv.extend(["--device", str(args.device)])
-    
-    return subprocess.call(argv)
+
+    return subprocess.call(argv, cwd=str(PROJECT_ROOT))
 
 
 def cmd_chladni(args: argparse.Namespace) -> int:
     """Run Chladni pattern analysis."""
     import subprocess
-    import sys
-    
+
     if args.subcommand == "peaks":
         argv = [
             sys.executable, "-m", "tap_tone_pi.chladni.peaks_from_wav",
@@ -191,15 +331,14 @@ def cmd_chladni(args: argparse.Namespace) -> int:
     else:
         print(f"Unknown chladni subcommand: {args.subcommand}", file=sys.stderr)
         return 1
-    
-    return subprocess.call(argv)
+
+    return subprocess.call(argv, cwd=str(PROJECT_ROOT))
 
 
 def cmd_bending(args: argparse.Namespace) -> int:
     """Run bending MOE calculation."""
     import subprocess
-    import sys
-    
+
     argv = [
         sys.executable, "-m", "tap_tone_pi.bending.merge_and_moe",
         "--load", args.load,
@@ -212,9 +351,25 @@ def cmd_bending(args: argparse.Namespace) -> int:
     ]
     if args.rate:
         argv.extend(["--rate", str(args.rate)])
-    
-    return subprocess.call(argv)
 
+    return subprocess.call(argv, cwd=str(PROJECT_ROOT))
+
+
+def cmd_completion(args: argparse.Namespace) -> int:
+    """Generate shell completion script."""
+    if args.shell == "bash":
+        print(_bash_completion())
+    elif args.shell == "zsh":
+        print(_zsh_completion())
+    elif args.shell == "fish":
+        print(_fish_completion())
+    else:
+        print(f"Unknown shell: {args.shell}", file=sys.stderr)
+        return 1
+    return 0
+
+
+# --- Helper functions ---
 
 def _print_summary(label: str | None, res) -> None:
     """Print analysis summary to console."""
@@ -230,6 +385,116 @@ def _print_summary(label: str | None, res) -> None:
     else:
         print("No peaks detected (try higher gain or quieter room).")
     print("")
+
+
+def _find_all_sessions() -> list[Path]:
+    """Find all session directories across known roots."""
+    sessions = []
+    prefixes = ("session_", "capture_", "bend_", "chladni_", "gold_")
+
+    for root in SESSION_ROOTS:
+        if root.exists():
+            for d in root.iterdir():
+                if d.is_dir() and any(d.name.startswith(p) for p in prefixes):
+                    sessions.append(d)
+            # Also check one level deeper for date-organized sessions
+            for sub in root.iterdir():
+                if sub.is_dir():
+                    for d in sub.iterdir():
+                        if d.is_dir() and any(d.name.startswith(p) for p in prefixes):
+                            sessions.append(d)
+
+    return sessions
+
+
+def _count_session_points(session_dir: Path) -> int | None:
+    """Count capture points from session.jsonl if present."""
+    jsonl = session_dir / "session.jsonl"
+    if jsonl.exists():
+        try:
+            return sum(1 for _ in jsonl.open())
+        except Exception:
+            pass
+    return None
+
+
+def _format_size(size: int) -> str:
+    """Format file size in human-readable form."""
+    for unit in ["B", "KB", "MB", "GB"]:
+        if size < 1024:
+            return f"{size:.0f} {unit}" if unit == "B" else f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{size:.1f} TB"
+
+
+def _open_path(path: Path) -> None:
+    """Open a path in the system file manager."""
+    import subprocess
+    if sys.platform == "darwin":
+        subprocess.run(["open", str(path)])
+    elif sys.platform == "win32":
+        os.startfile(str(path))
+    else:
+        subprocess.run(["xdg-open", str(path)])
+
+
+def _bash_completion() -> str:
+    """Generate bash completion script."""
+    return '''
+_ttp_completions() {
+    local commands="devices record live quick gold-run gui phase2 chladni bending last sessions completion"
+    COMPREPLY=($(compgen -W "$commands" -- "${COMP_WORDS[COMP_CWORD]}"))
+}
+complete -F _ttp_completions ttp
+complete -F _ttp_completions tap-tone
+'''
+
+
+def _zsh_completion() -> str:
+    """Generate zsh completion script."""
+    return '''
+#compdef ttp tap-tone
+
+_ttp() {
+    local commands=(
+        'devices:List audio devices'
+        'record:Record one window and analyze'
+        'live:Loop record+analyze'
+        'quick:Zero-config quick capture'
+        'gold-run:One-command Gold Standard Run'
+        'gui:Launch Tkinter GUI'
+        'phase2:Phase 2 ODS workflow'
+        'chladni:Chladni pattern analysis'
+        'bending:Bending MOE calculation'
+        'last:Show most recent session'
+        'sessions:List all sessions'
+        'completion:Generate shell completion'
+    )
+    _describe 'command' commands
+}
+
+compdef _ttp ttp tap-tone
+'''
+
+
+def _fish_completion() -> str:
+    """Generate fish completion script."""
+    return '''
+complete -c ttp -f -n "__fish_use_subcommand" -a devices -d "List audio devices"
+complete -c ttp -f -n "__fish_use_subcommand" -a record -d "Record one window and analyze"
+complete -c ttp -f -n "__fish_use_subcommand" -a live -d "Loop record+analyze"
+complete -c ttp -f -n "__fish_use_subcommand" -a quick -d "Zero-config quick capture"
+complete -c ttp -f -n "__fish_use_subcommand" -a gold-run -d "One-command Gold Standard Run"
+complete -c ttp -f -n "__fish_use_subcommand" -a gui -d "Launch Tkinter GUI"
+complete -c ttp -f -n "__fish_use_subcommand" -a phase2 -d "Phase 2 ODS workflow"
+complete -c ttp -f -n "__fish_use_subcommand" -a chladni -d "Chladni pattern analysis"
+complete -c ttp -f -n "__fish_use_subcommand" -a bending -d "Bending MOE calculation"
+complete -c ttp -f -n "__fish_use_subcommand" -a last -d "Show most recent session"
+complete -c ttp -f -n "__fish_use_subcommand" -a sessions -d "List all sessions"
+complete -c ttp -f -n "__fish_use_subcommand" -a completion -d "Generate shell completion"
+
+complete -c tap-tone -w ttp
+'''
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -264,6 +529,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_live.add_argument("--label", type=str, default=None)
     p_live.set_defaults(fn=cmd_live)
 
+    # quick (NEW!)
+    p_quick = sub.add_parser("quick", help="Zero-config quick capture (auto-detect device)")
+    p_quick.add_argument("--plot", action="store_true", help="Show spectrum plot")
+    p_quick.set_defaults(fn=cmd_quick)
+
     # gold-run
     p_gold = sub.add_parser("gold-run", help="One-command Gold Standard Run")
     p_gold.add_argument("--specimen-id", required=True, help="Specimen identifier")
@@ -292,19 +562,19 @@ def build_parser() -> argparse.ArgumentParser:
     # chladni
     p_ch = sub.add_parser("chladni", help="Chladni pattern analysis")
     ch_sub = p_ch.add_subparsers(dest="subcommand", required=True)
-    
+
     p_ch_peaks = ch_sub.add_parser("peaks", help="Extract peaks from WAV")
     p_ch_peaks.add_argument("--wav", required=True)
     p_ch_peaks.add_argument("--out", required=True)
     p_ch_peaks.add_argument("--min-hz", type=float, default=50)
     p_ch_peaks.add_argument("--max-hz", type=float, default=2000)
-    
+
     p_ch_index = ch_sub.add_parser("index", help="Index patterns to frequencies")
     p_ch_index.add_argument("--peaks-json", required=True)
     p_ch_index.add_argument("--plate-id", required=True)
     p_ch_index.add_argument("--out", required=True)
     p_ch_index.add_argument("--images", nargs="+", required=True)
-    
+
     p_ch.set_defaults(fn=cmd_chladni)
 
     # bending
@@ -318,6 +588,21 @@ def build_parser() -> argparse.ArgumentParser:
     p_bend.add_argument("--thickness", type=float, required=True, help="Thickness in mm")
     p_bend.add_argument("--rate", type=float, default=50, help="Resample rate Hz")
     p_bend.set_defaults(fn=cmd_bending)
+
+    # last (NEW!)
+    p_last = sub.add_parser("last", help="Show most recent session")
+    p_last.add_argument("--open", action="store_true", help="Open in file manager")
+    p_last.set_defaults(fn=cmd_last)
+
+    # sessions (NEW!)
+    p_sess = sub.add_parser("sessions", help="List all sessions")
+    p_sess.add_argument("--limit", type=int, default=20, help="Max sessions to show")
+    p_sess.set_defaults(fn=cmd_sessions)
+
+    # completion (NEW!)
+    p_comp = sub.add_parser("completion", help="Generate shell completion script")
+    p_comp.add_argument("shell", choices=["bash", "zsh", "fish"], help="Shell type")
+    p_comp.set_defaults(fn=cmd_completion)
 
     return p
 

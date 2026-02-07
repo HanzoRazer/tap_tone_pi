@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tap-tone-pi"
 version = "2.0.0"
-description = "Offline tap tone analyzer for Raspberry Pi"
+description = "Tap tone analysis toolkit for luthiers: capture, analyze, and visualize acoustic signatures"
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.24",
@@ -26,10 +26,10 @@ dev = [
 ]
 
 [project.scripts]
-# Primary entry point (new unified CLI)
+# Primary entry point (unified CLI)
 ttp = "tap_tone_pi.cli.main:main"
-# Legacy alias (backward compatibility)
-tap-tone = "tap_tone.main:main"
+# Legacy alias (backward compatibility - points to same unified CLI)
+tap-tone = "tap_tone_pi.cli.main:main"
 
 [tool.setuptools.packages.find]
-include = ["tap_tone", "tap_tone.*", "tap_tone_pi", "tap_tone_pi.*", "modes", "modes.*", "scripts", "scripts.*"]
+include = ["tap_tone_pi", "tap_tone_pi.*", "tap_tone", "tap_tone.*"]
