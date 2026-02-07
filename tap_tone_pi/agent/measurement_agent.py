@@ -29,7 +29,7 @@ from .ftue import (
 )
 
 if TYPE_CHECKING:
-    from tap_tone_pi.core.quality_gate import QualityVerdict
+    from tap_tone_pi.core.quality_policy import QualityVerdict
 
 
 @dataclass

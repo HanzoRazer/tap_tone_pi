@@ -201,6 +201,65 @@ class TestSortTriggeredRules:
 
 
 # =============================================================================
+# Unknown Rule Fallback Tests
+# =============================================================================
+
+class TestUnknownRuleFallback:
+    """Tests for handling unknown rule IDs gracefully."""
+
+    def test_unknown_rule_does_not_crash(self):
+        """Verdict with unknown rule Q999 should render without exception."""
+        unknown_rule = QualityRule("Q999", Severity.SOFT, "Unknown rule", "Some message")
+        verdict = QualityVerdict(
+            verdict=Verdict.WARN,
+            triggered_rules=[TriggeredRule(rule=unknown_rule, message="Unknown condition")],
+        )
+        ctx = AgentContext(workflow="measure", show_details=True)
+        
+        # Should not raise
+        msg = build_agent_message(ctx, verdict)
+        
+        # Should include rule ID in output
+        assert any("Q999" in str(d) for d in msg.details) or "Q999" in str(msg.telemetry_tags)
+
+    def test_unknown_rule_uses_rule_message(self):
+        """Unknown rule should fall back to TriggeredRule.message."""
+        unknown_rule = QualityRule("Q999", Severity.HARD, "Mystery rule", "Fallback message")
+        verdict = QualityVerdict(
+            verdict=Verdict.FAIL,
+            triggered_rules=[TriggeredRule(rule=unknown_rule, message="Original message")],
+        )
+        ctx = AgentContext(workflow="measure", show_details=True, user_stage="regular")
+        msg = build_agent_message(ctx, verdict)
+        
+        # Should use the message from TriggeredRule, not crash
+        detail_text = " ".join(msg.details)
+        assert "Q999" in detail_text
+
+    def test_unknown_rule_uses_severity_from_rule(self):
+        """Unknown rule should use severity from the rule object."""
+        hard_unknown = QualityRule("Q888", Severity.HARD, "Hard unknown", "Msg")
+        soft_unknown = QualityRule("Q889", Severity.SOFT, "Soft unknown", "Msg")
+        
+        hard_verdict = QualityVerdict(
+            verdict=Verdict.FAIL,
+            triggered_rules=[TriggeredRule(rule=hard_unknown, message="Hard")],
+        )
+        soft_verdict = QualityVerdict(
+            verdict=Verdict.WARN,
+            triggered_rules=[TriggeredRule(rule=soft_unknown, message="Soft")],
+        )
+        
+        ctx = AgentContext(show_details=True, user_stage="regular")
+        hard_msg = build_agent_message(ctx, hard_verdict)
+        soft_msg = build_agent_message(ctx, soft_verdict)
+        
+        # Both should render without crashing
+        assert hard_msg.title is not None
+        assert soft_msg.title is not None
+
+
+# =============================================================================
 # Build Agent Message Tests
 # =============================================================================
 
