@@ -2,6 +2,47 @@
 
 All notable changes to this project are documented here. This file follows [Keep a Changelog](https://keepachangelog.com/) style and [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] — 2026-02-07
+
+### Added
+- **Agentic Layer** — `tap_tone_pi.agent` package for deterministic, policy-constrained orchestration
+  - `MeasurementAgent` — stateful conductor for measurement workflows
+  - `build_agent_message()` — convenience function for structured responses
+  - Rule → explanation → suggestion tables (Q001–Q005 HARD, Q010–Q013 SOFT)
+  - Verdict templates (PASS/WARN/FAIL) with default actions
+  - FTUE (First-Time User Experience) with progressive disclosure
+    - `UserStage`: first_run → novice → regular → expert
+    - Stage-appropriate hints, detail limits, action suggestions
+  - CLI and GUI renderers (`render_cli`, `render_gui`, `render_compact`)
+  - History tracking: rule counts, consecutive hits, escalation logic
+- 120 tests for agent layer (types, message spec, FTUE, selector, render, integration)
+
+### Architecture
+The agent wraps existing components horizontally, not vertically:
+```
+Capture → Analysis → Quality Gate → Artifacts
+                         ↑
+                  ┌──────┴──────┐
+                  │ Agent Layer │
+                  └─────────────┘
+```
+
+The agent:
+- Observes system state (verdicts, attempts, context)
+- Sequences actions (retry, accept, abort, override)
+- Explains outcomes (rule → operator-facing message)
+- Enforces policy (governance lives here, not in UI)
+
+The agent NEVER:
+- Modifies DSP results
+- Invents interpretations
+- Auto-adjusts parameters
+- Makes silent decisions
+
+[2.1.0]: https://github.com/HanzoRazer/tap_tone_pi/compare/analyzer-v2.0.0...analyzer-v2.1.0
+
+---
+
 ## [2.0.0] — 2026-02-05
 
 ### Breaking Changes
