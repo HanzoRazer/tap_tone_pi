@@ -7,6 +7,7 @@ and subprocess wiring without requiring audio hardware or running real exports.
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 from pathlib import Path
 
@@ -25,6 +26,17 @@ def _args(session: str, out: str, validate=False, strict=False, json=False):
         strict=strict,
         json=json,
     )
+
+
+def _norm(p: str | Path) -> str:
+    """Normalize path for cross-platform comparison (handles Windows case/slashes)."""
+    return os.path.normcase(os.path.normpath(str(p)))
+
+
+def _get_argv_value(argv: list, flag: str) -> str:
+    """Get the value following a flag in argv list."""
+    i = argv.index(flag)
+    return argv[i + 1]
 
 
 def _setup_fake_project_root(tmp_path: Path) -> Path:
@@ -80,12 +92,12 @@ class TestExportPackSubprocessWiring:
         export_argv, export_cwd = calls[0]
         validate_argv, validate_cwd = calls[1]
 
-        # Exporter invoked with correct args
+        # Exporter invoked with correct args (structural parsing, normalized paths)
         assert any("viewer_pack_v1_export.py" in str(x) for x in export_argv)
         assert "--session" in export_argv
-        assert str(session_dir) in export_argv
+        assert _norm(_get_argv_value(export_argv, "--session")) == _norm(session_dir)
         assert "--out" in export_argv
-        assert str(out_zip) in export_argv
+        assert _norm(_get_argv_value(export_argv, "--out")) == _norm(out_zip)
 
         # Validator invoked with passthrough flags
         assert any("viewer_pack_validate.py" in str(x) for x in validate_argv)
@@ -268,13 +280,13 @@ class TestExportPackPathResolution:
         assert rc == 0
         export_argv, export_cwd = calls[0]
 
-        # Session path in argv should be resolved absolute path
-        session_in_argv = export_argv[export_argv.index("--session") + 1]
+        # Session path in argv should be resolved absolute path (normalized comparison)
+        session_in_argv = _get_argv_value(export_argv, "--session")
         assert Path(session_in_argv).is_absolute()
-        assert str(abs_session) == session_in_argv
+        assert _norm(session_in_argv) == _norm(abs_session)
 
-        # Subprocess runs with patched PROJECT_ROOT as cwd
-        assert str(fake_root) == str(export_cwd)
+        # Subprocess runs with patched PROJECT_ROOT as cwd (normalized comparison)
+        assert _norm(export_cwd) == _norm(fake_root)
 
     def test_cwd_used_for_subprocess(self, monkeypatch, tmp_path):
         """subprocess.call is invoked with PROJECT_ROOT as cwd."""
