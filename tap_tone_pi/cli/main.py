@@ -16,6 +16,7 @@ Usage:
     ttp phase2 ...           # Phase 2 ODS workflow
     ttp chladni ...          # Chladni pattern analysis
     ttp bending ...          # Bending MOE calculation
+    ttp export-pack ...      # Export viewer pack ZIP from session
     ttp last                 # Show most recent session
     ttp sessions             # List all sessions
 """
@@ -507,6 +508,80 @@ def cmd_bending(args: argparse.Namespace) -> int:
     return subprocess.call(argv, cwd=str(PROJECT_ROOT))
 
 
+def cmd_export_pack(args: argparse.Namespace) -> int:
+    """Export a session as viewer_pack_v1 ZIP."""
+    import subprocess
+
+    # Consistent with other CLI commands - resolve against PROJECT_ROOT
+    session_path = Path(args.session)
+    if not session_path.is_absolute():
+        session_path = (PROJECT_ROOT / session_path).resolve()
+
+    # Output path: allow relative-to-CWD for convenience
+    out_path = Path(args.out)
+    if not out_path.is_absolute():
+        out_path = Path.cwd() / out_path
+
+    if not session_path.exists():
+        print(f"Session not found: {session_path}", file=sys.stderr)
+        return 1
+
+    # Guardrail: exporter expects Phase 2 session structure
+    grid_json = session_path / "grid.json"
+    if not grid_json.exists():
+        print(
+            "export-pack expects a Phase 2 session directory.\n"
+            f"Missing grid.json in: {session_path}",
+            file=sys.stderr,
+        )
+        return 1
+
+    export_script = PROJECT_ROOT / "scripts" / "export" / "viewer_pack_v1_export.py"
+    if not export_script.exists():
+        print(f"Exporter script not found: {export_script}", file=sys.stderr)
+        return 1
+
+    argv = [
+        sys.executable,
+        str(export_script),
+        "--session",
+        str(session_path),
+        "--out",
+        str(out_path),
+    ]
+
+    # Run export
+    rc = subprocess.call(argv, cwd=str(PROJECT_ROOT))
+    if rc != 0:
+        return rc
+
+    # Optional ZIP validation
+    if args.validate:
+        validate_script = PROJECT_ROOT / "scripts" / "viewer_pack_validate.py"
+        if not validate_script.exists():
+            print(f"ZIP validator script not found: {validate_script}", file=sys.stderr)
+            return 1
+
+        v_argv = [
+            sys.executable,
+            str(validate_script),
+            str(out_path),
+        ]
+
+        # Passthrough flags
+        if args.strict:
+            v_argv.append("--strict")
+        if args.json:
+            v_argv.append("--json")
+
+        v_rc = subprocess.call(v_argv, cwd=str(PROJECT_ROOT))
+        if v_rc != 0:
+            return v_rc
+
+    print(f"Wrote: {out_path}")
+    return 0
+
+
 def cmd_completion(args: argparse.Namespace) -> int:
     """Generate shell completion script."""
     if args.shell == "bash":
@@ -594,7 +669,7 @@ def _bash_completion() -> str:
     """Generate bash completion script."""
     return '''
 _ttp_completions() {
-    local commands="setup devices measure record live quick gold-run gui phase2 chladni bending last sessions completion"
+    local commands="setup devices measure record live quick gold-run gui phase2 chladni bending export-pack last sessions completion"
     COMPREPLY=($(compgen -W "$commands" -- "${COMP_WORDS[COMP_CWORD]}"))
 }
 complete -F _ttp_completions ttp
@@ -620,6 +695,7 @@ _ttp() {
         'phase2:Phase 2 ODS workflow'
         'chladni:Chladni pattern analysis'
         'bending:Bending MOE calculation'
+        'export-pack:Export viewer pack ZIP from session'
         'last:Show most recent session'
         'sessions:List all sessions'
         'completion:Generate shell completion'
@@ -645,6 +721,7 @@ complete -c ttp -f -n "__fish_use_subcommand" -a gui -d "Launch Tkinter GUI"
 complete -c ttp -f -n "__fish_use_subcommand" -a phase2 -d "Phase 2 ODS workflow"
 complete -c ttp -f -n "__fish_use_subcommand" -a chladni -d "Chladni pattern analysis"
 complete -c ttp -f -n "__fish_use_subcommand" -a bending -d "Bending MOE calculation"
+complete -c ttp -f -n "__fish_use_subcommand" -a export-pack -d "Export viewer pack ZIP from session"
 complete -c ttp -f -n "__fish_use_subcommand" -a last -d "Show most recent session"
 complete -c ttp -f -n "__fish_use_subcommand" -a sessions -d "List all sessions"
 complete -c ttp -f -n "__fish_use_subcommand" -a completion -d "Generate shell completion"
@@ -761,6 +838,38 @@ def build_parser() -> argparse.ArgumentParser:
     p_bend.add_argument("--thickness", type=float, required=True, help="Thickness in mm")
     p_bend.add_argument("--rate", type=float, default=50, help="Resample rate Hz")
     p_bend.set_defaults(fn=cmd_bending)
+
+    # export-pack
+    p_export = sub.add_parser(
+        "export-pack",
+        help="Export viewer_pack_v1 ZIP from a Phase 2 session",
+    )
+    p_export.add_argument(
+        "--session",
+        required=True,
+        help="Session directory (repo-relative or absolute)",
+    )
+    p_export.add_argument(
+        "--out",
+        required=True,
+        help="Output ZIP path",
+    )
+    p_export.add_argument(
+        "--validate",
+        action="store_true",
+        help="Validate ZIP after export",
+    )
+    p_export.add_argument(
+        "--strict",
+        action="store_true",
+        help="Strict validation (fail on warnings)",
+    )
+    p_export.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit validation results as JSON",
+    )
+    p_export.set_defaults(fn=cmd_export_pack)
 
     # last (NEW!)
     p_last = sub.add_parser("last", help="Show most recent session")
