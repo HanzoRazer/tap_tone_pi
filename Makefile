@@ -304,6 +304,30 @@ MODIFIED       ?=
 DIFF_OUT       ?= diff_out
 PLOTS          ?=
 
+# ---- Agentic Spine Test Suite ----
+
+.PHONY: test-contracts test-moments test-policy test-replay test-spine
+
+test-contracts:
+	@echo "==> Running contract parity tests"
+	@python -m pytest -q tests/test_event_contract_parity.py
+
+test-moments:
+	@echo "==> Running moment detector tests"
+	@python -m pytest -q tests/test_moments_engine_v1.py
+
+test-policy:
+	@echo "==> Running policy engine tests"
+	@python -m pytest -q tests/test_policy_engine_v1.py
+
+test-replay:
+	@echo "==> Running replay smoke test"
+	@python -m pytest -q tests/test_replay_smoke.py
+
+test-spine: test-contracts test-moments test-policy test-replay
+	@echo ""
+	@echo "✅ Agentic spine test suite passed"
+
 # ---- Help ----
 
 .PHONY: help loadcell dial bend-merge-moe plot-fvd manifest
@@ -312,6 +336,13 @@ PLOTS          ?=
 .PHONY: validate-schemas validate-pack diff-packs test test-wav-io
 
 help:
+	@echo "Agentic Spine Targets:"
+	@echo "  test-spine       Run full spine test suite"
+	@echo "  test-contracts   Run contract parity tests"
+	@echo "  test-moments     Run moment detector tests"
+	@echo "  test-policy      Run policy engine tests"
+	@echo "  test-replay      Run replay smoke test"
+	@echo ""
 	@echo "Acquisition Targets:"
 	@echo "  loadcell        Capture load cell → load_series.json (requires CFG, OUT)"
 	@echo "  dial            Capture dial indicator → displacement_series.json (requires PORT, OUT)"
