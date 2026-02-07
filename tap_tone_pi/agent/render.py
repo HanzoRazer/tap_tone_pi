@@ -1,10 +1,54 @@
 """Render — CLI and GUI formatting for agent messages.
 
 The agent produces structured AgentMessage; this module formats for output.
+Supports both standalone (types.py) and integrated (messages.py) AgentMessage.
 """
 from __future__ import annotations
 
-from .types import AgentMessage, UserStage
+from typing import Any, Union
+
+# Import standalone types for type hints
+from .types import AgentMessage as StandaloneAgentMessage
+
+
+def _get_severity(msg: Any) -> str:
+    """Extract severity from AgentMessage (works with both standalone and integrated)."""
+    # Standalone version has .severity property
+    if hasattr(msg, 'severity'):
+        return msg.severity
+    # Integrated version stores in telemetry_tags
+    if hasattr(msg, 'get_tag'):
+        verdict = msg.get_tag("verdict")
+        if verdict == "fail":
+            return "error"
+        elif verdict == "warn":
+            return "warn"
+        return "info"
+    # Fallback: check telemetry_tags dict
+    if hasattr(msg, 'telemetry_tags'):
+        tags = msg.telemetry_tags
+        if isinstance(tags, dict):
+            verdict = tags.get("verdict", "pass")
+        else:
+            # Tuple of tuples
+            verdict = "pass"
+            for k, v in tags:
+                if k == "verdict":
+                    verdict = v
+                    break
+        if verdict == "fail":
+            return "error"
+        elif verdict == "warn":
+            return "warn"
+        return "info"
+    return "info"
+
+
+def _get_action_id(action: Any) -> str:
+    """Extract action_id string from action (works with enum or string)."""
+    if hasattr(action.action_id, 'value'):
+        return action.action_id.value
+    return str(action.action_id)
 
 
 # =============================================================================
@@ -22,11 +66,12 @@ def render_cli(msg: AgentMessage, color: bool = True) -> str:
         Formatted string for terminal display
     """
     lines: list[str] = []
+    severity = _get_severity(msg)
     
     # Title with severity coloring
     title_line = msg.title
     if color:
-        title_line = _colorize(msg.title, msg.severity)
+        title_line = _colorize(msg.title, severity)
     lines.append(title_line)
     lines.append("=" * len(msg.title))
     
@@ -89,6 +134,7 @@ def render_gui(msg: AgentMessage) -> dict:
     - action_buttons: list of dicts with id, label, enabled, requires_input
     - hint_text: str | None
     """
+    severity = _get_severity(msg)
     style_map = {
         "error": "error",
         "warn": "warning", 
@@ -106,12 +152,12 @@ def render_gui(msg: AgentMessage) -> dict:
     
     return {
         "title_text": msg.title,
-        "title_style": style_map.get(msg.severity, "info"),
+        "title_style": style_map.get(severity, "info"),
         "summary_text": msg.summary,
         "details_html": "".join(details_parts),
         "action_buttons": [
             {
-                "id": action.action_id.value,
+                "id": _get_action_id(action),
                 "label": action.label,
                 "rationale": action.rationale,
                 "enabled": True,
@@ -129,6 +175,16 @@ def render_gui(msg: AgentMessage) -> dict:
 
 def render_compact(msg: AgentMessage) -> str:
     """Render a one-line summary for logging."""
-    action_ids = [a.action_id.value for a in msg.suggested_actions]
-    rule_ids = msg.telemetry_tags.get("rule_ids", [])
-    return f"{msg.severity.upper()}: {msg.title} | rules={rule_ids} | actions={action_ids}"
+    severity = _get_severity(msg)
+    action_ids = [_get_action_id(a) for a in msg.suggested_actions]
+    # Handle both dict and tuple telemetry_tags
+    if isinstance(msg.telemetry_tags, dict):
+        rule_ids = msg.telemetry_tags.get("rule_ids", [])
+    else:
+        # Tuple of (key, value) pairs
+        rule_ids = []
+        for k, v in msg.telemetry_tags:
+            if k == "rule_ids":
+                rule_ids = list(v) if not isinstance(v, list) else v
+                break
+    return f"{severity.upper()}: {msg.title} | rules={rule_ids} | actions={action_ids}"

@@ -1,12 +1,12 @@
 """Tests for agent message specification."""
 import pytest
-from tap_tone_pi.agent import (
+from tap_tone_pi.agent.message_spec import (
     RULE_SPECS,
     VERDICT_TEMPLATES,
     get_rule_spec,
     get_verdict_template,
-    ActionId,
 )
+from tap_tone_pi.agent import ActionId
 
 
 class TestRuleSpecs:

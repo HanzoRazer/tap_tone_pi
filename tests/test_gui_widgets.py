@@ -195,3 +195,12 @@ class TestSessionBrowserDialog:
         """SessionBrowserDialog should be importable."""
         from tap_tone_pi.gui.widgets import SessionBrowserDialog
         assert hasattr(SessionBrowserDialog, "__init__")
+
+
+class TestPackDiffDialog:
+    """Test PackDiffDialog."""
+
+    def test_import(self):
+        """PackDiffDialog should be importable."""
+        from tap_tone_pi.gui.widgets import PackDiffDialog
+        assert hasattr(PackDiffDialog, "__init__")

@@ -1,7 +1,7 @@
 """Tests for FTUE (First-Time User Experience) logic."""
 import pytest
-from tap_tone_pi.agent import (
-    UserStage,
+from tap_tone_pi.agent import UserStage
+from tap_tone_pi.agent.ftue import (
     FTUE_HINTS,
     get_ftue_hint,
     infer_user_stage,

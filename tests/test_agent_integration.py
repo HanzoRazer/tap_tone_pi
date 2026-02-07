@@ -3,11 +3,11 @@ import pytest
 from dataclasses import dataclass, field
 from tap_tone_pi.agent import (
     MeasurementAgent,
-    AgentContext,
-    AgentMessage,
+    StandaloneAgentContext as AgentContext,
+    StandaloneAgentMessage as AgentMessage,
     UserStage,
     ActionId,
-    build_agent_message,
+    standalone_build_agent_message as build_agent_message,
     render_cli,
 )
 

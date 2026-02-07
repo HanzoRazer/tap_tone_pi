@@ -81,6 +81,7 @@ try:
         SetupWizardDialog,
         CaptureProgressDialog,
         SessionBrowserDialog,
+        PackDiffDialog,
     )
     HAS_WIDGETS = True
 except ImportError:
@@ -460,6 +461,14 @@ class App(tk.Tk):
 
             tk.Button(
                 rrow,
+                text="Compare",
+                command=self.do_pack_diff,
+                bg="#FF5722",
+                fg="white",
+            ).pack(side="right", padx=5)
+
+            tk.Button(
+                rrow,
                 text="Browse Sessions",
                 command=self.do_browse_sessions,
                 bg="#607D8B",
@@ -549,6 +558,8 @@ class App(tk.Tk):
         menubar.add_cascade(label="Tools", menu=tools_menu)
         if HAS_WIDGETS:
             tools_menu.add_command(label="Setup Wizard...", command=self.do_setup_wizard)
+            tools_menu.add_command(label="Compare Sessions...", command=self.do_pack_diff)
+            tools_menu.add_separator()
         tools_menu.add_command(label="Chladni Wizard...", command=self.do_chladni_wizard)
 
         # Help menu
@@ -618,6 +629,22 @@ class App(tk.Tk):
             self,
             output_dir=OUT,
             on_session_selected=on_session_selected,
+        )
+
+    def do_pack_diff(self) -> None:
+        """Open the pack diff dialog for comparing sessions."""
+        if not HAS_WIDGETS:
+            messagebox.showerror("Error", "Widgets module not available")
+            return
+
+        # Pre-select current run if it exists
+        current_run = self.run_id.get().strip()
+        initial_b = current_run if (OUT / current_run).exists() else None
+
+        PackDiffDialog(
+            self,
+            output_dir=OUT,
+            initial_session_b=initial_b,
         )
 
     def outdir(self) -> pathlib.Path:

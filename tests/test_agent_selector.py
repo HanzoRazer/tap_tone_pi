@@ -1,14 +1,14 @@
 """Tests for agent selector logic."""
 import pytest
 from tap_tone_pi.agent import (
-    AgentContext,
+    StandaloneAgentContext as AgentContext,
     ActionId,
     UserStage,
     order_rules,
     select_actions_for_verdict,
     build_rule_detail,
-    get_rule_spec,
 )
+from tap_tone_pi.agent.message_spec import get_rule_spec
 
 
 class TestOrderRules:

@@ -1,8 +1,8 @@
 """Tests for agent render functions."""
 import pytest
 from tap_tone_pi.agent import (
-    AgentMessage,
-    SuggestedAction,
+    StandaloneAgentMessage as AgentMessage,
+    StandaloneSuggestedAction as SuggestedAction,
     ActionId,
     render_cli,
     render_gui,

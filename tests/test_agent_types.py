@@ -2,9 +2,9 @@
 import pytest
 from tap_tone_pi.agent import (
     ActionId,
-    AgentContext,
-    AgentMessage,
-    SuggestedAction,
+    StandaloneAgentContext as AgentContext,
+    StandaloneAgentMessage as AgentMessage,
+    StandaloneSuggestedAction as SuggestedAction,
     UserStage,
 )
 
