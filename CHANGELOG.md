@@ -9,6 +9,7 @@ All notable changes to this project are documented here. This file follows [Keep
 - Import paths changed: `from tap_tone.analysis import analyze_tap` → `from tap_tone_pi.core.analysis import analyze_tap`
 - Deprecation stubs provided for backward compatibility (one release cycle)
 - CLI entry point renamed: `ttp` is now primary (replaces `tap-tone`)
+- `ttp record` now emits quality evidence (`quality_check.json`) but does not enforce gating; enforcement moved to `ttp measure`
 
 ### Fixed
 - **Bug 2: WAV write argument transposition** — `storage.py:57` had `write_wav_mono(path, sample_rate, audio)` instead of `write_wav_mono(path, audio, sample_rate)`. All Phase 1 captures now produce valid WAV files.
@@ -25,13 +26,14 @@ All notable changes to this project are documented here. This file follows [Keep
 - **Attempt tracking** — `tap_tone_pi.workflow.attempt`
   - `Attempt` dataclass with full lifecycle tracking
   - `AttemptStore` for session persistence
-- **CLI commands**
-  - `ttp record` — record single tap (QC recorded, not gated)
-  - `ttp measure` — quality-gated measurement (blocks on FAIL)
-  - `ttp export-pack` — export viewer pack ZIP with validation
 - Regression test for storage.py WAV write path (`test_storage_wav_roundtrip.py`)
 - 89 tests for quality gate + workflow + CLI integration
 - Schema location documented: `contracts/schemas/` is canonical (per `schema_registry.json`)
+
+### CLI
+- `ttp record` — record single tap (QC recorded, not gated)
+- `ttp measure` — quality-gated measurement (blocks on FAIL)
+- `ttp export-pack` — export viewer pack ZIP with validation
 
 ### Changed
 - Removed 64 stale measurement files from git tracking (`out/` directory)
@@ -44,6 +46,12 @@ All notable changes to this project are documented here. This file follows [Keep
 - **Evidence always produced** — `quality_check.json` written even when not gating
 - **Gating is a workflow decision** — `record` = evidence only; `measure` = blocking gate
 - **Artifact contract** — guaranteed per capture: `audio.wav`, `analysis.json`, `quality_check.json`
+
+### Migration Tip
+If you maintain downstream scripts:
+- Replace `tap_tone.*` imports with `tap_tone_pi.*`
+- Prefer `ttp` over `tap-tone` in automation
+- Expect `quality_check.json` to appear alongside captures
 
 [2.0.0]: https://github.com/HanzoRazer/tap_tone_pi/compare/analyzer-v1.2.0...analyzer-v2.0.0
 
