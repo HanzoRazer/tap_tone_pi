@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. This file follows [Keep a Changelog](https://keepachangelog.com/) style and [Semantic Versioning](https://semver.org/).
 
-## [2.2.0] — 2026-02-08
+## [2.2.1] — 2026-02-08
 
 ### Added
 - **GUI Auto-Trigger Integration (Phase 10)** — hands-free tap detection in the GUI
@@ -20,7 +20,7 @@ All notable changes to this project are documented here. This file follows [Keep
 - `do_quality_measure()` now branches on auto-trigger checkbox state
 - `_do_grid_point_measure()` also supports auto-trigger mode
 
-[2.2.0]: https://github.com/HanzoRazer/tap_tone_pi/compare/analyzer-v2.1.0...analyzer-v2.2.0
+[2.2.1]: https://github.com/HanzoRazer/tap_tone_pi/compare/analyzer-v2.2.0...analyzer-v2.2.1
 
 ---
 
