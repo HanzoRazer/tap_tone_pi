@@ -45,7 +45,7 @@ def mock_analysis():
     """A minimal analysis result."""
     return AnalysisResult(
         dominant_hz=185.0,
-        peaks=[Peak(freq_hz=185.0, magnitude=0.8, bin_index=10)],
+        peaks=[Peak(freq_hz=185.0, magnitude=0.8)],
         spectrum_freq_hz=np.linspace(0, 1000, 100),
         spectrum_mag=np.zeros(100),
         rms=0.05,
@@ -57,11 +57,12 @@ def mock_analysis():
 @pytest.fixture
 def mock_attempt():
     """A minimal attempt object."""
+    from tap_tone_pi.workflow.attempt import AttemptStatus
     return Attempt(
+        attempt_id="point_001_001",
         point_id="point_001",
-        attempt_num=1,
-        state="completed",
-        succeeded=True,
+        attempt_number=1,
+        status=AttemptStatus.PASSED,
     )
 
 
