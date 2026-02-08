@@ -18,6 +18,11 @@ Phase 8 Enhancements (UI Polish):
 - SetupWizardDialog for in-GUI hardware configuration
 - CaptureProgressDialog for visual feedback during capture
 
+Phase 10 Enhancements (Auto-Trigger):
+- Auto-trigger checkbox in Quality-Gated Measurement section
+- Listening state visual feedback
+- Automatic tap onset detection
+
 Runs:
 - Tap-tone (live / offline WAV)
 - Bending stiffness → MOE (single / batch)
@@ -71,6 +76,17 @@ try:
     HAS_QUALITY_GATE = True
 except ImportError:
     HAS_QUALITY_GATE = False
+
+# Auto-trigger imports (Phase 10 enhancement)
+try:
+    from tap_tone_pi.core.auto_trigger import (
+        record_audio_triggered,
+        TriggerState,
+        TriggerResult,
+    )
+    HAS_AUTO_TRIGGER = True
+except ImportError:
+    HAS_AUTO_TRIGGER = False
 
 # UI widgets (Phase 8 enhancement)
 try:
@@ -438,7 +454,7 @@ class App(tk.Tk):
 
     def __init__(self) -> None:
         super().__init__()
-        self.title("tap_tone_pi — Measurement GUI (v2.1.0)")
+        self.title("tap_tone_pi — Measurement GUI (v2.2.0)")
         self.geometry("680x600")
         self.run_id = tk.StringVar(value=default_run_id())
 
@@ -509,11 +525,48 @@ class App(tk.Tk):
 
         # --- Quality-gated measurement (Phase 7 - recommended)
         if HAS_QUALITY_GATE and HAS_DIRECT_ANALYSIS:
-            self.measure_vars = group(frm, "Quality-Gated Measurement (recommended)", [
-                ("Duration (s)", "2.5"),
-                ("Sample rate", "48000"),
-                ("Point ID", "point_001"),
-            ], self.do_quality_measure)
+            # Create custom frame to include auto-trigger checkbox
+            measure_frame = tk.LabelFrame(frm, text="Quality-Gated Measurement (recommended)")
+            measure_frame.pack(fill="x", pady=4)
+            
+            # Standard entry fields
+            self.measure_vars: list[tk.StringVar] = []
+            for label, default in [("Duration (s)", "2.5"), ("Sample rate", "48000"), ("Point ID", "point_001")]:
+                row = tk.Frame(measure_frame)
+                row.pack(fill="x")
+                tk.Label(row, text=label, width=28, anchor="w").pack(side="left")
+                var = tk.StringVar(value=default)
+                tk.Entry(row, textvariable=var, width=16).pack(side="left")
+                self.measure_vars.append(var)
+            
+            # Auto-trigger checkbox (Phase 10)
+            self.auto_trigger_var = tk.BooleanVar(value=False)
+            trigger_row = tk.Frame(measure_frame)
+            trigger_row.pack(fill="x", pady=(4, 0))
+            
+            trigger_cb = tk.Checkbutton(
+                trigger_row,
+                text="Auto-trigger (wait for tap)",
+                variable=self.auto_trigger_var,
+                command=self._on_auto_trigger_toggle,
+            )
+            trigger_cb.pack(side="left", padx=4)
+            
+            # Auto-trigger indicator label (Phase 10)
+            self.trigger_status_label = tk.Label(
+                trigger_row,
+                text="",
+                font=("Helvetica", 9),
+                fg="#666",
+            )
+            self.trigger_status_label.pack(side="left", padx=10)
+            
+            # Disable if auto-trigger not available
+            if not HAS_AUTO_TRIGGER:
+                trigger_cb.configure(state=tk.DISABLED)
+                self.trigger_status_label.configure(text="(sounddevice required)", fg="#999")
+            
+            tk.Button(measure_frame, text="Run", command=lambda: self.do_quality_measure(self.measure_vars)).pack(pady=3)
 
         # --- Tap-tone live
         self.tap_live_vars = group(frm, "Tap-tone (live)", [
@@ -679,6 +732,40 @@ class App(tk.Tk):
                 "progress": StatusLevel.PROGRESS,
             }
             self.status_bar.set(text, level_map.get(level, StatusLevel.INFO))
+
+    def _on_auto_trigger_toggle(self) -> None:
+        """Handle auto-trigger checkbox toggle (Phase 10)."""
+        if hasattr(self, 'trigger_status_label'):
+            if self.auto_trigger_var.get():
+                self.trigger_status_label.configure(
+                    text="Will wait for tap onset",
+                    fg="#1976D2",
+                )
+            else:
+                self.trigger_status_label.configure(text="", fg="#666")
+
+    def _update_trigger_listening_state(self, listening: bool) -> None:
+        """Update visual state for listening mode (Phase 10)."""
+        if hasattr(self, 'trigger_status_label'):
+            if listening:
+                self.trigger_status_label.configure(
+                    text="🎤 Listening for tap...",
+                    fg="#4CAF50",
+                    font=("Helvetica", 10, "bold"),
+                )
+            else:
+                if self.auto_trigger_var.get():
+                    self.trigger_status_label.configure(
+                        text="Will wait for tap onset",
+                        fg="#1976D2",
+                        font=("Helvetica", 9),
+                    )
+                else:
+                    self.trigger_status_label.configure(
+                        text="",
+                        fg="#666",
+                        font=("Helvetica", 9),
+                    )
 
     def do_setup_wizard(self) -> None:
         """Open the hardware setup wizard."""
@@ -850,15 +937,49 @@ class App(tk.Tk):
         attempt_dir.mkdir(parents=True, exist_ok=True)
 
         try:
-            self._set_status(f"Capturing {point_id}...", "progress")
-            self.update()
+            # Check if auto-trigger is enabled (Phase 10)
+            use_auto_trigger = hasattr(self, 'auto_trigger_var') and self.auto_trigger_var.get() and HAS_AUTO_TRIGGER
+            
+            if use_auto_trigger:
+                self._set_status(f"Listening for tap ({point_id})...", "progress")
+                self._update_trigger_listening_state(True)
+                self.update()
+                
+                trigger_result = record_audio_triggered(
+                    device=device,
+                    sample_rate=sample_rate,
+                    post_trigger_seconds=duration,
+                    timeout_seconds=30.0,
+                )
+                
+                self._update_trigger_listening_state(False)
+                
+                if not trigger_result.triggered:
+                    if trigger_result.state == TriggerState.TIMEOUT:
+                        session.mark_failed(point_id)
+                        self._set_status(f"Timeout waiting for tap on {point_id}", "error")
+                        measure_dlg.update_point_result(point_id, "failed", None)
+                    return
+                
+                self._set_status(f"Tap captured ({point_id})", "success")
+                self.update()
+                
+                class _CapResult:
+                    def __init__(self, audio, sr):
+                        self.audio = audio
+                        self.sample_rate = sr
+                
+                cap = _CapResult(trigger_result.audio, trigger_result.sample_rate)
+            else:
+                self._set_status(f"Capturing {point_id}...", "progress")
+                self.update()
 
-            cap = record_audio(
-                device=device,
-                sample_rate=sample_rate,
-                channels=1,
-                seconds=duration,
-            )
+                cap = record_audio(
+                    device=device,
+                    sample_rate=sample_rate,
+                    channels=1,
+                    seconds=duration,
+                )
 
             self._set_status(f"Analyzing {point_id}...", "progress")
             self.update()
@@ -957,18 +1078,75 @@ class App(tk.Tk):
                 progress_dlg.set_stage(0, "Checking device...")
                 self.update()
 
-            # Stage 1: Capture
-            self._set_status(f"Capturing {point_id}...", "progress")
-            if progress_dlg:
-                progress_dlg.set_stage(1, f"Recording for {duration}s...")
-                self.update()
+            # Stage 1: Capture (with optional auto-trigger - Phase 10)
+            use_auto_trigger = hasattr(self, 'auto_trigger_var') and self.auto_trigger_var.get() and HAS_AUTO_TRIGGER
+            
+            if use_auto_trigger:
+                # Auto-trigger mode: wait for tap onset
+                self._set_status(f"Listening for tap ({point_id})...", "progress")
+                self._update_trigger_listening_state(True)
+                if progress_dlg:
+                    progress_dlg.set_stage(1, "🎤 Waiting for tap...")
+                    self.update()
+                
+                try:
+                    trigger_result = record_audio_triggered(
+                        device=device,
+                        sample_rate=sample_rate,
+                        post_trigger_seconds=duration,
+                        timeout_seconds=30.0,
+                    )
+                    
+                    self._update_trigger_listening_state(False)
+                    
+                    if not trigger_result.triggered:
+                        if progress_dlg:
+                            progress_dlg.destroy()
+                        if trigger_result.state == TriggerState.TIMEOUT:
+                            self._set_status(f"Timeout waiting for tap", "error")
+                            messagebox.showwarning("Timeout", "No tap detected within 30 seconds.")
+                        else:
+                            self._set_status(f"Auto-trigger failed: {trigger_result.error}", "error")
+                            messagebox.showerror("Error", f"Auto-trigger failed: {trigger_result.error}")
+                        return
+                    
+                    # Show trigger feedback
+                    self._set_status(
+                        f"Tap detected! (SNR: {trigger_result.trigger_rms / max(trigger_result.baseline_rms, 1e-6):.1f}x)",
+                        "success"
+                    )
+                    if progress_dlg:
+                        progress_dlg.set_stage(1, f"✓ Tap captured ({trigger_result.duration_seconds:.1f}s)")
+                        self.update()
+                    
+                    # Create compatible capture result
+                    class _CapResult:
+                        def __init__(self, audio, sr):
+                            self.audio = audio
+                            self.sample_rate = sr
+                    
+                    cap = _CapResult(trigger_result.audio, trigger_result.sample_rate)
+                    
+                except Exception as e:
+                    self._update_trigger_listening_state(False)
+                    if progress_dlg:
+                        progress_dlg.destroy()
+                    self._set_status(f"Auto-trigger error: {e}", "error")
+                    messagebox.showerror("Error", f"Auto-trigger capture failed: {e}")
+                    return
+            else:
+                # Fixed-duration mode
+                self._set_status(f"Capturing {point_id}...", "progress")
+                if progress_dlg:
+                    progress_dlg.set_stage(1, f"Recording for {duration}s...")
+                    self.update()
 
-            cap = record_audio(
-                device=device,
-                sample_rate=sample_rate,
-                channels=1,
-                seconds=duration,
-            )
+                cap = record_audio(
+                    device=device,
+                    sample_rate=sample_rate,
+                    channels=1,
+                    seconds=duration,
+                )
 
             # Stage 2: Analyze
             self._set_status(f"Analyzing {point_id}...", "progress")
