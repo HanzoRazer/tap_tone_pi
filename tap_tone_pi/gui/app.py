@@ -82,6 +82,7 @@ try:
         CaptureProgressDialog,
         SessionBrowserDialog,
         PackDiffDialog,
+        ToolTip,
     )
     HAS_WIDGETS = True
 except ImportError:
@@ -562,7 +563,7 @@ class App(tk.Tk):
         ).pack(pady=4)
 
     def _create_menu(self) -> None:
-        """Create the application menu bar."""
+        """Create the application menu bar with keyboard shortcuts."""
         menubar = tk.Menu(self)
         self.config(menu=menubar)
 
@@ -570,28 +571,51 @@ class App(tk.Tk):
         file_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="File", menu=file_menu)
         if HAS_WIDGETS:
-            file_menu.add_command(label="Browse Sessions...", command=self.do_browse_sessions)
-        file_menu.add_command(label="Open Output Folder", command=self._open_output_folder)
+            file_menu.add_command(
+                label="Browse Sessions...",
+                command=self.do_browse_sessions,
+                accelerator="Ctrl+B",
+            )
+        file_menu.add_command(
+            label="Open Output Folder",
+            command=self._open_output_folder,
+            accelerator="Ctrl+O",
+        )
         file_menu.add_separator()
-        file_menu.add_command(label="Exit", command=self.quit)
+        file_menu.add_command(label="Exit", command=self.quit, accelerator="Ctrl+Q")
 
         # Tools menu
         tools_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Tools", menu=tools_menu)
         if HAS_WIDGETS:
-            tools_menu.add_command(label="Setup Wizard...", command=self.do_setup_wizard)
-            tools_menu.add_command(label="Compare Sessions...", command=self.do_pack_diff)
+            tools_menu.add_command(
+                label="Setup Wizard...",
+                command=self.do_setup_wizard,
+                accelerator="Ctrl+W",
+            )
+            tools_menu.add_command(
+                label="Compare Sessions...",
+                command=self.do_pack_diff,
+                accelerator="Ctrl+D",
+            )
             tools_menu.add_separator()
         if HAS_GRID:
             tools_menu.add_command(label="Grid Editor...", command=self.do_grid_editor)
-            tools_menu.add_command(label="Grid Measurement...", command=self.do_grid_measure)
+            tools_menu.add_command(
+                label="Grid Measurement...",
+                command=self.do_grid_measure,
+                accelerator="Ctrl+G",
+            )
             tools_menu.add_separator()
         tools_menu.add_command(label="Chladni Wizard...", command=self.do_chladni_wizard)
 
         # Help menu
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Help", menu=help_menu)
-        help_menu.add_command(label="About", command=self._show_about)
+        help_menu.add_command(label="About", command=self._show_about, accelerator="F1")
+
+        # Bind keyboard shortcuts
+        self._bind_shortcuts()
 
     def _open_output_folder(self) -> None:
         """Open the output folder in file manager."""
@@ -611,11 +635,29 @@ class App(tk.Tk):
         messagebox.showinfo(
             "About tap_tone_pi",
             "tap_tone_pi — Measurement GUI\n"
-            "Version 2.0.0\n\n"
+            "Version 2.1.0\n\n"
             "Acoustic measurement and quality control\n"
             "for lutherie applications.\n\n"
-            "Phase 8: UI Polish"
+            "Grid + Quality Gate"
         )
+
+    def _bind_shortcuts(self) -> None:
+        """Bind keyboard shortcuts to commands."""
+        # File menu shortcuts
+        if HAS_WIDGETS:
+            self.bind_all("<Control-b>", lambda e: self.do_browse_sessions())
+        self.bind_all("<Control-o>", lambda e: self._open_output_folder())
+        self.bind_all("<Control-q>", lambda e: self.quit())
+
+        # Tools menu shortcuts
+        if HAS_WIDGETS:
+            self.bind_all("<Control-w>", lambda e: self.do_setup_wizard())
+            self.bind_all("<Control-d>", lambda e: self.do_pack_diff())
+        if HAS_GRID:
+            self.bind_all("<Control-g>", lambda e: self.do_grid_measure())
+
+        # Help
+        self.bind_all("<F1>", lambda e: self._show_about())
 
     def _set_status(self, text: str, level: str = "info") -> None:
         """Set status bar message."""

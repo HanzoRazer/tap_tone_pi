@@ -1495,6 +1495,84 @@ class PackDiffDialog(tk.Toplevel):
             messagebox.showerror("Export Failed", f"Could not save report: {e}")
 
 
+
+class ToolTip:
+    """
+    Simple tooltip for Tkinter widgets.
+
+    Usage:
+        button = tk.Button(root, text="Click me")
+        ToolTip(button, "This is a tooltip")
+    """
+
+    def __init__(
+        self,
+        widget: tk.Widget,
+        text: str,
+        delay: int = 500,
+        wrap_length: int = 250,
+    ):
+        self.widget = widget
+        self.text = text
+        self.delay = delay
+        self.wrap_length = wrap_length
+        self._tooltip_window = None
+        self._after_id = None
+
+        widget.bind("<Enter>", self._schedule)
+        widget.bind("<Leave>", self._hide)
+        widget.bind("<ButtonPress>", self._hide)
+
+    def _schedule(self, event=None) -> None:
+        """Schedule tooltip display."""
+        self._cancel()
+        self._after_id = self.widget.after(self.delay, self._show)
+
+    def _cancel(self) -> None:
+        """Cancel scheduled tooltip."""
+        if self._after_id:
+            self.widget.after_cancel(self._after_id)
+            self._after_id = None
+
+    def _show(self) -> None:
+        """Display the tooltip."""
+        if self._tooltip_window:
+            return
+
+        x = self.widget.winfo_rootx() + 20
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+
+        self._tooltip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+
+        label = tk.Label(
+            tw,
+            text=self.text,
+            justify=tk.LEFT,
+            background="#ffffe0",
+            relief=tk.SOLID,
+            borderwidth=1,
+            wraplength=self.wrap_length,
+            font=("Helvetica", 9),
+            padx=6,
+            pady=4,
+        )
+        label.pack()
+
+    def _hide(self, event=None) -> None:
+        """Hide the tooltip."""
+        self._cancel()
+        if self._tooltip_window:
+            self._tooltip_window.destroy()
+            self._tooltip_window = None
+
+
+def create_tooltip(widget: tk.Widget, text: str) -> "ToolTip":
+    """Convenience function to create a tooltip."""
+    return ToolTip(widget, text)
+
+
 __all__ = [
     "StatusLevel",
     "StatusMessage",
@@ -1506,4 +1584,6 @@ __all__ = [
     "SessionInfo",
     "SessionBrowserDialog",
     "PackDiffDialog",
+    "ToolTip",
+    "create_tooltip",
 ]
