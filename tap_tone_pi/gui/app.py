@@ -87,6 +87,18 @@ try:
 except ImportError:
     HAS_WIDGETS = False
 
+# Grid widgets (Phase 9 enhancement)
+try:
+    from tap_tone_pi.gui.grid_widgets import (
+        GridEditorDialog,
+        GridProgressPanel,
+        GridMeasureDialog,
+    )
+    from tap_tone_pi.core.grid import Grid, GridSession, PointStatus
+    HAS_GRID = True
+except ImportError:
+    HAS_GRID = False
+
 
 class SpectrumViewer(tk.Toplevel):
     """Matplotlib spectrum viewer window (Phase 6 enhancement)."""
@@ -425,7 +437,7 @@ class App(tk.Tk):
 
     def __init__(self) -> None:
         super().__init__()
-        self.title("tap_tone_pi — Measurement GUI (v2.0.0)")
+        self.title("tap_tone_pi — Measurement GUI (v2.1.0)")
         self.geometry("680x600")
         self.run_id = tk.StringVar(value=default_run_id())
 
@@ -472,6 +484,16 @@ class App(tk.Tk):
                 text="Browse Sessions",
                 command=self.do_browse_sessions,
                 bg="#607D8B",
+                fg="white",
+            ).pack(side="right", padx=5)
+
+        # Grid Measurement button (Phase 9)
+        if HAS_GRID:
+            tk.Button(
+                rrow,
+                text="Grid Measure",
+                command=self.do_grid_measure,
+                bg="#00BCD4",
                 fg="white",
             ).pack(side="right", padx=5)
 
@@ -560,6 +582,10 @@ class App(tk.Tk):
             tools_menu.add_command(label="Setup Wizard...", command=self.do_setup_wizard)
             tools_menu.add_command(label="Compare Sessions...", command=self.do_pack_diff)
             tools_menu.add_separator()
+        if HAS_GRID:
+            tools_menu.add_command(label="Grid Editor...", command=self.do_grid_editor)
+            tools_menu.add_command(label="Grid Measurement...", command=self.do_grid_measure)
+            tools_menu.add_separator()
         tools_menu.add_command(label="Chladni Wizard...", command=self.do_chladni_wizard)
 
         # Help menu
@@ -646,6 +672,186 @@ class App(tk.Tk):
             output_dir=OUT,
             initial_session_b=initial_b,
         )
+
+    def do_grid_editor(self) -> None:
+        """Open the grid editor dialog (Phase 9)."""
+        if not HAS_GRID:
+            messagebox.showerror("Error", "Grid module not available")
+            return
+
+        def on_save(grid: Grid):
+            # Save grid to output directory
+            grid_path = self.outdir() / f"{grid.grid_id}.json"
+            grid.save(grid_path)
+            self._set_status(f"Grid saved: {grid.name}", "success")
+            messagebox.showinfo("Grid Saved", f"Grid saved to:\n{grid_path}")
+
+        GridEditorDialog(self, on_save=on_save)
+
+    def do_grid_measure(self) -> None:
+        """Open the grid measurement dialog (Phase 9)."""
+        if not HAS_GRID:
+            messagebox.showerror("Error", "Grid module not available")
+            return
+
+        # Check if quality gate is available
+        if not HAS_QUALITY_GATE or not HAS_DIRECT_ANALYSIS:
+            messagebox.showerror("Error", "Quality gate modules required for grid measurement")
+            return
+
+        # Ask user to select or create a grid
+        choice = messagebox.askyesnocancel(
+            "Grid Measurement",
+            "Do you want to create a new grid?\n\n"
+            "Yes = Create new grid\n"
+            "No = Load existing grid\n"
+            "Cancel = Cancel"
+        )
+
+        if choice is None:
+            return
+
+        grid = None
+        if choice:  # Create new grid
+            def on_grid_created(g: Grid):
+                nonlocal grid
+                grid = g
+
+            editor = GridEditorDialog(self, on_save=on_grid_created)
+            self.wait_window(editor)
+        else:  # Load existing grid
+            filepath = filedialog.askopenfilename(
+                filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+                title="Load Grid",
+                initialdir=str(self.outdir()),
+            )
+            if not filepath:
+                return
+            try:
+                grid = Grid.load(pathlib.Path(filepath))
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not load grid: {e}")
+                return
+
+        if not grid:
+            return
+
+        # Create a new session
+        session_id = f"{self.run_id.get()}_{grid.grid_id}"
+        session = GridSession(session_id=session_id, grid=grid)
+
+        # Define measurement callback
+        def on_measure(point_id: str):
+            self._do_grid_point_measure(session, point_id, measure_dlg)
+
+        def on_skip(point_id: str):
+            session.mark_skipped(point_id)
+            self._set_status(f"Skipped {point_id}", "info")
+
+        def on_retry(point_id: str):
+            session.reset_point(point_id)
+            on_measure(point_id)
+
+        def on_complete(s: GridSession):
+            # Save session
+            session_path = self.outdir() / f"session_{s.session_id}.json"
+            s.save(session_path)
+            self._set_status(f"Grid session complete: {s.completed_count}/{s.total_points}", "success")
+            messagebox.showinfo(
+                "Session Complete",
+                f"All {s.total_points} points measured!\n\nSession saved to:\n{session_path}"
+            )
+
+        # Open the measurement dialog
+        measure_dlg = GridMeasureDialog(
+            self,
+            session=session,
+            on_measure=on_measure,
+            on_skip=on_skip,
+            on_retry=on_retry,
+            on_complete=on_complete,
+        )
+
+    def _do_grid_point_measure(self, session: "GridSession", point_id: str, measure_dlg) -> None:
+        """Perform measurement for a single grid point."""
+        from tap_tone_pi.capture import record_audio
+        from tap_tone_pi.core.user_config import get_saved_device
+
+        outdir = self.outdir()
+
+        # Get measurement parameters (use defaults)
+        duration = 2.5
+        sample_rate = 48000
+
+        saved = get_saved_device()
+        device = saved.index if saved else None
+        if saved:
+            sample_rate = saved.sample_rate
+
+        # Create point directory
+        point_dir = outdir / point_id
+        point_dir.mkdir(parents=True, exist_ok=True)
+
+        # Find next attempt number
+        existing = [d for d in point_dir.iterdir() if d.name.startswith("attempt_")] if point_dir.exists() else []
+        attempt_num = len(existing) + 1
+        attempt_dir = point_dir / f"attempt_{attempt_num:03d}"
+        attempt_dir.mkdir(parents=True, exist_ok=True)
+
+        try:
+            self._set_status(f"Capturing {point_id}...", "progress")
+            self.update()
+
+            cap = record_audio(
+                device=device,
+                sample_rate=sample_rate,
+                channels=1,
+                seconds=duration,
+            )
+
+            self._set_status(f"Analyzing {point_id}...", "progress")
+            self.update()
+
+            result = analyze_tap(cap.audio, cap.sample_rate)
+            verdict = check_quality(
+                analysis=result,
+                sample_rate=cap.sample_rate,
+                audio=cap.audio,
+            )
+
+            # Save audio and analysis
+            from scipy.io import wavfile
+            wavfile.write(str(attempt_dir / "audio.wav"), cap.sample_rate, cap.audio)
+
+            with open(attempt_dir / "analysis.json", "w") as f:
+                json.dump({
+                    "dominant_hz": result.dominant_hz,
+                    "rms": float(result.rms),
+                    "confidence": float(result.confidence),
+                    "clipped": result.clipped,
+                }, f, indent=2)
+
+            # Update session based on verdict
+            if verdict.verdict == Verdict.PASS:
+                session.mark_passed(point_id, result.dominant_hz)
+                status = "passed"
+                self._set_status(f"{point_id}: PASSED ({result.dominant_hz:.1f} Hz)", "success")
+            elif verdict.verdict == Verdict.WARN:
+                session.mark_warned(point_id, result.dominant_hz)
+                status = "warned"
+                self._set_status(f"{point_id}: WARNING ({result.dominant_hz:.1f} Hz)", "warning")
+            else:
+                session.mark_failed(point_id)
+                status = "failed"
+                self._set_status(f"{point_id}: FAILED", "error")
+
+            # Update the dialog
+            measure_dlg.update_point_result(point_id, status, result.dominant_hz)
+
+        except Exception as e:
+            session.mark_failed(point_id)
+            self._set_status(f"Error measuring {point_id}: {e}", "error")
+            measure_dlg.update_point_result(point_id, "failed", None)
 
     def outdir(self) -> pathlib.Path:
         """Get or create the output directory for current run."""
