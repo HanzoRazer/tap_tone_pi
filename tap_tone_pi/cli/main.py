@@ -142,8 +142,29 @@ def cmd_record(args: argparse.Namespace) -> int:
     qc_tmp.replace(qc_path)
 
     # Console QC summary (keeps headless workflows friendly)
-    rules = ",".join([tr.rule.rule_id for tr in qc.triggered_rules]) if qc.triggered_rules else "none"
-    print(f"QC: {qc.verdict.value.upper()} rules={rules}")
+    if getattr(args, 'agent', False):
+        from tap_tone_pi.agent.messages import (
+            AgentContext,
+            build_agent_message,
+            render_agent_message_cli,
+        )
+        ctx = AgentContext(
+            workflow="record",
+            point_id=args.label,
+            attempt_num=1,
+            max_attempts=1,
+            device_name=str(cap_cfg.device or "default"),
+            sample_rate=cap.sample_rate,
+            policy_version=getattr(qc, "policy_version", None),
+            user_stage="novice",
+            show_details=getattr(args, 'expert', False),
+            expert_mode=getattr(args, 'expert', False),
+        )
+        msg = build_agent_message(ctx, qc)
+        print(render_agent_message_cli(msg))
+    else:
+        rules = ",".join([tr.rule.rule_id for tr in qc.triggered_rules]) if qc.triggered_rules else "none"
+        print(f"QC: {qc.verdict.value.upper()} rules={rules}")
     print(f"Wrote: {persisted.capture_dir}")
     return 0
 
@@ -311,7 +332,26 @@ def cmd_measure(args: argparse.Namespace) -> int:
 
         # Show quality verdict
         if result.verdict:
-            print(f"\n{format_verdict_summary(result.verdict)}")
+            if getattr(args, 'agent', False):
+                from tap_tone_pi.agent.messages import (
+                    AgentContext,
+                    format_verdict_summary_agent,
+                )
+                ctx = AgentContext(
+                    workflow="measure",
+                    point_id=point_id,
+                    attempt_num=attempt_num,
+                    max_attempts=max_attempts,
+                    device_name=str(device or "default"),
+                    sample_rate=sample_rate,
+                    policy_version=getattr(result.verdict, "policy_version", None),
+                    user_stage="novice" if attempt_num == 1 else "regular",
+                    show_details=True,
+                    expert_mode=getattr(args, 'expert', False),
+                )
+                print("\n" + format_verdict_summary_agent(ctx, result.verdict))
+            else:
+                print(f"\n{format_verdict_summary(result.verdict)}")
 
         # Handle verdict
         if result.verdict.verdict == Verdict.PASS:
@@ -776,6 +816,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_rec.add_argument("--seconds", type=float, default=2.5)
     p_rec.add_argument("--out", type=str, required=True, help="Output directory")
     p_rec.add_argument("--label", type=str, default=None, help="Tap point label")
+    p_rec.add_argument("--agent", action="store_true", help="Use agent-formatted QC output")
+    p_rec.add_argument("--expert", action="store_true", help="More detailed agent output")
     p_rec.set_defaults(fn=cmd_record)
 
     # live
@@ -801,6 +843,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_meas.add_argument("--out", type=str, required=True, help="Session output directory")
     p_meas.add_argument("--point", type=str, default=None, help="Point ID (default: point_001)")
     p_meas.add_argument("--max-attempts", type=int, default=3, help="Max retry attempts")
+    p_meas.add_argument("--agent", action="store_true", help="Use agent-formatted workflow output")
+    p_meas.add_argument("--expert", action="store_true", help="More detailed agent output")
     p_meas.set_defaults(fn=cmd_measure)
 
     # gold-run
