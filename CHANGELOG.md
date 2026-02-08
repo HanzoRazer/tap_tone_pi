@@ -2,6 +2,28 @@
 
 All notable changes to this project are documented here. This file follows [Keep a Changelog](https://keepachangelog.com/) style and [Semantic Versioning](https://semver.org/).
 
+## [2.2.0] — 2026-02-08
+
+### Added
+- **GUI Auto-Trigger Integration (Phase 10)** — hands-free tap detection in the GUI
+  - "Auto-trigger (wait for tap)" checkbox in Quality-Gated Measurement section
+  - Listening state visual indicator ("🎤 Listening for tap...")
+  - SNR feedback when tap is detected
+  - 30-second timeout with user-friendly message
+  - Graceful fallback when sounddevice not available (checkbox disabled)
+  - Works in both single-point and grid measurement modes
+  - `_on_auto_trigger_toggle()` — checkbox state handler
+  - `_update_trigger_listening_state()` — visual feedback updates
+
+### Changed
+- GUI version updated to v2.2.0
+- `do_quality_measure()` now branches on auto-trigger checkbox state
+- `_do_grid_point_measure()` also supports auto-trigger mode
+
+[2.2.0]: https://github.com/HanzoRazer/tap_tone_pi/compare/analyzer-v2.1.0...analyzer-v2.2.0
+
+---
+
 ## [2.1.0] — 2026-02-07
 
 ### Added
