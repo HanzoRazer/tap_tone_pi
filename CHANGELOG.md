@@ -45,7 +45,32 @@ All notable changes to this project are documented here. This file follows [Keep
   - `ttp record --agent` — agent-formatted QC output with hints
   - `ttp measure --agent` — agent-formatted workflow output
   - `--expert` — more detailed output for advanced users
-- 192 tests for agent layer + 14 tests for session metadata + 15 tests for session diff
+- **Multi-point Grid (Phase 9)** — `tap_tone_pi.core.grid` module
+  - `Grid` — measurement grid with factory methods (`rectangular`, `circular`, `line`)
+  - `GridPoint` — individual point with ID, coordinates, optional label
+  - `GridSession` — session state tracking with point progress
+  - `PointStatus` — PENDING/PASSED/WARNED/FAILED/SKIPPED states
+  - Grid-based measurement workflow in GUI (`do_grid_measure()`)
+  - JSON serialization for grid definitions and session state
+- **Auto-Trigger Detector (Phase 10)** — `tap_tone_pi.core.auto_trigger` module
+  - `AutoTriggerDetector` — monitors audio stream for tap onset
+  - Adaptive threshold (baseline × multiplier) or fixed RMS threshold
+  - Pre-trigger buffer (100ms default) captures initial transient
+  - Configurable timeout, chunk size, settling time
+  - `TriggerConfig` — all detection parameters
+  - `TriggerResult` — captured audio with timing/RMS metadata
+  - `record_audio_triggered()` — convenience function
+  - CLI flags: `--auto-trigger`, `--trigger-timeout`
+  - Usage: `ttp measure --out ./session --auto-trigger`
+- **UI Polish** — keyboard shortcuts and tooltips
+  - Keyboard shortcuts: Ctrl+B (browse), Ctrl+O (open folder), Ctrl+Q (quit), Ctrl+W (wizard), Ctrl+D (diff), Ctrl+G (grid), F1 (about)
+  - Menu accelerator labels
+  - Toolbar button tooltips
+- **FTUE Persistence** — session and pass counts tracked across invocations
+  - `session_count_lifetime` increments per `cmd_measure` call
+  - `pass_count_lifetime` increments on PASS verdict
+  - `seen_rule_ids` tracks encountered quality rules
+- 192 tests for agent layer + 14 tests for session metadata + 15 tests for session diff + 7 tests for auto-trigger
 
 ### Architecture
 The agent wraps existing components horizontally, not vertically:
