@@ -116,6 +116,13 @@ try:
 except ImportError:
     HAS_GRID = False
 
+# Viewer pack export (Phase 11 enhancement)
+try:
+    from tap_tone_pi.gui.export import export_gui_session, ExportResult
+    HAS_EXPORT = True
+except ImportError:
+    HAS_EXPORT = False
+
 
 class SpectrumViewer(tk.Toplevel):
     """Matplotlib spectrum viewer window (Phase 6 enhancement)."""
@@ -523,6 +530,19 @@ class App(tk.Tk):
             if HAS_WIDGETS:
                 ToolTip(btn_grid, "Multi-point grid measurement (Ctrl+G)")
 
+        # Export Viewer Pack button (Phase 11)
+        if HAS_EXPORT:
+            btn_export = tk.Button(
+                rrow,
+                text="Export Pack",
+                command=self.do_export_viewer_pack,
+                bg="#8BC34A",
+                fg="white",
+            )
+            btn_export.pack(side="right", padx=5)
+            if HAS_WIDGETS:
+                ToolTip(btn_export, "Export session as viewer pack ZIP (Ctrl+E)")
+
         # --- Quality-gated measurement (Phase 7 - recommended)
         if HAS_QUALITY_GATE and HAS_DIRECT_ANALYSIS:
             # Create custom frame to include auto-trigger checkbox
@@ -669,6 +689,13 @@ class App(tk.Tk):
                 accelerator="Ctrl+G",
             )
             tools_menu.add_separator()
+        if HAS_EXPORT:
+            tools_menu.add_command(
+                label="Export Viewer Pack...",
+                command=self.do_export_viewer_pack,
+                accelerator="Ctrl+E",
+            )
+            tools_menu.add_separator()
         tools_menu.add_command(label="Chladni Wizard...", command=self.do_chladni_wizard)
 
         # Help menu
@@ -717,6 +744,8 @@ class App(tk.Tk):
             self.bind_all("<Control-d>", lambda e: self.do_pack_diff())
         if HAS_GRID:
             self.bind_all("<Control-g>", lambda e: self.do_grid_measure())
+        if HAS_EXPORT:
+            self.bind_all("<Control-e>", lambda e: self.do_export_viewer_pack())
 
         # Help
         self.bind_all("<F1>", lambda e: self._show_about())
@@ -810,6 +839,70 @@ class App(tk.Tk):
             output_dir=OUT,
             initial_session_b=initial_b,
         )
+
+    def do_export_viewer_pack(self) -> None:
+        """Export current session as viewer pack ZIP (Phase 11)."""
+        if not HAS_EXPORT:
+            messagebox.showerror("Error", "Export module not available")
+            return
+
+        session_dir = self.outdir()
+        run_id = self.run_id.get().strip()
+
+        # Check if session has any measurements
+        point_dirs = [d for d in session_dir.iterdir() if d.is_dir() and not d.name.startswith(("_", "."))]
+        if not point_dirs:
+            messagebox.showwarning(
+                "No Measurements",
+                f"No measurement points found in session:\n{session_dir}\n\n"
+                "Run a measurement first, then export."
+            )
+            return
+
+        # Confirm export
+        result = messagebox.askyesno(
+            "Export Viewer Pack",
+            f"Export session '{run_id}' as viewer pack ZIP?\n\n"
+            f"Found {len(point_dirs)} measurement point(s).\n\n"
+            "The ZIP will be created in the output folder."
+        )
+        if not result:
+            return
+
+        # Show progress
+        self._set_status(f"Exporting viewer pack for {run_id}...", "progress")
+        self.update()
+
+        try:
+            export_result = export_gui_session(session_dir, as_zip=True)
+
+            if export_result.success:
+                self._set_status(f"Exported: {export_result.output_path.name}", "success")
+
+                # Show success with warnings if any
+                msg = f"Viewer pack exported successfully!\n\n"
+                msg += f"Points: {export_result.point_count}\n"
+                msg += f"Output: {export_result.output_path}"
+
+                if export_result.warnings:
+                    msg += f"\n\nWarnings ({len(export_result.warnings)}):\n"
+                    for w in export_result.warnings[:5]:
+                        msg += f"  \u2022 {w}\n"
+                    if len(export_result.warnings) > 5:
+                        msg += f"  ... and {len(export_result.warnings) - 5} more"
+
+                messagebox.showinfo("Export Complete", msg)
+
+                # Offer to open the folder
+                if messagebox.askyesno("Open Folder", "Open the output folder?"):
+                    self._open_output_folder()
+            else:
+                self._set_status(f"Export failed: {export_result.error}", "error")
+                messagebox.showerror("Export Failed", f"Could not export viewer pack:\n\n{export_result.error}")
+
+        except Exception as e:
+            self._set_status(f"Export error: {e}", "error")
+            messagebox.showerror("Export Error", f"Unexpected error during export:\n\n{e}")
 
     def do_grid_editor(self) -> None:
         """Open the grid editor dialog (Phase 9)."""
