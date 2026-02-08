@@ -24,6 +24,7 @@ class TestFtueStateFromDict:
         ftue = FtueState.from_dict({})
         assert ftue.pass_count_lifetime == 0
         assert ftue.session_count_lifetime == 0
+        assert ftue.override_count_lifetime == 0
         assert ftue.seen_rule_ids == []
         assert ftue.last_seen_policy_version is None
 
@@ -34,6 +35,10 @@ class TestFtueStateFromDict:
     def test_malformed_session_count_defaults_to_zero(self):
         ftue = FtueState.from_dict({"session_count_lifetime": [1, 2, 3]})
         assert ftue.session_count_lifetime == 0
+
+    def test_malformed_override_count_defaults_to_zero(self):
+        ftue = FtueState.from_dict({"override_count_lifetime": "not an int"})
+        assert ftue.override_count_lifetime == 0
 
     def test_malformed_seen_rule_ids_defaults_to_empty(self):
         ftue = FtueState.from_dict({"seen_rule_ids": "not a list"})

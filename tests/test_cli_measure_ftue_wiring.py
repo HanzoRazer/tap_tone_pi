@@ -259,3 +259,149 @@ class TestCmdMeasureFtueWiring:
         assert ctx.session_count_lifetime == 6
         # pass_count was 3, then incremented to 4 after PASS verdict
         assert ctx.pass_count_lifetime == 4
+
+    def test_override_increments_override_count_mid_session(
+        self, tmp_path: Path, monkeypatch
+    ):
+        """override_count_lifetime increments when user overrides a FAIL mid-session."""
+        from tap_tone_pi.core.user_config import (
+            UserConfig,
+            save_config,
+            load_config,
+        )
+        from tap_tone_pi.core.quality_policy import (
+            QualityVerdict,
+            Verdict,
+            TriggeredRule,
+            Q001_CLIPPED,
+        )
+
+        # Setup: fresh config
+        config_path = tmp_path / "config.json"
+        cfg = UserConfig()
+        cfg.ftue.override_count_lifetime = 0
+        cfg.ftue.pass_count_lifetime = 0
+        save_config(cfg, path=config_path)
+
+        import tap_tone_pi.core.user_config as user_config_mod
+        monkeypatch.setattr(user_config_mod, "CONFIG_FILE", config_path)
+
+        # Create FAIL verdict
+        fail_verdict = QualityVerdict(
+            verdict=Verdict.FAIL,
+            triggered_rules=[TriggeredRule(rule=Q001_CLIPPED, message="Clipping detected")],
+        )
+
+        class _StubLoop:
+            def __init__(self, **kwargs):
+                self.store = MagicMock()
+                self.store.get_attempt_dir.return_value = tmp_path / "attempt_001"
+                self.overridden = False
+
+            def run_single(self, **kwargs):
+                return _StubResult(
+                    analysis=_StubAnalysis(),
+                    verdict=fail_verdict,
+                )
+
+            def override_failed(self, point_id, reason):
+                self.overridden = True
+
+        import tap_tone_pi.workflow as workflow_mod
+        monkeypatch.setattr(workflow_mod, "OperatorLoop", _StubLoop)
+
+        # Input sequence: "n" to decline retry, "my reason" for override
+        input_responses = iter(["n", "my override reason"])
+        monkeypatch.setattr("builtins.input", lambda _: next(input_responses))
+
+        args = argparse.Namespace(
+            device=0,
+            sample_rate=48000,
+            out=str(tmp_path / "session"),
+            seconds=1.0,
+            max_attempts=3,
+            point="point_001",
+            agent=False,
+            expert=False,
+        )
+
+        from tap_tone_pi.cli.main import cmd_measure
+        exit_code = cmd_measure(args)
+
+        assert exit_code == 0
+        reloaded = load_config(path=config_path)
+        assert reloaded.ftue.override_count_lifetime == 1
+        # pass_count should NOT increment on override
+        assert reloaded.ftue.pass_count_lifetime == 0
+
+    def test_override_increments_override_count_max_attempts(
+        self, tmp_path: Path, monkeypatch
+    ):
+        """override_count_lifetime increments when user overrides after max attempts."""
+        from tap_tone_pi.core.user_config import (
+            UserConfig,
+            save_config,
+            load_config,
+        )
+        from tap_tone_pi.core.quality_policy import (
+            QualityVerdict,
+            Verdict,
+            TriggeredRule,
+            Q001_CLIPPED,
+        )
+
+        # Setup: fresh config
+        config_path = tmp_path / "config.json"
+        cfg = UserConfig()
+        cfg.ftue.override_count_lifetime = 0
+        cfg.ftue.pass_count_lifetime = 0
+        save_config(cfg, path=config_path)
+
+        import tap_tone_pi.core.user_config as user_config_mod
+        monkeypatch.setattr(user_config_mod, "CONFIG_FILE", config_path)
+
+        # Create FAIL verdict
+        fail_verdict = QualityVerdict(
+            verdict=Verdict.FAIL,
+            triggered_rules=[TriggeredRule(rule=Q001_CLIPPED, message="Clipping detected")],
+        )
+
+        class _StubLoop:
+            def __init__(self, **kwargs):
+                self.store = MagicMock()
+                self.store.get_attempt_dir.return_value = tmp_path / "attempt_001"
+
+            def run_single(self, **kwargs):
+                return _StubResult(
+                    analysis=_StubAnalysis(),
+                    verdict=fail_verdict,
+                )
+
+            def override_failed(self, point_id, reason):
+                pass
+
+        import tap_tone_pi.workflow as workflow_mod
+        monkeypatch.setattr(workflow_mod, "OperatorLoop", _StubLoop)
+
+        # Input: override reason at max attempts prompt
+        monkeypatch.setattr("builtins.input", lambda _: "max attempts override")
+
+        args = argparse.Namespace(
+            device=0,
+            sample_rate=48000,
+            out=str(tmp_path / "session"),
+            seconds=1.0,
+            max_attempts=1,  # Single attempt = immediately at max
+            point="point_001",
+            agent=False,
+            expert=False,
+        )
+
+        from tap_tone_pi.cli.main import cmd_measure
+        exit_code = cmd_measure(args)
+
+        assert exit_code == 0
+        reloaded = load_config(path=config_path)
+        assert reloaded.ftue.override_count_lifetime == 1
+        # pass_count should NOT increment on override
+        assert reloaded.ftue.pass_count_lifetime == 0

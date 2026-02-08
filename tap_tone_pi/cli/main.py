@@ -415,6 +415,10 @@ def cmd_measure(args: argparse.Namespace) -> int:
                     override = input("Override with reason? [leave blank to abort]: ").strip()
                     if override:
                         loop.override_failed(point_id, override)
+
+                        cfg.ftue.override_count_lifetime += 1
+                        save_config(cfg)
+
                         print(f"Measurement OVERRIDDEN: {override}")
                         print(f"Saved to: {loop.store.get_attempt_dir(result.attempt)}")
                         return 0
@@ -425,6 +429,10 @@ def cmd_measure(args: argparse.Namespace) -> int:
                 override = input("Max attempts reached. Override with reason? [leave blank to fail]: ").strip()
                 if override:
                     loop.override_failed(point_id, override)
+
+                    cfg.ftue.override_count_lifetime += 1
+                    save_config(cfg)
+
                     print(f"Measurement OVERRIDDEN: {override}")
                     return 0
                 print("Measurement FAILED.")

@@ -62,6 +62,7 @@ class FtueState:
     """First-time user experience (FTUE) persistence for agent messaging."""
     pass_count_lifetime: int = 0
     session_count_lifetime: int = 0
+    override_count_lifetime: int = 0
     seen_rule_ids: list[str] = field(default_factory=list)
     last_seen_policy_version: str | None = None
     updated_at: str = field(default_factory=lambda: _utc_now())
@@ -72,6 +73,7 @@ class FtueState:
         return {
             "pass_count_lifetime": int(self.pass_count_lifetime),
             "session_count_lifetime": int(self.session_count_lifetime),
+            "override_count_lifetime": int(self.override_count_lifetime),
             "seen_rule_ids": list(self.seen_rule_ids),
             "last_seen_policy_version": self.last_seen_policy_version,
             "updated_at": self.updated_at,
@@ -82,6 +84,7 @@ class FtueState:
         """Defensive parsing: never raise for bad ftue payloads."""
         pass_count = d.get("pass_count_lifetime", 0)
         session_count = d.get("session_count_lifetime", 0)
+        override_count = d.get("override_count_lifetime", 0)
         seen = d.get("seen_rule_ids", [])
         policy = d.get("last_seen_policy_version", None)
         updated_at = d.get("updated_at", _utc_now())
@@ -90,6 +93,8 @@ class FtueState:
             pass_count = 0
         if not isinstance(session_count, int):
             session_count = 0
+        if not isinstance(override_count, int):
+            override_count = 0
         if not isinstance(seen, list) or any(not isinstance(x, str) for x in seen):
             seen = []
         if policy is not None and not isinstance(policy, str):
@@ -103,6 +108,7 @@ class FtueState:
         return cls(
             pass_count_lifetime=pass_count,
             session_count_lifetime=session_count,
+            override_count_lifetime=override_count,
             seen_rule_ids=seen,
             last_seen_policy_version=policy,
             updated_at=updated_at,

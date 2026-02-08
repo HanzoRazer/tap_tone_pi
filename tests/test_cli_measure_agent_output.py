@@ -76,7 +76,7 @@ def _stub_operator_loop(monkeypatch, tmp_path: Path):
                 },
             )()
 
-        def run_single(self, *, point_id, device, sample_rate, duration):
+        def run_single(self, *, point_id, device, sample_rate, duration, **kwargs):
             # PASS by default; tests can monkeypatch this method per-test
             return _FakeLoopResult(
                 attempt=_FakeAttempt(point_id=point_id),
