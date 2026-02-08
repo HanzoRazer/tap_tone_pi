@@ -2,6 +2,28 @@
 
 All notable changes to this project are documented here. This file follows [Keep a Changelog](https://keepachangelog.com/) style and [Semantic Versioning](https://semver.org/).
 
+## [2.2.2] — 2026-02-08
+
+### Added
+- **GUI Export Viewer Pack (Phase 11)** — one-click export of GUI sessions to viewer_pack_v1 format
+  - "Export Pack" toolbar button (green, Ctrl+E shortcut)
+  - "Export Viewer Pack..." menu item under Tools
+  - `tap_tone_pi/gui/export.py` — new export module
+    - `export_gui_session()` — converts session dir to viewer pack ZIP
+    - `_find_best_attempt()` — selects best attempt per point (PASS > WARN > FAIL)
+    - `_generate_spectrum_csv()` — creates spectrum CSV from audio FFT
+    - `ExportResult` dataclass for structured return
+  - Pre-export validation (measurements must exist)
+  - Confirmation dialog with point count
+  - Progress feedback via status bar
+  - Success message with warnings (if any)
+  - Offer to open output folder after export
+  - 11 unit tests in `tests/test_gui_export.py`
+
+[2.2.2]: https://github.com/HanzoRazer/tap_tone_pi/compare/analyzer-v2.2.1...analyzer-v2.2.2
+
+---
+
 ## [2.2.1] — 2026-02-08
 
 ### Added
