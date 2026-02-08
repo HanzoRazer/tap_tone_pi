@@ -22,7 +22,30 @@ All notable changes to this project are documented here. This file follows [Keep
   - **Unknown rule fallback** — gracefully handles future rule IDs not in RULE_SPECS
   - **No imports from `quality_gate`** — policy-safe, no circular dependency pressure
 - **Dual API** — standalone (mock-friendly) + integrated (production) exports
-- 192 tests for agent layer (types, message spec, FTUE, selector, render, integration, messages)
+- **GUI Polish (Phase 8)** — `tap_tone_pi.gui.widgets` module
+  - `AudioLevelMeter` — real-time level visualization with peak hold
+  - `StatusBar` — color-coded operation feedback (info/success/warning/error/progress)
+  - `DeviceSelector` — audio device dropdown with test button
+  - `SetupWizardDialog` — in-GUI hardware configuration
+  - `CaptureProgressDialog` — visual feedback during capture operations
+- **Session Browser** — `SessionBrowserDialog` for viewing past measurements
+  - Session type detection (quality_gated, chladni, bending, moe, tap_tone)
+  - Metadata display (date, points, files, size, verdict status)
+  - Actions: open folder, select session
+- **Pack Diff Tooling** — `tap_tone_pi.core.session_diff` module
+  - `PeakDiff`, `MetricDiff`, `SessionDiff` dataclasses
+  - `compare_sessions()` — compare before/after measurements
+  - `format_diff_report()` — human-readable diff report
+  - `PackDiffDialog` — UI for comparing sessions with Summary/Peaks/Metrics tabs
+- **Session Metadata Export** — `meta/session_meta.json` in viewer packs (Release A.1)
+  - `SessionMetaV1` dataclass with capture setup metadata
+  - Auto-extracts: specimen_id, device_id, fixture_id, mic_id, mic_gain_db, sample_rate_hz, tap_count
+  - Enables ToolBox compare UI to show capture configuration differences
+- **CLI Agent Mode** — `--agent` and `--expert` flags for record/measure commands
+  - `ttp record --agent` — agent-formatted QC output with hints
+  - `ttp measure --agent` — agent-formatted workflow output
+  - `--expert` — more detailed output for advanced users
+- 192 tests for agent layer + 14 tests for session metadata + 15 tests for session diff
 
 ### Architecture
 The agent wraps existing components horizontally, not vertically:
