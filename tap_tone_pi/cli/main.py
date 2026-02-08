@@ -260,10 +260,28 @@ def cmd_quick(args: argparse.Namespace) -> int:
 
 def cmd_measure(args: argparse.Namespace) -> int:
     """Quality-gated measurement with operator loop."""
-    from tap_tone_pi.core.user_config import get_saved_device
+    from tap_tone_pi.core.user_config import (
+        get_saved_device,
+        load_config,
+        save_config,
+        UserConfig,
+        update_ftue_from_verdict,
+    )
     from tap_tone_pi.core.quality_gate import format_verdict_summary
     from tap_tone_pi.core.quality_policy import Verdict
     from tap_tone_pi.workflow import OperatorLoop, LoopState
+
+    # ---- FTUE: load once per measure session ----
+    cfg = load_config() or UserConfig()
+
+    # Increment session counter once per cmd_measure invocation (deterministic)
+    cfg.ftue = update_ftue_from_verdict(
+        cfg.ftue,
+        verdict=None,
+        policy_version=None,
+        increment_session=True,
+    )
+    save_config(cfg)
 
     # Resolve device
     device = args.device
@@ -337,6 +355,16 @@ def cmd_measure(args: argparse.Namespace) -> int:
                     AgentContext,
                     format_verdict_summary_agent,
                 )
+
+                # FTUE: record exposure + PASS increments (deterministic)
+                cfg.ftue = update_ftue_from_verdict(
+                    cfg.ftue,
+                    verdict=result.verdict,
+                    policy_version=getattr(result.verdict, "policy_version", None),
+                    increment_session=False,
+                )
+                save_config(cfg)
+
                 ctx = AgentContext(
                     workflow="measure",
                     point_id=point_id,
@@ -345,7 +373,9 @@ def cmd_measure(args: argparse.Namespace) -> int:
                     device_name=str(device or "default"),
                     sample_rate=sample_rate,
                     policy_version=getattr(result.verdict, "policy_version", None),
-                    user_stage="novice" if attempt_num == 1 else "regular",
+                    # Feed persistence signals; do NOT hardcode stage
+                    pass_count_lifetime=cfg.ftue.pass_count_lifetime,
+                    session_count_lifetime=cfg.ftue.session_count_lifetime,
                     show_details=True,
                     expert_mode=getattr(args, 'expert', False),
                 )
