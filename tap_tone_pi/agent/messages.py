@@ -52,11 +52,13 @@ class AgentContext:
     sample_rate: Optional[int] = None
     policy_version: Optional[str] = None
 
-    # FTUE inference signals
+    # FTUE inference signals (from persistence)
     pass_count_lifetime: int = 0
     session_count_lifetime: int = 0
+    override_count_lifetime: int = 0
+    seen_rule_ids: tuple[str, ...] = ()  # persisted rule exposure
 
-    # Optional history for escalation (use tuple for frozen compatibility)
+    # In-session history for escalation (use tuple for frozen compatibility)
     rule_counts_this_session: tuple[tuple[str, int], ...] = ()
     consecutive_rule_hits: tuple[tuple[str, int], ...] = ()
     consecutive_same_verdict: int = 0
@@ -78,6 +80,14 @@ class AgentContext:
             if rid == rule_id:
                 return count
         return 0
+
+    def is_rule_new(self, rule_id: str) -> bool:
+        """True if user has never seen this rule (not in persisted seen_rule_ids)."""
+        return rule_id not in self.seen_rule_ids
+
+    def is_rule_fatiguing(self, rule_id: str) -> bool:
+        """True if rule is repeated (in-session ≥2 or previously seen)."""
+        return self.get_rule_count(rule_id) >= 2 or not self.is_rule_new(rule_id)
 
 
 @dataclass(frozen=True)
@@ -348,6 +358,59 @@ def _top_k_rules_for_stage(stage: UserStage, sorted_rules: Sequence[TriggeredRul
     return list(sorted_rules)
 
 
+# -----------------------------------------------------------------------------
+# Fatigue policy — suppress repeated explanations
+# -----------------------------------------------------------------------------
+
+def should_show_learning_hint(ctx: AgentContext, rule_ids: List[str], stage: UserStage) -> bool:
+    """
+    Show learning hint only if ALL are true:
+    1. user is first_run or novice
+    2. at least one rule is new (not in seen_rule_ids)
+    3. no rule is repeating in-session (count <= 1 for all)
+    4. not in expert_mode
+
+    This prevents "nagging" when the user has seen the same issue before.
+    """
+    if ctx.expert_mode:
+        return False
+    if stage not in ("first_run", "novice"):
+        return False
+    if not rule_ids:
+        return False
+    # At least one rule must be genuinely new
+    any_new = any(ctx.is_rule_new(rid) for rid in rule_ids)
+    if not any_new:
+        return False
+    # No rule should be fatiguing (repeated in-session)
+    any_fatiguing_in_session = any(ctx.get_rule_count(rid) >= 2 for rid in rule_ids)
+    if any_fatiguing_in_session:
+        return False
+    return True
+
+
+def should_show_full_explanation(ctx: AgentContext, rule_id: str) -> bool:
+    """
+    Show full explanation only on first exposure.
+
+    Suppress if:
+    - rule repeated in-session (count >= 2), OR
+    - rule was previously seen (in seen_rule_ids), OR
+    - override_count >= 1 AND user is not first_run (experienced override = concise preference)
+    """
+    # First-run always gets full explanation on first in-session occurrence
+    stage = infer_user_stage(ctx)
+    if stage == "first_run" and ctx.get_rule_count(rule_id) <= 1:
+        return True
+    # Otherwise, suppress if fatiguing
+    if ctx.is_rule_fatiguing(rule_id):
+        return False
+    # Suppress if experienced overrider (unless first_run)
+    if ctx.override_count_lifetime >= 1 and stage != "first_run":
+        return False
+    return True
+
+
 def _pick_ftue_hint(stage: UserStage, ctx: AgentContext, rule_ids: List[str]) -> Optional[str]:
     hints = FTUE_HINTS.get(stage, ())
     if not hints:
@@ -473,8 +536,13 @@ def build_agent_message(ctx: AgentContext, verdict: QualityVerdict) -> AgentMess
                 continue
 
             sev = "ERROR" if spec.severity == Severity.HARD else "WARN"
-            # For novice/first_run, keep it physical-action oriented; for expert, add "why it matters"
-            if stage in ("first_run", "novice"):
+
+            # Fatigue suppression: if rule is fatiguing, show only short form
+            if not should_show_full_explanation(ctx, rid):
+                # Concise: rule ID + short description + fix only
+                details.append(f"[{sev}] {rid}: {spec.first_fix}")
+            elif stage in ("first_run", "novice"):
+                # For novice/first_run, keep it physical-action oriented
                 details.append(f"[{sev}] {rid}: {spec.operator_explanation}")
                 details.append(f"      Fix: {spec.first_fix}")
             elif stage == "expert":
@@ -502,8 +570,10 @@ def build_agent_message(ctx: AgentContext, verdict: QualityVerdict) -> AgentMess
         rule_ids=rule_ids,
     )
 
-    # Learning hint (FTUE only)
-    learning_hint = _pick_ftue_hint(stage, ctx, rule_ids) if stage in ("first_run", "novice") else None
+    # Learning hint (FTUE only, with fatigue suppression)
+    learning_hint = None
+    if should_show_learning_hint(ctx, rule_ids, stage):
+        learning_hint = _pick_ftue_hint(stage, ctx, rule_ids)
 
     # Summary tweaks (contextual but non-interpretive)
     summary = tpl.summary
