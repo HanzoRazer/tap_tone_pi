@@ -123,5 +123,27 @@ def auto_detect_device() -> int | None:
     return None
 
 
+# Auto-trigger support
+from tap_tone_pi.core.auto_trigger import (
+    TriggerState,
+    TriggerConfig,
+    TriggerResult,
+    TriggerCallback,
+    AutoTriggerDetector,
+    record_audio_triggered,
+)
+
 # Re-export for convenience
-__all__ = ["CaptureResult", "list_devices", "record_audio", "auto_detect_device"]
+__all__ = [
+    "CaptureResult",
+    "list_devices",
+    "record_audio",
+    "auto_detect_device",
+    # Auto-trigger
+    "TriggerState",
+    "TriggerConfig",
+    "TriggerResult",
+    "TriggerCallback",
+    "AutoTriggerDetector",
+    "record_audio_triggered",
+]

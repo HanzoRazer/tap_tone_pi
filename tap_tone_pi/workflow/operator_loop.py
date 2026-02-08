@@ -17,7 +17,14 @@ from typing import Callable, Any
 import numpy as np
 from scipy.io import wavfile
 
-from tap_tone_pi.capture import record_audio, list_devices, CaptureResult
+from tap_tone_pi.capture import (
+    record_audio,
+    list_devices,
+    CaptureResult,
+    record_audio_triggered,
+    TriggerState,
+    TriggerResult,
+)
 from tap_tone_pi.core.analysis import analyze_tap, AnalysisResult
 from tap_tone_pi.core.quality_gate import check_quality, format_verdict_summary
 from tap_tone_pi.core.quality_policy import QualityVerdict, Verdict
@@ -29,6 +36,7 @@ class LoopState(str, Enum):
     IDLE = "idle"              # No active measurement
     PREFLIGHT = "preflight"    # Checking device/environment
     READY = "ready"            # Ready for capture
+    LISTENING = "listening"    # Waiting for auto-trigger (Phase 10)
     CAPTURING = "capturing"    # Recording audio
     ANALYZING = "analyzing"    # Running DSP analysis
     GATING = "gating"          # Checking quality
@@ -135,6 +143,8 @@ class OperatorLoop:
         sample_rate: int = 48000,
         duration: float = 2.5,
         channels: int = 1,
+        auto_trigger: bool = False,
+        auto_trigger_timeout: float = 30.0,
     ) -> LoopResult:
         """
         Run a single capture-analyze-gate cycle.
@@ -143,8 +153,10 @@ class OperatorLoop:
             point_id: Identifier for this measurement point
             device: Audio device index (None = default)
             sample_rate: Sample rate in Hz
-            duration: Capture duration in seconds
+            duration: Capture duration in seconds (or post-trigger if auto_trigger)
             channels: Number of channels (default 1 = mono)
+            auto_trigger: If True, wait for tap onset before recording
+            auto_trigger_timeout: Timeout for auto-trigger in seconds
 
         Returns:
             LoopResult with attempt, audio, analysis, and verdict
@@ -173,25 +185,62 @@ class OperatorLoop:
         self._emit(LoopState.READY, {"point_id": point_id, "attempt": attempt.attempt_number})
 
         # --- CAPTURING ---
-        self._emit(LoopState.CAPTURING)
-        try:
-            cap_result: CaptureResult = record_audio(
-                device=device,
-                sample_rate=sample_rate,
-                channels=channels,
-                seconds=duration,
-            )
-        except Exception as e:
-            attempt.status = AttemptStatus.FAILED
-            self.store.save_attempt(attempt)
-            return LoopResult(attempt=attempt, error=f"Capture failed: {e}")
+        if auto_trigger:
+            # Auto-trigger mode: wait for tap onset
+            self._emit(LoopState.LISTENING, {"timeout": auto_trigger_timeout})
+            try:
+                trigger_result: TriggerResult = record_audio_triggered(
+                    device=device,
+                    sample_rate=sample_rate,
+                    post_trigger_seconds=duration,
+                    timeout_seconds=auto_trigger_timeout,
+                )
+                if not trigger_result.triggered:
+                    if trigger_result.state == TriggerState.TIMEOUT:
+                        attempt.status = AttemptStatus.FAILED
+                        self.store.save_attempt(attempt)
+                        return LoopResult(attempt=attempt, error="Auto-trigger timeout - no tap detected")
+                    else:
+                        attempt.status = AttemptStatus.FAILED
+                        self.store.save_attempt(attempt)
+                        return LoopResult(attempt=attempt, error=f"Auto-trigger failed: {trigger_result.error}")
+                
+                # Convert to CaptureResult for downstream compatibility
+                cap_result = CaptureResult(
+                    sample_rate=trigger_result.sample_rate,
+                    audio=trigger_result.audio,
+                )
+                actual_duration = trigger_result.duration_seconds
+            except Exception as e:
+                attempt.status = AttemptStatus.FAILED
+                self.store.save_attempt(attempt)
+                return LoopResult(attempt=attempt, error=f"Auto-trigger capture failed: {e}")
+        else:
+            # Fixed-duration mode
+            self._emit(LoopState.CAPTURING)
+            try:
+                cap_result: CaptureResult = record_audio(
+                    device=device,
+                    sample_rate=sample_rate,
+                    channels=channels,
+                    seconds=duration,
+                )
+                actual_duration = duration
+            except Exception as e:
+                attempt.status = AttemptStatus.FAILED
+                self.store.save_attempt(attempt)
+                return LoopResult(attempt=attempt, error=f"Capture failed: {e}")
+
+        # Emit CAPTURING state after trigger (if auto-trigger was used)
+        if auto_trigger:
+            self._emit(LoopState.CAPTURING, {"triggered": True})
 
         # Mark captured
         attempt.mark_captured(
             device_index=device or 0,
             device_name=device_name,
             sample_rate=cap_result.sample_rate,
-            duration_seconds=duration,
+            duration_seconds=actual_duration,
         )
 
         # Save audio

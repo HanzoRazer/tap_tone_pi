@@ -303,8 +303,14 @@ def cmd_measure(args: argparse.Namespace) -> int:
             print("Preflight checks...")
         elif state == LoopState.READY:
             print(f"Ready for capture: {data.get('point_id')} (attempt {data.get('attempt')})")
+        elif state == LoopState.LISTENING:
+            timeout = data.get('timeout', 30)
+            print(f"Listening for tap... (timeout: {timeout:.0f}s)")
         elif state == LoopState.CAPTURING:
-            print(f"Recording {args.seconds}s...")
+            if data.get('triggered'):
+                print("Tap detected! Recording...")
+            else:
+                print(f"Recording {args.seconds}s...")
         elif state == LoopState.ANALYZING:
             print("Analyzing...")
         elif state == LoopState.GATING:
@@ -325,6 +331,8 @@ def cmd_measure(args: argparse.Namespace) -> int:
             device=device,
             sample_rate=sample_rate,
             duration=args.seconds,
+            auto_trigger=getattr(args, 'auto_trigger', False),
+            auto_trigger_timeout=getattr(args, 'trigger_timeout', 30.0),
         )
 
         if result.error:
@@ -875,6 +883,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_meas.add_argument("--max-attempts", type=int, default=3, help="Max retry attempts")
     p_meas.add_argument("--agent", action="store_true", help="Use agent-formatted workflow output")
     p_meas.add_argument("--expert", action="store_true", help="More detailed agent output")
+    p_meas.add_argument("--auto-trigger", action="store_true", dest="auto_trigger",
+                       help="Wait for tap onset before recording (Phase 10)")
+    p_meas.add_argument("--trigger-timeout", type=float, default=30.0,
+                       help="Auto-trigger timeout in seconds (default: 30)")
     p_meas.set_defaults(fn=cmd_measure)
 
     # gold-run
