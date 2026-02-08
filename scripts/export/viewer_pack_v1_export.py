@@ -32,6 +32,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+# Session metadata export
+from tap_tone.export_metadata import SessionMetaV1, write_session_meta
+
 # ============================================================================
 # Constants
 # ============================================================================
@@ -137,15 +140,81 @@ def validate_session(session_dir: Path) -> None:
     """Raise if session doesn't meet minimum requirements."""
     if not session_dir.is_dir():
         raise ValueError(f"Session directory not found: {session_dir}")
-    
+
     phase = detect_phase(session_dir)
     if phase == "unknown":
         raise ValueError(f"Cannot detect session phase: {session_dir}")
-    
+
     if phase == "phase2":
         points = enumerate_points(session_dir)
         if not points:
             raise ValueError(f"Phase 2 session has no points: {session_dir}")
+
+
+def extract_session_metadata(session_dir: Path) -> Dict[str, Any]:
+    """
+    Extract metadata from existing session files.
+
+    Reads from metadata.json, grid.json, and capture_meta.json to populate
+    session-level metadata for ToolBox compare UI.
+    """
+    meta: Dict[str, Any] = {}
+
+    # Try metadata.json (session-level config)
+    metadata_file = session_dir / "metadata.json"
+    if metadata_file.exists():
+        try:
+            with open(metadata_file) as f:
+                data = json.load(f)
+            meta["specimen_id"] = data.get("specimen_id", data.get("sample_id", ""))
+            meta["device_id"] = data.get("device_id", "")
+            meta["fixture_id"] = data.get("fixture_id", "")
+            meta["mic_id"] = data.get("mic_id", "")
+            meta["mic_gain_db"] = data.get("mic_gain_db")
+            meta["preamp_model"] = data.get("preamp_model")
+            meta["sample_rate_hz"] = data.get("sample_rate_hz")
+            meta["tap_protocol"] = data.get("tap_protocol", data.get("protocol", ""))
+            meta["ambient_notes"] = data.get("ambient_notes", data.get("notes", ""))
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    # Try grid.json for point count
+    grid_file = session_dir / "grid.json"
+    if grid_file.exists():
+        try:
+            with open(grid_file) as f:
+                grid = json.load(f)
+            points = grid.get("points", [])
+            meta["tap_count"] = len(points)
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    # Count actual point folders if grid.json not available
+    if "tap_count" not in meta or meta["tap_count"] is None:
+        points_dir = session_dir / "points"
+        if points_dir.exists():
+            point_count = sum(1 for p in points_dir.iterdir() if p.is_dir() and p.name.startswith("point_"))
+            meta["tap_count"] = point_count
+
+    # Try first capture_meta.json for sample rate if not in metadata.json
+    if not meta.get("sample_rate_hz"):
+        points_dir = session_dir / "points"
+        if points_dir.exists():
+            for point_folder in sorted(points_dir.iterdir()):
+                cap_meta = point_folder / "capture_meta.json"
+                if cap_meta.exists():
+                    try:
+                        with open(cap_meta) as f:
+                            cap = json.load(f)
+                        meta["sample_rate_hz"] = cap.get("sample_rate_hz")
+                        break
+                    except (json.JSONDecodeError, OSError):
+                        pass
+
+    # Use session folder name as run_id if not set
+    meta["run_id"] = session_dir.name
+
+    return meta
 
 
 # ============================================================================
@@ -225,6 +294,24 @@ def build_pack_tree_phase2(session_dir: Path, pack_dir: Path) -> tuple[List[File
         dst_relpath = f"meta/{fname}"
         if _copy_file(src, pack_dir / dst_relpath):
             entries.append(_make_entry(pack_dir / dst_relpath, dst_relpath))
+
+    # --- Session metadata (canonical for ToolBox compare UI) ---
+    extracted = extract_session_metadata(session_dir)
+    session_meta = SessionMetaV1(
+        specimen_id=extracted.get("specimen_id", ""),
+        run_id=extracted.get("run_id", session_dir.name),
+        device_id=extracted.get("device_id", ""),
+        fixture_id=extracted.get("fixture_id", ""),
+        mic_id=extracted.get("mic_id", ""),
+        mic_gain_db=extracted.get("mic_gain_db"),
+        preamp_model=extracted.get("preamp_model"),
+        sample_rate_hz=extracted.get("sample_rate_hz"),
+        tap_count=extracted.get("tap_count"),
+        tap_protocol=extracted.get("tap_protocol"),
+        ambient_notes=extracted.get("ambient_notes"),
+    )
+    session_meta_path = write_session_meta(pack_dir, session_meta)
+    entries.append(_make_entry(session_meta_path, "meta/session_meta.json"))
     
     # --- Per-point files ---
     for pid in point_ids:

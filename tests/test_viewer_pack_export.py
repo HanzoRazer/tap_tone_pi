@@ -192,7 +192,68 @@ class TestKindAssignments:
         if exported_pack is None:
             pytest.skip("No exported pack")
         _, manifest = exported_pack
-        
+
         for f in manifest["files"]:
             if f["relpath"].startswith("ods/"):
                 assert f["kind"] == "transfer_function", f"Wrong kind for {f['relpath']}"
+
+    def test_session_meta_kind(self, exported_pack):
+        """meta/session_meta.json should have session_meta kind."""
+        if exported_pack is None:
+            pytest.skip("No exported pack")
+        _, manifest = exported_pack
+
+        session_meta_files = [f for f in manifest["files"] if f["relpath"] == "meta/session_meta.json"]
+        assert len(session_meta_files) == 1, "meta/session_meta.json not found"
+        assert session_meta_files[0]["kind"] == "session_meta"
+
+
+class TestSessionMetadata:
+    """Test session metadata export (Release A.1 follow-on)."""
+
+    def test_session_meta_exists(self, exported_pack):
+        """meta/session_meta.json must be present in pack."""
+        if exported_pack is None:
+            pytest.skip("No exported pack")
+        _, manifest = exported_pack
+        relpaths = [f["relpath"] for f in manifest["files"]]
+        assert "meta/session_meta.json" in relpaths
+
+    def test_session_meta_has_required_fields(self, exported_pack):
+        """session_meta.json must have required fields."""
+        if exported_pack is None:
+            pytest.skip("No exported pack")
+        zip_path, manifest = exported_pack
+
+        # Find unzipped pack
+        unzipped = zip_path.with_suffix("")
+        if not unzipped.is_dir():
+            pytest.skip("Unzipped pack not found")
+
+        session_meta_path = unzipped / "meta" / "session_meta.json"
+        assert session_meta_path.exists(), "session_meta.json not found"
+
+        data = json.loads(session_meta_path.read_text())
+
+        # Required fields per spec
+        assert data.get("schema_id") == "tap_tone_session_meta_v1"
+        assert "run_id" in data
+        assert "created_at_utc" in data
+
+    def test_session_meta_has_compare_fields(self, exported_pack):
+        """session_meta.json should have fields needed by ToolBox compare UI."""
+        if exported_pack is None:
+            pytest.skip("No exported pack")
+        zip_path, manifest = exported_pack
+
+        unzipped = zip_path.with_suffix("")
+        if not unzipped.is_dir():
+            pytest.skip("Unzipped pack not found")
+
+        session_meta_path = unzipped / "meta" / "session_meta.json"
+        data = json.loads(session_meta_path.read_text())
+
+        # These fields enable compare UI (may be null/empty if not in source)
+        compare_fields = ["fixture_id", "mic_gain_db", "tap_count", "sample_rate_hz", "device_id"]
+        for field in compare_fields:
+            assert field in data, f"Missing compare field: {field}"
