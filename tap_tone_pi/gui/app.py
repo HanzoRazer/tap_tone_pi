@@ -462,41 +462,50 @@ class App(tk.Tk):
         tk.Label(rrow, text="Run ID (folder under out/)").pack(side="left")
         tk.Entry(rrow, textvariable=self.run_id, width=20).pack(side="left", padx=6)
 
-        # Toolbar buttons (Phase 8)
+        # Toolbar buttons (Phase 8) with tooltips
         if HAS_WIDGETS:
-            tk.Button(
+            btn_setup = tk.Button(
                 rrow,
                 text="Setup Wizard",
                 command=self.do_setup_wizard,
                 bg="#9C27B0",
                 fg="white",
-            ).pack(side="right", padx=5)
+            )
+            btn_setup.pack(side="right", padx=5)
+            ToolTip(btn_setup, "Configure audio hardware (Ctrl+W)")
 
-            tk.Button(
+            btn_compare = tk.Button(
                 rrow,
                 text="Compare",
                 command=self.do_pack_diff,
                 bg="#FF5722",
                 fg="white",
-            ).pack(side="right", padx=5)
+            )
+            btn_compare.pack(side="right", padx=5)
+            ToolTip(btn_compare, "Compare two sessions (Ctrl+D)")
 
-            tk.Button(
+            btn_browse = tk.Button(
                 rrow,
                 text="Browse Sessions",
                 command=self.do_browse_sessions,
                 bg="#607D8B",
                 fg="white",
-            ).pack(side="right", padx=5)
+            )
+            btn_browse.pack(side="right", padx=5)
+            ToolTip(btn_browse, "Browse past measurement sessions (Ctrl+B)")
 
         # Grid Measurement button (Phase 9)
         if HAS_GRID:
-            tk.Button(
+            btn_grid = tk.Button(
                 rrow,
                 text="Grid Measure",
                 command=self.do_grid_measure,
                 bg="#00BCD4",
                 fg="white",
-            ).pack(side="right", padx=5)
+            )
+            btn_grid.pack(side="right", padx=5)
+            if HAS_WIDGETS:
+                ToolTip(btn_grid, "Multi-point grid measurement (Ctrl+G)")
 
         # --- Quality-gated measurement (Phase 7 - recommended)
         if HAS_QUALITY_GATE and HAS_DIRECT_ANALYSIS:
