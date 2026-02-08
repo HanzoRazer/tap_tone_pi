@@ -88,7 +88,7 @@ def persist_capture(
     _ensure_dir(root)
 
     # One capture per timestamp folder (safe for repeated runs)
-    ts = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     cap_dir = root / f"capture_{ts}"
     _ensure_dir(cap_dir)
 

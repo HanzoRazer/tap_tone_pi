@@ -19,7 +19,7 @@ TOOL_VERSION = os.getenv("TAP_TONE_PI_VERSION", "v1.0")
 # Helpers (time + hashing + IO)
 # ----------------------------
 def utc_now_iso() -> str:
-    return dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def sha256_bytes(b: bytes) -> str:
@@ -297,7 +297,7 @@ def main() -> None:
     args = ap.parse_args()
 
     started = utc_now_iso()
-    bundle_id = args.test_id or f"bend_{dt.datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')}"
+    bundle_id = args.test_id or f"bend_{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
 
     out_root = Path(args.out).expanduser().resolve()
     bundle_dir = out_root / bundle_id

@@ -44,7 +44,7 @@ def persist_capture(
 
     # One capture per timestamp folder (safe for repeated runs)
     import datetime as _dt
-    ts = _dt.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    ts = _dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     cap_dir = root / f"capture_{ts}"
     _ensure_dir(cap_dir)
 

@@ -368,7 +368,7 @@ def persist_bundle(
     plot_max_hz: float,
 ) -> Path:
     _ensure_dir(out_root)
-    ts = dt.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    ts = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     cap_dir = out_root / f"capture_{ts}"
     _ensure_dir(cap_dir)
 
@@ -379,7 +379,7 @@ def persist_bundle(
 
     analysis_path = cap_dir / "analysis.json"
     analysis_out = dict(analysis)
-    analysis_out["ts_utc"] = dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    analysis_out["ts_utc"] = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     analysis_out["label"] = label
     _write_json(analysis_path, analysis_out)
 

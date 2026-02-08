@@ -417,7 +417,7 @@ def run(cmd: str) -> None:
 
 def default_run_id() -> str:
     """Generate a default run ID from current timestamp."""
-    return datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
 
 
 class App(tk.Tk):
@@ -783,7 +783,7 @@ class App(tk.Tk):
                 # Save override reason
                 override_path = attempt_dir / "override.json"
                 with open(override_path, "w") as f:
-                    json.dump({"reason": reason, "timestamp": datetime.datetime.utcnow().isoformat()}, f, indent=2)
+                    json.dump({"reason": reason, "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()}, f, indent=2)
                 self._set_status(f"{point_id} overridden", "warning")
                 messagebox.showinfo("Overridden", f"Measurement overridden and saved to:\n{attempt_dir}")
 

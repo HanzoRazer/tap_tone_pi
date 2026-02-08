@@ -19,7 +19,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 
 def utc_now_iso() -> str:
     import datetime as _dt
-    return _dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    return _dt.datetime.now(_dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def sha256_file(path: Path) -> str:

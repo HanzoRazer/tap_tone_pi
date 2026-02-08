@@ -30,7 +30,7 @@ def run(cmd: str):
         messagebox.showerror("Error", f"Command failed ({e.returncode}):\n{cmd}")
 
 def default_run_id():
-    return datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
 
 class App(tk.Tk):
     def __init__(self):

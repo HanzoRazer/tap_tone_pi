@@ -45,7 +45,7 @@ from phase2.viz import heatmap_scatter, plot_curve
 
 
 def utc_stamp() -> str:
-    return dt.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    return dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
 def ensure_dir(p: Path) -> None:
