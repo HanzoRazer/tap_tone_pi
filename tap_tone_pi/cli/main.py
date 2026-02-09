@@ -17,6 +17,7 @@ Usage:
     ttp chladni ...          # Chladni pattern analysis
     ttp bending ...          # Bending MOE calculation
     ttp export-pack ...      # Export viewer pack ZIP from session
+    ttp evidence-check ...   # Preflight validate session evidence artifacts
     ttp last                 # Show most recent session
     ttp sessions             # List all sessions
 """
@@ -697,24 +698,25 @@ def cmd_export_pack(args: argparse.Namespace) -> int:
 
 
 def cmd_evidence_check(args: argparse.Namespace) -> int:
-    """Preflight validator for evidence pack/session artifacts."""
-    from tap_tone_pi.validate.evidence_check import (
-        scan_session,
-        render_human,
-        render_json,
-    )
+    """Preflight validator for session evidence artifacts."""
+    from tap_tone_pi.validate.evidence_check import scan_session, render_human
 
-    session_path = Path(args.session).resolve()
-    strict = getattr(args, "strict", False) or getattr(args, "fail_on_warn", False)
+    session_path = Path(args.session)
+    if not session_path.is_absolute():
+        session_path = (PROJECT_ROOT / session_path).resolve()
+
+    if not session_path.exists():
+        print(f"Session not found: {session_path}", file=sys.stderr)
+        return 1
 
     report = scan_session(
-        session_path,
-        strict=strict,
-        fail_on_warn=False,  # already folded into strict
+        session_dir=session_path,
+        strict=bool(args.strict),
+        fail_on_warn=bool(args.fail_on_warn),
     )
 
-    if getattr(args, "json", False):
-        print(render_json(report))
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
     else:
         print(render_human(report))
 
@@ -835,7 +837,7 @@ _ttp() {
         'chladni:Chladni pattern analysis'
         'bending:Bending MOE calculation'
         'export-pack:Export viewer pack ZIP from session'
-        'evidence-check:Validate session directory structure and artifacts'
+        'evidence-check:Preflight validate session evidence artifacts'
         'last:Show most recent session'
         'sessions:List all sessions'
         'completion:Generate shell completion'
@@ -862,7 +864,7 @@ complete -c ttp -f -n "__fish_use_subcommand" -a phase2 -d "Phase 2 ODS workflow
 complete -c ttp -f -n "__fish_use_subcommand" -a chladni -d "Chladni pattern analysis"
 complete -c ttp -f -n "__fish_use_subcommand" -a bending -d "Bending MOE calculation"
 complete -c ttp -f -n "__fish_use_subcommand" -a export-pack -d "Export viewer pack ZIP from session"
-complete -c ttp -f -n "__fish_use_subcommand" -a evidence-check -d "Validate session directory structure and artifacts"
+complete -c ttp -f -n "__fish_use_subcommand" -a evidence-check -d "Preflight validate session evidence artifacts"
 complete -c ttp -f -n "__fish_use_subcommand" -a last -d "Show most recent session"
 complete -c ttp -f -n "__fish_use_subcommand" -a sessions -d "List all sessions"
 complete -c ttp -f -n "__fish_use_subcommand" -a completion -d "Generate shell completion"
@@ -1020,32 +1022,32 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_export.set_defaults(fn=cmd_export_pack)
 
-    # evidence-check (PR8)
-    p_evcheck = sub.add_parser(
+    # evidence-check (NEW)
+    p_ev = sub.add_parser(
         "evidence-check",
-        help="Validate session directory structure and artifacts",
+        help="Preflight validate a session's evidence artifacts (missing/parse checks)",
     )
-    p_evcheck.add_argument(
+    p_ev.add_argument(
         "--session",
         required=True,
-        help="Session directory to validate",
+        help="Session directory (repo-relative or absolute)",
     )
-    p_evcheck.add_argument(
+    p_ev.add_argument(
         "--strict",
         action="store_true",
-        help="Treat warnings as failures (exit 1 on WARN)",
+        help="Treat WARN findings as failure (non-zero exit)",
     )
-    p_evcheck.add_argument(
+    p_ev.add_argument(
         "--fail-on-warn",
         action="store_true",
-        help="Alias for --strict (useful in automation scripts)",
+        help="Alias for --strict (useful for automation readability)",
     )
-    p_evcheck.add_argument(
+    p_ev.add_argument(
         "--json",
         action="store_true",
         help="Emit machine-readable JSON report",
     )
-    p_evcheck.set_defaults(fn=cmd_evidence_check)
+    p_ev.set_defaults(fn=cmd_evidence_check)
 
     # last (NEW!)
     p_last = sub.add_parser("last", help="Show most recent session")
