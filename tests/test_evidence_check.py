@@ -641,3 +641,68 @@ class TestEvidenceReport:
         assert d["tool"] == "evidence-check"
         assert d["session_type"] == "phase2"
         assert d["summary"]["points"] == 5
+
+
+# =============================================================================
+# Finding fields: hint, meta, slots
+# =============================================================================
+
+class TestFindingFields:
+    def test_hint_in_to_dict(self):
+        f = Finding(Severity.WARN, "E001", "/p", "missing", hint="Re-record this point")
+        d = f.to_dict()
+        assert d["hint"] == "Re-record this point"
+
+    def test_hint_omitted_when_none(self):
+        f = Finding(Severity.WARN, "E001", "/p", "missing")
+        d = f.to_dict()
+        assert "hint" not in d
+
+    def test_meta_in_to_dict(self):
+        f = Finding(Severity.INFO, "E200", "/p", "mismatch",
+                    meta={"expected": 48000, "actual": 44100})
+        d = f.to_dict()
+        assert d["meta"] == {"expected": 48000, "actual": 44100}
+
+    def test_meta_omitted_when_empty(self):
+        f = Finding(Severity.INFO, "E200", "/p", "mismatch")
+        d = f.to_dict()
+        assert "meta" not in d
+
+    def test_finding_is_frozen(self):
+        f = Finding(Severity.FAIL, "E001", "/p", "msg")
+        with pytest.raises(AttributeError):
+            f.message = "changed"  # type: ignore[misc]
+
+    def test_finding_has_slots(self):
+        f = Finding(Severity.FAIL, "E001", "/p", "msg")
+        assert hasattr(f, "__slots__")
+
+    def test_hint_renders_in_human_output(self, tmp_path):
+        """Findings with hints show them in human renderer."""
+        _make_phase1_session(tmp_path, skip_in_attempt={"analysis.json"})
+        report = scan_session(tmp_path)
+        # Manually add a finding with a hint to test rendering
+        report.findings.append(
+            Finding(Severity.WARN, "E010", str(tmp_path), "test",
+                    hint="Try re-recording")
+        )
+        output = render_human(report)
+        assert "hint: Try re-recording" in output
+
+
+# =============================================================================
+# --fail-on-warn alias
+# =============================================================================
+
+class TestFailOnWarnAlias:
+    def test_fail_on_warn_promotes_warn(self, tmp_path):
+        """--fail-on-warn behaves identically to --strict."""
+        _make_phase1_session(tmp_path, skip_in_attempt={"spectrum.csv"})
+        report = scan_session(tmp_path)
+
+        # Without strict → exit 0
+        assert report.exit_code(strict=False) == 0
+
+        # With strict (simulating --fail-on-warn) → exit 1
+        assert report.exit_code(strict=True) == 1

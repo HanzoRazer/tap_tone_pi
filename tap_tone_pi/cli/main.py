@@ -706,7 +706,7 @@ def cmd_evidence_check(args: argparse.Namespace) -> int:
 
     session_path = Path(args.session).resolve()
     report = scan_session(session_path)
-    strict = getattr(args, "strict", False)
+    strict = getattr(args, "strict", False) or getattr(args, "fail_on_warn", False)
 
     if getattr(args, "json", False):
         print(render_json(report))
@@ -1029,6 +1029,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--strict",
         action="store_true",
         help="Treat warnings as failures (exit 1 on WARN)",
+    )
+    p_evcheck.add_argument(
+        "--fail-on-warn",
+        action="store_true",
+        help="Alias for --strict (useful in automation scripts)",
     )
     p_evcheck.add_argument(
         "--json",

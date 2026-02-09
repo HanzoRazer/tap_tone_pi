@@ -7,7 +7,7 @@ Answers four questions deterministically:
 4. If not, what exactly is missing, where, and what should I do next?
 
 Usage:
-    ttp evidence-check --session <dir> [--strict] [--json]
+    ttp evidence-check --session <dir> [--strict | --fail-on-warn] [--json]
 
 This module has NO DSP, NO advisory logic, NO external deps.
 """
@@ -56,21 +56,37 @@ FINDING_DESCRIPTIONS = {
 }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Finding:
-    """A single validation finding."""
+    """A single validation finding.
+
+    Attributes:
+        severity: info/warn/fail.
+        code: Stable identifier (E0xx/E1xx/E2xx/E3xx).
+        path: Filesystem path (attempt dir or file).
+        message: Short human-readable description.
+        hint: Optional recommended action (human-friendly).
+        meta: Optional machine-friendly details.
+    """
     severity: Severity
     code: str
     path: str
     message: str
+    hint: str | None = None
+    meta: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        d: dict[str, Any] = {
             "severity": self.severity.value,
             "code": self.code,
             "path": self.path,
             "message": self.message,
         }
+        if self.hint is not None:
+            d["hint"] = self.hint
+        if self.meta:
+            d["meta"] = self.meta
+        return d
 
 
 # =============================================================================
@@ -686,6 +702,8 @@ def render_human(report: EvidenceReport) -> str:
                     f"  {tag}: [{finding.code}] {finding.message}"
                 )
                 lines.append(f"         {finding.path}")
+                if finding.hint:
+                    lines.append(f"         hint: {finding.hint}")
 
     return "\n".join(lines)
 
