@@ -697,7 +697,7 @@ def cmd_export_pack(args: argparse.Namespace) -> int:
 
 
 def cmd_evidence_check(args: argparse.Namespace) -> int:
-    """Validate session directory structure and artifacts."""
+    """Preflight validator for evidence pack/session artifacts."""
     from tap_tone_pi.validate.evidence_check import (
         scan_session,
         render_human,
@@ -705,15 +705,20 @@ def cmd_evidence_check(args: argparse.Namespace) -> int:
     )
 
     session_path = Path(args.session).resolve()
-    report = scan_session(session_path)
     strict = getattr(args, "strict", False) or getattr(args, "fail_on_warn", False)
+
+    report = scan_session(
+        session_path,
+        strict=strict,
+        fail_on_warn=False,  # already folded into strict
+    )
 
     if getattr(args, "json", False):
         print(render_json(report))
     else:
         print(render_human(report))
 
-    return report.exit_code(strict=strict)
+    return report.exit_code
 
 
 def cmd_completion(args: argparse.Namespace) -> int:

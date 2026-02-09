@@ -14,46 +14,21 @@ This module has NO DSP, NO advisory logic, NO external deps.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 # =============================================================================
-# Finding codes
+# Types
 # =============================================================================
 
-class Severity(str, Enum):
-    """Finding severity."""
-    FAIL = "fail"
-    WARN = "warn"
+class FindingSeverity(str, Enum):
     INFO = "info"
-
-
-# Error code ranges:
-#   E0xx — missing files
-#   E1xx — parse errors / invalid content
-#   E2xx — cross-file invariant violations
-#   E3xx — layout issues
-
-FINDING_DESCRIPTIONS = {
-    # Missing files
-    "E001": "Missing required file",
-    "E002": "Empty file (zero bytes)",
-    # Parse errors
-    "E100": "JSON parse error",
-    "E101": "JSON is not a dict",
-    "E102": "Missing required JSON key",
-    "E103": "Invalid field value",
-    # Cross-file invariants
-    "E200": "Sample rate mismatch between artifacts",
-    "E201": "Attempt numbering gap",
-    # Layout
-    "E300": "No attempt directories found for point",
-    "E301": "No points found in session",
-    "E302": "Unrecognized session layout",
-}
+    WARN = "warn"
+    FAIL = "fail"
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,27 +36,28 @@ class Finding:
     """A single validation finding.
 
     Attributes:
+        code: Stable identifier (E0xx/E1xx/E2xx).
         severity: info/warn/fail.
-        code: Stable identifier (E0xx/E1xx/E2xx/E3xx).
-        path: Filesystem path (attempt dir or file).
         message: Short human-readable description.
+        path: Filesystem path (attempt dir or file).
         hint: Optional recommended action (human-friendly).
         meta: Optional machine-friendly details.
     """
-    severity: Severity
     code: str
-    path: str
+    severity: FindingSeverity
     message: str
+    path: str | None = None
     hint: str | None = None
     meta: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {
-            "severity": self.severity.value,
             "code": self.code,
-            "path": self.path,
+            "severity": self.severity.value,
             "message": self.message,
         }
+        if self.path is not None:
+            d["path"] = self.path
         if self.hint is not None:
             d["hint"] = self.hint
         if self.meta:
@@ -89,147 +65,81 @@ class Finding:
         return d
 
 
-# =============================================================================
-# Session types
-# =============================================================================
-
-class SessionType(str, Enum):
-    """Detected session type."""
-    PHASE1 = "phase1"       # ttp measure layout: <session>/<point>/attempt_NNN/
-    PHASE2 = "phase2"       # Phase 2 layout: <session>/points/point_<ID>/
-    RECORD = "record"       # ttp record layout: <session>/capture_<ts>/
-    UNKNOWN = "unknown"
-
-
-# =============================================================================
-# Report
-# =============================================================================
-
-@dataclass
-class EvidenceReport:
-    """Complete validation report for a session."""
-    session_path: str
-    session_type: SessionType
-    points_scanned: int = 0
-    attempts_scanned: int = 0
-    findings: list[Finding] = field(default_factory=list)
-
-    @property
-    def fail_count(self) -> int:
-        return sum(1 for f in self.findings if f.severity == Severity.FAIL)
-
-    @property
-    def warn_count(self) -> int:
-        return sum(1 for f in self.findings if f.severity == Severity.WARN)
-
-    @property
-    def info_count(self) -> int:
-        return sum(1 for f in self.findings if f.severity == Severity.INFO)
-
-    @property
-    def ok(self) -> bool:
-        return self.fail_count == 0
-
-    def exit_code(self, *, strict: bool = False) -> int:
-        """Compute exit code.
-
-        0 = OK
-        1 = missing required artifacts / invalid layout
-        2 = parse errors / invalid JSON / required fields missing
-        """
-        if self.fail_count > 0:
-            # Distinguish parse errors from missing files
-            has_parse = any(
-                f.code.startswith("E1") and f.severity == Severity.FAIL
-                for f in self.findings
-            )
-            if has_parse:
-                return 2
-            return 1
-        if strict and self.warn_count > 0:
-            return 1
-        return 0
+@dataclass(frozen=True, slots=True)
+class EvidenceSummary:
+    """Small summary counts for quick CLI output and exit-code logic."""
+    attempts_scanned: int
+    fail_count: int
+    warn_count: int
+    info_count: int
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "tool": "evidence-check",
-            "version": "1.0.0",
-            "session": self.session_path,
-            "session_type": self.session_type.value,
-            "summary": {
-                "points": self.points_scanned,
-                "attempts": self.attempts_scanned,
-                "fail": self.fail_count,
-                "warn": self.warn_count,
-                "info": self.info_count,
-                "ok": self.ok,
-            },
+            "attempts_scanned": int(self.attempts_scanned),
+            "fail_count": int(self.fail_count),
+            "warn_count": int(self.warn_count),
+            "info_count": int(self.info_count),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceReport:
+    """Output of evidence-check.  Immutable, deterministic ordering.
+
+    exit_code is computed once in scan_session() and stored here.
+    """
+    tool: str = "evidence-check"
+    version: str = "1.0.0"
+
+    session_dir: str = ""
+    session_type: str = "unknown"  # "tap" | "phase2" | "unknown"
+
+    strict: bool = False
+    findings: tuple[Finding, ...] = field(default_factory=tuple)
+    summary: EvidenceSummary = field(
+        default_factory=lambda: EvidenceSummary(0, 0, 0, 0),
+    )
+    exit_code: int = 0  # 0 ok, 1 missing/layout, 2 parse/format
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "tool": self.tool,
+            "version": self.version,
+            "session_dir": self.session_dir,
+            "session_type": self.session_type,
+            "strict": bool(self.strict),
+            "exit_code": int(self.exit_code),
+            "summary": self.summary.to_dict(),
             "findings": [f.to_dict() for f in self.findings],
         }
 
 
 # =============================================================================
-# Required artifacts per session type
+# Error codes
 # =============================================================================
+# E0xx: Missing/layout
+E001_MISSING_REQUIRED = "E001"  # missing required artifact in attempt dir
+E002_EMPTY_FILE = "E002"        # file exists but is zero bytes
+E003_NO_ATTEMPTS_FOUND = "E003" # no attempt dirs discovered in session
+E010_MISSING_OPTIONAL = "E010"  # optional artifact missing (WARN)
 
-# Phase 1 (ttp measure): per-attempt directory
-PHASE1_REQUIRED = ("audio.wav", "analysis.json", "quality_check.json")
-PHASE1_OPTIONAL = ("attempt_meta.json", "spectrum.csv", "spectrum.png")
+# E1xx: Parse/format
+E101_JSON_PARSE_ERROR = "E101"  # json decode error
+E102_JSON_NOT_OBJECT = "E102"   # json root is not dict
+E103_MISSING_JSON_KEY = "E103"  # required key missing from JSON
+E104_INVALID_FIELD = "E104"     # field value invalid
 
-# Phase 2: per-point directory
-PHASE2_REQUIRED = ("audio.wav",)
-PHASE2_OPTIONAL = ("analysis.json", "capture_meta.json", "spectrum.csv")
-
-# Record (ttp record): per-capture directory
-RECORD_REQUIRED = ("audio.wav", "analysis.json", "spectrum.csv")
-RECORD_OPTIONAL = ("quality_check.json",)
-
-# Phase 2 session-level required
-PHASE2_SESSION_REQUIRED = ("grid.json",)
-PHASE2_SESSION_OPTIONAL = ("metadata.json", "session_meta.json")
-
-
-# =============================================================================
-# JSON minimal key checks
-# =============================================================================
-
-REQUIRED_KEYS: dict[str, list[str]] = {
-    "analysis.json": ["peaks"],
-    "quality_check.json": ["verdict"],
-    "capture_meta.json": ["sample_rate_hz"],
-    "grid.json": ["points"],
-}
+# E2xx: Invariants/cross-checks
+E201_WAV_HEADER_INVALID = "E201"  # WAV RIFF/WAVE header check
+E202_SAMPLE_RATE_MISMATCH = "E202"  # sample rate disagreement
+E210_ATTEMPT_NUMBERING_GAP = "E210"  # non-monotonic attempt numbering
 
 
 # =============================================================================
-# Detection
+# Deterministic attempt discovery
 # =============================================================================
 
-def detect_session_type(session_dir: Path) -> SessionType:
-    """Detect session type from directory structure.
-
-    - Phase 2: has grid.json or points/ subdirectory
-    - Phase 1 (measure): has <point>/attempt_NNN/ structure
-    - Record: has capture_<ts>/ structure
-    """
-    if (session_dir / "grid.json").exists():
-        return SessionType.PHASE2
-    if (session_dir / "points").is_dir():
-        return SessionType.PHASE2
-
-    # Check for Phase 1 attempt_NNN dirs
-    for child in _safe_iterdir(session_dir):
-        if child.is_dir() and not child.name.startswith("."):
-            for sub in _safe_iterdir(child):
-                if sub.is_dir() and sub.name.startswith("attempt_"):
-                    return SessionType.PHASE1
-
-    # Check for record capture_<ts> dirs
-    for child in _safe_iterdir(session_dir):
-        if child.is_dir() and child.name.startswith("capture_"):
-            return SessionType.RECORD
-
-    return SessionType.UNKNOWN
+_ATTEMPT_DIR_RE = re.compile(r"^attempt_(\d{3,})$")
 
 
 def _safe_iterdir(path: Path) -> list[Path]:
@@ -240,137 +150,228 @@ def _safe_iterdir(path: Path) -> list[Path]:
         return []
 
 
+def _discover_attempt_dirs(session_dir: Path) -> list[Path]:
+    """Discover attempt directories deterministically.
+
+    Supports:
+      1) Nested layout: {session}/{point_id}/attempt_{NNN}/
+      2) Flat layout:   {session}/attempt_{NNN}/
+
+    Returns sorted list, stable and independent of OS:
+      primary: point_id (or "" for flat)
+      secondary: attempt number (int)
+      tertiary: full relative path (string)
+    """
+    if not session_dir.exists() or not session_dir.is_dir():
+        return []
+
+    found: list[tuple[str, int, str, Path]] = []
+
+    # Case A: flat attempt dirs directly under session
+    for child in _safe_iterdir(session_dir):
+        if not child.is_dir():
+            continue
+        m = _ATTEMPT_DIR_RE.match(child.name)
+        if not m:
+            continue
+        attempt_num = int(m.group(1))
+        rel = str(child.relative_to(session_dir)).replace("\\", "/")
+        found.append(("", attempt_num, rel, child))
+
+    # Case B: nested point dirs one level down
+    for point_dir in _safe_iterdir(session_dir):
+        if not point_dir.is_dir():
+            continue
+        if point_dir.name.startswith("."):
+            continue
+        for child in _safe_iterdir(point_dir):
+            if not child.is_dir():
+                continue
+            m = _ATTEMPT_DIR_RE.match(child.name)
+            if not m:
+                continue
+            attempt_num = int(m.group(1))
+            point_id = point_dir.name
+            rel = str(child.relative_to(session_dir)).replace("\\", "/")
+            found.append((point_id, attempt_num, rel, child))
+
+    found.sort(key=lambda t: (t[0], t[1], t[2]))
+    return [p for *_rest, p in found]
+
+
 # =============================================================================
-# File validators
+# Required/optional artifact definitions
 # =============================================================================
 
+# Phase 1 (tap): per-attempt directory
+TAP_REQUIRED_FILES = (
+    "audio.wav",
+    "analysis.json",
+    "quality_check.json",
+)
+TAP_OPTIONAL_FILES = (
+    "capture_meta.json",
+    "attempt_meta.json",
+    "spectrum.csv",
+    "spectrum.png",
+)
+
+# JSON minimal key requirements
+REQUIRED_KEYS: dict[str, list[str]] = {
+    "analysis.json": ["peaks"],
+    "quality_check.json": ["verdict"],
+    "capture_meta.json": ["sample_rate_hz"],
+    "grid.json": ["points"],
+}
+
+# Valid verdict values
+VALID_VERDICTS = frozenset({"pass", "warn", "fail", "PASS", "WARN", "FAIL"})
+
+
+# =============================================================================
+# File-level validators
+# =============================================================================
+
+def _read_json(path: Path) -> tuple[dict[str, Any] | None, Finding | None]:
+    """Helper: parse JSON with stable error reporting.
+
+    Returns (data, finding).  Exactly one is non-None.
+    """
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except Exception as e:
+        return None, Finding(
+            code=E101_JSON_PARSE_ERROR,
+            severity=FindingSeverity.FAIL,
+            message=f"Could not read JSON file: {e}",
+            path=str(path),
+        )
+
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as e:
+        return None, Finding(
+            code=E101_JSON_PARSE_ERROR,
+            severity=FindingSeverity.FAIL,
+            message=f"JSON parse error: {e.msg} (line {e.lineno}, col {e.colno})",
+            path=str(path),
+        )
+
+    if not isinstance(data, dict):
+        return None, Finding(
+            code=E102_JSON_NOT_OBJECT,
+            severity=FindingSeverity.FAIL,
+            message=f"JSON root must be an object/dict, got {type(data).__name__}.",
+            path=str(path),
+            meta={"root_type": type(data).__name__},
+        )
+
+    return data, None
+
+
 def _check_file_exists(
-    artifact_dir: Path,
-    filename: str,
-    required: bool = True,
+    parent: Path, filename: str, *, required: bool = True,
 ) -> list[Finding]:
     """Check that a file exists and is non-empty."""
     findings: list[Finding] = []
-    fpath = artifact_dir / filename
-    rel = str(fpath)
+    fpath = parent / filename
 
     if not fpath.exists():
-        sev = Severity.FAIL if required else Severity.WARN
+        sev = FindingSeverity.FAIL if required else FindingSeverity.WARN
+        code = E001_MISSING_REQUIRED if required else E010_MISSING_OPTIONAL
         findings.append(Finding(
+            code=code,
             severity=sev,
-            code="E001",
-            path=rel,
             message=f"{'Required' if required else 'Optional'} file missing: {filename}",
+            path=str(fpath),
+            hint=(
+                "Re-run capture/analysis for this attempt."
+                if required
+                else None
+            ),
+            meta={"missing": filename},
         ))
         return findings
 
     if fpath.stat().st_size == 0:
-        sev = Severity.FAIL if required else Severity.WARN
+        sev = FindingSeverity.FAIL if required else FindingSeverity.WARN
         findings.append(Finding(
+            code=E002_EMPTY_FILE,
             severity=sev,
-            code="E002",
-            path=rel,
             message=f"File is empty (zero bytes): {filename}",
+            path=str(fpath),
         ))
-    return findings
-
-
-def _check_json_parseable(filepath: Path) -> list[Finding]:
-    """Check that a JSON file parses and is a dict with required keys."""
-    findings: list[Finding] = []
-    rel = str(filepath)
-
-    if not filepath.exists() or filepath.stat().st_size == 0:
-        return findings  # Already reported by _check_file_exists
-
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except (json.JSONDecodeError, UnicodeDecodeError) as e:
-        findings.append(Finding(
-            severity=Severity.FAIL,
-            code="E100",
-            path=rel,
-            message=f"JSON parse error: {e}",
-        ))
-        return findings
-
-    if not isinstance(data, dict):
-        findings.append(Finding(
-            severity=Severity.FAIL,
-            code="E101",
-            path=rel,
-            message=f"JSON root is {type(data).__name__}, expected dict",
-        ))
-        return findings
-
-    # Check required keys
-    required_keys = REQUIRED_KEYS.get(filepath.name, [])
-    for key in required_keys:
-        if key not in data:
-            findings.append(Finding(
-                severity=Severity.FAIL,
-                code="E102",
-                path=rel,
-                message=f"Missing required key '{key}' in {filepath.name}",
-            ))
-
-    # Check verdict value for quality_check.json
-    if filepath.name == "quality_check.json" and "verdict" in data:
-        if data["verdict"] not in ("pass", "warn", "fail",
-                                    "PASS", "WARN", "FAIL"):
-            findings.append(Finding(
-                severity=Severity.FAIL,
-                code="E103",
-                path=rel,
-                message=f"Invalid verdict value: {data['verdict']!r} "
-                        f"(expected pass/warn/fail)",
-            ))
-
     return findings
 
 
 def _check_wav_header(filepath: Path) -> list[Finding]:
-    """Minimal WAV header check: file exists, non-empty, starts with RIFF."""
+    """Minimal WAV header check: RIFF/WAVE magic bytes."""
     findings: list[Finding] = []
-    rel = str(filepath)
-
     if not filepath.exists() or filepath.stat().st_size == 0:
-        return findings  # Already reported
+        return findings  # already reported
 
     try:
         with open(filepath, "rb") as f:
             header = f.read(12)
         if len(header) < 12:
             findings.append(Finding(
-                severity=Severity.FAIL,
-                code="E100",
-                path=rel,
+                code=E201_WAV_HEADER_INVALID,
+                severity=FindingSeverity.FAIL,
                 message="WAV file too short to contain valid header",
+                path=str(filepath),
             ))
         elif header[:4] != b"RIFF" or header[8:12] != b"WAVE":
             findings.append(Finding(
-                severity=Severity.FAIL,
-                code="E100",
-                path=rel,
+                code=E201_WAV_HEADER_INVALID,
+                severity=FindingSeverity.FAIL,
                 message="Not a valid WAV file (missing RIFF/WAVE header)",
+                path=str(filepath),
             ))
     except OSError as e:
         findings.append(Finding(
-            severity=Severity.FAIL,
-            code="E100",
-            path=rel,
+            code=E201_WAV_HEADER_INVALID,
+            severity=FindingSeverity.FAIL,
             message=f"Cannot read WAV file: {e}",
+            path=str(filepath),
         ))
     return findings
 
 
-def _check_sample_rate_consistency(artifact_dir: Path) -> list[Finding]:
+def _check_json_keys(filepath: Path, data: dict[str, Any]) -> list[Finding]:
+    """Check that required keys are present in parsed JSON."""
+    findings: list[Finding] = []
+    required_keys = REQUIRED_KEYS.get(filepath.name, [])
+    for key in required_keys:
+        if key not in data:
+            findings.append(Finding(
+                code=E103_MISSING_JSON_KEY,
+                severity=FindingSeverity.FAIL,
+                message=f"Missing required key '{key}' in {filepath.name}",
+                path=str(filepath),
+            ))
+
+    # Verdict value check for quality_check.json
+    if filepath.name == "quality_check.json" and "verdict" in data:
+        if data["verdict"] not in VALID_VERDICTS:
+            findings.append(Finding(
+                code=E104_INVALID_FIELD,
+                severity=FindingSeverity.FAIL,
+                message=(
+                    f"Invalid verdict value: {data['verdict']!r} "
+                    f"(expected pass/warn/fail)"
+                ),
+                path=str(filepath),
+            ))
+
+    return findings
+
+
+def _check_sample_rate_consistency(attempt_dir: Path) -> list[Finding]:
     """WARN if sample_rate differs between capture_meta and analysis."""
     findings: list[Finding] = []
 
-    meta_path = artifact_dir / "capture_meta.json"
-    analysis_path = artifact_dir / "analysis.json"
+    meta_path = attempt_dir / "capture_meta.json"
+    analysis_path = attempt_dir / "analysis.json"
 
     if not meta_path.exists() or not analysis_path.exists():
         return findings
@@ -381,284 +382,226 @@ def _check_sample_rate_consistency(artifact_dir: Path) -> list[Finding]:
         with open(analysis_path, "r", encoding="utf-8") as f:
             analysis = json.load(f)
     except (json.JSONDecodeError, OSError):
-        return findings  # Parse errors already reported
+        return findings  # parse errors already reported
 
     meta_sr = meta.get("sample_rate_hz") or meta.get("sample_rate")
     analysis_sr = analysis.get("sample_rate")
 
     if meta_sr and analysis_sr and meta_sr != analysis_sr:
         findings.append(Finding(
-            severity=Severity.WARN,
-            code="E200",
-            path=str(artifact_dir),
-            message=f"Sample rate mismatch: capture_meta={meta_sr}, "
-                    f"analysis={analysis_sr}",
+            code=E202_SAMPLE_RATE_MISMATCH,
+            severity=FindingSeverity.WARN,
+            message=(
+                f"Sample rate mismatch: capture_meta={meta_sr}, "
+                f"analysis={analysis_sr}"
+            ),
+            path=str(attempt_dir),
+            meta={"capture_meta_sr": meta_sr, "analysis_sr": analysis_sr},
         ))
     return findings
 
 
 # =============================================================================
-# Per-directory validators
+# Per-attempt validator
 # =============================================================================
 
-def validate_phase1_attempt(attempt_dir: Path) -> list[Finding]:
-    """Validate a single Phase 1 attempt directory."""
+def validate_attempt(attempt_dir: Path) -> list[Finding]:
+    """Validate a single attempt directory (all checks)."""
     findings: list[Finding] = []
 
-    for fname in PHASE1_REQUIRED:
+    # Required files
+    for fname in TAP_REQUIRED_FILES:
         findings.extend(_check_file_exists(attempt_dir, fname, required=True))
 
-    for fname in PHASE1_OPTIONAL:
+    # Optional files
+    for fname in TAP_OPTIONAL_FILES:
         findings.extend(_check_file_exists(attempt_dir, fname, required=False))
-
-    # JSON parse checks for files that exist
-    for fname in ("analysis.json", "quality_check.json", "attempt_meta.json"):
-        fpath = attempt_dir / fname
-        if fpath.exists() and fpath.stat().st_size > 0:
-            findings.extend(_check_json_parseable(fpath))
 
     # WAV header check
     wav = attempt_dir / "audio.wav"
     findings.extend(_check_wav_header(wav))
 
-    return findings
-
-
-def validate_phase2_point(point_dir: Path) -> list[Finding]:
-    """Validate a single Phase 2 point directory."""
-    findings: list[Finding] = []
-
-    for fname in PHASE2_REQUIRED:
-        findings.extend(_check_file_exists(point_dir, fname, required=True))
-
-    for fname in PHASE2_OPTIONAL:
-        findings.extend(_check_file_exists(point_dir, fname, required=False))
-
-    # JSON parse checks
-    for fname in ("analysis.json", "capture_meta.json"):
-        fpath = point_dir / fname
-        if fpath.exists() and fpath.stat().st_size > 0:
-            findings.extend(_check_json_parseable(fpath))
-
-    # WAV header
-    wav = point_dir / "audio.wav"
-    findings.extend(_check_wav_header(wav))
+    # JSON parse + key checks for files that exist
+    for fname in ("analysis.json", "quality_check.json", "capture_meta.json",
+                   "attempt_meta.json"):
+        fpath = attempt_dir / fname
+        if not fpath.exists() or fpath.stat().st_size == 0:
+            continue
+        data, parse_finding = _read_json(fpath)
+        if parse_finding:
+            findings.append(parse_finding)
+        elif data is not None:
+            findings.extend(_check_json_keys(fpath, data))
 
     # Cross-file invariants
-    findings.extend(_check_sample_rate_consistency(point_dir))
+    findings.extend(_check_sample_rate_consistency(attempt_dir))
 
     return findings
 
 
-def validate_record_capture(capture_dir: Path) -> list[Finding]:
-    """Validate a single ttp record capture directory."""
+# =============================================================================
+# Attempt numbering check
+# =============================================================================
+
+def _check_attempt_numbering(
+    session_dir: Path,
+    attempt_dirs: list[Path],
+) -> list[Finding]:
+    """Check for gaps in attempt numbering within each point."""
     findings: list[Finding] = []
 
-    for fname in RECORD_REQUIRED:
-        findings.extend(_check_file_exists(capture_dir, fname, required=True))
+    # Group by parent (point dir)
+    from collections import defaultdict
+    by_parent: dict[Path, list[int]] = defaultdict(list)
+    for ad in attempt_dirs:
+        m = _ATTEMPT_DIR_RE.match(ad.name)
+        if m:
+            by_parent[ad.parent].append(int(m.group(1)))
 
-    for fname in RECORD_OPTIONAL:
-        findings.extend(_check_file_exists(capture_dir, fname, required=False))
-
-    # JSON parse checks
-    for fname in ("analysis.json", "quality_check.json"):
-        fpath = capture_dir / fname
-        if fpath.exists() and fpath.stat().st_size > 0:
-            findings.extend(_check_json_parseable(fpath))
-
-    # WAV header
-    wav = capture_dir / "audio.wav"
-    findings.extend(_check_wav_header(wav))
+    for parent, nums in sorted(by_parent.items()):
+        nums_sorted = sorted(nums)
+        expected = list(range(1, max(nums_sorted) + 1))
+        if nums_sorted != expected:
+            findings.append(Finding(
+                code=E210_ATTEMPT_NUMBERING_GAP,
+                severity=FindingSeverity.WARN,
+                message=(
+                    f"Attempt numbering gaps: found {nums_sorted}, "
+                    f"expected {expected}"
+                ),
+                path=str(parent),
+            ))
 
     return findings
 
 
 # =============================================================================
-# Session scanner
+# Scan session (glue)
 # =============================================================================
 
-def scan_session(session_dir: Path) -> EvidenceReport:
-    """Scan a session directory and validate all artifacts.
+def scan_session(
+    session_dir: Path,
+    *,
+    strict: bool = False,
+    fail_on_warn: bool = False,
+) -> EvidenceReport:
+    """Scan a session directory and return an EvidenceReport.
 
-    Auto-detects session type (Phase 1, Phase 2, record) and applies
-    the appropriate validation rules.
-
-    Args:
-        session_dir: Path to session root directory.
-
-    Returns:
-        EvidenceReport with all findings.
+    Deterministic ordering: attempt dirs and findings are sorted.
     """
+    _strict = bool(strict or fail_on_warn)
     session_dir = Path(session_dir).resolve()
-    report = EvidenceReport(
-        session_path=str(session_dir),
-        session_type=SessionType.UNKNOWN,
-    )
 
+    # Handle non-existent / non-directory
     if not session_dir.exists():
-        report.findings.append(Finding(
-            severity=Severity.FAIL,
-            code="E302",
-            path=str(session_dir),
-            message="Session directory does not exist",
-        ))
-        return report
+        return EvidenceReport(
+            session_dir=str(session_dir),
+            session_type="unknown",
+            strict=_strict,
+            findings=(Finding(
+                code=E003_NO_ATTEMPTS_FOUND,
+                severity=FindingSeverity.FAIL,
+                message="Session directory does not exist",
+                path=str(session_dir),
+            ),),
+            summary=EvidenceSummary(0, 1, 0, 0),
+            exit_code=1,
+        )
 
     if not session_dir.is_dir():
-        report.findings.append(Finding(
-            severity=Severity.FAIL,
-            code="E302",
-            path=str(session_dir),
-            message="Path is not a directory",
-        ))
-        return report
-
-    session_type = detect_session_type(session_dir)
-    report.session_type = session_type
-
-    if session_type == SessionType.UNKNOWN:
-        report.findings.append(Finding(
-            severity=Severity.FAIL,
-            code="E302",
-            path=str(session_dir),
-            message="Cannot detect session type (no attempt_NNN dirs, "
-                    "no points/ dir, no capture_ dirs, no grid.json)",
-        ))
-        return report
-
-    if session_type == SessionType.PHASE1:
-        _scan_phase1(session_dir, report)
-    elif session_type == SessionType.PHASE2:
-        _scan_phase2(session_dir, report)
-    elif session_type == SessionType.RECORD:
-        _scan_record(session_dir, report)
-
-    return report
-
-
-def _scan_phase1(session_dir: Path, report: EvidenceReport) -> None:
-    """Scan Phase 1 (ttp measure) session."""
-    point_dirs = sorted([
-        d for d in _safe_iterdir(session_dir)
-        if d.is_dir() and not d.name.startswith(".")
-    ])
-
-    if not point_dirs:
-        report.findings.append(Finding(
-            severity=Severity.FAIL,
-            code="E301",
-            path=str(session_dir),
-            message="No point directories found",
-        ))
-        return
-
-    for point_dir in point_dirs:
-        attempt_dirs = sorted([
-            d for d in _safe_iterdir(point_dir)
-            if d.is_dir() and d.name.startswith("attempt_")
-        ])
-
-        if not attempt_dirs:
-            report.findings.append(Finding(
-                severity=Severity.FAIL,
-                code="E300",
-                path=str(point_dir),
-                message=f"No attempt directories for point {point_dir.name}",
-            ))
-            report.points_scanned += 1
-            continue
-
-        # Check attempt numbering continuity
-        attempt_nums = []
-        for ad in attempt_dirs:
-            try:
-                num = int(ad.name.split("_")[1])
-                attempt_nums.append(num)
-            except (IndexError, ValueError):
-                pass
-        if attempt_nums:
-            expected = list(range(1, max(attempt_nums) + 1))
-            if sorted(attempt_nums) != expected:
-                report.findings.append(Finding(
-                    severity=Severity.WARN,
-                    code="E201",
-                    path=str(point_dir),
-                    message=f"Attempt numbering gaps: found {sorted(attempt_nums)}, "
-                            f"expected {expected}",
-                ))
-
-        report.points_scanned += 1
-        for attempt_dir in attempt_dirs:
-            report.attempts_scanned += 1
-            report.findings.extend(validate_phase1_attempt(attempt_dir))
-
-
-def _scan_phase2(session_dir: Path, report: EvidenceReport) -> None:
-    """Scan Phase 2 session."""
-    # Session-level required artifacts
-    for fname in PHASE2_SESSION_REQUIRED:
-        report.findings.extend(
-            _check_file_exists(session_dir, fname, required=True)
-        )
-        fpath = session_dir / fname
-        if fpath.exists() and fpath.stat().st_size > 0:
-            report.findings.extend(_check_json_parseable(fpath))
-
-    # Session-level optional
-    for fname in PHASE2_SESSION_OPTIONAL:
-        report.findings.extend(
-            _check_file_exists(session_dir, fname, required=False)
+        return EvidenceReport(
+            session_dir=str(session_dir),
+            session_type="unknown",
+            strict=_strict,
+            findings=(Finding(
+                code=E003_NO_ATTEMPTS_FOUND,
+                severity=FindingSeverity.FAIL,
+                message="Path is not a directory",
+                path=str(session_dir),
+            ),),
+            summary=EvidenceSummary(0, 1, 0, 0),
+            exit_code=1,
         )
 
-    # Find points directory
-    points_root = session_dir / "points"
-    if not points_root.is_dir():
-        # Some sessions have point dirs directly under session root
-        points_root = session_dir
+    attempt_dirs = _discover_attempt_dirs(session_dir)
 
-    point_dirs = sorted([
-        d for d in _safe_iterdir(points_root)
-        if d.is_dir() and (
-            d.name.startswith("point_")
-            or d.name.startswith("pt_")
-        )
-    ])
+    findings: list[Finding] = []
 
-    if not point_dirs:
-        report.findings.append(Finding(
-            severity=Severity.FAIL,
-            code="E301",
-            path=str(points_root),
-            message="No point directories found (expected point_* dirs)",
-        ))
-        return
-
-    for point_dir in point_dirs:
-        report.points_scanned += 1
-        report.attempts_scanned += 1  # Phase 2 has one "attempt" per point
-        report.findings.extend(validate_phase2_point(point_dir))
-
-
-def _scan_record(session_dir: Path, report: EvidenceReport) -> None:
-    """Scan ttp record session."""
-    capture_dirs = sorted([
-        d for d in _safe_iterdir(session_dir)
-        if d.is_dir() and d.name.startswith("capture_")
-    ])
-
-    if not capture_dirs:
-        report.findings.append(Finding(
-            severity=Severity.FAIL,
-            code="E301",
+    # Session-level: must have attempts
+    if not attempt_dirs:
+        findings.append(Finding(
+            code=E003_NO_ATTEMPTS_FOUND,
+            severity=FindingSeverity.FAIL,
+            message="No attempt directories found (expected attempt_###).",
             path=str(session_dir),
-            message="No capture directories found (expected capture_* dirs)",
+            hint=(
+                "Ensure captures are written under "
+                "session/<point>/attempt_### or session/attempt_###."
+            ),
         ))
-        return
+    else:
+        # Attempt numbering continuity
+        findings.extend(_check_attempt_numbering(session_dir, attempt_dirs))
 
-    report.points_scanned = len(capture_dirs)
-    for capture_dir in capture_dirs:
-        report.attempts_scanned += 1
-        report.findings.extend(validate_record_capture(capture_dir))
+    # Per-attempt validation
+    for attempt_dir in attempt_dirs:
+        findings.extend(validate_attempt(attempt_dir))
+
+    # Stable ordering: severity (FAIL, WARN, INFO), then code, then path
+    severity_rank = {
+        FindingSeverity.FAIL: 0,
+        FindingSeverity.WARN: 1,
+        FindingSeverity.INFO: 2,
+    }
+    findings_sorted = sorted(
+        findings,
+        key=lambda f: (severity_rank[f.severity], f.code, f.path or ""),
+    )
+
+    fail_count = sum(
+        1 for f in findings_sorted if f.severity == FindingSeverity.FAIL
+    )
+    warn_count = sum(
+        1 for f in findings_sorted if f.severity == FindingSeverity.WARN
+    )
+    info_count = sum(
+        1 for f in findings_sorted if f.severity == FindingSeverity.INFO
+    )
+
+    summary = EvidenceSummary(
+        attempts_scanned=len(attempt_dirs),
+        fail_count=fail_count,
+        warn_count=warn_count,
+        info_count=info_count,
+    )
+
+    # Exit code policy:
+    # - Any FAIL with E1xx => 2
+    # - Else any FAIL with E0xx/E2xx => 1
+    # - Else WARN + strict => 1
+    # - Else 0
+    exit_code = 0
+    if fail_count:
+        has_parse_fail = any(
+            f.code.startswith("E1")
+            for f in findings_sorted
+            if f.severity == FindingSeverity.FAIL
+        )
+        exit_code = 2 if has_parse_fail else 1
+    elif warn_count and _strict:
+        exit_code = 1
+
+    # Session type inference
+    session_type = "phase2" if (session_dir / "grid.json").exists() else "tap"
+
+    return EvidenceReport(
+        session_dir=str(session_dir),
+        session_type=session_type,
+        strict=_strict,
+        findings=tuple(findings_sorted),
+        summary=summary,
+        exit_code=exit_code,
+    )
 
 
 # =============================================================================
@@ -666,46 +609,27 @@ def _scan_record(session_dir: Path, report: EvidenceReport) -> None:
 # =============================================================================
 
 def render_human(report: EvidenceReport) -> str:
-    """Render report as human-readable text."""
+    """Human-readable report.  Deterministic: grouped by severity/code/path."""
     lines: list[str] = []
-
-    # Header
-    lines.append(f"Evidence Check: {report.session_path}")
-    lines.append(f"Session type:   {report.session_type.value}")
-    lines.append(f"Points:         {report.points_scanned}")
-    lines.append(f"Attempts:       {report.attempts_scanned}")
+    lines.append(f"Evidence check: {report.session_dir}")
+    lines.append(
+        f"Type: {report.session_type}  "
+        f"Attempts: {report.summary.attempts_scanned}"
+    )
+    lines.append(
+        f"FAIL={report.summary.fail_count} "
+        f"WARN={report.summary.warn_count} "
+        f"INFO={report.summary.info_count}"
+    )
     lines.append("")
 
-    # Summary
-    if report.ok:
-        lines.append("Result: OK")
-    else:
-        lines.append("Result: PROBLEMS FOUND")
+    for f in report.findings:
+        p = f" ({f.path})" if f.path else ""
+        lines.append(f"[{f.severity.value.upper()}] {f.code}: {f.message}{p}")
+        if f.hint:
+            lines.append(f"  hint: {f.hint}")
 
-    lines.append(
-        f"  FAIL: {report.fail_count}  "
-        f"WARN: {report.warn_count}  "
-        f"INFO: {report.info_count}"
-    )
-
-    # Findings grouped by severity
-    if report.findings:
-        lines.append("")
-
-        for sev in (Severity.FAIL, Severity.WARN, Severity.INFO):
-            group = [f for f in report.findings if f.severity == sev]
-            if not group:
-                continue
-            for finding in group:
-                tag = sev.value.upper()
-                lines.append(
-                    f"  {tag}: [{finding.code}] {finding.message}"
-                )
-                lines.append(f"         {finding.path}")
-                if finding.hint:
-                    lines.append(f"         hint: {finding.hint}")
-
-    return "\n".join(lines)
+    return "\n".join(lines).rstrip()
 
 
 def render_json(report: EvidenceReport) -> str:
