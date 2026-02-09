@@ -696,6 +696,26 @@ def cmd_export_pack(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_evidence_check(args: argparse.Namespace) -> int:
+    """Validate session directory structure and artifacts."""
+    from tap_tone_pi.validate.evidence_check import (
+        scan_session,
+        render_human,
+        render_json,
+    )
+
+    session_path = Path(args.session).resolve()
+    report = scan_session(session_path)
+    strict = getattr(args, "strict", False)
+
+    if getattr(args, "json", False):
+        print(render_json(report))
+    else:
+        print(render_human(report))
+
+    return report.exit_code(strict=strict)
+
+
 def cmd_completion(args: argparse.Namespace) -> int:
     """Generate shell completion script."""
     if args.shell == "bash":
@@ -783,7 +803,7 @@ def _bash_completion() -> str:
     """Generate bash completion script."""
     return '''
 _ttp_completions() {
-    local commands="setup devices measure record live quick gold-run gui phase2 chladni bending export-pack last sessions completion"
+    local commands="setup devices measure record live quick gold-run gui phase2 chladni bending export-pack evidence-check last sessions completion"
     COMPREPLY=($(compgen -W "$commands" -- "${COMP_WORDS[COMP_CWORD]}"))
 }
 complete -F _ttp_completions ttp
@@ -810,6 +830,7 @@ _ttp() {
         'chladni:Chladni pattern analysis'
         'bending:Bending MOE calculation'
         'export-pack:Export viewer pack ZIP from session'
+        'evidence-check:Validate session directory structure and artifacts'
         'last:Show most recent session'
         'sessions:List all sessions'
         'completion:Generate shell completion'
@@ -836,6 +857,7 @@ complete -c ttp -f -n "__fish_use_subcommand" -a phase2 -d "Phase 2 ODS workflow
 complete -c ttp -f -n "__fish_use_subcommand" -a chladni -d "Chladni pattern analysis"
 complete -c ttp -f -n "__fish_use_subcommand" -a bending -d "Bending MOE calculation"
 complete -c ttp -f -n "__fish_use_subcommand" -a export-pack -d "Export viewer pack ZIP from session"
+complete -c ttp -f -n "__fish_use_subcommand" -a evidence-check -d "Validate session directory structure and artifacts"
 complete -c ttp -f -n "__fish_use_subcommand" -a last -d "Show most recent session"
 complete -c ttp -f -n "__fish_use_subcommand" -a sessions -d "List all sessions"
 complete -c ttp -f -n "__fish_use_subcommand" -a completion -d "Generate shell completion"
@@ -992,6 +1014,28 @@ def build_parser() -> argparse.ArgumentParser:
         help="Emit validation results as JSON",
     )
     p_export.set_defaults(fn=cmd_export_pack)
+
+    # evidence-check (PR8)
+    p_evcheck = sub.add_parser(
+        "evidence-check",
+        help="Validate session directory structure and artifacts",
+    )
+    p_evcheck.add_argument(
+        "--session",
+        required=True,
+        help="Session directory to validate",
+    )
+    p_evcheck.add_argument(
+        "--strict",
+        action="store_true",
+        help="Treat warnings as failures (exit 1 on WARN)",
+    )
+    p_evcheck.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON report",
+    )
+    p_evcheck.set_defaults(fn=cmd_evidence_check)
 
     # last (NEW!)
     p_last = sub.add_parser("last", help="Show most recent session")
