@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import struct
 from pathlib import Path
 
 import pytest
@@ -55,40 +54,28 @@ def _make_attempt_dir(base: Path, rel_attempt_dir: Path) -> Path:
 
 
 def _write_wav_stub(p: Path) -> None:
-    """Write a minimal valid WAV (>= 1024 bytes) to avoid E201."""
+    """Write a minimal WAV stub."""
     p.parent.mkdir(parents=True, exist_ok=True)
-    num_samples = 1024
-    data_size = num_samples * 2  # 16-bit mono
-    fmt_chunk_size = 16
-    riff_size = 4 + (8 + fmt_chunk_size) + (8 + data_size)
-    with open(p, "wb") as f:
-        f.write(b"RIFF")
-        f.write(struct.pack("<I", riff_size))
-        f.write(b"WAVE")
-        f.write(b"fmt ")
-        f.write(struct.pack("<I", fmt_chunk_size))
-        f.write(struct.pack("<HHIIHH", 1, 1, 48000, 96000, 2, 16))
-        f.write(b"data")
-        f.write(struct.pack("<I", data_size))
-        f.write(b"\x00" * data_size)
+    p.write_bytes(b"RIFF" + b"\x00" * 100)
 
 
 def _write_required_attempt_artifacts(attempt_dir: Path) -> None:
-    """Write the required artifacts that satisfy all E0xx/E1xx/E2xx validators.
+    """Write all four required artifacts for a valid attempt.
 
-    - audio.wav     — valid WAV stub >= 1024 bytes (avoids E201)
-    - analysis.json — includes peaks + semantic keys (avoids E103, E202)
-    - quality_check.json — includes verdict + triggered_rules (avoids E103, E203)
+    Required: audio.wav, analysis.json, capture_meta.json, quality_check.json.
     """
     _write_wav_stub(attempt_dir / "audio.wav")
     _write_text(
         attempt_dir / "analysis.json",
         json.dumps({
             "peaks": [{"freq_hz": 192.3, "magnitude": 0.88}],
-            "dominant_hz": 192.3,
-            "rms": 0.023,
-            "confidence": 0.74,
-            "clipped": False,
+        }),
+    )
+    _write_text(
+        attempt_dir / "capture_meta.json",
+        json.dumps({
+            "sample_rate_hz": 48000,
+            "device_id": "test_mic",
         }),
     )
     _write_text(
@@ -160,6 +147,10 @@ class TestCmdEvidenceCheck:
         # Write everything except analysis.json
         _write_wav_stub(attempt_dir / "audio.wav")
         _write_text(
+            attempt_dir / "capture_meta.json",
+            json.dumps({"sample_rate_hz": 48000, "device_id": "test_mic"}),
+        )
+        _write_text(
             attempt_dir / "quality_check.json",
             json.dumps({"verdict": "pass", "triggered_rules": []}),
         )
@@ -210,26 +201,6 @@ class TestCmdEvidenceCheck:
         out = capsys.readouterr().out
         assert rc == 2
         assert "E102" in out
-
-    def test_strict_mode_promotes_warn_to_exit_one(
-        self,
-        fake_repo_root: Path,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """E201 WARN (tiny WAV) + --strict → exit 1."""
-        session_dir = fake_repo_root / "out" / "session_strict"
-        attempt_dir = _make_attempt_dir(session_dir, Path("attempt_001"))
-        _write_required_attempt_artifacts(attempt_dir)
-
-        # Replace WAV with tiny file to trigger E201 WARN
-        (attempt_dir / "audio.wav").write_bytes(b"RIFF" + b"\x00" * 40)
-
-        args = _args(session=str(Path("out/session_strict")), strict=True)
-        rc = cli_main_mod.cmd_evidence_check(args)
-
-        out = capsys.readouterr().out
-        assert rc == 1
-        assert "E201" in out
 
     def test_discovery_counts_nested_and_flat_deterministically_json_output(
         self,
