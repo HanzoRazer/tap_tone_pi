@@ -323,10 +323,11 @@ def cmd_measure(args: argparse.Namespace) -> int:
     max_attempts = args.max_attempts
     point_id = args.point or "point_001"
 
-    # In-session tracking for fatigue control (PR6)
-    rule_counts_session: dict[str, int] = {}
-    consecutive_hits: dict[str, int] = {}
-    last_rules: set[str] = set()
+    # PR7: single source of session history (replaces manual tracking)
+    session_tracker = None
+    if getattr(args, 'agent', False):
+        from tap_tone_pi.agent.messages import SessionTracker
+        session_tracker = SessionTracker()
 
     for attempt_num in range(1, max_attempts + 1):
         print(f"\n--- Attempt {attempt_num}/{max_attempts} ---")
@@ -363,25 +364,13 @@ def cmd_measure(args: argparse.Namespace) -> int:
 
         # Show quality verdict
         if result.verdict:
-            # Update in-session stats for fatigue control (PR6)
-            current_rules = {tr.rule.rule_id for tr in (result.verdict.triggered_rules or [])}
-            for rid in current_rules:
-                rule_counts_session[rid] = rule_counts_session.get(rid, 0) + 1
-                if rid in last_rules:
-                    consecutive_hits[rid] = consecutive_hits.get(rid, 0) + 1
-                else:
-                    consecutive_hits[rid] = 1
-            # Reset consecutive for rules not in current verdict
-            for rid in list(consecutive_hits.keys()):
-                if rid not in current_rules:
-                    consecutive_hits[rid] = 0
-            last_rules = current_rules
-
-            if getattr(args, 'agent', False):
+            if session_tracker is not None:
                 from tap_tone_pi.agent.messages import (
-                    AgentContext,
                     format_verdict_summary_agent,
                 )
+
+                # PR7: record verdict once — SessionTracker is the canonical history
+                session_tracker.record_verdict(result.verdict)
 
                 # FTUE: record exposure + PASS increments (deterministic)
                 cfg.ftue = update_ftue_from_verdict(
@@ -392,7 +381,7 @@ def cmd_measure(args: argparse.Namespace) -> int:
                 )
                 save_config(cfg)
 
-                ctx = AgentContext(
+                ctx = session_tracker.make_context(
                     workflow="measure",
                     point_id=point_id,
                     attempt_num=attempt_num,
@@ -400,14 +389,10 @@ def cmd_measure(args: argparse.Namespace) -> int:
                     device_name=str(device or "default"),
                     sample_rate=sample_rate,
                     policy_version=getattr(result.verdict, "policy_version", None),
-                    # Persistence signals
                     pass_count_lifetime=cfg.ftue.pass_count_lifetime,
                     session_count_lifetime=cfg.ftue.session_count_lifetime,
                     override_count_lifetime=cfg.ftue.override_count_lifetime,
                     seen_rule_ids=tuple(cfg.ftue.seen_rule_ids),
-                    # In-session stats for fatigue control
-                    rule_counts_this_session=tuple(rule_counts_session.items()),
-                    consecutive_rule_hits=tuple(consecutive_hits.items()),
                     show_details=True,
                     expert_mode=getattr(args, 'expert', False),
                 )

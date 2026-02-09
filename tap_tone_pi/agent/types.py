@@ -101,9 +101,16 @@ class AgentContext:
     consecutive_same_verdict: int = 0
     consecutive_rule_hits: dict[str, int] = field(default_factory=dict)
     first_time_seen_rules: set[str] = field(default_factory=set)
+    _last_verdict: str = ""
 
-    def record_rules(self, rule_ids: list[str]) -> None:
-        """Update history after a verdict."""
+    def record_rules(self, rule_ids: list[str], verdict: str = "") -> None:
+        """Update history after a verdict.
+
+        Args:
+            rule_ids: Rule IDs triggered in this verdict.
+            verdict: Verdict string ("pass"/"warn"/"fail") for streak tracking.
+                     If empty, verdict streak is not updated (backward compat).
+        """
         for rule_id in rule_ids:
             self.rule_counts_session[rule_id] = self.rule_counts_session.get(rule_id, 0) + 1
             self.consecutive_rule_hits[rule_id] = self.consecutive_rule_hits.get(rule_id, 0) + 1
@@ -112,3 +119,11 @@ class AgentContext:
         for rid in list(self.consecutive_rule_hits.keys()):
             if rid not in rule_ids:
                 self.consecutive_rule_hits[rid] = 0
+
+        # PR7: verdict streak tracking
+        if verdict:
+            if verdict == self._last_verdict:
+                self.consecutive_same_verdict += 1
+            else:
+                self.consecutive_same_verdict = 1
+            self._last_verdict = verdict

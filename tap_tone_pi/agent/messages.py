@@ -75,6 +75,95 @@ UserStage = Literal["first_run", "novice", "regular", "expert"]
 Workflow = Literal["record", "measure", "phase2"]
 
 
+class SessionTracker:
+    """Mutable session-level history tracker — single source of truth for fatigue stats.
+
+    PR7: Entrypoints (CLI cmd_measure, GUI, Phase 2) create one SessionTracker
+    per session.  After each verdict, call ``record_verdict(verdict)`` to update
+    history, then ``make_context(...)`` to produce a frozen ``AgentContext``
+    suitable for ``build_agent_message()``.
+
+    This eliminates the duplicate manual tracking that previously lived in
+    ``cmd_measure`` and ensures ``consecutive_same_verdict`` is always computed.
+    """
+
+    def __init__(self) -> None:
+        self.rule_counts: dict[str, int] = {}
+        self.consecutive_hits: dict[str, int] = {}
+        self.last_rules: set[str] = set()
+        self.last_verdict_value: Optional[str] = None
+        self.consecutive_same_verdict: int = 0
+
+    def record_verdict(self, verdict: QualityVerdict) -> None:
+        """Update all session-level history after a quality check.
+
+        Must be called exactly once per verdict render — before
+        ``make_context()`` / ``build_agent_message()``.
+        """
+        current_rules = {
+            tr.rule.rule_id for tr in (verdict.triggered_rules or [])
+        }
+
+        # Rule counts + consecutive hits
+        for rid in current_rules:
+            self.rule_counts[rid] = self.rule_counts.get(rid, 0) + 1
+            if rid in self.last_rules:
+                self.consecutive_hits[rid] = self.consecutive_hits.get(rid, 0) + 1
+            else:
+                self.consecutive_hits[rid] = 1
+        for rid in list(self.consecutive_hits):
+            if rid not in current_rules:
+                self.consecutive_hits[rid] = 0
+        self.last_rules = current_rules
+
+        # Verdict streak
+        verdict_val = verdict.verdict.value.lower()
+        if verdict_val == self.last_verdict_value:
+            self.consecutive_same_verdict += 1
+        else:
+            self.consecutive_same_verdict = 1
+        self.last_verdict_value = verdict_val
+
+    def make_context(
+        self,
+        *,
+        workflow: Workflow = "measure",
+        point_id: Optional[str] = None,
+        attempt_num: int = 1,
+        max_attempts: int = 1,
+        device_name: str = "default",
+        sample_rate: Optional[int] = None,
+        policy_version: Optional[str] = None,
+        pass_count_lifetime: int = 0,
+        session_count_lifetime: int = 0,
+        override_count_lifetime: int = 0,
+        seen_rule_ids: tuple[str, ...] = (),
+        user_stage: Optional[UserStage] = None,
+        show_details: bool = True,
+        expert_mode: bool = False,
+    ) -> "AgentContext":
+        """Produce a frozen AgentContext snapshot with current history baked in."""
+        return AgentContext(
+            workflow=workflow,
+            user_stage=user_stage,
+            point_id=point_id,
+            attempt_num=attempt_num,
+            max_attempts=max_attempts,
+            device_name=device_name,
+            sample_rate=sample_rate,
+            policy_version=policy_version,
+            pass_count_lifetime=pass_count_lifetime,
+            session_count_lifetime=session_count_lifetime,
+            override_count_lifetime=override_count_lifetime,
+            seen_rule_ids=seen_rule_ids,
+            rule_counts_this_session=tuple(self.rule_counts.items()),
+            consecutive_rule_hits=tuple(self.consecutive_hits.items()),
+            consecutive_same_verdict=self.consecutive_same_verdict,
+            show_details=show_details,
+            expert_mode=expert_mode,
+        )
+
+
 @dataclass(frozen=True)
 class AgentContext:
     """
@@ -737,6 +826,7 @@ def format_verdict_summary_agent(ctx: AgentContext, verdict: QualityVerdict) -> 
 __all__ = [
     "AgentContext",
     "AgentMessage",
+    "SessionTracker",
     "SuggestedAction",
     "RuleMessageSpec",
     "VerdictTemplate",

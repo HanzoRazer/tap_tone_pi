@@ -70,6 +70,7 @@ from .measurement_agent import (
 from .messages import (
     AgentContext,
     AgentMessage,
+    SessionTracker,
     SuggestedAction,
     RuleMessageSpec,
     VerdictTemplate,
@@ -89,6 +90,7 @@ __all__ = [
     # Integrated API (preferred for production use)
     "AgentContext",
     "AgentMessage",
+    "SessionTracker",
     "SuggestedAction",
     "RuleMessageSpec",
     "VerdictTemplate",

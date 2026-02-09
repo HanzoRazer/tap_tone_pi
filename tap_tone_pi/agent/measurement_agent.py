@@ -58,8 +58,8 @@ class MeasurementAgent:
         rule_ids = [r.rule.rule_id for r in verdict.triggered]
         verdict_str = verdict.verdict.value.lower()  # "pass", "warn", "fail"
         
-        # Update context history
-        self.context.record_rules(rule_ids)
+        # Update context history (PR7: includes verdict streak tracking)
+        self.context.record_rules(rule_ids, verdict=verdict_str)
         
         # Build the message
         message = self._build_message(verdict_str, rule_ids)
@@ -162,7 +162,7 @@ def build_agent_message(
         AgentMessage ready for CLI/GUI rendering
     """
     ctx = context or AgentContext()
-    ctx.record_rules(rule_ids)
+    ctx.record_rules(rule_ids, verdict=verdict)
     
     agent = MeasurementAgent(context=ctx)
     return agent._build_message(verdict, rule_ids)
