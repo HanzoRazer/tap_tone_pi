@@ -17,9 +17,54 @@ It does not modify any QC outputs.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Sequence
 
 from tap_tone_pi.core.quality_policy import QualityVerdict, TriggeredRule, Verdict, Severity
+
+
+# =============================================================================
+# PR6: Explanation Mode (three-tier verbosity)
+# =============================================================================
+
+class ExplanationMode(str, Enum):
+    """Three-tier explanation verbosity.
+
+    FULL: What happened + why it matters + common causes (FTUE / first exposure).
+    SHORT: One-sentence explanation + immediate fix (seen before, low repetition).
+    COMPACT: No explanation — 'Same issue recurring, focus on fix' (heavy repetition).
+    """
+    FULL = "full"
+    SHORT = "short"
+    COMPACT = "compact"
+
+
+def choose_explanation_mode(ctx: AgentContext, rule_id: str) -> ExplanationMode:
+    """Determine explanation verbosity for a rule based on context.
+
+    PR6 Rules:
+    - First-time rule (new + session count ≤1) → FULL
+    - Consecutive hits ≥3 OR session count ≥3 → COMPACT
+    - Otherwise → SHORT
+    """
+    is_first_time = ctx.is_rule_new(rule_id)
+    session_count = ctx.get_rule_count(rule_id)
+    streak = ctx.get_consecutive_hits(rule_id)
+
+    if is_first_time and session_count <= 1:
+        return ExplanationMode.FULL
+    if streak >= 3 or session_count >= 3:
+        return ExplanationMode.COMPACT
+    return ExplanationMode.SHORT
+
+
+def should_suppress_for_verdict_streak(ctx: AgentContext) -> bool:
+    """True if 3+ identical verdicts in a row — suppress explanations entirely.
+
+    At this point the user knows what is wrong; show only verdict title
+    + strongest corrective action.
+    """
+    return ctx.consecutive_same_verdict >= 3
 
 
 # -----------------------------------------------------------------------------
@@ -369,12 +414,16 @@ def should_show_learning_hint(ctx: AgentContext, rule_ids: List[str], stage: Use
     2. at least one rule is new (not in seen_rule_ids)
     3. no rule is repeating in-session (count <= 1 for all)
     4. not in expert_mode
+    5. workflow is 'measure' (PR6: record=minimal, phase2=experienced)
 
     This prevents "nagging" when the user has seen the same issue before.
     """
     if ctx.expert_mode:
         return False
     if stage not in ("first_run", "novice"):
+        return False
+    # PR6 Rule 5: workflow sensitivity
+    if ctx.workflow != "measure":
         return False
     if not rule_ids:
         return False
@@ -457,12 +506,16 @@ def _merge_actions(
     def repeated(rule_id: str, threshold: int) -> bool:
         return (ctx.get_consecutive_hits(rule_id) >= threshold) or (ctx.get_rule_count(rule_id) >= threshold)
 
-    # Special escalations
+    # Special escalations (PR6: expanded for Q010 and Q003)
     if "Q011" in rule_ids and repeated("Q011", 3):
         add(SuggestedAction("adjust_gain_down", "Lower gain before retrying", "Near-clipping repeated; reduce risk of clipping"))
     if "Q002" in rule_ids and repeated("Q002", 2):
         add(SuggestedAction("check_device", "Check input device", "Silence repeated; likely wrong device"))
         add(SuggestedAction("run_setup", "Run setup wizard", "Persist correct device selection"))
+    if "Q010" in rule_ids and repeated("Q010", 3):
+        add(SuggestedAction("adjust_gain_up", "Move mic closer and increase gain", "Quiet signal repeated; need stronger input"))
+    if "Q003" in rule_ids and repeated("Q003", 3):
+        add(SuggestedAction("check_environment", "Retap with firmer coupling; confirm mic", "No peaks repeated; coupling or environment issue"))
 
     # For FAIL, pull in top rule actions first (more actionable than generic abort/override)
     if verdict == Verdict.FAIL:
@@ -521,9 +574,10 @@ def build_agent_message(ctx: AgentContext, verdict: QualityVerdict) -> AgentMess
     show_details = ctx.show_details and (stage != "first_run" or ctx.workflow != "record")
     # (first_run record: keep minimal unless UI expands)
 
-    # Details
+    # Details (PR6: three-tier explanation mode + verdict streak suppression)
     details: List[str] = []
     top_rules = _top_k_rules_for_stage(stage, triggered_sorted)
+    verdict_streak_suppress = should_suppress_for_verdict_streak(ctx)
 
     if show_details and top_rules:
         for tr in top_rules:
@@ -537,20 +591,36 @@ def build_agent_message(ctx: AgentContext, verdict: QualityVerdict) -> AgentMess
 
             sev = "ERROR" if spec.severity == Severity.HARD else "WARN"
 
-            # Fatigue suppression: if rule is fatiguing, show only short form
-            if not should_show_full_explanation(ctx, rid):
-                # Concise: rule ID + short description + fix only
+            # PR6 Rule 4: verdict streak ≥ 3 → action-only
+            if verdict_streak_suppress:
                 details.append(f"[{sev}] {rid}: {spec.first_fix}")
+                continue
+
+            # PR6 Rule 5: phase2 forces compact
+            if ctx.workflow == "phase2":
+                details.append(f"[{sev}] {rid}: {spec.first_fix}")
+                continue
+
+            # PR6 Rule 2: three-tier explanation mode
+            mode = choose_explanation_mode(ctx, rid)
+
+            if mode == ExplanationMode.COMPACT:
+                # Heavy repetition — just the fix
+                details.append(f"[{sev}] {rid}: Same issue — {spec.first_fix}")
+            elif mode == ExplanationMode.SHORT:
+                # Seen before — one-line explanation + fix
+                details.append(f"[{sev}] {rid}: {spec.operator_explanation}")
             elif stage in ("first_run", "novice"):
-                # For novice/first_run, keep it physical-action oriented
+                # FULL for novice/first_run: physical-action oriented
                 details.append(f"[{sev}] {rid}: {spec.operator_explanation}")
                 details.append(f"      Fix: {spec.first_fix}")
             elif stage == "expert":
                 details.append(f"[{sev}] {rid}: {spec.operator_explanation}")
                 details.append(f"      Why: {spec.why_it_matters}")
                 details.append(f"      Fix: {spec.first_fix}  (Fallback: {spec.fallback_fix})")
-            else:  # regular
+            else:  # regular, FULL mode
                 details.append(f"[{sev}] {rid}: {spec.operator_explanation}")
+                details.append(f"      Fix: {spec.first_fix}")
 
     # Build rule action suggestions: take top rule's actions (most actionable) + any additional if multiple HARD
     rule_actions: List[SuggestedAction] = []
@@ -670,11 +740,14 @@ __all__ = [
     "SuggestedAction",
     "RuleMessageSpec",
     "VerdictTemplate",
+    "ExplanationMode",
     "RULE_SPECS",
     "VERDICT_TEMPLATES",
     "FTUE_HINTS",
     "infer_user_stage",
     "sort_triggered_rules",
+    "choose_explanation_mode",
+    "should_suppress_for_verdict_streak",
     "build_agent_message",
     "render_agent_message_cli",
     "format_verdict_summary_agent",

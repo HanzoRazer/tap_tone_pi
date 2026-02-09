@@ -48,9 +48,13 @@ from .ftue import (
     show_metrics,
 )
 from .selector import (
+    ExplanationMode,
     order_rules,
     select_actions_for_verdict,
     build_rule_detail,
+    choose_explanation_mode as standalone_choose_explanation_mode,
+    should_suppress_for_verdict_streak as standalone_should_suppress_for_verdict_streak,
+    should_show_learning_hint_standalone,
 )
 from .render import (
     render_cli,
@@ -74,6 +78,8 @@ from .messages import (
     FTUE_HINTS,
     infer_user_stage,
     sort_triggered_rules,
+    choose_explanation_mode,
+    should_suppress_for_verdict_streak,
     build_agent_message,
     render_agent_message_cli,
     format_verdict_summary_agent,
@@ -114,9 +120,16 @@ __all__ = [
     "show_advanced_note",
     "show_metrics",
     # Selector helpers
+    "ExplanationMode",
     "order_rules",
     "select_actions_for_verdict",
     "build_rule_detail",
+    "standalone_choose_explanation_mode",
+    "standalone_should_suppress_for_verdict_streak",
+    "should_show_learning_hint_standalone",
+    # Integrated PR6
+    "choose_explanation_mode",
+    "should_suppress_for_verdict_streak",
     # Renderers
     "render_cli",
     "render_gui",

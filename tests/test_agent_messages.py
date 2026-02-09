@@ -307,6 +307,7 @@ class TestBuildAgentMessage:
 
     def test_first_run_gets_hint(self, fail_verdict):
         ctx = AgentContext(
+            workflow="measure",
             pass_count_lifetime=0,
             show_details=True,
         )

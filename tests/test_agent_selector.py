@@ -1,12 +1,16 @@
-"""Tests for agent selector logic."""
+"""Tests for agent selector logic (standalone path)."""
 import pytest
 from tap_tone_pi.agent import (
     StandaloneAgentContext as AgentContext,
     ActionId,
     UserStage,
+    ExplanationMode,
     order_rules,
     select_actions_for_verdict,
     build_rule_detail,
+    standalone_choose_explanation_mode as choose_explanation_mode,
+    standalone_should_suppress_for_verdict_streak as should_suppress_for_verdict_streak,
+    should_show_learning_hint_standalone,
 )
 from tap_tone_pi.agent.message_spec import get_rule_spec
 
@@ -136,6 +140,8 @@ class TestBuildRuleDetail:
     def test_includes_why_when_requested(self):
         spec = get_rule_spec("Q001")
         ctx = AgentContext()
+        # Put into FULL mode so why_it_matters is included
+        ctx.first_time_seen_rules = {"Q001"}
         detail = build_rule_detail(spec, ctx, include_why=True)
         assert spec.why_it_matters in detail
 
@@ -159,3 +165,107 @@ class TestBuildRuleDetail:
         
         detail = build_rule_detail(spec, ctx, include_fix=True)
         assert spec.first_fix in detail
+
+
+# =============================================================================
+# PR6: Standalone ExplanationMode Tests
+# =============================================================================
+
+class TestStandaloneExplanationMode:
+    """PR6 Rule 2: Three-tier explanation via standalone path."""
+
+    def test_first_time_rule_full(self):
+        ctx = AgentContext()
+        ctx.first_time_seen_rules = {"Q001"}
+        assert choose_explanation_mode("Q001", ctx) == ExplanationMode.FULL
+
+    def test_repeated_rule_compact(self):
+        ctx = AgentContext()
+        ctx.rule_counts_session = {"Q001": 3}
+        ctx.consecutive_rule_hits = {"Q001": 3}
+        assert choose_explanation_mode("Q001", ctx) == ExplanationMode.COMPACT
+
+    def test_seen_before_short(self):
+        ctx = AgentContext()
+        ctx.rule_counts_session = {"Q001": 1}
+        ctx.consecutive_rule_hits = {"Q001": 1}
+        # Not in first_time_seen_rules → not first time
+        assert choose_explanation_mode("Q001", ctx) == ExplanationMode.SHORT
+
+
+class TestStandaloneVerdictStreak:
+    """PR6 Rule 4: Verdict streak suppression via standalone path."""
+
+    def test_no_suppression_below_three(self):
+        ctx = AgentContext()
+        ctx.consecutive_same_verdict = 2
+        assert should_suppress_for_verdict_streak(ctx) is False
+
+    def test_suppression_at_three(self):
+        ctx = AgentContext()
+        ctx.consecutive_same_verdict = 3
+        assert should_suppress_for_verdict_streak(ctx) is True
+
+    def test_verdict_streak_suppresses_detail(self):
+        """Verdict streak ≥ 3 → build_rule_detail returns fix-only."""
+        spec = get_rule_spec("Q001")
+        ctx = AgentContext()
+        ctx.consecutive_same_verdict = 3
+        detail = build_rule_detail(spec, ctx)
+        # Should show fix only, not full explanation
+        assert spec.first_fix in detail
+        assert spec.why_it_matters not in detail
+
+    def test_verdict_streak_compact_overrides_mode(self):
+        """Verdict streak takes priority over explanation mode."""
+        spec = get_rule_spec("Q001")
+        ctx = AgentContext()
+        ctx.consecutive_same_verdict = 4
+        ctx.first_time_seen_rules = {"Q001"}  # would be FULL
+        detail = build_rule_detail(spec, ctx)
+        # Streak wins: fix only, no full explanation
+        assert spec.operator_explanation not in detail
+        assert spec.first_fix in detail
+
+
+class TestStandaloneWorkflowHintGating:
+    """PR6 Rule 5: Workflow-sensitive hint gating via standalone path."""
+
+    def test_measure_shows_hint(self):
+        ctx = AgentContext(workflow="measure", user_stage=UserStage.FIRST_RUN)
+        ctx.first_time_seen_rules = {"Q001"}
+        assert should_show_learning_hint_standalone(ctx, ["Q001"]) is True
+
+    def test_record_suppresses_hint(self):
+        ctx = AgentContext(workflow="record", user_stage=UserStage.FIRST_RUN)
+        ctx.first_time_seen_rules = {"Q001"}
+        assert should_show_learning_hint_standalone(ctx, ["Q001"]) is False
+
+    def test_phase2_suppresses_hint(self):
+        ctx = AgentContext(workflow="phase2", user_stage=UserStage.NOVICE)
+        ctx.first_time_seen_rules = {"Q011"}
+        assert should_show_learning_hint_standalone(ctx, ["Q011"]) is False
+
+    def test_expert_suppresses_hint(self):
+        ctx = AgentContext(workflow="measure", user_stage=UserStage.EXPERT)
+        ctx.first_time_seen_rules = {"Q001"}
+        assert should_show_learning_hint_standalone(ctx, ["Q001"]) is False
+
+
+class TestStandaloneExpandedEscalation:
+    """PR6 Rule 3: Q010 and Q003 escalation in standalone path."""
+
+    def test_q010_escalation_to_gain_up(self):
+        ctx = AgentContext()
+        ctx.consecutive_rule_hits = {"Q010": 3}
+        actions = select_actions_for_verdict("warn", ["Q010"], ctx)
+        # Should include gain-up or mic-closer suggestion
+        action_ids = [a.action_id for a in actions]
+        assert ActionId.ADJUST_GAIN_UP in action_ids or ActionId.ACCEPT in action_ids
+
+    def test_q003_escalation_to_environment(self):
+        ctx = AgentContext()
+        ctx.consecutive_rule_hits = {"Q003": 3}
+        actions = select_actions_for_verdict("fail", ["Q003"], ctx)
+        action_ids = [a.action_id for a in actions]
+        assert ActionId.CHECK_ENVIRONMENT in action_ids
