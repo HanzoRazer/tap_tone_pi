@@ -129,10 +129,12 @@ E102_JSON_NOT_OBJECT = "E102"   # json root is not dict
 E103_MISSING_JSON_KEY = "E103"  # required key missing from JSON
 E104_INVALID_FIELD = "E104"     # field value invalid
 
-# E2xx: Invariants/cross-checks
-E201_WAV_HEADER_INVALID = "E201"  # WAV RIFF/WAVE header check
-E202_SAMPLE_RATE_MISMATCH = "E202"  # sample rate disagreement
-E210_ATTEMPT_NUMBERING_GAP = "E210"  # non-monotonic attempt numbering
+# E2xx: Invariants/cross-checks (WARN by default, FAIL under --strict)
+E201_WAV_SUSPICIOUS_SIZE = "E201"   # WAV file size suspicious (truncated?)
+E202_ANALYSIS_SEMANTIC_MISSING_KEYS = "E202"  # analysis.json missing expected keys
+E203_QC_SEMANTIC_INVALID = "E203"   # quality_check.json semantic invalid
+E210_ATTEMPT_NUMBERING_GAPS = "E210"  # non-monotonic attempt numbering per point
+E212_INCONSISTENT_SPECTRUM_BINS = "E212"  # spectrum bin count varies across attempts
 
 
 # =============================================================================
@@ -224,9 +226,6 @@ REQUIRED_KEYS: dict[str, list[str]] = {
     "grid.json": ["points"],
 }
 
-# Valid verdict values
-VALID_VERDICTS = frozenset({"pass", "warn", "fail", "PASS", "WARN", "FAIL"})
-
 
 # =============================================================================
 # File-level validators
@@ -304,37 +303,120 @@ def _check_file_exists(
     return findings
 
 
-def _check_wav_header(filepath: Path) -> list[Finding]:
-    """Minimal WAV header check: RIFF/WAVE magic bytes."""
-    findings: list[Finding] = []
-    if not filepath.exists() or filepath.stat().st_size == 0:
-        return findings  # already reported
+# =============================================================================
+# E2xx validators — invariant / cross-check (WARN by default)
+# =============================================================================
 
+def _attempt_number(attempt_dir: Path) -> int | None:
+    """Parse attempt_NNN from directory name.  Return None if not parseable."""
+    m = _ATTEMPT_DIR_RE.match(attempt_dir.name)
+    if not m:
+        return None
     try:
-        with open(filepath, "rb") as f:
-            header = f.read(12)
-        if len(header) < 12:
-            findings.append(Finding(
-                code=E201_WAV_HEADER_INVALID,
-                severity=FindingSeverity.FAIL,
-                message="WAV file too short to contain valid header",
-                path=str(filepath),
-            ))
-        elif header[:4] != b"RIFF" or header[8:12] != b"WAVE":
-            findings.append(Finding(
-                code=E201_WAV_HEADER_INVALID,
-                severity=FindingSeverity.FAIL,
-                message="Not a valid WAV file (missing RIFF/WAVE header)",
-                path=str(filepath),
-            ))
-    except OSError as e:
-        findings.append(Finding(
-            code=E201_WAV_HEADER_INVALID,
-            severity=FindingSeverity.FAIL,
-            message=f"Cannot read WAV file: {e}",
-            path=str(filepath),
-        ))
-    return findings
+        return int(m.group(1))
+    except Exception:
+        return None
+
+
+def _point_id_for_attempt(session_dir: Path, attempt_dir: Path) -> str:
+    """Determine point_id for an attempt dir.
+
+    - Flat layout:   session/attempt_### → ""
+    - Nested layout:  session/<point>/attempt_### → "<point>"
+    """
+    rel = attempt_dir.relative_to(session_dir)
+    parts = rel.parts
+    if len(parts) >= 2 and parts[-1].startswith("attempt_"):
+        return parts[-2]
+    return ""
+
+
+def _validate_wav_suspicious_size(attempt_dir: Path) -> list[Finding]:
+    """E201: WAV exists but size looks wrong (cheap, no WAV parsing)."""
+    wav = attempt_dir / "audio.wav"
+    if not wav.exists():
+        return []  # missing handled by E001
+    try:
+        size = wav.stat().st_size
+    except Exception:
+        return []
+    # Heuristic: WAV header alone is ~44 bytes; anything below ~1 KB is suspicious.
+    if size < 1024:
+        return [
+            Finding(
+                code=E201_WAV_SUSPICIOUS_SIZE,
+                severity=FindingSeverity.WARN,
+                message=f"audio.wav size is suspiciously small ({size} bytes).",
+                path=str(wav),
+                hint="Re-record this attempt; file may be truncated.",
+                meta={"size_bytes": size},
+            )
+        ]
+    return []
+
+
+def _validate_analysis_semantics(attempt_dir: Path) -> list[Finding]:
+    """E202: analysis.json parses, but lacks minimal expected keys.
+
+    Lightweight check — does NOT replicate full schema validation.
+    """
+    path = attempt_dir / "analysis.json"
+    if not path.exists():
+        return []
+    data, parse_finding = _read_json(path)
+    if parse_finding:
+        return []  # E101/E102 already reported by parse validator
+    assert data is not None
+
+    required_keys = ("dominant_hz", "rms", "confidence", "clipped", "peaks")
+    missing = [k for k in required_keys if k not in data]
+    if missing:
+        return [
+            Finding(
+                code=E202_ANALYSIS_SEMANTIC_MISSING_KEYS,
+                severity=FindingSeverity.WARN,
+                message=f"analysis.json missing expected keys: {', '.join(missing)}",
+                path=str(path),
+                hint="Re-run analysis for this attempt; analysis.json should include minimal result fields.",
+                meta={"missing_keys": missing},
+            )
+        ]
+    return []
+
+
+def _validate_quality_check_semantics(attempt_dir: Path) -> list[Finding]:
+    """E203: quality_check.json parses, but values/types are unexpected."""
+    path = attempt_dir / "quality_check.json"
+    if not path.exists():
+        return []
+    data, parse_finding = _read_json(path)
+    if parse_finding:
+        return []
+    assert data is not None
+
+    verdict = data.get("verdict")
+    triggered = data.get("triggered_rules")
+    ok_verdict = verdict in ("pass", "warn", "fail")
+    ok_triggered = isinstance(triggered, list)
+
+    problems: list[str] = []
+    if not ok_verdict:
+        problems.append("verdict must be one of {pass,warn,fail}")
+    if not ok_triggered:
+        problems.append("triggered_rules must be a list")
+
+    if problems:
+        return [
+            Finding(
+                code=E203_QC_SEMANTIC_INVALID,
+                severity=FindingSeverity.WARN,
+                message="quality_check.json has unexpected values/types: " + "; ".join(problems),
+                path=str(path),
+                hint="This attempt may have been produced by an older or corrupted tool run; consider re-running measurement.",
+                meta={"verdict": verdict, "triggered_rules_type": type(triggered).__name__},
+            )
+        ]
+    return []
 
 
 def _check_json_keys(filepath: Path, data: dict[str, Any]) -> list[Finding]:
@@ -350,54 +432,6 @@ def _check_json_keys(filepath: Path, data: dict[str, Any]) -> list[Finding]:
                 path=str(filepath),
             ))
 
-    # Verdict value check for quality_check.json
-    if filepath.name == "quality_check.json" and "verdict" in data:
-        if data["verdict"] not in VALID_VERDICTS:
-            findings.append(Finding(
-                code=E104_INVALID_FIELD,
-                severity=FindingSeverity.FAIL,
-                message=(
-                    f"Invalid verdict value: {data['verdict']!r} "
-                    f"(expected pass/warn/fail)"
-                ),
-                path=str(filepath),
-            ))
-
-    return findings
-
-
-def _check_sample_rate_consistency(attempt_dir: Path) -> list[Finding]:
-    """WARN if sample_rate differs between capture_meta and analysis."""
-    findings: list[Finding] = []
-
-    meta_path = attempt_dir / "capture_meta.json"
-    analysis_path = attempt_dir / "analysis.json"
-
-    if not meta_path.exists() or not analysis_path.exists():
-        return findings
-
-    try:
-        with open(meta_path, "r", encoding="utf-8") as f:
-            meta = json.load(f)
-        with open(analysis_path, "r", encoding="utf-8") as f:
-            analysis = json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return findings  # parse errors already reported
-
-    meta_sr = meta.get("sample_rate_hz") or meta.get("sample_rate")
-    analysis_sr = analysis.get("sample_rate")
-
-    if meta_sr and analysis_sr and meta_sr != analysis_sr:
-        findings.append(Finding(
-            code=E202_SAMPLE_RATE_MISMATCH,
-            severity=FindingSeverity.WARN,
-            message=(
-                f"Sample rate mismatch: capture_meta={meta_sr}, "
-                f"analysis={analysis_sr}"
-            ),
-            path=str(attempt_dir),
-            meta={"capture_meta_sr": meta_sr, "analysis_sr": analysis_sr},
-        ))
     return findings
 
 
@@ -417,10 +451,6 @@ def validate_attempt(attempt_dir: Path) -> list[Finding]:
     for fname in TAP_OPTIONAL_FILES:
         findings.extend(_check_file_exists(attempt_dir, fname, required=False))
 
-    # WAV header check
-    wav = attempt_dir / "audio.wav"
-    findings.extend(_check_wav_header(wav))
-
     # JSON parse + key checks for files that exist
     for fname in ("analysis.json", "quality_check.json", "capture_meta.json",
                    "attempt_meta.json"):
@@ -433,46 +463,113 @@ def validate_attempt(attempt_dir: Path) -> list[Finding]:
         elif data is not None:
             findings.extend(_check_json_keys(fpath, data))
 
-    # Cross-file invariants
-    findings.extend(_check_sample_rate_consistency(attempt_dir))
+    # E2xx attempt-local invariants
+    findings.extend(_validate_wav_suspicious_size(attempt_dir))
+    findings.extend(_validate_analysis_semantics(attempt_dir))
+    findings.extend(_validate_quality_check_semantics(attempt_dir))
 
     return findings
 
 
 # =============================================================================
-# Attempt numbering check
+# Session-level E2xx validators
 # =============================================================================
 
-def _check_attempt_numbering(
+def _validate_attempt_numbering_by_point(
     session_dir: Path,
     attempt_dirs: list[Path],
 ) -> list[Finding]:
-    """Check for gaps in attempt numbering within each point."""
-    findings: list[Finding] = []
+    """E210: Warn if attempt numbering has gaps per point.
 
-    # Group by parent (point dir)
-    from collections import defaultdict
-    by_parent: dict[Path, list[int]] = defaultdict(list)
+    Flat layout point_id is "" and is treated as one group.
+    """
+    by_point: dict[str, list[int]] = {}
     for ad in attempt_dirs:
-        m = _ATTEMPT_DIR_RE.match(ad.name)
-        if m:
-            by_parent[ad.parent].append(int(m.group(1)))
+        n = _attempt_number(ad)
+        if n is None:
+            continue
+        pid = _point_id_for_attempt(session_dir, ad)
+        by_point.setdefault(pid, []).append(n)
 
-    for parent, nums in sorted(by_parent.items()):
-        nums_sorted = sorted(nums)
-        expected = list(range(1, max(nums_sorted) + 1))
+    findings: list[Finding] = []
+    for pid, nums in by_point.items():
+        nums_sorted = sorted(set(nums))
+        if not nums_sorted:
+            continue
+        expected = list(range(nums_sorted[0], nums_sorted[-1] + 1))
         if nums_sorted != expected:
-            findings.append(Finding(
-                code=E210_ATTEMPT_NUMBERING_GAP,
-                severity=FindingSeverity.WARN,
-                message=(
-                    f"Attempt numbering gaps: found {nums_sorted}, "
-                    f"expected {expected}"
-                ),
-                path=str(parent),
-            ))
-
+            missing = sorted(set(expected) - set(nums_sorted))
+            where = str(session_dir / pid) if pid else str(session_dir)
+            findings.append(
+                Finding(
+                    code=E210_ATTEMPT_NUMBERING_GAPS,
+                    severity=FindingSeverity.WARN,
+                    message=f"Attempt numbering has gaps for point '{pid or 'flat'}': missing {missing}",
+                    path=where,
+                    hint="This is allowed, but can confuse downstream tools. Prefer monotonic attempt_001..N per point.",
+                    meta={"point_id": pid, "present": nums_sorted, "missing": missing},
+                )
+            )
     return findings
+
+
+def _spectrum_len_from_analysis(data: dict[str, Any]) -> int | None:
+    """Extract spectrum-bin count from analysis.json.
+
+    Adapt field names to canonical AnalysisResult serialization.
+    """
+    freq = data.get("spectrum_freq_hz")
+    mag = data.get("spectrum_mag")
+    if isinstance(freq, list):
+        return len(freq)
+    if isinstance(mag, list):
+        return len(mag)
+    return None
+
+
+def _validate_consistent_spectrum_bins(
+    session_dir: Path,
+    attempt_dirs: list[Path],
+) -> list[Finding]:
+    """E212: Warn if spectrum bin length differs across attempts in a session."""
+    lens: dict[str, int] = {}
+    for ad in attempt_dirs:
+        path = ad / "analysis.json"
+        if not path.exists():
+            continue
+        data, parse_finding = _read_json(path)
+        if parse_finding or data is None:
+            continue
+        n = _spectrum_len_from_analysis(data)
+        if n is not None:
+            lens[str(ad)] = n
+
+    if not lens:
+        return []
+
+    values = sorted(set(lens.values()))
+    if len(values) <= 1:
+        return []
+
+    # Choose the most common length as "baseline"
+    baseline = max(values, key=lambda v: sum(1 for x in lens.values() if x == v))
+    offenders = []
+    for attempt_path, n in list(lens.items())[:8]:
+        if n != baseline:
+            offenders.append({"attempt": attempt_path, "bins": n})
+        if len(offenders) >= 5:
+            break
+
+    return [
+        Finding(
+            code=E212_INCONSISTENT_SPECTRUM_BINS,
+            severity=FindingSeverity.WARN,
+            message=f"Inconsistent spectrum bin counts across attempts (baseline={baseline}, seen={values}).",
+            path=str(session_dir),
+            hint="Ensure all attempts use the same analyzer configuration/windowing; re-run analysis if needed.",
+            meta={"baseline_bins": baseline, "seen_bins": values, "examples": offenders},
+        )
+    ]
 
 
 # =============================================================================
@@ -539,13 +636,19 @@ def scan_session(
                 "session/<point>/attempt_### or session/attempt_###."
             ),
         ))
-    else:
-        # Attempt numbering continuity
-        findings.extend(_check_attempt_numbering(session_dir, attempt_dirs))
 
     # Per-attempt validation
     for attempt_dir in attempt_dirs:
         findings.extend(validate_attempt(attempt_dir))
+
+    # E2xx session/point-level invariants
+    if attempt_dirs:
+        findings.extend(
+            _validate_attempt_numbering_by_point(session_dir, attempt_dirs)
+        )
+        findings.extend(
+            _validate_consistent_spectrum_bins(session_dir, attempt_dirs)
+        )
 
     # Stable ordering: severity (FAIL, WARN, INFO), then code, then path
     severity_rank = {

@@ -15,6 +15,13 @@ from tap_tone_pi.validate.evidence_check import (
     Finding,
     FindingSeverity,
     _discover_attempt_dirs,
+    _attempt_number,
+    _point_id_for_attempt,
+    _validate_wav_suspicious_size,
+    _validate_analysis_semantics,
+    _validate_quality_check_semantics,
+    _validate_attempt_numbering_by_point,
+    _validate_consistent_spectrum_bins,
     render_human,
     render_json,
     scan_session,
@@ -27,12 +34,14 @@ from tap_tone_pi.validate.evidence_check import (
 # =============================================================================
 
 def _write_wav_stub(path: Path) -> None:
-    """Write a minimal valid WAV file (44 bytes, no samples)."""
+    """Write a minimal valid WAV file (>= 1024 bytes to avoid E201)."""
     path.parent.mkdir(parents=True, exist_ok=True)
+    # 1024 samples of silence → 2048 data bytes → well above E201 threshold
+    num_samples = 1024
+    data_size = num_samples * 2  # 16-bit mono
+    fmt_chunk_size = 16
+    riff_size = 4 + (8 + fmt_chunk_size) + (8 + data_size)
     with open(path, "wb") as f:
-        data_size = 0
-        fmt_chunk_size = 16
-        riff_size = 4 + (8 + fmt_chunk_size) + (8 + data_size)
         f.write(b"RIFF")
         f.write(struct.pack("<I", riff_size))
         f.write(b"WAVE")
@@ -41,6 +50,7 @@ def _write_wav_stub(path: Path) -> None:
         f.write(struct.pack("<HHIIHH", 1, 1, 48000, 96000, 2, 16))
         f.write(b"data")
         f.write(struct.pack("<I", data_size))
+        f.write(b"\x00" * data_size)
 
 
 def _write_json(path: Path, data: dict) -> None:
@@ -312,13 +322,13 @@ class TestBadJSON:
         assert any(f.code == "E103" and "peaks" in f.message for f in fails)
 
     def test_invalid_verdict_value(self, tmp_path):
-        """quality_check.json with invalid verdict → E104."""
+        """quality_check.json with invalid verdict → E203 WARN."""
         attempt_dir = tmp_path / "point_001" / "attempt_001"
         _make_attempt(attempt_dir, bad_verdict="garbage")
 
         report = scan_session(tmp_path)
-        fails = [f for f in report.findings if f.severity == FindingSeverity.FAIL]
-        assert any(f.code == "E104" for f in fails)
+        warns = [f for f in report.findings if f.severity == FindingSeverity.WARN]
+        assert any(f.code == "E203" for f in warns)
 
     def test_json_not_dict(self, tmp_path):
         """JSON that parses but is a list → E102."""
@@ -397,21 +407,6 @@ class TestStrictMode:
 # =============================================================================
 
 class TestCrossFileInvariants:
-    def test_sample_rate_mismatch(self, tmp_path):
-        """capture_meta and analysis disagree on sample_rate → WARN."""
-        _make_session(tmp_path, include_optionals=True)
-        attempt_dir = tmp_path / "point_001" / "attempt_001"
-
-        _write_json(attempt_dir / "capture_meta.json", {
-            "sample_rate_hz": 44100,
-            "device_id": "test_mic",
-        })
-        # analysis.json already has sample_rate: 48000
-
-        report = scan_session(tmp_path)
-        warns = [f for f in report.findings if f.severity == FindingSeverity.WARN]
-        assert any(f.code == "E202" for f in warns)
-
     def test_attempt_numbering_gap(self, tmp_path):
         """Missing attempt_002 between 001 and 003 → WARN E210."""
         point_dir = tmp_path / "point_001"
@@ -422,24 +417,35 @@ class TestCrossFileInvariants:
         warns = [f for f in report.findings if f.severity == FindingSeverity.WARN]
         assert any(f.code == "E210" for f in warns)
 
+    def test_e210_flat_numbering_gap(self, tmp_path):
+        """Flat layout: attempt_001 and attempt_003 but no 002 → E210."""
+        _make_attempt(tmp_path / "attempt_001")
+        _make_attempt(tmp_path / "attempt_003")
+
+        report = scan_session(tmp_path)
+        warns = [f for f in report.findings if f.severity == FindingSeverity.WARN]
+        e210 = [f for f in warns if f.code == "E210"]
+        assert len(e210) == 1
+        assert "flat" in e210[0].message
+
 
 # =============================================================================
 # WAV header validation
 # =============================================================================
 
 class TestWavValidation:
-    def test_invalid_wav_header(self, tmp_path):
-        """Not a WAV file → E201."""
+    def test_tiny_wav_e201(self, tmp_path):
+        """WAV exists but too small → E201 WARN."""
         _make_session(tmp_path)
         wav = tmp_path / "point_001" / "attempt_001" / "audio.wav"
-        wav.write_bytes(b"NOT A WAV FILE AT ALL!!!")
+        wav.write_bytes(b"RIFF" + b"\x00" * 40)  # 44 bytes, below 1024
 
         report = scan_session(tmp_path)
-        fails = [f for f in report.findings if f.severity == FindingSeverity.FAIL]
-        assert any(f.code == "E201" and "WAV" in f.message for f in fails)
+        warns = [f for f in report.findings if f.severity == FindingSeverity.WARN]
+        assert any(f.code == "E201" for f in warns)
 
     def test_empty_wav(self, tmp_path):
-        """Zero-byte WAV → E002."""
+        """Zero-byte WAV → E002 FAIL."""
         _make_session(tmp_path)
         wav = tmp_path / "point_001" / "attempt_001" / "audio.wav"
         wav.write_bytes(b"")
@@ -447,6 +453,16 @@ class TestWavValidation:
         report = scan_session(tmp_path)
         fails = [f for f in report.findings if f.severity == FindingSeverity.FAIL]
         assert any(f.code == "E002" for f in fails)
+
+    def test_large_wav_no_e201(self, tmp_path):
+        """WAV ≥ 1024 bytes → no E201."""
+        _make_session(tmp_path)
+        wav = tmp_path / "point_001" / "attempt_001" / "audio.wav"
+        wav.write_bytes(b"RIFF" + b"\x00" * 1020)  # 1024 bytes exactly
+
+        report = scan_session(tmp_path)
+        e201s = [f for f in report.findings if f.code == "E201"]
+        assert len(e201s) == 0
 
 
 # =============================================================================
@@ -474,6 +490,340 @@ class TestEdgeCases:
         assert report.summary.attempts_scanned == 9
         assert report.summary.fail_count == 0
         assert report.exit_code == 0
+
+
+# =============================================================================
+# E2xx unit tests
+# =============================================================================
+
+class TestE201WavSuspiciousSize:
+    """E201: WAV file suspiciously small."""
+
+    def test_missing_wav_no_e201(self, tmp_path):
+        """Missing WAV doesn't trigger E201 (handled by E001)."""
+        attempt = tmp_path / "attempt_001"
+        attempt.mkdir(parents=True)
+        assert _validate_wav_suspicious_size(attempt) == []
+
+    def test_tiny_wav_triggers(self, tmp_path):
+        attempt = tmp_path / "attempt_001"
+        attempt.mkdir(parents=True)
+        (attempt / "audio.wav").write_bytes(b"X" * 100)
+        findings = _validate_wav_suspicious_size(attempt)
+        assert len(findings) == 1
+        assert findings[0].code == "E201"
+        assert findings[0].severity == FindingSeverity.WARN
+        assert findings[0].meta["size_bytes"] == 100
+
+    def test_normal_wav_no_trigger(self, tmp_path):
+        attempt = tmp_path / "attempt_001"
+        attempt.mkdir(parents=True)
+        (attempt / "audio.wav").write_bytes(b"X" * 2048)
+        assert _validate_wav_suspicious_size(attempt) == []
+
+
+class TestE202AnalysisSemantics:
+    """E202: analysis.json missing expected semantic keys."""
+
+    def test_all_keys_present(self, tmp_path):
+        attempt = tmp_path / "attempt_001"
+        attempt.mkdir(parents=True)
+        _write_json(attempt / "analysis.json", {
+            "dominant_hz": 192.3, "rms": 0.02, "confidence": 0.8,
+            "clipped": False, "peaks": [],
+        })
+        assert _validate_analysis_semantics(attempt) == []
+
+    def test_missing_keys(self, tmp_path):
+        attempt = tmp_path / "attempt_001"
+        attempt.mkdir(parents=True)
+        _write_json(attempt / "analysis.json", {"peaks": []})
+        findings = _validate_analysis_semantics(attempt)
+        assert len(findings) == 1
+        assert findings[0].code == "E202"
+        assert findings[0].severity == FindingSeverity.WARN
+        assert set(findings[0].meta["missing_keys"]) == {
+            "dominant_hz", "rms", "confidence", "clipped"
+        }
+
+    def test_no_file_no_finding(self, tmp_path):
+        attempt = tmp_path / "attempt_001"
+        attempt.mkdir(parents=True)
+        assert _validate_analysis_semantics(attempt) == []
+
+    def test_corrupt_json_no_e202(self, tmp_path):
+        """E202 skips if parse fails (E101 handles that)."""
+        attempt = tmp_path / "attempt_001"
+        attempt.mkdir(parents=True)
+        (attempt / "analysis.json").write_text("{bad", encoding="utf-8")
+        assert _validate_analysis_semantics(attempt) == []
+
+    def test_e202_via_scan_session(self, tmp_path):
+        """Integrated: analysis.json with only 'peaks' → E202 WARN, exit 0."""
+        _make_session(tmp_path)
+        analysis = tmp_path / "point_001" / "attempt_001" / "analysis.json"
+        _write_json(analysis, {"peaks": []})
+        report = scan_session(tmp_path)
+        warns = [f for f in report.findings if f.code == "E202"]
+        assert len(warns) == 1
+        assert report.exit_code == 0  # WARN doesn't cause failure
+
+
+class TestE203QualityCheckSemantics:
+    """E203: quality_check.json semantic validation."""
+
+    def test_valid_qc_no_finding(self, tmp_path):
+        attempt = tmp_path / "attempt_001"
+        attempt.mkdir(parents=True)
+        _write_json(attempt / "quality_check.json", {
+            "verdict": "pass", "triggered_rules": [],
+        })
+        assert _validate_quality_check_semantics(attempt) == []
+
+    def test_invalid_verdict(self, tmp_path):
+        attempt = tmp_path / "attempt_001"
+        attempt.mkdir(parents=True)
+        _write_json(attempt / "quality_check.json", {
+            "verdict": "garbage", "triggered_rules": [],
+        })
+        findings = _validate_quality_check_semantics(attempt)
+        assert len(findings) == 1
+        assert findings[0].code == "E203"
+        assert "verdict" in findings[0].message
+
+    def test_triggered_rules_not_list(self, tmp_path):
+        attempt = tmp_path / "attempt_001"
+        attempt.mkdir(parents=True)
+        _write_json(attempt / "quality_check.json", {
+            "verdict": "pass", "triggered_rules": "not_a_list",
+        })
+        findings = _validate_quality_check_semantics(attempt)
+        assert len(findings) == 1
+        assert findings[0].code == "E203"
+        assert "triggered_rules" in findings[0].message
+
+    def test_both_invalid(self, tmp_path):
+        attempt = tmp_path / "attempt_001"
+        attempt.mkdir(parents=True)
+        _write_json(attempt / "quality_check.json", {
+            "verdict": 42, "triggered_rules": "nope",
+        })
+        findings = _validate_quality_check_semantics(attempt)
+        assert len(findings) == 1
+        assert "verdict" in findings[0].message
+        assert "triggered_rules" in findings[0].message
+
+    def test_no_file_no_finding(self, tmp_path):
+        attempt = tmp_path / "attempt_001"
+        attempt.mkdir(parents=True)
+        assert _validate_quality_check_semantics(attempt) == []
+
+    def test_e203_via_scan_session(self, tmp_path):
+        """Integrated: bad verdict type → E203 WARN."""
+        _make_session(tmp_path)
+        qc = tmp_path / "point_001" / "attempt_001" / "quality_check.json"
+        _write_json(qc, {"verdict": "unknown", "triggered_rules": []})
+        report = scan_session(tmp_path)
+        warns = [f for f in report.findings if f.code == "E203"]
+        assert len(warns) == 1
+
+
+class TestE210AttemptNumberingByPoint:
+    """E210: Attempt numbering gap detection."""
+
+    def test_no_gap(self, tmp_path):
+        dirs = []
+        for n in (1, 2, 3):
+            d = tmp_path / "point_A" / f"attempt_{n:03d}"
+            d.mkdir(parents=True)
+            dirs.append(d)
+        assert _validate_attempt_numbering_by_point(tmp_path, dirs) == []
+
+    def test_gap_detected(self, tmp_path):
+        dirs = []
+        for n in (1, 3):
+            d = tmp_path / "point_A" / f"attempt_{n:03d}"
+            d.mkdir(parents=True)
+            dirs.append(d)
+        findings = _validate_attempt_numbering_by_point(tmp_path, dirs)
+        assert len(findings) == 1
+        assert findings[0].code == "E210"
+        assert 2 in findings[0].meta["missing"]
+
+    def test_multiple_points_independent(self, tmp_path):
+        """Gap in point_A but not point_B."""
+        dirs = []
+        for n in (1, 3):
+            d = tmp_path / "point_A" / f"attempt_{n:03d}"
+            d.mkdir(parents=True)
+            dirs.append(d)
+        for n in (1, 2):
+            d = tmp_path / "point_B" / f"attempt_{n:03d}"
+            d.mkdir(parents=True)
+            dirs.append(d)
+        findings = _validate_attempt_numbering_by_point(tmp_path, dirs)
+        assert len(findings) == 1
+        assert "point_A" in findings[0].message
+
+    def test_flat_layout_gap(self, tmp_path):
+        dirs = []
+        for n in (1, 4):
+            d = tmp_path / f"attempt_{n:03d}"
+            d.mkdir(parents=True)
+            dirs.append(d)
+        findings = _validate_attempt_numbering_by_point(tmp_path, dirs)
+        assert len(findings) == 1
+        assert "flat" in findings[0].message
+
+
+class TestE212InconsistentSpectrumBins:
+    """E212: Inconsistent spectrum bin counts across attempts."""
+
+    def test_consistent_bins_no_finding(self, tmp_path):
+        dirs = []
+        for n in (1, 2):
+            d = tmp_path / "point_A" / f"attempt_{n:03d}"
+            d.mkdir(parents=True)
+            _write_json(d / "analysis.json", {
+                "peaks": [], "spectrum_freq_hz": [100, 200, 300],
+            })
+            dirs.append(d)
+        assert _validate_consistent_spectrum_bins(tmp_path, dirs) == []
+
+    def test_inconsistent_bins_warns(self, tmp_path):
+        dirs = []
+        d1 = tmp_path / "point_A" / "attempt_001"
+        d1.mkdir(parents=True)
+        _write_json(d1 / "analysis.json", {
+            "peaks": [], "spectrum_freq_hz": [100, 200, 300],
+        })
+        dirs.append(d1)
+
+        d2 = tmp_path / "point_A" / "attempt_002"
+        d2.mkdir(parents=True)
+        _write_json(d2 / "analysis.json", {
+            "peaks": [], "spectrum_freq_hz": [100, 200],
+        })
+        dirs.append(d2)
+
+        findings = _validate_consistent_spectrum_bins(tmp_path, dirs)
+        assert len(findings) == 1
+        assert findings[0].code == "E212"
+        assert findings[0].severity == FindingSeverity.WARN
+        assert findings[0].meta["baseline_bins"] in (2, 3)
+
+    def test_no_spectrum_data_no_finding(self, tmp_path):
+        dirs = []
+        for n in (1, 2):
+            d = tmp_path / "point_A" / f"attempt_{n:03d}"
+            d.mkdir(parents=True)
+            _write_json(d / "analysis.json", {"peaks": []})
+            dirs.append(d)
+        assert _validate_consistent_spectrum_bins(tmp_path, dirs) == []
+
+    def test_spectrum_mag_field(self, tmp_path):
+        """Falls back to spectrum_mag when spectrum_freq_hz absent."""
+        dirs = []
+        d1 = tmp_path / "attempt_001"
+        d1.mkdir(parents=True)
+        _write_json(d1 / "analysis.json", {
+            "peaks": [], "spectrum_mag": [0.1, 0.2],
+        })
+        dirs.append(d1)
+
+        d2 = tmp_path / "attempt_002"
+        d2.mkdir(parents=True)
+        _write_json(d2 / "analysis.json", {
+            "peaks": [], "spectrum_mag": [0.1, 0.2, 0.3],
+        })
+        dirs.append(d2)
+
+        findings = _validate_consistent_spectrum_bins(tmp_path, dirs)
+        assert len(findings) == 1
+        assert findings[0].code == "E212"
+
+    def test_e212_via_scan_session(self, tmp_path):
+        """Integrated: mismatched bins across points → E212 WARN."""
+        point_a = tmp_path / "point_001"
+        _make_attempt(point_a / "attempt_001")
+        _write_json(point_a / "attempt_001" / "analysis.json", {
+            "peaks": [], "dominant_hz": 100, "rms": 0.01,
+            "confidence": 0.8, "clipped": False,
+            "spectrum_freq_hz": [100, 200, 300],
+        })
+
+        point_b = tmp_path / "point_002"
+        _make_attempt(point_b / "attempt_001")
+        _write_json(point_b / "attempt_001" / "analysis.json", {
+            "peaks": [], "dominant_hz": 100, "rms": 0.01,
+            "confidence": 0.8, "clipped": False,
+            "spectrum_freq_hz": [100, 200],
+        })
+
+        report = scan_session(tmp_path)
+        warns = [f for f in report.findings if f.code == "E212"]
+        assert len(warns) == 1
+
+
+class TestE2xxStrictMode:
+    """E2xx WARNs promote to exit 1 under --strict."""
+
+    def test_e201_strict_exit_1(self, tmp_path):
+        """Tiny WAV + strict → exit 1."""
+        _make_session(tmp_path, include_optionals=True)
+        wav = tmp_path / "point_001" / "attempt_001" / "audio.wav"
+        wav.write_bytes(b"R" * 100)
+        report = scan_session(tmp_path, strict=True)
+        assert report.exit_code == 1
+        warns = [f for f in report.findings if f.code == "E201"]
+        assert len(warns) == 1
+
+    def test_e202_strict_exit_1(self, tmp_path):
+        """analysis.json missing keys + strict → exit 1."""
+        _make_session(tmp_path, include_optionals=True)
+        analysis = tmp_path / "point_001" / "attempt_001" / "analysis.json"
+        _write_json(analysis, {"peaks": []})
+        report = scan_session(tmp_path, strict=True)
+        assert report.exit_code == 1
+
+    def test_e203_strict_exit_1(self, tmp_path):
+        """Bad verdict + strict → exit 1."""
+        _make_session(tmp_path, include_optionals=True)
+        qc = tmp_path / "point_001" / "attempt_001" / "quality_check.json"
+        _write_json(qc, {"verdict": "PASS", "triggered_rules": []})
+        report = scan_session(tmp_path, strict=True)
+        e203 = [f for f in report.findings if f.code == "E203"]
+        assert len(e203) == 1
+        assert report.exit_code == 1
+
+
+class TestHelperFunctions:
+    """Unit tests for _attempt_number and _point_id_for_attempt."""
+
+    def test_attempt_number_valid(self, tmp_path):
+        d = tmp_path / "attempt_001"
+        d.mkdir()
+        assert _attempt_number(d) == 1
+
+    def test_attempt_number_large(self, tmp_path):
+        d = tmp_path / "attempt_0042"
+        d.mkdir()
+        assert _attempt_number(d) == 42
+
+    def test_attempt_number_invalid(self, tmp_path):
+        d = tmp_path / "not_attempt"
+        d.mkdir()
+        assert _attempt_number(d) is None
+
+    def test_point_id_nested(self, tmp_path):
+        d = tmp_path / "point_A" / "attempt_001"
+        d.mkdir(parents=True)
+        assert _point_id_for_attempt(tmp_path, d) == "point_A"
+
+    def test_point_id_flat(self, tmp_path):
+        d = tmp_path / "attempt_001"
+        d.mkdir(parents=True)
+        assert _point_id_for_attempt(tmp_path, d) == ""
 
 
 # =============================================================================
