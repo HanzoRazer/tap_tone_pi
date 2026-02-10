@@ -99,6 +99,9 @@ class OperatorLoop:
         self,
         session_dir: Path | str,
         callback: LoopCallback | None = None,
+        *,
+        view_adapter: Any | None = None,
+        spine_mode: str = "M1",
     ):
         """
         Initialize the operator loop.
@@ -106,6 +109,11 @@ class OperatorLoop:
         Args:
             session_dir: Directory to store session data
             callback: Optional callback for state changes
+            view_adapter: Optional ViewAdapter for M2 actuation commands.
+                          Must implement focus_trace, hide_all_except,
+                          highlight_delta, and reset_view methods.
+            spine_mode: Spine operating mode — "M0", "M1", or "M2".
+                        M2 requires a view_adapter; falls back to M1 if absent.
         """
         self.session_dir = Path(session_dir)
         self.store = AttemptStore(self.session_dir)
@@ -115,6 +123,13 @@ class OperatorLoop:
         self._event_writer = JsonlEventWriter(
             self.session_dir / "events.jsonl"
         )
+        # View adapter for M2 actuation (PR #20)
+        self._view_adapter = view_adapter
+        # Spine mode: M0/M1/M2.  M2 without adapter silently falls back to M1.
+        if spine_mode == "M2" and view_adapter is None:
+            self._spine_mode = "M1"
+        else:
+            self._spine_mode = spine_mode if spine_mode in ("M0", "M1", "M2") else "M1"
         # UWSM cache is optional; loaded on-demand in advisory hook
         self._uwsm_cached: dict | None = None
         self._uwsm_conf_cached: dict | None = None
@@ -518,7 +533,7 @@ class OperatorLoop:
                 session_dir=session_dir,
                 session_id=str(session_dir.name),
                 run_id=str(getattr(attempt, "attempt_id", "")),
-                mode="M1",
+                mode=self._spine_mode,
                 moment_id="NONE",
                 moment_confidence=0.0,
                 trigger_event_count=0,
@@ -563,7 +578,7 @@ class OperatorLoop:
                 session_dir=session_dir,
                 session_id=str(session_dir.name),
                 run_id=str(getattr(attempt, "attempt_id", "")),
-                mode="M1",
+                mode=self._spine_mode,
                 moment_id="NONE",
                 moment_confidence=0.0,
                 trigger_event_count=0,
@@ -575,11 +590,19 @@ class OperatorLoop:
         # moment_res is a list; take highest-priority entry
         top = moment_res[0] if isinstance(moment_res, list) else moment_res
 
+        # Build capability for policy engine.
+        # In M2 mode with a view adapter, declare view adjustment allowed.
+        cap: Any = TAP_TONE_ANALYZER
+        if self._spine_mode == "M2" and self._view_adapter is not None:
+            cap = {
+                "automation_limits": {"agent_can_adjust_view": True},
+            }
+
         decision = decide(
             moment=top,
             uwsm=self._uwsm_cached,
-            mode="M1",
-            capability=TAP_TONE_ANALYZER,
+            mode=self._spine_mode,
+            capability=cap,
             context={
                 "session_dir": str(session_dir),
                 "run_id": str(getattr(attempt, "attempt_id", "")),
@@ -587,6 +610,18 @@ class OperatorLoop:
                 "workflow": "measure",
             },
         )
+
+        # M2 command dispatch (PR #20) — fail-closed
+        issue_commands = (decision or {}).get("issue_commands", [])
+        commands_dispatched = 0
+        if issue_commands and self._view_adapter is not None:
+            try:
+                from tap_tone_pi.agentic.spine.view_adapter import dispatch_commands
+                commands_dispatched = dispatch_commands(
+                    self._view_adapter, issue_commands,
+                )
+            except Exception:
+                pass  # fail-closed
 
         directive = (decision or {}).get("directive")
         advisory_action = None
@@ -613,12 +648,12 @@ class OperatorLoop:
                     "highlight_region": self._directive_field(focus, "highlight_region"),
                 }
 
-        # Persist advisory record (commands_count enforced 0 here)
+        # Persist advisory record
         write_shadow_record(
             session_dir=session_dir,
             session_id=str(session_dir.name),
             run_id=str(getattr(attempt, "attempt_id", "")),
-            mode="M1",
+            mode=self._spine_mode,
             moment_id=str(top.get("moment", "NONE")),
             moment_confidence=float(top.get("confidence", 0.0) or 0.0),
             trigger_event_count=len(top.get("trigger_events", []) or []),
@@ -626,7 +661,7 @@ class OperatorLoop:
             advisory_summary=advisory_summary,
             advisory_focus=advisory_focus,
             advisory_confidence=float(advisory_conf) if isinstance(advisory_conf, (int, float)) else None,
-            commands_count=0,
+            commands_count=commands_dispatched,
             error=None,
             policy_trace=(decision or {}).get("diagnostic"),
         )

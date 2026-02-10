@@ -74,8 +74,19 @@ def _dim(uwsm: dict, name: str, default_value: str = "medium") -> str:
     )
 
 
-def _capability_allows_view_adjustment(capability: dict) -> bool:
-    return bool((capability or {}).get("automation_limits", {}).get("agent_can_adjust_view", False))
+def _capability_allows_view_adjustment(capability: Any) -> bool:
+    if capability is None:
+        return False
+    # Dict-style (used in tests and inline capabilities)
+    if isinstance(capability, dict):
+        return bool(capability.get("automation_limits", {}).get("agent_can_adjust_view", False))
+    # Dataclass-style (ToolCapabilityV1)
+    limits = getattr(capability, "automation_limits", None)
+    if limits is None:
+        return False
+    if isinstance(limits, dict):
+        return bool(limits.get("agent_can_adjust_view", False))
+    return bool(getattr(limits, "agent_can_adjust_view", False))
 
 
 def _max_directives_for_load(load_value: str) -> int:
@@ -167,7 +178,7 @@ def decide(
         # keep detail empty or very short (replace keeps frozen-dataclass compatibility)
         directive = replace(directive, detail="")
 
-    # M2: analyzer attention commands if allowed + FIRST_SIGNAL onboarding rule
+    # M2: analyzer attention commands if allowed + moment-specific rules
     if mode == "M2":
         if _capability_allows_view_adjustment(capability):
             # One-Trace onboarding for FIRST_SIGNAL + FTUE
@@ -177,6 +188,11 @@ def decide(
                 issue_commands = [
                     {"name": "hide_all_except", "parameters": {"panel_id": primary_panel}},
                     {"name": "focus_trace", "parameters": {"trace_id": primary_trace}},
+                ]
+            # OVERLOAD recovery: reset view to defaults
+            elif moment_name == "OVERLOAD":
+                issue_commands = [
+                    {"name": "reset_view", "parameters": {}},
                 ]
         else:
             # Fallback to M1 behavior

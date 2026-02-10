@@ -34,6 +34,7 @@ from .shadow_record import (
     load_latest_shadow_record,
     _validate_shadow_record_v1,
 )
+from .view_adapter import ViewAdapter, NullViewAdapter, dispatch_commands
 
 __all__ = [
     "detect_moments",
@@ -49,4 +50,7 @@ __all__ = [
     "ReplayConfig",
     "write_shadow_record",
     "load_latest_shadow_record",
+    "ViewAdapter",
+    "NullViewAdapter",
+    "dispatch_commands",
 ]
