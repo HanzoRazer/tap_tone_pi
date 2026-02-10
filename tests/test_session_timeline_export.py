@@ -47,7 +47,7 @@ def test_export_writes_payload(tmp_path: Path):
 
     data = json.loads(out.read_text(encoding="utf-8"))
     assert data["schema_id"] == "session_timeline_v1"
-    assert data["schema_version"] == 1
+    assert data["schema_version"] == 2
     assert data["session_id"] == "session_001"
     assert data["counts"]["attention_requested"] == 1
     assert data["counts"]["attention_acknowledged"] == 1

@@ -123,6 +123,13 @@ try:
 except ImportError:
     HAS_EXPORT = False
 
+# Timeline viewer (PR #18 enhancement)
+try:
+    from tap_tone_pi.gui.timeline_viewer import TimelineViewerDialog
+    HAS_TIMELINE_VIEWER = True
+except ImportError:
+    HAS_TIMELINE_VIEWER = False
+
 
 class SpectrumViewer(tk.Toplevel):
     """Matplotlib spectrum viewer window (Phase 6 enhancement)."""
@@ -560,6 +567,24 @@ class QualityVerdictViewer(tk.Toplevel):
                 from tap_tone_pi.gui.tooltip import Tooltip
                 Tooltip(ack_btn, "Record that you reviewed and accept this advisory.")
                 Tooltip(dis_btn, "Dismiss this advisory without acting on it.")
+            except Exception:
+                pass
+
+        # -----------------------------------------------------------------
+        # Session Timeline button (PR #18) — fail-closed
+        # -----------------------------------------------------------------
+        if self.session_dir is not None and HAS_TIMELINE_VIEWER:
+            try:
+                tl_btn = tk.Button(
+                    main,
+                    text="📋 Timeline",
+                    command=lambda: TimelineViewerDialog(
+                        self, pathlib.Path(self.session_dir),
+                    ),
+                    font=("Helvetica", 9),
+                    cursor="hand2",
+                )
+                tl_btn.pack(anchor=tk.W, pady=(6, 0))
             except Exception:
                 pass
 
@@ -1024,6 +1049,13 @@ class App(tk.Tk):
                 accelerator="Ctrl+E",
             )
             tools_menu.add_separator()
+        if HAS_TIMELINE_VIEWER:
+            tools_menu.add_command(
+                label="View Session Timeline...",
+                command=self.do_view_timeline,
+                accelerator="Ctrl+T",
+            )
+            tools_menu.add_separator()
         tools_menu.add_command(label="Chladni Wizard...", command=self.do_chladni_wizard)
 
         # Help menu
@@ -1074,6 +1106,8 @@ class App(tk.Tk):
             self.bind_all("<Control-g>", lambda e: self.do_grid_measure())
         if HAS_EXPORT:
             self.bind_all("<Control-e>", lambda e: self.do_export_viewer_pack())
+        if HAS_TIMELINE_VIEWER:
+            self.bind_all("<Control-t>", lambda e: self.do_view_timeline())
 
         # Help
         self.bind_all("<F1>", lambda e: self._show_about())
@@ -1791,6 +1825,27 @@ class App(tk.Tk):
             *artifacts, *rig
         ]
         run(" ".join(shlex.quote(c) for c in cmd))
+
+    def do_view_timeline(self) -> None:
+        """Open the session timeline viewer for the current session."""
+        if not HAS_TIMELINE_VIEWER:
+            messagebox.showerror("Error", "Timeline viewer module not available")
+            return
+
+        run = self.run_id.get().strip()
+        session_dir = self.outdir()
+        if run:
+            session_dir = OUT / run
+
+        if not session_dir.exists():
+            messagebox.showwarning(
+                "No Session",
+                "No active session directory found.\n"
+                "Run a measurement first or select a session.",
+            )
+            return
+
+        TimelineViewerDialog(self, session_dir)
 
     def do_chladni_wizard(self) -> None:
         """

@@ -151,7 +151,7 @@ def test_missing_required_field_fails_validation() -> None:
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     bad_payload = {
         # "schema_id" intentionally omitted
-        "schema_version": 1,
+        "schema_version": 2,
         "session_id": "test",
         "paths": {
             "events_jsonl": "events.jsonl",
@@ -166,6 +166,7 @@ def test_missing_required_field_fails_validation() -> None:
             "attention_dismissed": 0,
         },
         "ui_state": {},
+        "latest_policy_trace": None,
     }
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(instance=bad_payload, schema=schema)
@@ -177,7 +178,7 @@ def test_extra_top_level_field_fails_validation() -> None:
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     bad_payload = {
         "schema_id": "session_timeline_v1",
-        "schema_version": 1,
+        "schema_version": 2,
         "session_id": "test",
         "paths": {
             "events_jsonl": "events.jsonl",
@@ -192,6 +193,7 @@ def test_extra_top_level_field_fails_validation() -> None:
             "attention_dismissed": 0,
         },
         "ui_state": {},
+        "latest_policy_trace": None,
         "rogue_field": True,
     }
     with pytest.raises(jsonschema.ValidationError):
@@ -266,7 +268,7 @@ def test_directive_event_with_extra_field_validates() -> None:
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     payload = {
         "schema_id": "session_timeline_v1",
-        "schema_version": 1,
+        "schema_version": 2,
         "session_id": "test",
         "paths": {
             "events_jsonl": "events.jsonl",
@@ -289,6 +291,7 @@ def test_directive_event_with_extra_field_validates() -> None:
             "attention_dismissed": 0,
         },
         "ui_state": {},
+        "latest_policy_trace": None,
     }
     jsonschema.validate(instance=payload, schema=schema)
 
@@ -299,7 +302,7 @@ def test_paths_with_extra_key_validates() -> None:
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     payload = {
         "schema_id": "session_timeline_v1",
-        "schema_version": 1,
+        "schema_version": 2,
         "session_id": "test",
         "paths": {
             "events_jsonl": "events.jsonl",
@@ -315,6 +318,7 @@ def test_paths_with_extra_key_validates() -> None:
             "attention_dismissed": 0,
         },
         "ui_state": {},
+        "latest_policy_trace": None,
     }
     jsonschema.validate(instance=payload, schema=schema)
 
@@ -325,7 +329,7 @@ def test_ui_state_with_arbitrary_keys_validates() -> None:
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     payload = {
         "schema_id": "session_timeline_v1",
-        "schema_version": 1,
+        "schema_version": 2,
         "session_id": "test",
         "paths": {
             "events_jsonl": "events.jsonl",
@@ -343,5 +347,6 @@ def test_ui_state_with_arbitrary_keys_validates() -> None:
             "show_directive_history": True,
             "custom_pref": {"nested": 42},
         },
+        "latest_policy_trace": None,
     }
     jsonschema.validate(instance=payload, schema=schema)

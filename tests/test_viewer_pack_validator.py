@@ -272,7 +272,7 @@ def _write_valid_timeline(pack: Path) -> None:
     meta.mkdir(parents=True, exist_ok=True)
     payload = {
         "schema_id": "session_timeline_v1",
-        "schema_version": 1,
+        "schema_version": 2,
         "session_id": "valid_pack",
         "paths": {
             "events_jsonl": "events.jsonl",
@@ -294,6 +294,7 @@ def _write_valid_timeline(pack: Path) -> None:
             "attention_dismissed": 0,
         },
         "ui_state": {},
+        "latest_policy_trace": None,
     }
     (meta / "session_timeline_v1.json").write_text(
         json.dumps(payload), encoding="utf-8",

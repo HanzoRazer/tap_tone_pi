@@ -136,6 +136,16 @@ def _validate_shadow_record_v1(rec: Dict[str, Any]) -> None:
                     "shadow record advisory.focus.target_id must be non-empty str"
                 )
 
+    # -- policy_trace (optional, PR #19) --
+    ptrace = rec.get("policy_trace")
+    if ptrace is not None:
+        if not isinstance(ptrace, dict):
+            raise ValueError("shadow record policy_trace must be null or object")
+        if "rule_id" not in ptrace or not isinstance(ptrace["rule_id"], str):
+            raise ValueError(
+                "shadow record policy_trace must contain a non-empty rule_id str"
+            )
+
 
 # -------------------------------------------------------------------------
 # Writer
@@ -156,6 +166,7 @@ def write_shadow_record(
     advisory_confidence: Optional[float] = None,
     commands_count: int = 0,
     error: Optional[Dict[str, str]] = None,
+    policy_trace: Optional[Dict[str, Any]] = None,
     append_path: str = "spine_shadow.jsonl",
     latest_path: str = "spine_shadow_latest.json",
     validate: bool = True,
@@ -211,6 +222,7 @@ def write_shadow_record(
         "advisory": advisory,
         "commands": {"count": int(commands_count)},
         "error": error,
+        "policy_trace": policy_trace,
     }
 
     if validate:

@@ -95,6 +95,11 @@ def export_session_timeline(
             session_dir / "meta" / "advisory_state.json",
         ) or {}
 
+        # Optional: policy trace from shadow record (PR #19)
+        policy_trace = None
+        if shadow and isinstance(shadow.get("policy_trace"), dict):
+            policy_trace = shadow["policy_trace"]
+
         # Source paths (relative, OS-neutral)
         paths = {
             "events_jsonl": "events.jsonl",
@@ -104,13 +109,14 @@ def export_session_timeline(
 
         payload: dict[str, Any] = {
             "schema_id": "session_timeline_v1",
-            "schema_version": 1,
+            "schema_version": 2,
             "session_id": session_dir.name,
             "paths": paths,
             "moment_latest": moment_snapshot,
             "directive_events": events,
             "counts": counts,
             "ui_state": ui_state,
+            "latest_policy_trace": policy_trace,
         }
 
         if out_path is None:

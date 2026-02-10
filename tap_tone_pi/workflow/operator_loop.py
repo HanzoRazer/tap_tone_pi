@@ -628,6 +628,7 @@ class OperatorLoop:
             advisory_confidence=float(advisory_conf) if isinstance(advisory_conf, (int, float)) else None,
             commands_count=0,
             error=None,
+            policy_trace=(decision or {}).get("diagnostic"),
         )
 
     def override_failed(self, point_id: str, reason: str) -> Attempt | None:
