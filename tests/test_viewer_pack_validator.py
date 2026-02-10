@@ -260,3 +260,150 @@ def test_report_to_dict(valid_pack: Path):
     assert "errors" in d
     assert "warnings" in d
     assert "stats" in d
+
+
+# ------------------------------------------------------------------
+# T-001: Session Timeline validation
+# ------------------------------------------------------------------
+
+def _write_valid_timeline(pack: Path) -> None:
+    """Write a minimally valid session_timeline_v1.json."""
+    meta = pack / "meta"
+    meta.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "schema_id": "session_timeline_v1",
+        "schema_version": 1,
+        "session_id": "valid_pack",
+        "paths": {
+            "events_jsonl": "events.jsonl",
+            "shadow_latest": "spine_shadow_latest.json",
+            "advisory_state": "meta/advisory_state.json",
+        },
+        "moment_latest": None,
+        "directive_events": [
+            {
+                "timestamp": "t1",
+                "event_type": "attention_acknowledged",
+                "directive_id": "d1",
+                "component": "cli",
+            }
+        ],
+        "counts": {
+            "attention_requested": 0,
+            "attention_acknowledged": 1,
+            "attention_dismissed": 0,
+        },
+        "ui_state": {},
+    }
+    (meta / "session_timeline_v1.json").write_text(
+        json.dumps(payload), encoding="utf-8",
+    )
+
+
+def test_pack_without_timeline_passes(valid_pack: Path):
+    """Pack without timeline should pass (backward compat)."""
+    timeline = valid_pack / "meta" / "session_timeline_v1.json"
+    if timeline.exists():
+        timeline.unlink()
+    report = validate_pack(valid_pack)
+    assert report.passed, f"Errors: {report.errors}"
+    assert report.stats.get("timeline_present") == 0
+
+
+def test_pack_with_valid_timeline_passes(valid_pack: Path):
+    """Valid timeline should not introduce errors."""
+    _write_valid_timeline(valid_pack)
+    report = validate_pack(valid_pack)
+    assert report.passed, f"Errors: {report.errors}"
+    assert report.stats.get("timeline_present") == 1
+
+
+def test_invalid_timeline_schema_id_fails(valid_pack: Path):
+    """Wrong schema_id should fail T-001 (if schema file available)."""
+    _write_valid_timeline(valid_pack)
+    p = valid_pack / "meta" / "session_timeline_v1.json"
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    doc["schema_id"] = "wrong"
+    p.write_text(json.dumps(doc), encoding="utf-8")
+
+    report = validate_pack(valid_pack)
+    schema_missing = any(w["rule"] == "T-000" for w in report.warnings)
+    if not schema_missing:
+        assert not report.passed
+        assert any(e["rule"] == "T-001" for e in report.errors)
+
+
+def test_timeline_not_json_object_fails(valid_pack: Path):
+    """Timeline that is not a JSON object should fail T-001."""
+    meta = valid_pack / "meta"
+    meta.mkdir(parents=True, exist_ok=True)
+    (meta / "session_timeline_v1.json").write_text(
+        '"just a string"', encoding="utf-8",
+    )
+
+    report = validate_pack(valid_pack)
+    assert not report.passed
+    assert any(e["rule"] == "T-001" for e in report.errors)
+
+
+def test_timeline_invalid_json_fails(valid_pack: Path):
+    """Timeline with broken JSON should fail T-001."""
+    meta = valid_pack / "meta"
+    meta.mkdir(parents=True, exist_ok=True)
+    (meta / "session_timeline_v1.json").write_text(
+        "{broken json", encoding="utf-8",
+    )
+
+    report = validate_pack(valid_pack)
+    assert not report.passed
+    assert any(e["rule"] == "T-001" for e in report.errors)
+
+
+def test_missing_timeline_schema_is_error_in_ci(valid_pack: Path, monkeypatch):
+    """In CI, schema presence is mandatory when timeline exists."""
+    _write_valid_timeline(valid_pack)
+    monkeypatch.setenv("CI", "true")
+
+    import tap_tone.validate.viewer_pack_v1 as vp
+    monkeypatch.setattr(vp, "_load_contract_schema", lambda _p: None)
+
+    report = vp.validate_pack(valid_pack)
+    assert not report.passed
+    assert any(e["rule"] == "T-000" for e in report.errors)
+
+
+def test_ci_requires_timeline_valid_when_present(valid_pack: Path, monkeypatch):
+    """CI gate: timeline_present==1 requires timeline_valid==1."""
+    _write_valid_timeline(valid_pack)
+    monkeypatch.setenv("CI", "true")
+
+    # Valid timeline + schema available → should pass with timeline_valid==1
+    report = validate_pack(valid_pack)
+    # If schema is loadable, timeline_valid should be 1 and T-002 should not fire
+    schema_missing = any(
+        w["rule"] == "T-000" for w in report.warnings
+    ) or any(e["rule"] == "T-000" for e in report.errors)
+    if not schema_missing:
+        assert report.stats.get("timeline_valid") == 1
+        assert not any(e["rule"] == "T-002" for e in report.errors)
+
+
+def test_ci_fires_t002_when_timeline_invalid(valid_pack: Path, monkeypatch):
+    """CI gate: invalid timeline doc fires T-002 (in addition to T-001)."""
+    _write_valid_timeline(valid_pack)
+    monkeypatch.setenv("CI", "true")
+
+    # Corrupt the doc so schema validation fails
+    p = valid_pack / "meta" / "session_timeline_v1.json"
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    doc["schema_id"] = "wrong"
+    p.write_text(json.dumps(doc), encoding="utf-8")
+
+    report = validate_pack(valid_pack)
+    schema_missing = any(
+        w["rule"] == "T-000" for w in report.warnings
+    ) or any(e["rule"] == "T-000" for e in report.errors)
+    if not schema_missing:
+        assert not report.passed
+        assert any(e["rule"] == "T-001" for e in report.errors)
+        assert any(e["rule"] == "T-002" for e in report.errors)

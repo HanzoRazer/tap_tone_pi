@@ -1,5 +1,7 @@
 # Agent Decision Policy Spec v1
 
+> **Deprecation note (v2.2.3):** Directive payloads use `summary` as the canonical field; legacy `title` is no longer emitted.
+
 **Version:** 1.0.0
 **Date:** 2026-02-06
 **Status:** Phase 2 Spine Document

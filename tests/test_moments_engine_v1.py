@@ -127,3 +127,72 @@ def test_priority_error_suppresses_overload(ev_user_feedback_too_much, ev_analys
     assert "ERROR" in names
     # Priority spec: ERROR suppresses OVERLOAD
     assert "OVERLOAD" not in names
+
+
+# ---------------------------------------------------------------------------
+# PR #10 — MOM-004 CONFIDENCE_CLIMB
+# ---------------------------------------------------------------------------
+
+def test_confidence_climb_high_ack_rate(ev_confidence_climb_stream):
+    """MOM-004: ≥5 shown + ≥80% ack rate → CONFIDENCE_CLIMB."""
+    detect_moments = _import_detector()
+    moments = detect_moments(ev_confidence_climb_stream)
+    assert "CONFIDENCE_CLIMB" in _moment_names(moments)
+
+
+def test_confidence_climb_below_threshold(ev_mixed_below_threshold):
+    """60% ack rate is below 80% threshold → no CONFIDENCE_CLIMB."""
+    detect_moments = _import_detector()
+    moments = detect_moments(ev_mixed_below_threshold)
+    assert "CONFIDENCE_CLIMB" not in _moment_names(moments)
+
+
+def test_confidence_climb_too_few_shown(ev_too_few_shown):
+    """Only 3 directives shown → below 5-directive floor, no moment."""
+    detect_moments = _import_detector()
+    moments = detect_moments(ev_too_few_shown)
+    assert "CONFIDENCE_CLIMB" not in _moment_names(moments)
+
+
+# ---------------------------------------------------------------------------
+# PR #10 — MOM-005 TRUST_EROSION
+# ---------------------------------------------------------------------------
+
+def test_trust_erosion_high_dismiss_rate(ev_trust_erosion_stream):
+    """MOM-005 Path A: ≥60% dismiss rate over ≥5 outcomes → TRUST_EROSION."""
+    detect_moments = _import_detector()
+    moments = detect_moments(ev_trust_erosion_stream)
+    assert "TRUST_EROSION" in _moment_names(moments)
+
+
+def test_trust_erosion_idle_path(ev_trust_erosion_idle_path):
+    """MOM-005 Path B: 3+ idle_timeout events → TRUST_EROSION."""
+    detect_moments = _import_detector()
+    moments = detect_moments(ev_trust_erosion_idle_path)
+    assert "TRUST_EROSION" in _moment_names(moments)
+
+
+def test_trust_erosion_below_threshold(ev_mixed_below_threshold):
+    """40% dismiss rate is below 60% threshold → no TRUST_EROSION."""
+    detect_moments = _import_detector()
+    moments = detect_moments(ev_mixed_below_threshold)
+    assert "TRUST_EROSION" not in _moment_names(moments)
+
+
+def test_trust_erosion_suppresses_confidence_climb(ev_trust_erosion_stream):
+    """TRUST_EROSION has higher priority than CONFIDENCE_CLIMB — only one winner."""
+    detect_moments = _import_detector()
+    moments = detect_moments(ev_trust_erosion_stream)
+    names = _moment_names(moments)
+    if "TRUST_EROSION" in names:
+        # Priority suppression: only highest-priority moment returned
+        assert len(moments) == 1
+
+
+def test_priority_error_suppresses_trust_erosion(ev_trust_erosion_stream, ev_analysis_failed):
+    """ERROR (priority 1) suppresses TRUST_EROSION (priority 3)."""
+    detect_moments = _import_detector()
+    moments = detect_moments(ev_trust_erosion_stream + [ev_analysis_failed])
+    names = _moment_names(moments)
+    assert "ERROR" in names
+    assert "TRUST_EROSION" not in names

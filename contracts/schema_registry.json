@@ -91,6 +91,16 @@
       "status": "stable",
       "owner": "chladni-team",
       "description": "Chladni pattern run index with peaks, patterns, and image provenance"
+    },
+
+    "session_timeline": {
+      "file": "session_timeline_v1.schema.json",
+      "path": "contracts/schemas/session_timeline_v1.schema.json",
+      "version": "1.0.0",
+      "schema_version_const": "session_timeline_v1",
+      "status": "stable",
+      "owner": "agentic-team",
+      "description": "Session directive timeline with moment snapshots, event counts, and UI state"
     }
   },
 
@@ -112,6 +122,10 @@
     "chladni-team": {
       "description": "Chladni pattern analysis and mesh integration",
       "schemas": ["chladni_run"]
+    },
+    "agentic-team": {
+      "description": "Agentic spine session artifacts and directive timelines",
+      "schemas": ["session_timeline"]
     }
   },
 

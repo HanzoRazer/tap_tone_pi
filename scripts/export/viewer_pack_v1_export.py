@@ -377,6 +377,19 @@ def build_pack_tree_phase2(session_dir: Path, pack_dir: Path) -> tuple[List[File
                 entries.append(_make_entry(pack_dir / dst_relpath, dst_relpath))
                 contents.plots = True
     
+    # ------------------------------------------------------------------
+    # PR #17: session_timeline_v1.json (read-only, fail-closed)
+    # ------------------------------------------------------------------
+    try:
+        from tap_tone_pi.core.session_timeline import export_session_timeline
+        tl_path = export_session_timeline(session_dir)
+        if tl_path is not None and tl_path.is_file():
+            dst_relpath = "meta/session_timeline_v1.json"
+            if _copy_file(tl_path, pack_dir / dst_relpath):
+                entries.append(_make_entry(pack_dir / dst_relpath, dst_relpath))
+    except Exception:
+        pass  # Non-fatal: pack is valid without timeline
+
     return entries, contents, point_ids
 
 

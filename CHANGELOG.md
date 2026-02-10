@@ -2,6 +2,32 @@
 
 All notable changes to this project are documented here. This file follows [Keep a Changelog](https://keepachangelog.com/) style and [Semantic Versioning](https://semver.org/).
 
+## [2.2.5] — 2026-02-09
+
+### Added
+- **Directive outcome events (PR #10):** `emit_attention_acknowledged()` and `emit_attention_dismissed()` convenience emitters in `events.py`.
+- **MOM-004 CONFIDENCE_CLIMB:** Detects ≥80% acknowledge rate over ≥5 directive outcomes — signals growing user trust.
+- **MOM-005 TRUST_EROSION:** Detects ≥60% dismiss rate (Path A) or 3+ idle-timeout events (Path B) — signals declining trust.
+- Policy mapping: CONFIDENCE_CLIMB → INSPECT, TRUST_EROSION → REVIEW.
+- 8 moment-detection tests covering both moments, threshold boundaries, and priority suppression.
+
+---
+
+## [2.2.4] — 2026-02-09
+
+### Changed
+- **Frozen contracts (PR #9):** `AttentionDirectiveV1` is now `@dataclass(frozen=True)`. Policy guidance-density gate uses `dataclasses.replace()` instead of in-place mutation. Regression test asserts immutability.
+
+---
+
+## [2.2.3] — 2026-02-09
+
+### Changed
+- **Directive schema:** Removed legacy `title` field from `policy._build_directive()`; use `summary` as the sole canonical field.
+- **Directive dataclass migration (PR #8):** `_build_directive()` returns `AttentionDirectiveV1` dataclass; `_coerce_directive()` seam guard ensures `decide()` never returns a plain dict directive. Tests assert contract type + `to_dict()` shape; wrapper dict keys unchanged.
+
+---
+
 ## [2.2.2] — 2026-02-08
 
 ### Added

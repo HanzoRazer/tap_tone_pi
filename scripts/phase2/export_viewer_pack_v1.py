@@ -341,6 +341,17 @@ def export_viewer_pack(
         for png in sorted(plots_dir.glob("*.png")):
             add_file(png, f"plots/{png.name}")
 
+    # ------------------------------------------------------------------
+    # PR #17: session_timeline_v1.json (read-only, fail-closed)
+    # ------------------------------------------------------------------
+    try:
+        from tap_tone_pi.core.session_timeline import export_session_timeline
+        tl_path = export_session_timeline(session_dir)
+        if tl_path is not None and tl_path.is_file():
+            add_file(tl_path, "meta/session_timeline_v1.json")
+    except Exception:
+        pass  # Non-fatal: pack is valid without timeline
+
     # manifest (schema_version matches contracts/viewer_pack_v1.schema.json)
     manifest: Dict[str, Any] = {
         "schema_version": "v1",

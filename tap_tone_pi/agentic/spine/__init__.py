@@ -22,14 +22,31 @@ For full specifications, see:
 from .moments import detect_moments
 from .policy import decide
 from .uwsm_update import apply_uwsm_updates, ensure_uwsm
+from .uwsm_store import (
+    get_uwsm_path,
+    load_uwsm_state,
+    apply_uwsm_decay,
+    save_uwsm_state,
+)
 from .replay import run_shadow_replay, load_events, ReplayConfig
+from .shadow_record import (
+    write_shadow_record,
+    load_latest_shadow_record,
+    _validate_shadow_record_v1,
+)
 
 __all__ = [
     "detect_moments",
     "decide",
     "apply_uwsm_updates",
     "ensure_uwsm",
+    "get_uwsm_path",
+    "load_uwsm_state",
+    "apply_uwsm_decay",
+    "save_uwsm_state",
     "run_shadow_replay",
     "load_events",
     "ReplayConfig",
+    "write_shadow_record",
+    "load_latest_shadow_record",
 ]

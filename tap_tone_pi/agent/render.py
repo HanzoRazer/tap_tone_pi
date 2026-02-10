@@ -5,7 +5,7 @@ Supports both standalone (types.py) and integrated (messages.py) AgentMessage.
 """
 from __future__ import annotations
 
-from typing import Any, Union
+from typing import Any, Dict, Optional, Union
 
 # Import standalone types for type hints
 from .types import AgentMessage as StandaloneAgentMessage
@@ -188,3 +188,137 @@ def render_compact(msg: AgentMessage) -> str:
                 rule_ids = list(v) if not isinstance(v, list) else v
                 break
     return f"{severity.upper()}: {msg.title} | rules={rule_ids} | actions={action_ids}"
+
+
+# =============================================================================
+# SHADOW DIRECTIVE RENDERING (PR #3 — CLI co-render)
+# =============================================================================
+
+def _directive_severity(action: str | None) -> str:
+    """Map advisory action to severity for ``_colorize``."""
+    if action in ("ABORT", "INTERVENE"):
+        return "error"
+    if action in ("REVIEW", "COMPARE", "DECIDE", "CONFIRM"):
+        return "warn"
+    return "info"
+
+
+def render_cli_shadow_record(
+    rec: Dict[str, Any],
+    *,
+    color: bool = True,
+    verbose: bool = False,
+) -> Optional[str]:
+    """Render a Spine Shadow Directive Record (v1) for CLI output.
+
+    Follows the same title + ``=`` underline + Details convention as
+    ``render_cli`` so the two blocks look consistent when co-rendered.
+
+    Args:
+        rec: Shadow record dict (as returned by ``load_latest_shadow_record``).
+        color: Enable ANSI formatting (CLI-only).
+        verbose: Print safe debug fields (trigger counts, IDs).
+
+    Returns:
+        Formatted string, or ``None`` if the record is not renderable.
+    """
+    if not isinstance(rec, dict):
+        return None
+
+    mode = rec.get("mode")
+    moment = rec.get("moment", {}) or {}
+    advisory = rec.get("advisory")
+    error = rec.get("error")
+    commands = rec.get("commands", {}) or {}
+
+    # Nothing to render
+    if advisory is None and moment.get("id") in (None, "NONE"):
+        return None
+
+    # ---- title + underline (matches render_cli) ----
+    header_mode = mode if isinstance(mode, str) else "M0"
+    title_text = f"Advisory directive ({header_mode})"
+    severity = _directive_severity(
+        advisory.get("action") if isinstance(advisory, dict) else None,
+    )
+    title_line = _colorize(title_text, severity) if color else title_text
+    lines: list[str] = [title_line, "=" * len(title_text)]
+
+    # ---- error path: note + optional verbose, then return ----
+    if error:
+        err_type = error.get("type", "Error")
+        err_msg = error.get("message", "")
+        note = f"Note: {err_type}: {err_msg}".strip()
+        if color:
+            note = _colorize(note, "warn")
+        lines.append("")
+        lines.append(note)
+        if verbose:
+            stage = error.get("stage")
+            if stage:
+                lines.append("")
+                lines.append("Details:")
+                lines.append(f"  Stage: {stage}")
+        return "\n".join(lines)
+
+    # ---- extract advisory fields (forgiving) ----
+    action = advisory.get("action") if isinstance(advisory, dict) else None
+    summary = advisory.get("summary") if isinstance(advisory, dict) else None
+    focus = advisory.get("focus") if isinstance(advisory, dict) else None
+    adv_conf = advisory.get("confidence") if isinstance(advisory, dict) else None
+
+    moment_id = moment.get("id")
+    moment_conf = moment.get("confidence")
+    trigger_count = moment.get("trigger_event_count")
+
+    # ---- summary (blank line, then text — same as render_cli) ----
+    if not summary:
+        summary = moment_id
+    if isinstance(summary, str) and summary:
+        lines.append("")
+        lines.append(summary)
+
+    # ---- details section (2-space indent, matches render_cli) ----
+    detail_lines: list[str] = []
+
+    if isinstance(action, str) and action:
+        detail_lines.append(f"  Action: {action}")
+
+    if isinstance(focus, dict):
+        target_type = focus.get("target_type")
+        target_id = focus.get("target_id")
+        if target_type and target_id:
+            detail_lines.append(f"  Focus: {target_type}:{target_id}")
+
+    confidence = adv_conf if isinstance(adv_conf, (int, float)) else moment_conf
+    if isinstance(confidence, (int, float)):
+        try:
+            detail_lines.append(f"  Confidence: {float(confidence):.2f}")
+        except Exception:
+            pass
+
+    # verbose extras also live in the Details block
+    if verbose:
+        if isinstance(moment_id, str) and moment_id:
+            detail_lines.append(f"  Moment: {moment_id}")
+        if isinstance(trigger_count, int):
+            detail_lines.append(f"  Triggers: {trigger_count}")
+        cmd_count = commands.get("count")
+        if isinstance(cmd_count, int):
+            detail_lines.append(f"  Commands: {cmd_count}")
+        sess = rec.get("session_id")
+        run = rec.get("run_id")
+        ts = rec.get("timestamp")
+        if isinstance(sess, str) and sess:
+            detail_lines.append(f"  Session: {sess}")
+        if isinstance(run, str) and run:
+            detail_lines.append(f"  Run: {run}")
+        if isinstance(ts, str) and ts:
+            detail_lines.append(f"  Time: {ts}")
+
+    if detail_lines:
+        lines.append("")
+        lines.append("Details:")
+        lines.extend(detail_lines)
+
+    return "\n".join(lines)

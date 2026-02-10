@@ -12,6 +12,19 @@ from pathlib import Path
 
 import pytest
 
+# ---------------------------------------------------------------------------
+# Preflight: these tests shell out to scripts that import tap_tone_pi modules.
+# Require editable install (pip install -e .) for subprocess imports to work.
+# ---------------------------------------------------------------------------
+try:
+    import tap_tone_pi  # noqa: F401
+except Exception:
+    pytest.skip(
+        "Editable install required for viewer pack validation tests. "
+        "Run: pip install -e .",
+        allow_module_level=True,
+    )
+
 ROOT = Path(__file__).resolve().parent.parent
 SESSIONS_DIR = ROOT / "runs_phase2"
 VALIDATOR = ROOT / "scripts" / "phase2" / "validate_viewer_pack_v1.py"

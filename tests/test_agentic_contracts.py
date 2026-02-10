@@ -137,6 +137,35 @@ class TestAttentionDirectiveV1:
         assert d["focus"]["highlight_region"]["freq_hz"] == 247
         json.dumps(d)
 
+    def test_contract_attention_directive_requires_summary_field_in_json(self):
+        """
+        Contract-level invariant (PR #7):
+        directive payloads must include 'summary' (canonical) and it must be non-empty.
+
+        This prevents regressions if policy generation changes and accidentally drops summary.
+        """
+        d = AttentionDirectiveV1(
+            directive_id="dir_test_001",
+            action=AttentionAction.REVIEW,
+            summary="Potential finding detected near 432 Hz",
+            detail="",
+            focus=FocusTarget(
+                target_type="spectrum",
+                target_id="peak@432Hz",
+                highlight_region=None,
+            ),
+            urgency=0.5,
+            confidence=0.8,
+            evidence_refs=(),
+            source_tool="tap_tone_analyzer",
+            auto_dismiss_after_seconds=None,
+        )
+        payload = d.to_dict()
+        assert "summary" in payload
+        assert isinstance(payload["summary"], str)
+        assert payload["summary"].strip() != ""
+        assert "title" not in payload
+
 
 # -----------------------------------------------------------------------------
 # AgentEventV1 Tests

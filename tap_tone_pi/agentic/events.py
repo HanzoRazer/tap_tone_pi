@@ -96,6 +96,34 @@ def _append_event_to_log(event: AgentEventV1, log_path: Path) -> None:
 
 
 # -----------------------------------------------------------------------------
+# JSONL Event Writer
+# -----------------------------------------------------------------------------
+
+class JsonlEventWriter:
+    """Append-only JSONL writer for AgentEventV1 events.
+
+    One writer per session.  Creates the file lazily on first write.
+    Single-process assumption — no locking.
+
+    Usage:
+        writer = JsonlEventWriter(Path(session_dir) / "events.jsonl")
+        writer.write(event)
+    """
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self._created = False
+
+    def write(self, event: AgentEventV1) -> None:
+        """Append a single event as one JSONL line."""
+        if not self._created:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self._created = True
+        with self.path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(event.to_dict()) + "\n")
+
+
+# -----------------------------------------------------------------------------
 # Convenience Emitters
 # -----------------------------------------------------------------------------
 
@@ -163,6 +191,52 @@ def emit_analysis_failed(
     )
 
 
+def emit_artifact_created(
+    component: str,
+    run_id: str,
+    artifact_name: str,
+    artifact_type: str,
+    *,
+    correlation_id: str = "",
+    event_log_path: Optional[Path] = None,
+) -> AgentEventV1:
+    """Emit ARTIFACT_CREATED event."""
+    return emit_event(
+        EventType.ARTIFACT_CREATED,
+        component,
+        payload={
+            "run_id": run_id,
+            "artifact_name": artifact_name,
+            "artifact_type": artifact_type,
+        },
+        correlation_id=correlation_id or run_id,
+        event_log_path=event_log_path,
+    )
+
+
+def emit_decision_required(
+    component: str,
+    run_id: str,
+    decision_type: str,
+    options: Optional[List[str]] = None,
+    *,
+    correlation_id: str = "",
+    event_log_path: Optional[Path] = None,
+) -> AgentEventV1:
+    """Emit DECISION_REQUIRED event."""
+    return emit_event(
+        EventType.DECISION_REQUIRED,
+        component,
+        payload={
+            "run_id": run_id,
+            "decision_type": decision_type,
+            "options": options or [],
+        },
+        correlation_id=correlation_id or run_id,
+        event_log_path=event_log_path,
+    )
+
+
 def emit_attention_requested(
     component: str,
     directive: AttentionDirectiveV1,
@@ -175,6 +249,48 @@ def emit_attention_requested(
         EventType.ATTENTION_REQUESTED,
         component,
         payload={"directive": directive.to_dict()},
+        correlation_id=correlation_id,
+        event_log_path=event_log_path,
+    )
+
+
+def emit_attention_acknowledged(
+    component: str,
+    directive_id: str,
+    *,
+    action_taken: str = "",
+    correlation_id: str = "",
+    event_log_path: Optional[Path] = None,
+) -> AgentEventV1:
+    """Emit ATTENTION_ACKNOWLEDGED event when user accepts/acts on a directive."""
+    return emit_event(
+        EventType.ATTENTION_ACKNOWLEDGED,
+        component,
+        payload={
+            "directive_id": directive_id,
+            "action_taken": action_taken,
+        },
+        correlation_id=correlation_id,
+        event_log_path=event_log_path,
+    )
+
+
+def emit_attention_dismissed(
+    component: str,
+    directive_id: str,
+    *,
+    reason: str = "",
+    correlation_id: str = "",
+    event_log_path: Optional[Path] = None,
+) -> AgentEventV1:
+    """Emit ATTENTION_DISMISSED event when user dismisses/rejects a directive."""
+    return emit_event(
+        EventType.ATTENTION_DISMISSED,
+        component,
+        payload={
+            "directive_id": directive_id,
+            "reason": reason,
+        },
         correlation_id=correlation_id,
         event_log_path=event_log_path,
     )

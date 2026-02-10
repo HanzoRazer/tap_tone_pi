@@ -1,6 +1,7 @@
 """Unit tests for tap_tone.ingest.toolbox — ToolBox ZIP ingest.
 
 Tests mock HTTP only — no hardware or network dependency.
+Requires ``requests`` (optional external dep); auto-skipped when missing.
 """
 from __future__ import annotations
 
@@ -10,6 +11,8 @@ from unittest.mock import Mock, patch, MagicMock
 import tempfile
 
 import pytest
+
+pytest.importorskip("requests", reason="requests package required for ingest tests")
 
 from tap_tone.ingest.toolbox import ingest_zip, IngestResult, INGEST_ENDPOINT
 

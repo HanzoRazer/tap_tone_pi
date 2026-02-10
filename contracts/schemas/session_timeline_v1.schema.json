@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "session_timeline_v1.schema.json",
+  "title": "Session Timeline V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "session_id",
+    "paths",
+    "moment_latest",
+    "directive_events",
+    "counts",
+    "ui_state"
+  ],
+  "properties": {
+    "schema_id": {
+      "type": "string",
+      "const": "session_timeline_v1"
+    },
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "paths": {
+      "type": "object",
+      "required": ["events_jsonl", "shadow_latest", "advisory_state"],
+      "properties": {
+        "events_jsonl": { "type": "string" },
+        "shadow_latest": { "type": "string" },
+        "advisory_state": { "type": "string" }
+      }
+    },
+    "moment_latest": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["id", "confidence", "trigger_event_count"],
+      "properties": {
+        "id": { "type": ["string", "null"] },
+        "confidence": { "type": ["number", "null"] },
+        "trigger_event_count": { "type": ["integer", "null"] }
+      }
+    },
+    "directive_events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["timestamp", "event_type"],
+        "properties": {
+          "timestamp": { "type": "string" },
+          "event_type": {
+            "type": "string",
+            "enum": [
+              "attention_requested",
+              "attention_acknowledged",
+              "attention_dismissed"
+            ]
+          },
+          "directive_id": { "type": ["string", "null"] },
+          "component": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attention_requested",
+        "attention_acknowledged",
+        "attention_dismissed"
+      ],
+      "properties": {
+        "attention_requested": { "type": "integer", "minimum": 0 },
+        "attention_acknowledged": { "type": "integer", "minimum": 0 },
+        "attention_dismissed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "ui_state": {
+      "type": "object"
+    }
+  }
+}

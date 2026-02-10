@@ -198,7 +198,9 @@ class QualityVerdictViewer(tk.Toplevel):
         on_accept: callable = None,
         on_retry: callable = None,
         on_override: callable = None,
-        title: str = "Quality Gate"
+        session_dir: "pathlib.Path | None" = None,
+        title: str = "Quality Gate",
+        show_directive_history: bool = False,
     ) -> None:
         super().__init__(parent)
         self.title(title)
@@ -208,9 +210,30 @@ class QualityVerdictViewer(tk.Toplevel):
         self.on_accept = on_accept
         self.on_retry = on_retry
         self.on_override = on_override
+        self.session_dir = session_dir
+
+        # Session-local persistence (PR #15.1): prefer persisted value
+        _persisted_dh = None
+        if session_dir is not None:
+            try:
+                from tap_tone_pi.gui.advisory_state import get_show_directive_history
+                _persisted_dh = get_show_directive_history(
+                    pathlib.Path(session_dir), default=None,
+                )
+            except Exception:
+                _persisted_dh = None
+
+        if isinstance(_persisted_dh, bool):
+            self._show_directive_history = _persisted_dh
+        else:
+            self._show_directive_history = bool(show_directive_history)
+
+        self._directive_history_frame = None
+        self._show_history_var = tk.IntVar(value=int(self._show_directive_history))
 
         # Main frame with better padding
         main = tk.Frame(self, padx=15, pady=15)
+        self._main = main
         main.pack(fill=tk.BOTH, expand=True)
 
         # Verdict banner with icon
@@ -338,6 +361,239 @@ class QualityVerdictViewer(tk.Toplevel):
             )
             no_rules.pack(pady=10)
 
+        # -----------------------------------------------------------------
+        # TRUST_EROSION banner (PR #13) — informational, additive, fail-closed
+        # -----------------------------------------------------------------
+        _TRUST_EROSION_IDS = {"TRUST_EROSION", "MOMENT_TRUST_EROSION"}
+
+        if self.session_dir is not None:
+            try:
+                from tap_tone_pi.gui.advisory_state import (
+                    has_responded as _adv_has_responded,
+                    is_trust_banner_dismissed,
+                    mark_trust_banner_dismissed,
+                )
+                from tap_tone_pi.agentic.spine.shadow_record import (
+                    load_latest_shadow_record as _load_shadow,
+                )
+
+                _te_sd = pathlib.Path(self.session_dir)
+
+                # Suppress banner when advisory was already permanently handled
+                if _adv_has_responded(_te_sd):
+                    raise Exception("advisory already responded")
+
+                _te_rec = _load_shadow(_te_sd)
+                _te_moment_id = None
+                if isinstance(_te_rec, dict):
+                    _te_moment = _te_rec.get("moment") or {}
+                    if isinstance(_te_moment, dict):
+                        _te_moment_id = _te_moment.get("id")
+
+                if (
+                    _te_moment_id in _TRUST_EROSION_IDS
+                    and not is_trust_banner_dismissed(_te_sd)
+                ):
+                    from tap_tone_pi.gui.info_banner import InfoBanner
+
+                    _te_banner = InfoBanner(
+                        main,
+                        text=(
+                            "Guidance is currently reduced based on recent "
+                            "interaction signals (e.g., dismissals). You can "
+                            "still view the advisory block when it appears."
+                        ),
+                        on_dismiss=lambda: mark_trust_banner_dismissed(_te_sd),
+                    )
+                    _te_banner.pack(fill=tk.X, pady=(0, 8))
+            except Exception:
+                pass
+
+        # -----------------------------------------------------------------
+        # Advisory directive (PR #12) — additive, fail-closed, no spine exec
+        # -----------------------------------------------------------------
+        advisory_rec = None
+        advisory_summary = None
+        advisory_detail = None
+        advisory_action = None
+        _adv_already_handled = False
+
+        if self.session_dir is not None:
+            try:
+                from tap_tone_pi.gui.advisory_state import has_responded as _adv_responded
+                if _adv_responded(pathlib.Path(self.session_dir)):
+                    _adv_already_handled = True
+            except Exception:
+                pass
+
+        if self.session_dir is not None and not _adv_already_handled:
+            try:
+                from tap_tone_pi.agentic.spine.shadow_record import load_latest_shadow_record
+                rec = load_latest_shadow_record(pathlib.Path(self.session_dir))
+                if isinstance(rec, dict):
+                    advisory_rec = rec
+                    adv = rec.get("advisory") or {}
+                    if isinstance(adv, dict):
+                        advisory_summary = adv.get("summary")
+                        advisory_detail = adv.get("detail") or adv.get("details")
+                        advisory_action = adv.get("action")
+            except Exception:
+                advisory_rec = None
+
+        if advisory_rec is not None and isinstance(advisory_summary, str) and advisory_summary.strip():
+            adv_frame = tk.LabelFrame(main, text="Advisory", padx=10, pady=8)
+            adv_frame.pack(fill=tk.X, pady=(8, 5))
+
+            # Header line: optional action tag + summary
+            header = advisory_summary.strip()
+            if isinstance(advisory_action, str) and advisory_action.strip():
+                header = f"[{advisory_action.strip().upper()}] {header}"
+
+            tk.Label(
+                adv_frame,
+                text=header,
+                font=("Helvetica", 10, "bold"),
+                fg="#333",
+                wraplength=470,
+                justify=tk.LEFT,
+            ).pack(anchor="w")
+
+            if isinstance(advisory_detail, str) and advisory_detail.strip():
+                tk.Label(
+                    adv_frame,
+                    text=advisory_detail.strip(),
+                    font=("Helvetica", 9),
+                    fg="#555",
+                    wraplength=470,
+                    justify=tk.LEFT,
+                    pady=4,
+                ).pack(anchor="w")
+
+            # Outcome buttons (ACK / DISMISS) — never blocks, disables after click
+            btns = tk.Frame(adv_frame)
+            btns.pack(fill=tk.X, pady=(6, 0))
+
+            status_var = tk.StringVar(value="")
+            status_lbl = tk.Label(btns, textvariable=status_var, font=("Helvetica", 9), fg="#666")
+            status_lbl.pack(side=tk.RIGHT)
+
+            def _fade_and_hide(frame: tk.Widget, steps: int = 6, delay: int = 60) -> None:
+                """Gradually dim the advisory frame, then hide it."""
+                try:
+                    # Start: #f9f9f9 → End: parent bg (approx white)
+                    for i in range(1, steps + 1):
+                        grey = 0xF9 + int((0xFF - 0xF9) * i / steps)
+                        colour = f"#{grey:02x}{grey:02x}{grey:02x}"
+                        frame.after(
+                            delay * i,
+                            lambda c=colour: (
+                                frame.configure(bg=c) if frame.winfo_exists() else None  # type: ignore[func-returns-value]
+                            ),
+                        )
+                    frame.after(delay * (steps + 1), lambda: (
+                        frame.pack_forget() if frame.winfo_exists() else None
+                    ))
+                except Exception:
+                    try:
+                        frame.pack_forget()
+                    except Exception:
+                        pass
+
+            def _record(outcome: str) -> None:
+                try:
+                    from tap_tone_pi.gui.directive_outcomes import record_latest_directive_outcome
+                    ok = record_latest_directive_outcome(
+                        session_dir=pathlib.Path(self.session_dir),
+                        outcome="ack" if outcome == "ack" else "dismiss",
+                        component="gui",
+                    )
+                    if ok:
+                        status_var.set("Thanks \u2014 recorded.")
+                    else:
+                        status_var.set("Thanks.")
+                except Exception:
+                    status_var.set("Thanks.")
+
+                # Persist so advisory stays hidden on reopen
+                try:
+                    from tap_tone_pi.gui.advisory_state import mark_responded
+                    mark_responded(pathlib.Path(self.session_dir))
+                except Exception:
+                    pass
+
+                # Hide buttons, then fade the whole frame
+                try:
+                    ack_btn.pack_forget()
+                    dis_btn.pack_forget()
+                except Exception:
+                    pass
+                _fade_and_hide(adv_frame)
+
+            ack_btn = tk.Button(
+                btns,
+                text="Acknowledge",
+                command=lambda: _record("ack"),
+                bg="#4CAF50",
+                fg="white",
+                font=("Helvetica", 9, "bold"),
+                width=14,
+                relief=tk.FLAT,
+                cursor="hand2",
+            )
+            ack_btn.pack(side=tk.LEFT, padx=(0, 6))
+
+            dis_btn = tk.Button(
+                btns,
+                text="Dismiss",
+                command=lambda: _record("dismiss"),
+                bg="#9E9E9E",
+                fg="white",
+                font=("Helvetica", 9, "bold"),
+                width=10,
+                relief=tk.FLAT,
+                cursor="hand2",
+            )
+            dis_btn.pack(side=tk.LEFT)
+
+            # Tooltips
+            try:
+                from tap_tone_pi.gui.tooltip import Tooltip
+                Tooltip(ack_btn, "Record that you reviewed and accept this advisory.")
+                Tooltip(dis_btn, "Dismiss this advisory without acting on it.")
+            except Exception:
+                pass
+
+        # -----------------------------------------------------------------
+        # Directive History toggle + panel (PR #15) — opt-in, fail-closed
+        # -----------------------------------------------------------------
+        if self.session_dir is not None:
+            toggle_row = tk.Frame(main)
+            toggle_row.pack(fill=tk.X, pady=(6, 0))
+
+            def _on_toggle_history() -> None:
+                self._show_directive_history = bool(self._show_history_var.get())
+                # Persist session-local preference
+                if self.session_dir is not None:
+                    try:
+                        from tap_tone_pi.gui.advisory_state import set_show_directive_history
+                        set_show_directive_history(
+                            pathlib.Path(self.session_dir),
+                            self._show_directive_history,
+                        )
+                    except Exception:
+                        pass
+                self._render_directive_history_panel()
+
+            cb = tk.Checkbutton(
+                toggle_row,
+                text="Show directive history",
+                variable=self._show_history_var,
+                command=_on_toggle_history,
+            )
+            cb.pack(side=tk.LEFT)
+
+        self._render_directive_history_panel()
+
         # Action buttons with improved styling
         btn_frame = tk.Frame(main)
         btn_frame.pack(fill=tk.X, pady=(15, 5))
@@ -417,6 +673,78 @@ class QualityVerdictViewer(tk.Toplevel):
             cursor="hand2",
         )
         close_btn.pack(side=tk.RIGHT, padx=5)
+
+    def _render_directive_history_panel(self) -> None:
+        """Create or remove the Directive History panel based on the toggle.
+
+        Fail-closed: any error removes the panel silently.
+        """
+        # Tear down existing panel if present
+        if self._directive_history_frame is not None:
+            try:
+                self._directive_history_frame.destroy()
+            except Exception:
+                pass
+            self._directive_history_frame = None
+
+        if not self._show_directive_history:
+            return
+        if self.session_dir is None:
+            return
+
+        try:
+            from tap_tone_pi.agentic.spine.directive_history import (
+                load_directive_events,
+            )
+            from tap_tone_pi.gui.directive_history_view import (
+                format_directive_history,
+            )
+
+            # Optional moment id from shadow record
+            moment_id = None
+            try:
+                from tap_tone_pi.agentic.spine.shadow_record import (
+                    load_latest_shadow_record as _dh_load_shadow,
+                )
+                _dh_rec = _dh_load_shadow(pathlib.Path(self.session_dir))
+                if isinstance(_dh_rec, dict):
+                    _dh_m = _dh_rec.get("moment") or {}
+                    if isinstance(_dh_m, dict):
+                        _dh_mid = _dh_m.get("id")
+                        if isinstance(_dh_mid, str) and _dh_mid.strip():
+                            moment_id = _dh_mid.strip()
+            except Exception:
+                moment_id = None
+
+            rows = load_directive_events(
+                pathlib.Path(self.session_dir), limit=10,
+            )
+            lines = format_directive_history(
+                rows, moment_id=moment_id, limit=10,
+            )
+            if not lines:
+                return
+
+            hist = tk.LabelFrame(
+                self._main, text="Directive History", padx=10, pady=8,
+            )
+            hist.pack(fill=tk.X, pady=(8, 5))
+            self._directive_history_frame = hist
+
+            txt = tk.Text(
+                hist,
+                height=min(8, max(2, len(lines))),
+                wrap=tk.NONE,
+                font=("Courier New", 9),
+                bd=0,
+                highlightthickness=0,
+            )
+            txt.pack(fill=tk.X, expand=True)
+            txt.insert("1.0", "\n".join(lines))
+            txt.config(state=tk.DISABLED)
+        except Exception:
+            # Fail-closed: leave panel hidden
+            return
 
     def _do_accept(self) -> None:
         if self.on_accept:
@@ -1322,6 +1650,7 @@ class App(tk.Tk):
                 on_accept=on_accept,
                 on_retry=on_retry,
                 on_override=on_override,
+                session_dir=outdir,
                 title=f"Quality Gate: {point_id} (attempt {attempt_num})"
             )
 

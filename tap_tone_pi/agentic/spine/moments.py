@@ -23,10 +23,12 @@ MomentName = str
 PRIORITY: Dict[MomentName, int] = {
     "ERROR": 1,
     "OVERLOAD": 2,
-    "DECISION_REQUIRED": 3,
-    "FINDING": 4,
-    "HESITATION": 5,
-    "FIRST_SIGNAL": 6,
+    "TRUST_EROSION": 3,
+    "DECISION_REQUIRED": 4,
+    "FINDING": 5,
+    "CONFIDENCE_CLIMB": 6,
+    "HESITATION": 7,
+    "FIRST_SIGNAL": 8,
 }
 
 
@@ -166,6 +168,38 @@ def detect_moments(events: List[Any]) -> List[dict]:
             comp_e = next((e for e in evs if _get(e, "event_type") == "analysis_completed"), None)
             if comp_e:
                 detected.append(("FIRST_SIGNAL", 0.65, [_eid(comp_e)]))
+
+    # --- CONFIDENCE_CLIMB (MOM-004) ---
+    # ≥5 directive-shown events with ≥80% acknowledged (acceptance rate)
+    shown_events = [e for e in evs if _get(e, "event_type") == "attention_requested"]
+    ack_events = [e for e in evs if _get(e, "event_type") == "attention_acknowledged"]
+    dismiss_events = [e for e in evs if _get(e, "event_type") == "attention_dismissed"]
+
+    total_shown = len(shown_events)
+    total_ack = len(ack_events)
+    total_dismiss = len(dismiss_events)
+    total_outcomes = total_ack + total_dismiss
+
+    if total_shown >= 5 and total_outcomes >= 5:
+        ack_rate = total_ack / total_outcomes
+        if ack_rate >= 0.8:
+            trigger_ids = [_eid(e) for e in ack_events[:5]]
+            detected.append(("CONFIDENCE_CLIMB", round(min(ack_rate, 0.95), 2), trigger_ids))
+
+    # --- TRUST_EROSION (MOM-005) ---
+    # Path A: ≥60% dismissal rate over ≥5 directive outcomes
+    if total_shown >= 5 and total_outcomes >= 5:
+        dismiss_rate = total_dismiss / total_outcomes
+        if dismiss_rate >= 0.6:
+            trigger_ids = [_eid(e) for e in dismiss_events[:5]]
+            detected.append(("TRUST_EROSION", round(min(dismiss_rate, 0.95), 2), trigger_ids))
+
+    # Path B: 3+ hesitation events in the window (repeated idle/inaction)
+    if not any(m[0] == "TRUST_EROSION" for m in detected):
+        idle_events = [e for e in evs if _get(e, "event_type") == "idle_timeout"]
+        if len(idle_events) >= 3:
+            trigger_ids = [_eid(e) for e in idle_events[:3]]
+            detected.append(("TRUST_EROSION", 0.7, trigger_ids))
 
     if not detected:
         return []

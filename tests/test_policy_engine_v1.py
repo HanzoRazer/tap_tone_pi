@@ -29,6 +29,8 @@ from __future__ import annotations
 
 import pytest
 
+from tap_tone_pi.agentic.contracts.analyzer_attention import AttentionDirectiveV1
+
 POLICY_IMPORT_PATH = "tap_tone_pi.agentic.spine.policy"
 
 
@@ -130,7 +132,35 @@ def test_gate_low_guidance_summary_only(uwsm_low_guidance, cap_view_allowed):
     out = decide(moment={"moment": "FIRST_SIGNAL"}, uwsm=uwsm_low_guidance, mode="M1", capability=cap_view_allowed)
     directive = out.get("directive", {})
     # Implementation choice: omit detail or keep it minimal
-    assert directive.get("detail", "") in ("", None) or len(directive.get("detail", "")) <= 140
+    detail = getattr(directive, "detail", "") if not isinstance(directive, dict) else directive.get("detail", "")
+    assert detail in ("", None) or len(detail) <= 140
+
+
+def test_m1_directive_has_summary_and_no_title(uwsm_default, cap_view_allowed):
+    """Canonical 'summary' must be present; legacy 'title' must be absent."""
+    decide = _import_decider()
+    out = decide(moment={"moment": "FINDING"}, uwsm=uwsm_default, mode="M1", capability=cap_view_allowed)
+    directive = out.get("directive")
+    assert directive is not None
+
+    # PR #8: directive must be contract dataclass
+    assert isinstance(directive, AttentionDirectiveV1), (
+        f"Expected AttentionDirectiveV1, got {type(directive).__name__}"
+    )
+    assert isinstance(directive.summary, str)
+    assert directive.summary.strip() != ""
+
+    # Contract JSON: summary present, legacy title absent
+    payload = directive.to_dict()
+    assert "summary" in payload
+    assert isinstance(payload["summary"], str)
+    assert payload["summary"].strip() != ""
+    assert "title" not in payload
+
+    # Wrapper dict shape remains stable
+    assert "emit_directive" in out
+    assert "issue_commands" in out
+    assert "diagnostic" in out
 
 
 def test_mode_m0_shadow_emits_diagnostic_only(uwsm_default, cap_view_allowed):
@@ -167,3 +197,24 @@ def test_mode_m2_falls_back_if_denied(uwsm_default, cap_view_denied):
     assert out["emit_directive"] is True
     assert out.get("issue_commands", []) == []
     assert out.get("diagnostic", {}).get("fallback_mode") in ("M1", "ADVISORY")
+
+
+def test_directive_is_frozen_and_policy_uses_replace(uwsm_default, cap_view_allowed):
+    """PR #9: Contracts are frozen. Policy must not mutate directive in-place."""
+    decide = _import_decider()
+    out = decide(moment={"moment": "FINDING"}, uwsm=uwsm_default, mode="M1", capability=cap_view_allowed)
+    directive = out["directive"]
+    assert isinstance(directive, AttentionDirectiveV1)
+    with pytest.raises(AttributeError):
+        directive.detail = "nope"
+
+
+def test_focus_target_is_frozen(uwsm_default, cap_view_allowed):
+    """PR #9: Nested FocusTarget must also be frozen."""
+    decide = _import_decider()
+    out = decide(moment={"moment": "FINDING"}, uwsm=uwsm_default, mode="M1", capability=cap_view_allowed)
+    directive = out["directive"]
+    assert directive is not None
+    assert directive.focus is not None
+    with pytest.raises(AttributeError):
+        directive.focus.target_id = "tampered"

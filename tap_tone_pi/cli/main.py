@@ -70,6 +70,43 @@ def cmd_devices(_args: argparse.Namespace) -> int:
     return 0
 
 
+# -------------------------------------------------------------------------
+# Directive Co-Render Helper (PR #3)
+# -------------------------------------------------------------------------
+
+def _maybe_render_directive(
+    args: argparse.Namespace,
+    session_dir: str | Path,
+) -> None:
+    """Print spine shadow directive block if ``--agent-directives`` is set.
+
+    Reads persisted shadow output only — no spine execution.
+    Silent on any error or missing files.
+    """
+    if not getattr(args, "agent_directives", False):
+        return
+
+    sd = Path(session_dir)
+    try:
+        from tap_tone_pi.agentic.spine.shadow_record import load_latest_shadow_record
+        from tap_tone_pi.agent.render import render_cli_shadow_record
+
+        rec = load_latest_shadow_record(sd)
+        if rec is None:
+            return
+
+        block = render_cli_shadow_record(
+            rec,
+            color=getattr(args, "color", True),
+            verbose=getattr(args, "verbose_directives", False),
+        )
+        if block and block.strip():
+            print("\n" + block)
+    except Exception:
+        # Silent by default — directive is additive, never break CLI
+        return
+
+
 def cmd_record(args: argparse.Namespace) -> int:
     """Record a single tap and analyze (QC recorded, not gated)."""
     from tap_tone_pi.capture import record_audio
@@ -298,6 +335,30 @@ def cmd_measure(args: argparse.Namespace) -> int:
     session_dir = Path(args.out)
     session_dir.mkdir(parents=True, exist_ok=True)
 
+    # -----------------------------------------------------------------
+    # Directive event listing (PR #14) — read-only timeline, early exit
+    # -----------------------------------------------------------------
+    if getattr(args, "list_directive_events", False):
+        try:
+            from tap_tone_pi.agentic.spine.directive_history import load_directive_events
+
+            rows = load_directive_events(
+                session_dir,
+                limit=int(getattr(args, "directive_events_limit", 10)),
+            )
+            if not rows:
+                print("Directive events: none")
+                return 0
+            print("Directive events:")
+            for r in rows:
+                did = r.directive_id or "-"
+                comp = r.component or "-"
+                ts = r.timestamp or "-"
+                print(f"  {ts}  {r.event_type}  directive_id={did}  component={comp}")
+        except Exception:
+            print("Directive events: none")
+        return 0
+
     # State callback for CLI feedback
     def on_state(state: LoopState, data: dict) -> None:
         if state == LoopState.PREFLIGHT:
@@ -400,6 +461,9 @@ def cmd_measure(args: argparse.Namespace) -> int:
                 print("\n" + format_verdict_summary_agent(ctx, result.verdict))
             else:
                 print(f"\n{format_verdict_summary(result.verdict)}")
+
+        # --- Directive co-render (PR #3) — all terminal verdicts ---
+        _maybe_render_directive(args, session_dir)
 
         # Handle verdict
         if result.verdict.verdict == Verdict.PASS:
@@ -902,6 +966,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_rec.add_argument("--label", type=str, default=None, help="Tap point label")
     p_rec.add_argument("--agent", action="store_true", help="Use agent-formatted QC output")
     p_rec.add_argument("--expert", action="store_true", help="More detailed agent output")
+    p_rec.add_argument("--agent-directives", action="store_true", dest="agent_directives",
+                       help="Print advisory directive summary from spine shadow outputs (if available)")
+    p_rec.add_argument("--verbose-directives", action="store_true", dest="verbose_directives",
+                       help="Include directive debug details (trigger counts, ids). Requires --agent-directives")
     p_rec.set_defaults(fn=cmd_record)
 
     # live
@@ -933,6 +1001,14 @@ def build_parser() -> argparse.ArgumentParser:
                        help="Wait for tap onset before recording (Phase 10)")
     p_meas.add_argument("--trigger-timeout", type=float, default=30.0,
                        help="Auto-trigger timeout in seconds (default: 30)")
+    p_meas.add_argument("--agent-directives", action="store_true", dest="agent_directives",
+                       help="Print advisory directive summary from spine shadow outputs (if available)")
+    p_meas.add_argument("--verbose-directives", action="store_true", dest="verbose_directives",
+                       help="Include directive debug details (trigger counts, ids). Requires --agent-directives")
+    p_meas.add_argument("--list-directive-events", action="store_true", dest="list_directive_events",
+                       help="List recent directive outcome events (reads events.jsonl, no spine execution).")
+    p_meas.add_argument("--directive-events-limit", type=int, default=10, dest="directive_events_limit",
+                       help="Max number of directive events to show (default: 10). Requires --list-directive-events.")
     p_meas.set_defaults(fn=cmd_measure)
 
     # gold-run
@@ -1064,7 +1140,40 @@ def build_parser() -> argparse.ArgumentParser:
     p_comp.add_argument("shell", choices=["bash", "zsh", "fish"], help="Shell type")
     p_comp.set_defaults(fn=cmd_completion)
 
+    # export-session-timeline (PR #16)
+    p_est = sub.add_parser(
+        "export-session-timeline",
+        help="Export session directive timeline (read-only)",
+    )
+    p_est.add_argument(
+        "--session", required=True,
+        help="Path to session directory",
+    )
+    p_est.add_argument(
+        "--out", default=None,
+        help="Optional output path (default: <session>/meta/session_timeline_v1.json)",
+    )
+    p_est.set_defaults(fn=cmd_export_session_timeline)
+
     return p
+
+
+def cmd_export_session_timeline(args: argparse.Namespace) -> int:
+    """Export session directive timeline (read-only, fail-closed)."""
+    try:
+        from tap_tone_pi.core.session_timeline import export_session_timeline
+
+        session_dir = Path(args.session).resolve()
+        out = Path(args.out).resolve() if getattr(args, "out", None) else None
+        p = export_session_timeline(session_dir, out_path=out)
+        if p is None:
+            print("No session timeline exported.")
+            return 0
+        print(f"Wrote: {p}")
+        return 0
+    except Exception:
+        print("No session timeline exported.")
+        return 0
 
 
 def main(argv: list[str] | None = None) -> int:

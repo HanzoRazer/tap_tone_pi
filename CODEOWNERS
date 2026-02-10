@@ -1,7 +1,74 @@
 # CODEOWNERS for tap_tone_pi
+#
+# Ownership tiers:
+#   Tier 0 — Stable contracts (break-glass only, cross-repo parity)
+#   Tier 1 — Policy surfaces (evolves under governance, needs tests + doc alignment)
+#   Tier 2 — Integration glue (high-churn, backwards-compat matters most)
+#   Tier 3 — Instrument truth (most conservative, explicit justification required)
 
-# Require schema-owner review for any contract changes
-/contracts/** @acoustics-team @measurement-team @chladni-team
+# ============================================================================
+# TIER 3 — Instrument truth (DSP, capture, core analysis)
+# Changes require calibration justification + fixture-based tests.
+# Agent code MUST NOT appear here.
+# ============================================================================
+/tap_tone_pi/core/**                    @measurement-team
+/tap_tone_pi/capture/**                 @measurement-team
+/tap_tone_pi/bending/**                 @measurement-team
+/tap_tone_pi/chladni/**                 @chladni-team
+/modes/_shared/**                       @acoustics-team @measurement-team
 
-# Require owner review for canonical shared utilities (WAV I/O, manifest utils)
-/modes/_shared/** @acoustics-team @measurement-team
+# ============================================================================
+# TIER 0 — Stable contracts (cross-repo thin waist)
+# Changes require cross-repo parity verification + version bump + migration note.
+# ============================================================================
+/tap_tone_pi/agentic/contracts/**       @acoustics-team @agentic-team
+/contracts/**                           @acoustics-team @measurement-team @chladni-team
+
+# ============================================================================
+# TIER 1 — Policy surfaces (spine + agent presentation)
+# Must come with ≥1 targeted test + governance doc alignment if behavior changes.
+# ============================================================================
+
+# Spine (orchestration engine — moments, policy, UWSM, replay)
+/tap_tone_pi/agentic/spine/**           @agentic-team
+/tap_tone_pi/agentic/capabilities.py    @agentic-team
+/tap_tone_pi/agentic/events.py          @agentic-team
+
+# Agent presentation (verdict → message → suggested actions)
+/tap_tone_pi/agent/**                   @agentic-team
+
+# Quality gate rules (deterministic PASS/WARN/FAIL)
+/tap_tone_pi/core/quality_gate.py       @measurement-team
+/tap_tone_pi/core/quality_policy.py     @measurement-team
+
+# Workflow state machine (operator loop + attempt lifecycle)
+/tap_tone_pi/workflow/**                @measurement-team @agentic-team
+
+# ============================================================================
+# TIER 2 — Integration glue (CLI, GUI, export, validate)
+# Prefer additive flags/fields over breaking changes.
+# ============================================================================
+/tap_tone_pi/cli/**                     @measurement-team @agentic-team
+/tap_tone_pi/gui/**                     @measurement-team
+/tap_tone_pi/export/**                  @measurement-team
+/tap_tone_pi/validate/**                @measurement-team
+
+# ============================================================================
+# Governance + CI boundary enforcement
+# ============================================================================
+/docs/AGENTIC_*                         @agentic-team
+/docs/AGENT_*                           @agentic-team
+/docs/*MOMENTS*                         @agentic-team
+/docs/*UWSM*                            @agentic-team
+/docs/GOVERNANCE.md                     @acoustics-team @measurement-team @agentic-team
+/ci/**                                  @acoustics-team @measurement-team
+
+# ============================================================================
+# Tests mirror ownership of the code they cover
+# ============================================================================
+/tests/test_agentic_*                   @agentic-team
+/tests/test_moments_*                   @agentic-team
+/tests/test_policy_*                    @agentic-team
+/tests/test_agent_*                     @agentic-team
+/tests/test_cli_agent_*                 @agentic-team @measurement-team
+/tests/test_cli_measure_agent_*         @agentic-team @measurement-team

@@ -9,10 +9,11 @@ past failed measurements.
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Any
+from typing import Callable, Any, Optional
 
 import numpy as np
 from scipy.io import wavfile
@@ -28,6 +29,15 @@ from tap_tone_pi.capture import (
 from tap_tone_pi.core.analysis import analyze_tap, AnalysisResult
 from tap_tone_pi.core.quality_gate import check_quality, format_verdict_summary
 from tap_tone_pi.core.quality_policy import QualityVerdict, Verdict
+from tap_tone_pi.agentic.events import (
+    JsonlEventWriter,
+    emit_analysis_started,
+    emit_analysis_completed,
+    emit_analysis_failed,
+    emit_artifact_created,
+    emit_decision_required,
+)
+from tap_tone_pi.agentic.spine.shadow_record import write_shadow_record
 from tap_tone_pi.workflow.attempt import Attempt, AttemptStore, AttemptStatus
 
 
@@ -102,6 +112,72 @@ class OperatorLoop:
         self.callback = callback
         self.state = LoopState.IDLE
         self._current_attempt: Attempt | None = None
+        self._event_writer = JsonlEventWriter(
+            self.session_dir / "events.jsonl"
+        )
+        # UWSM cache is optional; loaded on-demand in advisory hook
+        self._uwsm_cached: dict | None = None
+        self._uwsm_conf_cached: dict | None = None
+        self._uwsm_updated_at_cached: datetime | None = None
+
+    def _utc_now(self) -> datetime:
+        return datetime.now(timezone.utc)
+
+    @staticmethod
+    def _directive_field(obj: Any, key: str, default: Any = None) -> Any:
+        """
+        Dict/dataclass compatibility accessor for directive-like objects.
+
+        decide() currently returns plain dict directives, but may migrate to
+        frozen dataclasses later. This helper keeps OperatorLoop forward-compatible.
+        """
+        if obj is None:
+            return default
+        if isinstance(obj, dict):
+            return obj.get(key, default)
+        return getattr(obj, key, default)
+
+    def _ensure_uwsm_loaded(self) -> None:
+        """
+        Load UWSM state once per OperatorLoop instance (fail-closed).
+        """
+        if self._uwsm_cached is not None and self._uwsm_conf_cached is not None and self._uwsm_updated_at_cached is not None:
+            return
+        from tap_tone_pi.agentic.spine.uwsm_store import load_uwsm_state
+        uwsm, conf, ts = load_uwsm_state(now=self._utc_now())
+        self._uwsm_cached = uwsm
+        self._uwsm_conf_cached = conf
+        self._uwsm_updated_at_cached = ts
+
+    def _save_uwsm(self) -> None:
+        """
+        Persist cached UWSM (fail-closed).
+        """
+        if self._uwsm_cached is None or self._uwsm_conf_cached is None:
+            return
+        from tap_tone_pi.agentic.spine.uwsm_store import save_uwsm_state
+        save_uwsm_state(self._uwsm_cached, self._uwsm_conf_cached, now=self._utc_now())
+
+    def _append_uwsm_audit(self, attempt: Attempt, audits: list[dict]) -> None:
+        """
+        Optional per-session audit log; fail-closed.
+        """
+        if not audits:
+            return
+        try:
+            p = Path(self.session_dir) / "uwsm_audit.jsonl"
+            rec = {
+                "timestamp": self._utc_now().isoformat(timespec="milliseconds").replace("+00:00", "Z"),
+                "session_dir": str(self.session_dir),
+                "run_id": getattr(attempt, "attempt_id", ""),
+                "point_id": getattr(attempt, "point_id", ""),
+                "updates": audits,
+            }
+            with p.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(rec, ensure_ascii=False))
+                f.write("\n")
+        except Exception:
+            return
 
     def _emit(self, state: LoopState, data: dict[str, Any] | None = None) -> None:
         """Emit state change to callback."""
@@ -248,11 +324,42 @@ class OperatorLoop:
         wavfile.write(str(audio_path), cap_result.sample_rate, cap_result.audio)
         attempt.audio_path = "audio.wav"
 
+        # Event: audio artifact created
+        evt = emit_artifact_created(
+            component="operator_loop",
+            run_id=attempt.attempt_id,
+            artifact_name="audio.wav",
+            artifact_type="audio",
+            correlation_id=attempt.attempt_id,
+        )
+        evt.privacy_layer = 0
+        self._event_writer.write(evt)
+
         # --- ANALYZING ---
         self._emit(LoopState.ANALYZING)
+
+        # Event: analysis started
+        evt = emit_analysis_started(
+            component="operator_loop",
+            run_id=attempt.attempt_id,
+            correlation_id=attempt.attempt_id,
+        )
+        evt.privacy_layer = 0
+        self._event_writer.write(evt)
+
         try:
             analysis = analyze_tap(cap_result.audio, cap_result.sample_rate)
         except Exception as e:
+            # Event: analysis failed
+            evt = emit_analysis_failed(
+                component="operator_loop",
+                run_id=attempt.attempt_id,
+                error=str(e),
+                correlation_id=attempt.attempt_id,
+            )
+            evt.privacy_layer = 0
+            self._event_writer.write(evt)
+
             attempt.status = AttemptStatus.FAILED
             self.store.save_attempt(attempt)
             return LoopResult(
@@ -286,6 +393,17 @@ class OperatorLoop:
             }, f, indent=2)
         attempt.analysis_path = "analysis.json"
 
+        # Event: analysis artifact created
+        evt = emit_artifact_created(
+            component="operator_loop",
+            run_id=attempt.attempt_id,
+            artifact_name="analysis.json",
+            artifact_type="analysis",
+            correlation_id=attempt.attempt_id,
+        )
+        evt.privacy_layer = 0
+        self._event_writer.write(evt)
+
         # --- GATING ---
         self._emit(LoopState.GATING)
         verdict = check_quality(
@@ -303,6 +421,45 @@ class OperatorLoop:
             json.dump(verdict.to_dict(), f, indent=2)
         attempt.quality_check_path = "quality_check.json"
 
+        # Event: quality_check artifact created
+        evt = emit_artifact_created(
+            component="operator_loop",
+            run_id=attempt.attempt_id,
+            artifact_name="quality_check.json",
+            artifact_type="quality_check",
+            correlation_id=attempt.attempt_id,
+        )
+        evt.privacy_layer = 0
+        self._event_writer.write(evt)
+
+        # Event: analysis completed (with metrics)
+        evt = emit_analysis_completed(
+            component="operator_loop",
+            run_id=attempt.attempt_id,
+            artifacts_created=["audio.wav", "analysis.json", "quality_check.json"],
+            metrics={
+                "verdict": verdict.verdict.value,
+                "confidence": float(analysis.confidence),
+                "peak_count": len(analysis.peaks) if analysis.peaks else 0,
+            },
+            correlation_id=attempt.attempt_id,
+        )
+        evt.privacy_layer = 0
+        self._event_writer.write(evt)
+
+        # Event: decision required (FAIL/WARN only)
+        if verdict.verdict in (Verdict.FAIL, Verdict.WARN):
+            options = ["retry", "override", "abort"] if verdict.verdict == Verdict.FAIL else ["accept", "retry"]
+            evt = emit_decision_required(
+                component="operator_loop",
+                run_id=attempt.attempt_id,
+                decision_type="quality_gate",
+                options=options,
+                correlation_id=attempt.attempt_id,
+            )
+            evt.privacy_layer = 0
+            self._event_writer.write(evt)
+
         # Save attempt metadata
         self.store.save_attempt(attempt)
 
@@ -314,11 +471,163 @@ class OperatorLoop:
         else:
             self._emit(LoopState.FAILED, {"verdict": verdict})
 
+        # --- ADVISORY MODE (M1) ---
+        self._run_shadow_hook(attempt)
+
         return LoopResult(
             attempt=attempt,
             audio=cap_result.audio,
             analysis=analysis,
             verdict=verdict,
+        )
+
+    # -------------------------------------------------------------------------
+    # Spine advisory hook (PR#4) + UWSM persistence (PR#5)
+    # -------------------------------------------------------------------------
+
+    def _run_shadow_hook(self, attempt: Attempt) -> None:
+        """
+        Fail-closed wrapper. Never raises.
+        """
+        try:
+            self._run_shadow_hook_inner(attempt)
+        except Exception:
+            return
+
+    def _run_shadow_hook_inner(self, attempt: Attempt) -> None:
+        """
+        Advisory hook:
+          - loads events.jsonl
+          - loads + decays persisted UWSM
+          - applies UWSM updates from events
+          - runs spine decide() in M1 (advisory only)
+          - writes shadow/advisory record (commands_count enforced 0 elsewhere)
+          - persists updated UWSM
+        """
+        from tap_tone_pi.agentic.spine.moments import detect_moments
+        from tap_tone_pi.agentic.spine.policy import decide
+        from tap_tone_pi.agentic.spine.uwsm_update import apply_uwsm_updates
+        from tap_tone_pi.agentic.spine.uwsm_store import apply_uwsm_decay
+        from tap_tone_pi.agentic.capabilities import TAP_TONE_ANALYZER
+
+        session_dir = Path(self.session_dir)
+        events_path = session_dir / "events.jsonl"
+        if not events_path.exists():
+            # No events => no advisory; write NONE moment record
+            write_shadow_record(
+                session_dir=session_dir,
+                session_id=str(session_dir.name),
+                run_id=str(getattr(attempt, "attempt_id", "")),
+                mode="M1",
+                moment_id="NONE",
+                moment_confidence=0.0,
+                trigger_event_count=0,
+                commands_count=0,
+                error=None,
+            )
+            return
+
+        # Load events (dicts) for moments/policy/UWSM update engine
+        events: list[dict] = []
+        for line in events_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                events.append(json.loads(line))
+            except Exception:
+                # skip malformed lines; fail-closed behavior continues
+                continue
+
+        now = self._utc_now()
+
+        # Load + decay persisted UWSM
+        self._ensure_uwsm_loaded()
+        assert self._uwsm_cached is not None and self._uwsm_conf_cached is not None and self._uwsm_updated_at_cached is not None
+        self._uwsm_cached, self._uwsm_conf_cached = apply_uwsm_decay(
+            self._uwsm_cached, self._uwsm_conf_cached, self._uwsm_updated_at_cached, now
+        )
+
+        # Apply updates (mutates UWSM); persist audit
+        self._uwsm_cached, audits = apply_uwsm_updates(events=events, uwsm=self._uwsm_cached)
+        self._append_uwsm_audit(attempt, audits)
+
+        # Update cached timestamp + save to disk
+        self._uwsm_updated_at_cached = now
+        self._save_uwsm()
+
+        # Detect moment + decide in M1 using updated UWSM
+        moment_res = detect_moments(events)
+        if not moment_res:
+            write_shadow_record(
+                session_dir=session_dir,
+                session_id=str(session_dir.name),
+                run_id=str(getattr(attempt, "attempt_id", "")),
+                mode="M1",
+                moment_id="NONE",
+                moment_confidence=0.0,
+                trigger_event_count=0,
+                commands_count=0,
+                error=None,
+            )
+            return
+
+        # moment_res is a list; take highest-priority entry
+        top = moment_res[0] if isinstance(moment_res, list) else moment_res
+
+        decision = decide(
+            moment=top,
+            uwsm=self._uwsm_cached,
+            mode="M1",
+            capability=TAP_TONE_ANALYZER,
+            context={
+                "session_dir": str(session_dir),
+                "run_id": str(getattr(attempt, "attempt_id", "")),
+                "point_id": str(getattr(attempt, "point_id", "")),
+                "workflow": "measure",
+            },
+        )
+
+        directive = (decision or {}).get("directive")
+        advisory_action = None
+        advisory_summary = None
+        advisory_focus = None
+        advisory_conf = None
+
+        if directive is not None:
+            # directive may be a dict (current) or a dataclass (future)
+            raw_action = self._directive_field(directive, "action")
+            # AttentionAction enum values are lowercase; shadow_record
+            # validator expects uppercase canonical names.
+            advisory_action = (
+                raw_action.name if hasattr(raw_action, "name") else
+                str(raw_action).upper() if raw_action else None
+            )
+            advisory_summary = self._directive_field(directive, "summary")
+            advisory_conf = self._directive_field(directive, "confidence")
+            focus = self._directive_field(directive, "focus")
+            if focus is not None:
+                advisory_focus = {
+                    "target_type": self._directive_field(focus, "target_type"),
+                    "target_id": self._directive_field(focus, "target_id"),
+                    "highlight_region": self._directive_field(focus, "highlight_region"),
+                }
+
+        # Persist advisory record (commands_count enforced 0 here)
+        write_shadow_record(
+            session_dir=session_dir,
+            session_id=str(session_dir.name),
+            run_id=str(getattr(attempt, "attempt_id", "")),
+            mode="M1",
+            moment_id=str(top.get("moment", "NONE")),
+            moment_confidence=float(top.get("confidence", 0.0) or 0.0),
+            trigger_event_count=len(top.get("trigger_events", []) or []),
+            advisory_action=advisory_action,
+            advisory_summary=advisory_summary,
+            advisory_focus=advisory_focus,
+            advisory_confidence=float(advisory_conf) if isinstance(advisory_conf, (int, float)) else None,
+            commands_count=0,
+            error=None,
         )
 
     def override_failed(self, point_id: str, reason: str) -> Attempt | None:

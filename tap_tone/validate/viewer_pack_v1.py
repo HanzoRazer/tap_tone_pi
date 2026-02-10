@@ -20,6 +20,7 @@ import argparse
 import csv
 import json
 import math
+import os
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -72,6 +73,52 @@ class ValidationReport:
             "warnings": self.warnings,
             "stats": self.stats,
         }
+
+
+def _repo_root() -> Path:
+    """Best-effort repo root locator for schema files.
+
+    This module lives at: <root>/tap_tone/validate/viewer_pack_v1.py
+    """
+    try:
+        return Path(__file__).resolve().parents[2]
+    except Exception:
+        return Path.cwd()
+
+
+def _load_contract_schema(schema_relpath: str) -> Optional[Dict[str, Any]]:
+    """Load a JSON schema shipped in-repo under contracts/schemas/.
+
+    Fail-closed: return None if missing/unreadable.
+    """
+    try:
+        p = _repo_root() / schema_relpath
+        if not p.is_file():
+            return None
+        obj = json.loads(p.read_text(encoding="utf-8"))
+        return obj if isinstance(obj, dict) else None
+    except Exception:
+        return None
+
+
+def _validate_json_against_schema(
+    doc: Dict[str, Any], schema: Dict[str, Any],
+) -> Optional[str]:
+    """Return None if valid; else return a short error string."""
+    try:
+        from jsonschema import Draft202012Validator
+
+        v = Draft202012Validator(schema)
+        errs = sorted(v.iter_errors(doc), key=lambda e: list(e.path))
+        if not errs:
+            return None
+        e = errs[0]
+        loc = "/".join(str(x) for x in e.path) if e.path else "<root>"
+        return f"{loc}: {e.message}"
+    except ImportError:
+        return None  # jsonschema not installed → skip
+    except Exception as ex:
+        return f"<validator>: {ex}"
 
 
 def _read_csv_columns(path: Path) -> tuple[List[str], List[Dict[str, str]]]:
@@ -132,6 +179,9 @@ def validate_pack(
         "wsi_present": 0,
         "wsi_valid": 0,
 
+        "timeline_present": 0,
+        "timeline_valid": 0,
+
         "error_count": 0,
         "warning_count": 0,
     }
@@ -180,6 +230,66 @@ def validate_pack(
 
     stats["point_count_manifest"] = len(points)
     stats["points_checked"] = len(points)
+
+    # ========================================
+    # T-001: Optional Session Timeline (schema-validated)
+    # ========================================
+    timeline_path = pack / "meta" / "session_timeline_v1.json"
+    if timeline_path.exists():
+        stats["timeline_present"] = 1
+        try:
+            doc = json.loads(timeline_path.read_text(encoding="utf-8"))
+            if not isinstance(doc, dict):
+                report.add_error(
+                    "T-001",
+                    "session_timeline_v1.json is not a JSON object",
+                    str(timeline_path.relative_to(pack)),
+                )
+            else:
+                schema = _load_contract_schema(
+                    "contracts/schemas/session_timeline_v1.schema.json",
+                )
+                if schema is None:
+                    # Tighten in CI: schema presence is mandatory.
+                    if os.getenv("CI", "").strip().lower() in (
+                        "1", "true", "yes", "on",
+                    ):
+                        report.add_error(
+                            "T-000",
+                            "Session timeline schema not found in CI; "
+                            "failing validation",
+                            str(timeline_path.relative_to(pack)),
+                        )
+                    else:
+                        report.add_warning(
+                            "T-000",
+                            "Session timeline schema not found; "
+                            "skipping schema validation",
+                            str(timeline_path.relative_to(pack)),
+                        )
+                else:
+                    err = _validate_json_against_schema(doc, schema)
+                    if err is None:
+                        stats["timeline_valid"] = 1
+                    else:
+                        report.add_error(
+                            "T-001",
+                            "session_timeline_v1.json does not conform "
+                            f"to schema: {err}",
+                            str(timeline_path.relative_to(pack)),
+                        )
+        except json.JSONDecodeError as e:
+            report.add_error(
+                "T-001",
+                f"session_timeline_v1.json is not valid JSON: {e}",
+                str(timeline_path.relative_to(pack)),
+            )
+        except Exception as e:
+            report.add_error(
+                "T-001",
+                f"session_timeline_v1.json validation failed: {e}",
+                str(timeline_path.relative_to(pack)),
+            )
 
     # ========================================
     # Collect shared frequency grid from first valid spectrum
@@ -428,6 +538,23 @@ def validate_pack(
                     json.load(f)
             except json.JSONDecodeError as e:
                 report.add_warning("O-001", f"Optional file is not valid JSON: {e}", str(opt_path.relative_to(pack)))
+
+    # ========================================
+    # T-002 CI gate: timeline_present requires timeline_valid
+    # Intentionally redundant with T-000/T-001 — this is a catch-all
+    # so CI never greenlights a pack whose timeline failed to validate,
+    # even if future refactors alter T-000/T-001 paths.  Do not remove.
+    # ========================================
+    if (
+        os.getenv("CI", "").strip().lower() in ("1", "true", "yes", "on")
+        and stats.get("timeline_present") == 1
+        and stats.get("timeline_valid") != 1
+    ):
+        report.add_error(
+            "T-002",
+            "CI requires timeline_valid==1 when session_timeline_v1.json "
+            "is present",
+        )
 
     return _finalize()
 

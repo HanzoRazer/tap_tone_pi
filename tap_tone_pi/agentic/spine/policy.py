@@ -13,7 +13,56 @@ For full specification, see: docs/AGENT_DECISION_POLICY_V1.md
 
 from __future__ import annotations
 
+import uuid
+from dataclasses import replace
 from typing import Any, Dict, List, Optional
+
+from tap_tone_pi.agentic.contracts.analyzer_attention import (
+    AttentionAction,
+    AttentionDirectiveV1,
+    FocusTarget,
+)
+
+
+def _coerce_directive(obj: Any) -> Optional[AttentionDirectiveV1]:
+    """
+    PR #8 seam hardening: ensure policy always returns AttentionDirectiveV1
+    (or None) even if some branch still constructs a plain dict.
+    """
+    if obj is None:
+        return None
+    if isinstance(obj, AttentionDirectiveV1):
+        return obj
+    if isinstance(obj, dict):
+        # Best-effort coercion; fail-closed to None so policy never throws here.
+        try:
+            action_raw = obj.get("action") or "inspect"
+            if isinstance(action_raw, AttentionAction):
+                action_enum = action_raw
+            else:
+                action_enum = AttentionAction(str(action_raw).lower())
+            focus = obj.get("focus")
+            focus_obj = None
+            if isinstance(focus, FocusTarget):
+                focus_obj = focus
+            elif isinstance(focus, dict):
+                focus_obj = FocusTarget(
+                    target_type=str(focus.get("target_type") or ""),
+                    target_id=str(focus.get("target_id") or ""),
+                    highlight_region=focus.get("highlight_region"),
+                )
+            if focus_obj is None:
+                focus_obj = FocusTarget(target_type="session", target_id="current")
+            return AttentionDirectiveV1(
+                directive_id=str(obj.get("directive_id") or f"policy_{uuid.uuid4().hex[:8]}"),
+                action=action_enum,
+                summary=str(obj.get("summary") or ""),
+                focus=focus_obj,
+                detail=str(obj.get("detail") or ""),
+            )
+        except Exception:
+            return None
+    return None
 
 
 def _dim(uwsm: dict, name: str, default_value: str = "medium") -> str:
@@ -72,6 +121,8 @@ def decide(
         "DECISION_REQUIRED": "DECIDE",
         "FINDING": "REVIEW",
         "ERROR": "REVIEW",
+        "CONFIDENCE_CLIMB": "INSPECT",
+        "TRUST_EROSION": "REVIEW",
     }
     action = mapping.get(moment_name, "NONE")
 
@@ -98,7 +149,7 @@ def decide(
     if mode == "M0":
         # Shadow: never emit directive; instead produce diagnostic "would_have_emitted"
         would = _build_directive(action, guidance=guidance, soft_prompt=soft_prompt)
-        diagnostic["would_have_emitted"] = would
+        diagnostic["would_have_emitted"] = would.to_dict()
         return {
             "attention_action": action,
             "emit_directive": False,
@@ -108,12 +159,13 @@ def decide(
 
     # In M1/M2: emit directive unless action == NONE
     emit_directive = action != "NONE"
-    directive = _build_directive(action, guidance=guidance, soft_prompt=soft_prompt) if emit_directive else {}
+    directive = _build_directive(action, guidance=guidance, soft_prompt=soft_prompt) if emit_directive else None
+    directive = _coerce_directive(directive)
 
     # Guidance density gate: summary-only when very_low
-    if guidance in ("very_low", "low") and emit_directive:
-        # keep detail empty or very short
-        directive["detail"] = ""
+    if guidance in ("very_low", "low") and directive is not None:
+        # keep detail empty or very short (replace keeps frozen-dataclass compatibility)
+        directive = replace(directive, detail="")
 
     # M2: analyzer attention commands if allowed + FIRST_SIGNAL onboarding rule
     if mode == "M2":
@@ -134,17 +186,17 @@ def decide(
     out = {
         "attention_action": action,
         "emit_directive": emit_directive,
-        "directive": directive if emit_directive else {},
-        "directives": [directive] if emit_directive else [],
+        "directive": directive,
+        "directives": [directive] if directive is not None else [],
         "issue_commands": issue_commands,
         "diagnostic": diagnostic,
     }
     return out
 
 
-def _build_directive(action: str, *, guidance: str, soft_prompt: bool) -> dict:
+def _build_directive(action: str, *, guidance: str, soft_prompt: bool) -> AttentionDirectiveV1:
     """
-    Minimal AttentionDirectiveV1-ish structure.
+    Build an AttentionDirectiveV1 dataclass for the given action.
     """
     title = {
         "INSPECT": "Inspect this",
@@ -168,8 +220,13 @@ def _build_directive(action: str, *, guidance: str, soft_prompt: bool) -> dict:
     if soft_prompt:
         detail = "Want a suggestion for what to try next?"
 
-    return {
-        "action": action,
-        "title": title,
-        "detail": detail,
-    }
+    # Map uppercase action string to AttentionAction enum (lowercase values)
+    action_enum = AttentionAction(action.lower()) if action != "NONE" else AttentionAction.INSPECT
+
+    return AttentionDirectiveV1(
+        directive_id=f"policy_{uuid.uuid4().hex[:8]}",
+        action=action_enum,
+        summary=title,
+        focus=FocusTarget(target_type="session", target_id="current"),
+        detail=detail,
+    )

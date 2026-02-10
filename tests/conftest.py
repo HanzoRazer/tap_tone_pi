@@ -15,6 +15,20 @@ import uuid
 from datetime import datetime, timezone
 import pytest
 
+# ---------------------------------------------------------------------------
+# Preflight: catch stale/missing editable install early with a clear message.
+# Without this, subprocess-based tests fail with cryptic ModuleNotFoundError
+# inside scripts, and deferred imports in _run_shadow_hook silently no-op.
+# ---------------------------------------------------------------------------
+try:
+    import tap_tone_pi  # noqa: F401
+except ImportError:
+    pytest.exit(
+        "tap_tone_pi is not importable. Run:  pip install -e .\n"
+        "(Editable install required for subprocess-based and spine tests.)",
+        returncode=4,
+    )
+
 
 def iso_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -215,3 +229,74 @@ def ev_system_error():
         occurred_at="2026-02-06T12:00:25Z",
         payload={"code": "E_TIMEOUT"},
     )
+
+
+# --- Directive outcome fixtures (PR #10: MOM-004/005) ---
+
+def _mk_attention_requested(n: int, base_ts: int = 0) -> list:
+    """Generate n attention_requested events with sequential timestamps."""
+    return [
+        mk_event(
+            event_type="attention_requested",
+            occurred_at=f"2026-02-06T12:{base_ts + i:02d}:00Z",
+            payload={"directive_id": f"attn_{i:03d}"},
+        )
+        for i in range(n)
+    ]
+
+
+def _mk_attention_acknowledged(n: int, base_ts: int = 20) -> list:
+    """Generate n attention_acknowledged events."""
+    return [
+        mk_event(
+            event_type="attention_acknowledged",
+            occurred_at=f"2026-02-06T12:{base_ts + i:02d}:00Z",
+            payload={"directive_id": f"attn_{i:03d}", "action_taken": "applied"},
+        )
+        for i in range(n)
+    ]
+
+
+def _mk_attention_dismissed(n: int, base_ts: int = 20) -> list:
+    """Generate n attention_dismissed events."""
+    return [
+        mk_event(
+            event_type="attention_dismissed",
+            occurred_at=f"2026-02-06T12:{base_ts + i:02d}:00Z",
+            payload={"directive_id": f"attn_{i:03d}", "reason": "not relevant"},
+        )
+        for i in range(n)
+    ]
+
+
+@pytest.fixture
+def ev_confidence_climb_stream():
+    """5 shown + 5 acknowledged (100% ack rate) → CONFIDENCE_CLIMB."""
+    return _mk_attention_requested(5) + _mk_attention_acknowledged(5)
+
+
+@pytest.fixture
+def ev_trust_erosion_stream():
+    """5 shown + 4 dismissed + 1 ack (80% dismiss rate) → TRUST_EROSION."""
+    return _mk_attention_requested(5) + _mk_attention_dismissed(4) + _mk_attention_acknowledged(1, base_ts=30)
+
+
+@pytest.fixture
+def ev_mixed_below_threshold():
+    """5 shown + 3 ack + 2 dismiss (60% ack, 40% dismiss) → neither moment."""
+    return _mk_attention_requested(5) + _mk_attention_acknowledged(3) + _mk_attention_dismissed(2, base_ts=30)
+
+
+@pytest.fixture
+def ev_trust_erosion_idle_path():
+    """3 idle_timeout events → TRUST_EROSION via Path B."""
+    return [
+        mk_event(event_type="idle_timeout", occurred_at=f"2026-02-06T12:0{i}:00Z", payload={"idle_seconds": 10})
+        for i in range(3)
+    ]
+
+
+@pytest.fixture
+def ev_too_few_shown():
+    """Only 3 shown + 3 ack → below 5-directive threshold, no moment."""
+    return _mk_attention_requested(3) + _mk_attention_acknowledged(3)
