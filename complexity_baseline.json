@@ -1,6 +1,6 @@
 {
   "threshold": 25,
-  "violation_count": 18,
+  "violation_count": 16,
   "violations": [
     {
       "file": "scripts/bending_stiffness_mode.py",
@@ -94,13 +94,6 @@
       "letter": "F"
     },
     {
-      "file": "analyzer/loaders/evidence_types.py",
-      "function": "classify_file",
-      "complexity": 33,
-      "line": 132,
-      "letter": "F"
-    },
-    {
       "file": "tap_tone_pi/cli/main.py",
       "function": "cmd_measure",
       "complexity": 31,
@@ -119,13 +112,6 @@
       "function": "validate_manifest_shape",
       "complexity": 28,
       "line": 212,
-      "letter": "F"
-    },
-    {
-      "file": "analyzer/loaders/wsi_curve.py",
-      "function": "_parse_csv",
-      "complexity": 27,
-      "line": 126,
       "letter": "F"
     }
   ]

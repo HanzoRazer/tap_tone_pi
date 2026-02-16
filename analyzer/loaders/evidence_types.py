@@ -129,6 +129,49 @@ def kind_to_category(kind: EvidenceFileKind) -> RendererCategory:
     return mapping.get(kind, RendererCategory.UNKNOWN)
 
 
+# Extension-based classification (simple lookups)
+_EXT_MAP = {
+    ".wav": EvidenceFileKind.AUDIO_WAV,
+    ".flac": EvidenceFileKind.AUDIO_FLAC,
+    ".mp3": EvidenceFileKind.AUDIO_MP3,
+    ".png": EvidenceFileKind.IMAGE_PNG,
+    ".jpg": EvidenceFileKind.IMAGE_JPG,
+    ".jpeg": EvidenceFileKind.IMAGE_JPG,
+    ".md": EvidenceFileKind.MARKDOWN,
+    ".txt": EvidenceFileKind.TEXT,
+}
+
+# CSV stem patterns: (patterns, result) - any pattern match wins
+_CSV_PATTERNS = [
+    (("spectrum", "transfer", "frf"), EvidenceFileKind.SPECTRUM_CSV),
+    (("peak",), EvidenceFileKind.PEAKS_CSV),
+    (("coherence", "coh"), EvidenceFileKind.COHERENCE_CSV),
+    (("wsi", "wolf"), EvidenceFileKind.WSI_CURVE),
+]
+
+# JSON stem patterns: (patterns, result, require_all)
+# require_all=True means ALL patterns must match, False means ANY
+_JSON_PATTERNS = [
+    (("manifest",), EvidenceFileKind.MANIFEST, False),
+    (("session", "meta"), EvidenceFileKind.SESSION_META, True),
+    (("capture", "meta"), EvidenceFileKind.CAPTURE_META, True),
+    (("meta",), EvidenceFileKind.SESSION_META, False),
+    (("peak",), EvidenceFileKind.PEAKS_JSON, False),
+    (("spectrum",), EvidenceFileKind.SPECTRUM_JSON, False),
+    (("coherence", "coh"), EvidenceFileKind.COHERENCE_JSON, False),
+    (("transfer", "frf", "bode"), EvidenceFileKind.TRANSFER_FUNCTION, False),
+    (("wsi",), EvidenceFileKind.WSI_CURVE, False),
+    (("wolf",), EvidenceFileKind.WOLF_CANDIDATES, False),
+]
+
+
+def _match_patterns(stem: str, patterns: tuple, require_all: bool = False) -> bool:
+    """Check if stem matches patterns (any or all based on require_all)."""
+    if require_all:
+        return all(p in stem for p in patterns)
+    return any(p in stem for p in patterns)
+
+
 def classify_file(filepath: str) -> EvidenceFileKind:
     """
     Classify a file by its path/name.
@@ -142,69 +185,26 @@ def classify_file(filepath: str) -> EvidenceFileKind:
         The classified file kind
     """
     path = Path(filepath)
-    name = path.name.lower()
     stem = path.stem.lower()
     ext = path.suffix.lower()
 
-    # Audio files by extension
-    if ext == ".wav":
-        return EvidenceFileKind.AUDIO_WAV
-    if ext == ".flac":
-        return EvidenceFileKind.AUDIO_FLAC
-    if ext == ".mp3":
-        return EvidenceFileKind.AUDIO_MP3
+    # Direct extension lookup
+    if ext in _EXT_MAP:
+        return _EXT_MAP[ext]
 
-    # Images
-    if ext == ".png":
-        return EvidenceFileKind.IMAGE_PNG
-    if ext in (".jpg", ".jpeg"):
-        return EvidenceFileKind.IMAGE_JPG
-
-    # Markdown
-    if ext == ".md":
-        return EvidenceFileKind.MARKDOWN
-
-    # CSV files - classify by name pattern
+    # CSV pattern matching
     if ext == ".csv":
-        if "spectrum" in stem or "transfer" in stem or "frf" in stem:
-            return EvidenceFileKind.SPECTRUM_CSV
-        if "peak" in stem:
-            return EvidenceFileKind.PEAKS_CSV
-        if "coherence" in stem or "coh" in stem:
-            return EvidenceFileKind.COHERENCE_CSV
-        if "wsi" in stem or "wolf" in stem:
-            return EvidenceFileKind.WSI_CURVE
-        # Default CSV
-        return EvidenceFileKind.SPECTRUM_CSV
+        for patterns, result in _CSV_PATTERNS:
+            if _match_patterns(stem, patterns):
+                return result
+        return EvidenceFileKind.SPECTRUM_CSV  # Default CSV
 
-    # JSON files - classify by name pattern
+    # JSON pattern matching
     if ext == ".json":
-        if "manifest" in stem:
-            return EvidenceFileKind.MANIFEST
-        if "session" in stem and "meta" in stem:
-            return EvidenceFileKind.SESSION_META
-        if "capture" in stem and "meta" in stem:
-            return EvidenceFileKind.CAPTURE_META
-        if "meta" in stem:
-            return EvidenceFileKind.SESSION_META
-        if "peak" in stem:
-            return EvidenceFileKind.PEAKS_JSON
-        if "spectrum" in stem:
-            return EvidenceFileKind.SPECTRUM_JSON
-        if "coherence" in stem or "coh" in stem:
-            return EvidenceFileKind.COHERENCE_JSON
-        if "transfer" in stem or "frf" in stem or "bode" in stem:
-            return EvidenceFileKind.TRANSFER_FUNCTION
-        if "wsi" in stem:
-            return EvidenceFileKind.WSI_CURVE
-        if "wolf" in stem:
-            return EvidenceFileKind.WOLF_CANDIDATES
-        # Default JSON
-        return EvidenceFileKind.UNKNOWN
-
-    # Text files
-    if ext == ".txt":
-        return EvidenceFileKind.TEXT
+        for patterns, result, require_all in _JSON_PATTERNS:
+            if _match_patterns(stem, patterns, require_all):
+                return result
+        return EvidenceFileKind.UNKNOWN  # Default JSON
 
     return EvidenceFileKind.UNKNOWN
 
