@@ -157,9 +157,6 @@ def pick_open_url(
     return f"{base}/tools/audio-analyzer/library"
 
 
-def _resolve_device(device_spec: int | str | None) -> int | None:    return viewer_url, library_url
-
-
 def _resolve_device(device_spec: int | str | None) -> int | None:
     """Resolve device spec to index."""
     from tap_tone.capture import list_devices  # Lazy import
@@ -294,6 +291,261 @@ def _is_capture_acceptable(analysis: Any) -> bool:
     return True
 
 
+def _handle_dry_run(
+    cfg: GoldRunConfig,
+    session_dir: Path,
+    point_labels: List[str],
+) -> None:
+    """Print dry-run summary if not JSON output."""
+    if cfg.json_output:
+        return
+    print(f"[DRY RUN] Would create session: {session_dir}")
+    print(f"[DRY RUN] Would capture points: {point_labels}")
+    print(f"[DRY RUN] Would export to: {cfg.out_dir}")
+    if cfg.device is not None:
+        try:
+            device_idx = int(cfg.device)
+            print(f"[DRY RUN] Device index (assumed): {device_idx}")
+        except ValueError:
+            print(f"[DRY RUN] Device name: {cfg.device} (would resolve at runtime)")
+
+
+def _capture_single_point_auto(
+    cfg: GoldRunConfig,
+    device_idx: int | None,
+    an_cfg: "AnalysisConfig",
+    session_dir: Path,
+    label: str,
+    i: int,
+    total: int,
+    auto_trigger_provenance: list,
+) -> Optional[str]:
+    """Capture a single point with auto-trigger. Returns error_message or None on success."""
+    from tap_tone.storage import persist_capture
+    from tap_tone.analysis import analyze_tap
+
+    cap_result = _capture_point_auto_trigger(device_idx, cfg, label, i, total)
+    if cap_result is None:
+        return f"Failed to capture point {label} (auto-trigger)"
+
+    cap_audio, trigger_prov = cap_result
+    auto_trigger_provenance.append({"point": label, **trigger_prov})
+
+    analysis = analyze_tap(
+        cap_audio,
+        cfg.sample_rate,
+        highpass_hz=an_cfg.highpass_hz,
+        peak_min_hz=an_cfg.peak_min_hz,
+        peak_max_hz=an_cfg.peak_max_hz,
+        peak_min_prominence=an_cfg.peak_min_prominence,
+        peak_min_spacing_hz=an_cfg.peak_min_spacing_hz,
+        max_peaks=an_cfg.max_peaks,
+    )
+
+    persist_capture(
+        out_dir=str(session_dir / "points" / f"point_{label}"),
+        label=label,
+        sample_rate=cfg.sample_rate,
+        audio=cap_audio,
+        analysis=analysis,
+    )
+    print(f"    ✓ Captured: dominant={analysis.dominant_hz:.1f}Hz, "
+          f"confidence={analysis.confidence:.2f}")
+    return None
+
+
+def _capture_single_point_manual(
+    cfg: GoldRunConfig,
+    device_idx: int | None,
+    an_cfg: "AnalysisConfig",
+    session_dir: Path,
+    label: str,
+    i: int,
+    total: int,
+) -> Optional[str]:
+    """Capture a single point with manual retries. Returns error_message or None on success."""
+    from tap_tone.storage import persist_capture
+
+    print(f"\n[{i+1}/{total}] Capturing point {label}...")
+    print(f"    Tap the specimen now (timeout: {cfg.tap_timeout_s}s)")
+
+    for attempt in range(cfg.max_retries):
+        try:
+            cap, analysis = _capture_point(
+                device_idx, cfg.sample_rate, cfg.capture_seconds, an_cfg
+            )
+
+            if _is_capture_acceptable(analysis):
+                persist_capture(
+                    out_dir=str(session_dir / "points" / f"point_{label}"),
+                    label=label,
+                    sample_rate=cap.sample_rate,
+                    audio=cap.audio,
+                    analysis=analysis,
+                )
+                print(f"    ✓ Captured: dominant={analysis.dominant_hz:.1f}Hz, "
+                      f"confidence={analysis.confidence:.2f}")
+                return None
+            else:
+                reason = "clipped" if analysis.clipped else "low signal"
+                print(f"    ⚠ Attempt {attempt+1}: {reason}, retrying...")
+
+        except Exception as e:
+            print(f"    ⚠ Attempt {attempt+1} failed: {e}")
+
+    return f"Failed to capture point {label} after {cfg.max_retries} attempts"
+
+
+def _restructure_for_export(session_dir: Path, point_labels: List[str]) -> None:
+    """Flatten capture_<ts> subdirs for Phase 2 export compatibility."""
+    points_dir = session_dir / "points"
+    for label in point_labels:
+        point_dir = points_dir / f"point_{label}"
+        if point_dir.exists():
+            for subdir in point_dir.iterdir():
+                if subdir.is_dir() and subdir.name.startswith("capture_"):
+                    for f in subdir.iterdir():
+                        f.rename(point_dir / f.name)
+                    subdir.rmdir()
+
+
+def _write_session_files(
+    session_dir: Path,
+    point_labels: List[str],
+    cfg: GoldRunConfig,
+    ts: str,
+) -> None:
+    """Write grid.json and metadata.json for session."""
+    grid = {
+        "schema_version": "grid_v1",
+        "points": [{"id": label, "x_mm": 0, "y_mm": 0} for label in point_labels],
+    }
+    (session_dir / "grid.json").write_text(json.dumps(grid, indent=2), encoding="utf-8")
+
+    metadata = {
+        "schema_version": "session_meta_v1",
+        "specimen_id": cfg.specimen_id,
+        "created_utc": ts,
+        "gold_run": True,
+        "batch_label": cfg.batch_label,
+    }
+    (session_dir / "metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+    print(f"\n[gold-run] All points captured to: {session_dir}")
+
+
+def _do_export(
+    cfg: GoldRunConfig,
+    session_dir: Path,
+    result: GoldRunResult,
+) -> Optional[str]:
+    """Export viewer pack ZIP. Returns error_message or None on success."""
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "phase2"))
+        from export_viewer_pack_v1 import export_viewer_pack
+
+        cfg.out_dir.mkdir(parents=True, exist_ok=True)
+        date_stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M%S")
+        zip_name = f"gold_standard_viewer_pack_v1_{cfg.specimen_id}_{date_stamp}.zip"
+
+        zip_path = export_viewer_pack(session_dir, cfg.out_dir, as_zip=True)
+        final_path = cfg.out_dir / zip_name
+        if zip_path.exists() and zip_path != final_path:
+            zip_path.rename(final_path)
+            zip_path = final_path
+
+        result.zip_path = str(zip_path)
+        result.validation_passed = True
+        result.validation_errors = 0
+        result.validation_warnings = 0
+        result.validation_report_path = str(session_dir / "viewer_pack_v1" / "validation_report.json")
+        print(f"[gold-run] ✓ Exported: {zip_path}")
+        return None
+
+    except ValueError as e:
+        result.validation_passed = False
+        print(f"[gold-run] ✗ Export failed: {e}")
+        return str(e)
+
+    except Exception as e:
+        print(f"[gold-run] ✗ Export error: {e}")
+        return f"Export error: {e}"
+
+
+def _do_ingest(cfg: GoldRunConfig, result: GoldRunResult) -> None:
+    """Handle ingestion and browser opening."""
+    if not cfg.ingest:
+        if result.zip_path:
+            print("[gold-run] ℹ Ingest skipped (--no-ingest)")
+        return
+
+    if not result.validation_passed:
+        result.ingest_error = "validation did not pass"
+        print("[gold-run] ⚠ Skipping ingest: validation did not pass")
+        return
+
+    if not result.zip_path:
+        return
+
+    result.ingest_attempted = True
+    print(f"[gold-run] Ingesting to {cfg.ingest_url}...")
+
+    from tap_tone.ingest import ingest_zip
+    ingest_result = ingest_zip(
+        zip_path=result.zip_path,
+        ingest_url=cfg.ingest_url,
+        session_id=cfg.session_id,
+        batch_label=cfg.batch_label,
+    )
+
+    result.ingest_ok = ingest_result.ok
+    result.ingest_http_status = ingest_result.http_status
+    result.ingest_run_id = ingest_result.run_id
+    result.ingest_error = ingest_result.error
+
+    if not ingest_result.ok:
+        status_str = f"({ingest_result.http_status})" if ingest_result.http_status else ""
+        print(f"[gold-run] ✗ Ingest failed {status_str}: {ingest_result.error}")
+        print(f"    ZIP preserved at: {result.zip_path}")
+        return
+
+    print(f"[gold-run] ✓ Ingested: run_id={ingest_result.run_id}")
+    bundle_sha = ingest_result.payload.get("bundle_sha256") if ingest_result.payload else None
+    if bundle_sha:
+        print(f"    Viewer pack hash: {bundle_sha[:16]}...")
+
+    _handle_ingest_browser(cfg, ingest_result.payload, bundle_sha)
+
+
+def _handle_ingest_browser(
+    cfg: GoldRunConfig,
+    payload: Optional[dict],
+    bundle_sha: Optional[str],
+) -> None:
+    """Handle browser opening after successful ingest."""
+    library_url = f"{cfg.ingest_url.rstrip('/')}/tools/audio-analyzer/library"
+    print(f"    Library: {library_url}")
+
+    url = pick_open_url(cfg.ingest_url, payload, open_browser=cfg.open_browser, open_viewer=cfg.open_viewer)
+    if not url:
+        print("    Browser: skipped (--no-open)")
+        return
+
+    from tap_tone.util import try_open_url
+
+    if cfg.open_viewer and not bundle_sha:
+        print("    ℹ Viewer deep-link unavailable (no bundle_sha256). Opening Library instead.")
+
+    print(f"    URL: {url}")
+    if bundle_sha:
+        print(f"    Bundle SHA: {bundle_sha[:16]}…")
+
+    opened = try_open_url(url)
+    if opened:
+        print("    Browser: opened")
+    else:
+        print("    Browser: could not open (headless or blocked).")
+
+
 def run_gold_run(cfg: GoldRunConfig) -> GoldRunResult:
     """Execute the gold run workflow."""
     result = GoldRunResult(specimen_id=cfg.specimen_id)
@@ -308,19 +560,9 @@ def run_gold_run(cfg: GoldRunConfig) -> GoldRunResult:
     point_labels = _generate_point_labels(cfg.points)
     result.points = point_labels
 
-    # Dry run: just report what would happen
+    # Dry run: early exit
     if cfg.dry_run:
-        if not cfg.json_output:
-            print(f"[DRY RUN] Would create session: {session_dir}")
-            print(f"[DRY RUN] Would capture points: {point_labels}")
-            print(f"[DRY RUN] Would export to: {cfg.out_dir}")
-            # Skip device resolution in pure dry-run (no hardware check)
-            if cfg.device is not None:
-                try:
-                    device_idx = int(cfg.device)
-                    print(f"[DRY RUN] Device index (assumed): {device_idx}")
-                except ValueError:
-                    print(f"[DRY RUN] Device name: {cfg.device} (would resolve at runtime)")
+        _handle_dry_run(cfg, session_dir, point_labels)
         return result
 
     # Resolve device
@@ -335,250 +577,40 @@ def run_gold_run(cfg: GoldRunConfig) -> GoldRunResult:
 
     # Analysis config (lazy import)
     from tap_tone.config import AnalysisConfig
-    an_cfg = AnalysisConfig(
-        peak_min_hz=cfg.min_peak_hz,
-        peak_max_hz=cfg.max_peak_hz,
-    )
+    an_cfg = AnalysisConfig(peak_min_hz=cfg.min_peak_hz, peak_max_hz=cfg.max_peak_hz)
 
-    # Capture points
-    from tap_tone.storage import persist_capture
-
-    # Auto-trigger provenance (collected per-point)
+    # Capture all points
     auto_trigger_provenance: list[dict] = []
-
-    captured_dirs = []
     for i, label in enumerate(point_labels):
         if cfg.auto_trigger:
-            # Auto-trigger capture mode
-            cap_result = _capture_point_auto_trigger(
-                device_idx, cfg, label, i, len(point_labels)
+            err = _capture_single_point_auto(
+                cfg, device_idx, an_cfg, session_dir, label, i, len(point_labels),
+                auto_trigger_provenance,
             )
-            if cap_result is None:
-                result.error_message = f"Failed to capture point {label} (auto-trigger)"
-                return result
-
-            cap_audio, trigger_prov = cap_result
-            auto_trigger_provenance.append({"point": label, **trigger_prov})
-
-            # Analyze the captured audio
-            from tap_tone.analysis import analyze_tap
-            analysis = analyze_tap(
-                cap_audio,
-                cfg.sample_rate,
-                highpass_hz=an_cfg.highpass_hz,
-                peak_min_hz=an_cfg.peak_min_hz,
-                peak_max_hz=an_cfg.peak_max_hz,
-                peak_min_prominence=an_cfg.peak_min_prominence,
-                peak_min_spacing_hz=an_cfg.peak_min_spacing_hz,
-                max_peaks=an_cfg.max_peaks,
-            )
-
-            # Persist
-            persisted = persist_capture(
-                out_dir=str(session_dir / "points" / f"point_{label}"),
-                label=label,
-                sample_rate=cfg.sample_rate,
-                audio=cap_audio,
-                analysis=analysis,
-            )
-            captured_dirs.append(persisted.capture_dir)
-            print(f"    ✓ Captured: dominant={analysis.dominant_hz:.1f}Hz, "
-                  f"confidence={analysis.confidence:.2f}")
         else:
-            # Manual capture mode (original behavior)
-            print(f"\n[{i+1}/{len(point_labels)}] Capturing point {label}...")
-            print(f"    Tap the specimen now (timeout: {cfg.tap_timeout_s}s)")
+            err = _capture_single_point_manual(
+                cfg, device_idx, an_cfg, session_dir, label, i, len(point_labels),
+            )
+        if err:
+            result.error_message = err
+            return result
 
-            success = False
-            for attempt in range(cfg.max_retries):
-                try:
-                    cap, analysis = _capture_point(
-                        device_idx,
-                        cfg.sample_rate,
-                        cfg.capture_seconds,
-                        an_cfg,
-                    )
-
-                    if _is_capture_acceptable(analysis):
-                        success = True
-                        # Persist to session directory
-                        persisted = persist_capture(
-                            out_dir=str(session_dir / "points" / f"point_{label}"),
-                            label=label,
-                            sample_rate=cap.sample_rate,
-                            audio=cap.audio,
-                            analysis=analysis,
-                        )
-                        captured_dirs.append(persisted.capture_dir)
-                        print(f"    ✓ Captured: dominant={analysis.dominant_hz:.1f}Hz, "
-                              f"confidence={analysis.confidence:.2f}")
-                        break
-                    else:
-                        reason = "clipped" if analysis.clipped else "low signal"
-                        print(f"    ⚠ Attempt {attempt+1}: {reason}, retrying...")
-
-                except Exception as e:
-                    print(f"    ⚠ Attempt {attempt+1} failed: {e}")
-
-            if not success:
-                result.error_message = f"Failed to capture point {label} after {cfg.max_retries} attempts"
-                return result
-
-    # Restructure for Phase 2 export compatibility
-    # The persist_capture creates capture_<ts> subdirs, but export expects point_<PID>/
-    # We need to create the expected structure
-    points_dir = session_dir / "points"
-    for label in point_labels:
-        point_dir = points_dir / f"point_{label}"
-        if point_dir.exists():
-            # Find the capture subdir and flatten
-            for subdir in point_dir.iterdir():
-                if subdir.is_dir() and subdir.name.startswith("capture_"):
-                    # Move files up
-                    for f in subdir.iterdir():
-                        f.rename(point_dir / f.name)
-                    subdir.rmdir()
-
-    # Create minimal grid.json for export
-    grid = {
-        "schema_version": "grid_v1",
-        "points": [{"id": label, "x_mm": 0, "y_mm": 0} for label in point_labels],
-    }
-    (session_dir / "grid.json").write_text(json.dumps(grid, indent=2), encoding="utf-8")
-
-    # Create minimal metadata.json
-    metadata = {
-        "schema_version": "session_meta_v1",
-        "specimen_id": cfg.specimen_id,
-        "created_utc": ts,
-        "gold_run": True,
-        "batch_label": cfg.batch_label,
-    }
-    (session_dir / "metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
-
-    print(f"\n[gold-run] All points captured to: {session_dir}")
+    # Restructure and write session files
+    _restructure_for_export(session_dir, point_labels)
+    _write_session_files(session_dir, point_labels, cfg, ts)
 
     # Export
     if cfg.export_zip:
-        try:
-            # Import the exporter
-            sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "phase2"))
-            from export_viewer_pack_v1 import export_viewer_pack
-
-            cfg.out_dir.mkdir(parents=True, exist_ok=True)
-
-            # Generate output filename
-            date_stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M%S")
-            zip_name = f"gold_standard_viewer_pack_v1_{cfg.specimen_id}_{date_stamp}.zip"
-
-            zip_path = export_viewer_pack(
-                session_dir,
-                cfg.out_dir,
-                as_zip=True,
-            )
-
-            # Rename to canonical name
-            final_path = cfg.out_dir / zip_name
-            if zip_path.exists() and zip_path != final_path:
-                zip_path.rename(final_path)
-                zip_path = final_path
-
-            result.zip_path = str(zip_path)
-            result.validation_passed = True  # Export succeeded = validation passed
-            result.validation_errors = 0
-            result.validation_warnings = 0
-            result.validation_report_path = str(session_dir / "viewer_pack_v1" / "validation_report.json")
-
-            print(f"[gold-run] ✓ Exported: {zip_path}")
-
-        except ValueError as e:
-            # Validation failed
-            result.validation_passed = False
-            result.error_message = str(e)
-            print(f"[gold-run] ✗ Export failed: {e}")
+        err = _do_export(cfg, session_dir, result)
+        if err:
+            result.error_message = err
             return result
 
-        except Exception as e:
-            result.error_message = f"Export error: {e}"
-            print(f"[gold-run] ✗ Export error: {e}")
-            return result
-
-    # Ingest (ON by default)
-    if cfg.ingest and result.zip_path and result.validation_passed:
-        result.ingest_attempted = True
-        print(f"[gold-run] Ingesting to {cfg.ingest_url}...")
-
-        from tap_tone.ingest import ingest_zip
-
-        ingest_result = ingest_zip(
-            zip_path=result.zip_path,
-            ingest_url=cfg.ingest_url,
-            session_id=cfg.session_id,
-            batch_label=cfg.batch_label,
-        )
-
-        result.ingest_ok = ingest_result.ok
-        result.ingest_http_status = ingest_result.http_status
-        result.ingest_run_id = ingest_result.run_id
-        result.ingest_error = ingest_result.error
-
-        if ingest_result.ok:
-            print(f"[gold-run] ✓ Ingested: run_id={ingest_result.run_id}")
-
-            # Show bundle_sha256 if present
-            bundle_sha = ingest_result.payload.get("bundle_sha256") if ingest_result.payload else None
-            if bundle_sha:
-                print(f"    Viewer pack hash: {bundle_sha[:16]}...")
-
-            # Pick URL and open browser
-            url = pick_open_url(
-                cfg.ingest_url,
-                ingest_result.payload,
-                open_browser=cfg.open_browser,
-                open_viewer=cfg.open_viewer,
-            )
-
-            # Always print the library URL for reference
-            library_url = f"{cfg.ingest_url.rstrip('/')}/tools/audio-analyzer/library"
-            print(f"    Library: {library_url}")
-
-            if url:
-                from tap_tone.util import try_open_url
-
-                # Note if falling back to library when --open-viewer was requested
-                if cfg.open_viewer and not bundle_sha:
-                    print("    ℹ Viewer deep-link unavailable (no bundle_sha256). Opening Library instead.")
-
-                # Always print the canonical URL for copy/share
-                print(f"    URL: {url}")
-
-                # Print shortened bundle SHA for quick identity verification
-                if bundle_sha:
-                    print(f"    Bundle SHA: {bundle_sha[:16]}…")
-
-                opened = try_open_url(url)
-                if opened:
-                    print("    Browser: opened")
-                else:
-                    print("    Browser: could not open (headless or blocked).")
-            else:
-                print("    Browser: skipped (--no-open)")
-        else:
-            # Ingest failed — report but do not delete ZIP
-            status_str = f"({ingest_result.http_status})" if ingest_result.http_status else ""
-            print(f"[gold-run] ✗ Ingest failed {status_str}: {ingest_result.error}")
-            print(f"    ZIP preserved at: {result.zip_path}")
-            # Note: error_message is NOT set — ingest failure is non-fatal for ZIP
-
-    elif cfg.ingest and not result.validation_passed:
-        # Validation failed — skip ingest
-        result.ingest_error = "validation did not pass"
-        print("[gold-run] ⚠ Skipping ingest: validation did not pass")
-
-    elif not cfg.ingest and result.zip_path:
-        print("[gold-run] ℹ Ingest skipped (--no-ingest)")
+    # Ingest
+    _do_ingest(cfg, result)
 
     return result
+
 
 
 def build_parser() -> argparse.ArgumentParser:
