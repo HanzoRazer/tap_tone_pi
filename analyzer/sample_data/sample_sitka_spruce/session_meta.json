@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "specimen_id": "Sitka Spruce #42",
+  "species": "Sitka Spruce",
+  "grade": "Master",
+  "dimensions_mm": {
+    "length": 520,
+    "width": 180,
+    "thickness": 3.2
+  },
+  "weight_g": 82.5,
+  "moisture_content_pct": 6.8,
+  "created_at_utc": "2026-02-16T04:07:03.933182Z",
+  "device_id": "tap_tone_pi_v1",
+  "operator": "Sample Generator",
+  "notes": "Synthetic test data for analyzer development"
+}

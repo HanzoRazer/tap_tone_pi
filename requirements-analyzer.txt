@@ -1,0 +1,22 @@
+# Tap Tone Analyzer Desktop App Dependencies
+# Install with: pip install -r requirements-analyzer.txt
+
+# GUI Framework
+PyQt6>=6.5.0
+
+# Plotting
+matplotlib>=3.7.0
+
+# Numerical Computing
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Build/Packaging
+pyinstaller>=5.13.0
+
+# Optional: Audio playback (for raw audio files)
+# sounddevice>=0.4.6
+
+# Development (optional)
+# pytest>=7.0.0
+# pytest-qt>=4.2.0

@@ -1,0 +1,14 @@
+{
+  "wood_properties": {
+    "estimated_density_kg_m3": 275.4,
+    "estimated_stiffness_gpa": 97.22,
+    "radiation_coefficient": 18.79,
+    "fundamental_hz": 203.2,
+    "quality_grade": "A"
+  },
+  "mode_analysis": {
+    "num_modes_detected": 8,
+    "mode_spacing_quality": "regular",
+    "highest_coherence": 1.0
+  }
+}
