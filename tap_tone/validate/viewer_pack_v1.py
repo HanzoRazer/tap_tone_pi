@@ -138,6 +138,332 @@ def _parse_float(value: str) -> Optional[float]:
         return None
 
 
+def _is_ci() -> bool:
+    """Check if running in CI environment."""
+    return os.getenv("CI", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _validate_timeline(
+    pack: Path,
+    timeline_path: Path,
+    report: ValidationReport,
+    stats: Dict[str, int],
+) -> None:
+    """Validate optional session timeline (T-000, T-001)."""
+    if not timeline_path.exists():
+        return
+
+    stats["timeline_present"] = 1
+    try:
+        doc = json.loads(timeline_path.read_text(encoding="utf-8"))
+        if not isinstance(doc, dict):
+            report.add_error(
+                "T-001",
+                "session_timeline_v1.json is not a JSON object",
+                str(timeline_path.relative_to(pack)),
+            )
+            return
+
+        schema = _load_contract_schema(
+            "contracts/schemas/session_timeline_v1.schema.json",
+        )
+        if schema is None:
+            if _is_ci():
+                report.add_error(
+                    "T-000",
+                    "Session timeline schema not found in CI; failing validation",
+                    str(timeline_path.relative_to(pack)),
+                )
+            else:
+                report.add_warning(
+                    "T-000",
+                    "Session timeline schema not found; skipping schema validation",
+                    str(timeline_path.relative_to(pack)),
+                )
+            return
+
+        err = _validate_json_against_schema(doc, schema)
+        if err is None:
+            stats["timeline_valid"] = 1
+        else:
+            report.add_error(
+                "T-001",
+                f"session_timeline_v1.json does not conform to schema: {err}",
+                str(timeline_path.relative_to(pack)),
+            )
+    except json.JSONDecodeError as e:
+        report.add_error(
+            "T-001",
+            f"session_timeline_v1.json is not valid JSON: {e}",
+            str(timeline_path.relative_to(pack)),
+        )
+    except Exception as e:
+        report.add_error(
+            "T-001",
+            f"session_timeline_v1.json validation failed: {e}",
+            str(timeline_path.relative_to(pack)),
+        )
+
+
+def _collect_shared_freq_grid(
+    pack: Path,
+    points: List[str],
+) -> tuple[Optional[List[float]], Optional[str]]:
+    """Collect shared frequency grid from first valid spectrum."""
+    for pid in points:
+        spectrum_path = pack / "spectra" / "points" / pid / "spectrum.csv"
+        if spectrum_path.exists():
+            try:
+                headers, rows = _read_csv_columns(spectrum_path)
+                if "freq_hz" in headers:
+                    freqs = []
+                    for row in rows:
+                        f = _parse_float(row.get("freq_hz", ""))
+                        if f is not None:
+                            freqs.append(f)
+                    if freqs:
+                        return freqs, pid
+            except (IndexError, OSError, KeyError, TypeError):
+                pass
+    return None, None
+
+
+def _validate_wsi(
+    pack: Path,
+    report: ValidationReport,
+    stats: Dict[str, int],
+    shared_freq_grid: Optional[List[float]],
+) -> None:
+    """Validate WSI curve (W-001 to W-003)."""
+    wsi_path = pack / "wolf" / "wsi_curve.csv"
+    if not wsi_path.exists():
+        return
+
+    try:
+        headers, rows = _read_csv_columns(wsi_path)
+        rel_path = str(wsi_path.relative_to(pack))
+
+        # W-001: Required Columns
+        required_cols = ["freq_hz", "wsi", "loc", "grad", "phase_disorder", "coh_mean", "admissible"]
+        for col in required_cols:
+            if col not in headers:
+                report.add_error("W-001", f"WSI curve missing required column: {col}", rel_path)
+
+        if not all(col in headers for col in required_cols):
+            return
+
+        # W-002: Admissible Values
+        for i, row in enumerate(rows):
+            adm = row.get("admissible", "").lower().strip()
+            if adm not in ("true", "false"):
+                report.add_error(
+                    "W-002",
+                    f"WSI curve: invalid admissible value '{row.get('admissible', '')}' at row {i+2}",
+                    rel_path,
+                )
+                break
+
+        # W-003: Frequency Alignment
+        wsi_freqs = []
+        for row in rows:
+            f = _parse_float(row.get("freq_hz", ""))
+            if f is not None:
+                wsi_freqs.append(f)
+
+        if shared_freq_grid:
+            if len(wsi_freqs) != len(shared_freq_grid):
+                report.add_error(
+                    "W-003",
+                    f"WSI frequency grid mismatch: {len(wsi_freqs)} bins vs {len(shared_freq_grid)} spectrum bins",
+                    rel_path,
+                )
+            else:
+                for i, (f1, f2) in enumerate(zip(shared_freq_grid, wsi_freqs)):
+                    if abs(f1 - f2) > 1e-6:
+                        report.add_error(
+                            "W-003",
+                            f"WSI frequency mismatch at bin {i}: spectrum={f1}, wsi={f2}",
+                            rel_path,
+                        )
+                        break
+
+        stats["wsi_valid"] = 1
+
+    except Exception as e:
+        report.add_error("W-001", f"Cannot read WSI curve: {e}", str(wsi_path.relative_to(pack)))
+
+
+def _validate_optional_files(
+    pack: Path,
+    report: ValidationReport,
+) -> None:
+    """Validate optional JSON files (O-001)."""
+    optional_json_files = [
+        pack / "coherence" / "coherence_summary.json",
+        pack / "meta" / "session_meta.json",
+        pack / "provenance.json",
+    ]
+
+    for opt_path in optional_json_files:
+        if opt_path.exists():
+            try:
+                with open(opt_path, "r", encoding="utf-8") as f:
+                    json.load(f)
+            except json.JSONDecodeError as e:
+                report.add_warning("O-001", f"Optional file is not valid JSON: {e}", str(opt_path.relative_to(pack)))
+
+
+def _validate_point_spectrum(
+    pack: Path,
+    pid: str,
+    report: ValidationReport,
+    shared_freq_grid: Optional[List[float]],
+    first_spectrum_pid: Optional[str],
+) -> Optional[List[float]]:
+    """Validate spectrum for a single point (S-001 to S-006).
+
+    Returns freq_hz_values if valid, None otherwise.
+    """
+    spectrum_path = pack / "spectra" / "points" / pid / "spectrum.csv"
+    if not spectrum_path.exists():
+        report.add_error("S-001", f"Spectrum missing for point {pid}", str(spectrum_path.relative_to(pack)))
+        return None
+
+    try:
+        headers, rows = _read_csv_columns(spectrum_path)
+    except Exception as e:
+        report.add_error("S-001", f"Cannot read spectrum for point {pid}: {e}", str(spectrum_path.relative_to(pack)))
+        return None
+
+    rel_path = str(spectrum_path.relative_to(pack))
+
+    # S-002: Required Columns
+    if "freq_hz" not in headers:
+        report.add_error("S-002", f"Spectrum {pid} missing required column: freq_hz", rel_path)
+    if "H_mag" not in headers:
+        report.add_error("S-002", f"Spectrum {pid} missing required column: H_mag", rel_path)
+
+    if "freq_hz" not in headers or "H_mag" not in headers:
+        return None
+
+    # Parse freq_hz and H_mag
+    freq_hz_values: List[float] = []
+    parse_errors = False
+
+    for i, row in enumerate(rows):
+        f = _parse_float(row.get("freq_hz", ""))
+        m = _parse_float(row.get("H_mag", ""))
+
+        if f is None:
+            report.add_error("S-002", f"Spectrum {pid}: invalid freq_hz at row {i+2}", rel_path)
+            parse_errors = True
+            continue
+
+        freq_hz_values.append(f)
+
+        if m is None:
+            report.add_error("S-005", f"Spectrum {pid}: invalid H_mag at row {i+2}", rel_path)
+            parse_errors = True
+        else:
+            # S-005: Finite Magnitudes
+            if not math.isfinite(m):
+                report.add_error("S-005", f"Spectrum {pid}: non-finite H_mag at row {i+2}", rel_path)
+                parse_errors = True
+
+    if parse_errors:
+        return None
+
+    # S-003: Frequency Monotonicity
+    for i in range(1, len(freq_hz_values)):
+        if freq_hz_values[i] <= freq_hz_values[i - 1]:
+            report.add_error(
+                "S-003",
+                f"Spectrum {pid}: freq_hz not strictly increasing at row {i+2} ({freq_hz_values[i-1]} >= {freq_hz_values[i]})",
+                rel_path,
+            )
+            break
+
+    # S-004: No Duplicate Frequencies
+    if len(set(freq_hz_values)) != len(freq_hz_values):
+        seen: Set[float] = set()
+        for f in freq_hz_values:
+            if f in seen:
+                report.add_error("S-004", f"Spectrum {pid}: duplicate freq_hz value {f}", rel_path)
+                break
+            seen.add(f)
+
+    # S-006: Shared Frequency Grid
+    if shared_freq_grid is not None and first_spectrum_pid != pid:
+        if len(freq_hz_values) != len(shared_freq_grid):
+            report.add_error(
+                "S-006",
+                f"Frequency grid mismatch: {first_spectrum_pid} has {len(shared_freq_grid)} bins, {pid} has {len(freq_hz_values)} bins",
+                rel_path,
+            )
+        else:
+            for i, (f1, f2) in enumerate(zip(shared_freq_grid, freq_hz_values)):
+                if abs(f1 - f2) > 1e-6:
+                    report.add_error(
+                        "S-006",
+                        f"Frequency mismatch at bin {i}: {first_spectrum_pid}={f1}, {pid}={f2}",
+                        rel_path,
+                    )
+                    break
+
+    return freq_hz_values
+
+
+def _validate_point_analysis(
+    pack: Path,
+    pid: str,
+    report: ValidationReport,
+    stats: Dict[str, int],
+    shared_freq_grid: Optional[List[float]],
+    peak_tolerance_hz: float,
+) -> None:
+    """Validate analysis for a single point (P-001 to P-003)."""
+    analysis_path = pack / "spectra" / "points" / pid / "analysis.json"
+    if not analysis_path.exists():
+        report.add_error("P-001", f"Analysis missing for point {pid}", str(analysis_path.relative_to(pack)))
+        return
+
+    try:
+        with open(analysis_path, "r", encoding="utf-8") as f:
+            analysis = json.load(f)
+
+        peaks = analysis.get("peaks", [])
+        if not isinstance(peaks, list):
+            report.add_error("P-002", f"Analysis {pid}: peaks is not an array", str(analysis_path.relative_to(pack)))
+            return
+
+        # P-003: Peaks Grid Alignment
+        peaks_aligned = True
+        for peak in peaks:
+            if not isinstance(peak, dict) or "freq_hz" not in peak:
+                report.add_error("P-002", f"Analysis {pid}: peak missing freq_hz", str(analysis_path.relative_to(pack)))
+                peaks_aligned = False
+                continue
+
+            peak_freq = peak["freq_hz"]
+            if shared_freq_grid:
+                # Find nearest bin
+                min_dist = min(abs(peak_freq - f) for f in shared_freq_grid)
+                if min_dist > peak_tolerance_hz:
+                    nearest = min(shared_freq_grid, key=lambda x: abs(x - peak_freq))
+                    report.add_error(
+                        "P-003",
+                        f"Peak {pid}@{peak_freq}Hz not in frequency grid (nearest: {nearest}Hz, delta: {min_dist:.2f}Hz)",
+                        str(analysis_path.relative_to(pack)),
+                    )
+                    peaks_aligned = False
+
+        if peaks_aligned:
+            stats["peaks_aligned"] += 1
+
+    except json.JSONDecodeError as e:
+        report.add_error("P-002", f"Analysis {pid}: invalid JSON: {e}", str(analysis_path.relative_to(pack)))
+
+
 def validate_pack(
     pack_path: Path,
     peak_tolerance_hz: float = 0.0,
@@ -235,228 +561,30 @@ def validate_pack(
     # T-001: Optional Session Timeline (schema-validated)
     # ========================================
     timeline_path = pack / "meta" / "session_timeline_v1.json"
-    if timeline_path.exists():
-        stats["timeline_present"] = 1
-        try:
-            doc = json.loads(timeline_path.read_text(encoding="utf-8"))
-            if not isinstance(doc, dict):
-                report.add_error(
-                    "T-001",
-                    "session_timeline_v1.json is not a JSON object",
-                    str(timeline_path.relative_to(pack)),
-                )
-            else:
-                schema = _load_contract_schema(
-                    "contracts/schemas/session_timeline_v1.schema.json",
-                )
-                if schema is None:
-                    # Tighten in CI: schema presence is mandatory.
-                    if os.getenv("CI", "").strip().lower() in (
-                        "1", "true", "yes", "on",
-                    ):
-                        report.add_error(
-                            "T-000",
-                            "Session timeline schema not found in CI; "
-                            "failing validation",
-                            str(timeline_path.relative_to(pack)),
-                        )
-                    else:
-                        report.add_warning(
-                            "T-000",
-                            "Session timeline schema not found; "
-                            "skipping schema validation",
-                            str(timeline_path.relative_to(pack)),
-                        )
-                else:
-                    err = _validate_json_against_schema(doc, schema)
-                    if err is None:
-                        stats["timeline_valid"] = 1
-                    else:
-                        report.add_error(
-                            "T-001",
-                            "session_timeline_v1.json does not conform "
-                            f"to schema: {err}",
-                            str(timeline_path.relative_to(pack)),
-                        )
-        except json.JSONDecodeError as e:
-            report.add_error(
-                "T-001",
-                f"session_timeline_v1.json is not valid JSON: {e}",
-                str(timeline_path.relative_to(pack)),
-            )
-        except Exception as e:
-            report.add_error(
-                "T-001",
-                f"session_timeline_v1.json validation failed: {e}",
-                str(timeline_path.relative_to(pack)),
-            )
+    _validate_timeline(pack, timeline_path, report, stats)
 
     # ========================================
     # Collect shared frequency grid from first valid spectrum
     # ========================================
-    shared_freq_grid: Optional[List[float]] = None
-    first_spectrum_pid: Optional[str] = None
-
-    for pid in points:
-        spectrum_path = pack / "spectra" / "points" / pid / "spectrum.csv"
-        if spectrum_path.exists():
-            try:
-                headers, rows = _read_csv_columns(spectrum_path)
-                if "freq_hz" in headers:
-                    freqs = []
-                    for row in rows:
-                        f = _parse_float(row.get("freq_hz", ""))
-                        if f is not None:
-                            freqs.append(f)
-                    if freqs:
-                        shared_freq_grid = freqs
-                        first_spectrum_pid = pid
-                        break
-            except (IndexError, OSError, KeyError, TypeError):
-                pass
+    shared_freq_grid, first_spectrum_pid = _collect_shared_freq_grid(pack, points)
 
     # ========================================
     # Validate each point
     # ========================================
     for pid in points:
-        # S-001: Spectrum Existence
-        spectrum_path = pack / "spectra" / "points" / pid / "spectrum.csv"
-        if not spectrum_path.exists():
-            report.add_error("S-001", f"Spectrum missing for point {pid}", str(spectrum_path.relative_to(pack)))
-            continue
+        # S-xxx: Spectrum Validation
+        freq_hz_values = _validate_point_spectrum(
+            pack, pid, report, shared_freq_grid, first_spectrum_pid
+        )
+        if freq_hz_values is not None:
+            stats["spectra_valid"] += 1
 
-        # Parse spectrum
-        try:
-            headers, rows = _read_csv_columns(spectrum_path)
-        except Exception as e:
-            report.add_error("S-001", f"Cannot read spectrum for point {pid}: {e}", str(spectrum_path.relative_to(pack)))
-            continue
+            # P-xxx: Analysis/Peaks Validation
+            _validate_point_analysis(
+                pack, pid, report, stats, shared_freq_grid, peak_tolerance_hz
+            )
 
-        rel_path = str(spectrum_path.relative_to(pack))
-
-        # S-002: Required Columns
-        if "freq_hz" not in headers:
-            report.add_error("S-002", f"Spectrum {pid} missing required column: freq_hz", rel_path)
-        if "H_mag" not in headers:
-            report.add_error("S-002", f"Spectrum {pid} missing required column: H_mag", rel_path)
-
-        if "freq_hz" not in headers or "H_mag" not in headers:
-            continue
-
-        # Parse freq_hz and H_mag
-        freq_hz_values: List[float] = []
-        h_mag_values: List[float] = []
-        parse_errors = False
-
-        for i, row in enumerate(rows):
-            f = _parse_float(row.get("freq_hz", ""))
-            m = _parse_float(row.get("H_mag", ""))
-
-            if f is None:
-                report.add_error("S-002", f"Spectrum {pid}: invalid freq_hz at row {i+2}", rel_path)
-                parse_errors = True
-                continue
-
-            freq_hz_values.append(f)
-
-            if m is None:
-                report.add_error("S-005", f"Spectrum {pid}: invalid H_mag at row {i+2}", rel_path)
-                parse_errors = True
-            else:
-                # S-005: Finite Magnitudes
-                if not math.isfinite(m):
-                    report.add_error("S-005", f"Spectrum {pid}: non-finite H_mag at row {i+2}", rel_path)
-                    parse_errors = True
-                h_mag_values.append(m)
-
-        if parse_errors:
-            continue
-
-        # S-003: Frequency Monotonicity
-        for i in range(1, len(freq_hz_values)):
-            if freq_hz_values[i] <= freq_hz_values[i - 1]:
-                report.add_error(
-                    "S-003",
-                    f"Spectrum {pid}: freq_hz not strictly increasing at row {i+2} ({freq_hz_values[i-1]} >= {freq_hz_values[i]})",
-                    rel_path,
-                )
-                break
-
-        # S-004: No Duplicate Frequencies
-        if len(set(freq_hz_values)) != len(freq_hz_values):
-            seen: Set[float] = set()
-            for f in freq_hz_values:
-                if f in seen:
-                    report.add_error("S-004", f"Spectrum {pid}: duplicate freq_hz value {f}", rel_path)
-                    break
-                seen.add(f)
-
-        # S-006: Shared Frequency Grid
-        if shared_freq_grid is not None and first_spectrum_pid != pid:
-            if len(freq_hz_values) != len(shared_freq_grid):
-                report.add_error(
-                    "S-006",
-                    f"Frequency grid mismatch: {first_spectrum_pid} has {len(shared_freq_grid)} bins, {pid} has {len(freq_hz_values)} bins",
-                    rel_path,
-                )
-            else:
-                for i, (f1, f2) in enumerate(zip(shared_freq_grid, freq_hz_values)):
-                    if abs(f1 - f2) > 1e-6:
-                        report.add_error(
-                            "S-006",
-                            f"Frequency mismatch at bin {i}: {first_spectrum_pid}={f1}, {pid}={f2}",
-                            rel_path,
-                        )
-                        break
-
-        stats["spectra_valid"] += 1
-
-        # ========================================
-        # P-001: Analysis Existence
-        # ========================================
-        analysis_path = pack / "spectra" / "points" / pid / "analysis.json"
-        if not analysis_path.exists():
-            report.add_error("P-001", f"Analysis missing for point {pid}", str(analysis_path.relative_to(pack)))
-        else:
-            # P-002: Peaks Structure
-            try:
-                with open(analysis_path, "r", encoding="utf-8") as f:
-                    analysis = json.load(f)
-
-                peaks = analysis.get("peaks", [])
-                if not isinstance(peaks, list):
-                    report.add_error("P-002", f"Analysis {pid}: peaks is not an array", str(analysis_path.relative_to(pack)))
-                else:
-                    # P-003: Peaks Grid Alignment
-                    peaks_aligned = True
-                    for peak in peaks:
-                        if not isinstance(peak, dict) or "freq_hz" not in peak:
-                            report.add_error("P-002", f"Analysis {pid}: peak missing freq_hz", str(analysis_path.relative_to(pack)))
-                            peaks_aligned = False
-                            continue
-
-                        peak_freq = peak["freq_hz"]
-                        if shared_freq_grid:
-                            # Find nearest bin
-                            min_dist = min(abs(peak_freq - f) for f in shared_freq_grid)
-                            if min_dist > peak_tolerance_hz:
-                                nearest = min(shared_freq_grid, key=lambda x: abs(x - peak_freq))
-                                report.add_error(
-                                    "P-003",
-                                    f"Peak {pid}@{peak_freq}Hz not in frequency grid (nearest: {nearest}Hz, delta: {min_dist:.2f}Hz)",
-                                    str(analysis_path.relative_to(pack)),
-                                )
-                                peaks_aligned = False
-
-                    if peaks_aligned:
-                        stats["peaks_aligned"] += 1
-
-            except json.JSONDecodeError as e:
-                report.add_error("P-002", f"Analysis {pid}: invalid JSON: {e}", str(analysis_path.relative_to(pack)))
-
-        # ========================================
         # A-001: Audio Existence
-        # ========================================
         audio_path = pack / "audio" / "points" / f"{pid}.wav"
         if audio_path.exists():
             stats["audio_present"] += 1
@@ -469,75 +597,12 @@ def validate_pack(
     # ========================================
     # W-xxx: WSI Curve Validation
     # ========================================
-    wsi_path = pack / "wolf" / "wsi_curve.csv"
-    if wsi_path.exists():
-        try:
-            headers, rows = _read_csv_columns(wsi_path)
-            rel_path = str(wsi_path.relative_to(pack))
-
-            # W-001: Required Columns
-            required_cols = ["freq_hz", "wsi", "loc", "grad", "phase_disorder", "coh_mean", "admissible"]
-            for col in required_cols:
-                if col not in headers:
-                    report.add_error("W-001", f"WSI curve missing required column: {col}", rel_path)
-
-            if all(col in headers for col in required_cols):
-                # W-002: Admissible Values
-                for i, row in enumerate(rows):
-                    adm = row.get("admissible", "").lower().strip()
-                    if adm not in ("true", "false"):
-                        report.add_error(
-                            "W-002",
-                            f"WSI curve: invalid admissible value '{row.get('admissible', '')}' at row {i+2}",
-                            rel_path,
-                        )
-                        break
-
-                # W-003: Frequency Alignment
-                wsi_freqs = []
-                for row in rows:
-                    f = _parse_float(row.get("freq_hz", ""))
-                    if f is not None:
-                        wsi_freqs.append(f)
-
-                if shared_freq_grid:
-                    if len(wsi_freqs) != len(shared_freq_grid):
-                        report.add_error(
-                            "W-003",
-                            f"WSI frequency grid mismatch: {len(wsi_freqs)} bins vs {len(shared_freq_grid)} spectrum bins",
-                            rel_path,
-                        )
-                    else:
-                        for i, (f1, f2) in enumerate(zip(shared_freq_grid, wsi_freqs)):
-                            if abs(f1 - f2) > 1e-6:
-                                report.add_error(
-                                    "W-003",
-                                    f"WSI frequency mismatch at bin {i}: spectrum={f1}, wsi={f2}",
-                                    rel_path,
-                                )
-                                break
-
-                stats["wsi_valid"] = 1
-
-        except Exception as e:
-            report.add_error("W-001", f"Cannot read WSI curve: {e}", str(wsi_path.relative_to(pack)))
+    _validate_wsi(pack, report, stats, shared_freq_grid)
 
     # ========================================
     # O-001: Optional Files
     # ========================================
-    optional_json_files = [
-        pack / "coherence" / "coherence_summary.json",
-        pack / "meta" / "session_meta.json",
-        pack / "provenance.json",
-    ]
-
-    for opt_path in optional_json_files:
-        if opt_path.exists():
-            try:
-                with open(opt_path, "r", encoding="utf-8") as f:
-                    json.load(f)
-            except json.JSONDecodeError as e:
-                report.add_warning("O-001", f"Optional file is not valid JSON: {e}", str(opt_path.relative_to(pack)))
+    _validate_optional_files(pack, report)
 
     # ========================================
     # T-002 CI gate: timeline_present requires timeline_valid
@@ -546,7 +611,7 @@ def validate_pack(
     # even if future refactors alter T-000/T-001 paths.  Do not remove.
     # ========================================
     if (
-        os.getenv("CI", "").strip().lower() in ("1", "true", "yes", "on")
+        _is_ci()
         and stats.get("timeline_present") == 1
         and stats.get("timeline_valid") != 1
     ):
