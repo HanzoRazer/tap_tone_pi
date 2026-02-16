@@ -203,6 +203,106 @@ def _directive_severity(action: str | None) -> str:
     return "info"
 
 
+def _render_shadow_error_path(
+    error: Dict[str, Any],
+    lines: list[str],
+    verbose: bool,
+    color: bool,
+) -> str:
+    """Render error path for shadow record. Returns formatted string."""
+    err_type = error.get("type", "Error")
+    err_msg = error.get("message", "")
+    note = f"Note: {err_type}: {err_msg}".strip()
+    if color:
+        note = _colorize(note, "warn")
+    lines.append("")
+    lines.append(note)
+    if verbose:
+        stage = error.get("stage")
+        if stage:
+            lines.append("")
+            lines.append("Details:")
+            lines.append(f"  Stage: {stage}")
+    return "\n".join(lines)
+
+
+def _extract_advisory_fields(advisory: Any, moment: Dict[str, Any]) -> tuple:
+    """Extract advisory fields with fallbacks.
+
+    Returns (action, summary, focus, confidence, moment_id, moment_conf, trigger_count).
+    """
+    action = advisory.get("action") if isinstance(advisory, dict) else None
+    summary = advisory.get("summary") if isinstance(advisory, dict) else None
+    focus = advisory.get("focus") if isinstance(advisory, dict) else None
+    adv_conf = advisory.get("confidence") if isinstance(advisory, dict) else None
+
+    moment_id = moment.get("id")
+    moment_conf = moment.get("confidence")
+    trigger_count = moment.get("trigger_event_count")
+
+    return action, summary, focus, adv_conf, moment_id, moment_conf, trigger_count
+
+
+def _build_shadow_details(
+    action: Optional[str],
+    focus: Optional[Dict[str, Any]],
+    confidence: Optional[float],
+    verbose: bool,
+    moment_id: Optional[str],
+    trigger_count: Optional[int],
+    commands: Dict[str, Any],
+    rec: Dict[str, Any],
+) -> list[str]:
+    """Build details lines for shadow record."""
+    detail_lines: list[str] = []
+
+    if isinstance(action, str) and action:
+        detail_lines.append(f"  Action: {action}")
+
+    if isinstance(focus, dict):
+        target_type = focus.get("target_type")
+        target_id = focus.get("target_id")
+        if target_type and target_id:
+            detail_lines.append(f"  Focus: {target_type}:{target_id}")
+
+    if isinstance(confidence, (int, float)):
+        try:
+            detail_lines.append(f"  Confidence: {float(confidence):.2f}")
+        except (ValueError, TypeError):
+            pass
+
+    if verbose:
+        _add_verbose_details(detail_lines, moment_id, trigger_count, commands, rec)
+
+    return detail_lines
+
+
+def _add_verbose_details(
+    detail_lines: list[str],
+    moment_id: Optional[str],
+    trigger_count: Optional[int],
+    commands: Dict[str, Any],
+    rec: Dict[str, Any],
+) -> None:
+    """Add verbose-mode details to detail_lines (mutates in place)."""
+    if isinstance(moment_id, str) and moment_id:
+        detail_lines.append(f"  Moment: {moment_id}")
+    if isinstance(trigger_count, int):
+        detail_lines.append(f"  Triggers: {trigger_count}")
+    cmd_count = commands.get("count")
+    if isinstance(cmd_count, int):
+        detail_lines.append(f"  Commands: {cmd_count}")
+    sess = rec.get("session_id")
+    run = rec.get("run_id")
+    ts = rec.get("timestamp")
+    if isinstance(sess, str) and sess:
+        detail_lines.append(f"  Session: {sess}")
+    if isinstance(run, str) and run:
+        detail_lines.append(f"  Run: {run}")
+    if isinstance(ts, str) and ts:
+        detail_lines.append(f"  Time: {ts}")
+
+
 def render_cli_shadow_record(
     rec: Dict[str, Any],
     *,
@@ -244,77 +344,27 @@ def render_cli_shadow_record(
     title_line = _colorize(title_text, severity) if color else title_text
     lines: list[str] = [title_line, "=" * len(title_text)]
 
-    # ---- error path: note + optional verbose, then return ----
+    # ---- error path ----
     if error:
-        err_type = error.get("type", "Error")
-        err_msg = error.get("message", "")
-        note = f"Note: {err_type}: {err_msg}".strip()
-        if color:
-            note = _colorize(note, "warn")
-        lines.append("")
-        lines.append(note)
-        if verbose:
-            stage = error.get("stage")
-            if stage:
-                lines.append("")
-                lines.append("Details:")
-                lines.append(f"  Stage: {stage}")
-        return "\n".join(lines)
+        return _render_shadow_error_path(error, lines, verbose, color)
 
-    # ---- extract advisory fields (forgiving) ----
-    action = advisory.get("action") if isinstance(advisory, dict) else None
-    summary = advisory.get("summary") if isinstance(advisory, dict) else None
-    focus = advisory.get("focus") if isinstance(advisory, dict) else None
-    adv_conf = advisory.get("confidence") if isinstance(advisory, dict) else None
+    # ---- extract advisory fields ----
+    action, summary, focus, adv_conf, moment_id, moment_conf, trigger_count = \
+        _extract_advisory_fields(advisory, moment)
 
-    moment_id = moment.get("id")
-    moment_conf = moment.get("confidence")
-    trigger_count = moment.get("trigger_event_count")
-
-    # ---- summary (blank line, then text — same as render_cli) ----
+    # ---- summary ----
     if not summary:
         summary = moment_id
     if isinstance(summary, str) and summary:
         lines.append("")
         lines.append(summary)
 
-    # ---- details section (2-space indent, matches render_cli) ----
-    detail_lines: list[str] = []
-
-    if isinstance(action, str) and action:
-        detail_lines.append(f"  Action: {action}")
-
-    if isinstance(focus, dict):
-        target_type = focus.get("target_type")
-        target_id = focus.get("target_id")
-        if target_type and target_id:
-            detail_lines.append(f"  Focus: {target_type}:{target_id}")
-
+    # ---- details section ----
     confidence = adv_conf if isinstance(adv_conf, (int, float)) else moment_conf
-    if isinstance(confidence, (int, float)):
-        try:
-            detail_lines.append(f"  Confidence: {float(confidence):.2f}")
-        except (ImportError, OSError, ValueError, KeyError, AttributeError):
-            pass
-
-    # verbose extras also live in the Details block
-    if verbose:
-        if isinstance(moment_id, str) and moment_id:
-            detail_lines.append(f"  Moment: {moment_id}")
-        if isinstance(trigger_count, int):
-            detail_lines.append(f"  Triggers: {trigger_count}")
-        cmd_count = commands.get("count")
-        if isinstance(cmd_count, int):
-            detail_lines.append(f"  Commands: {cmd_count}")
-        sess = rec.get("session_id")
-        run = rec.get("run_id")
-        ts = rec.get("timestamp")
-        if isinstance(sess, str) and sess:
-            detail_lines.append(f"  Session: {sess}")
-        if isinstance(run, str) and run:
-            detail_lines.append(f"  Run: {run}")
-        if isinstance(ts, str) and ts:
-            detail_lines.append(f"  Time: {ts}")
+    detail_lines = _build_shadow_details(
+        action, focus, confidence, verbose,
+        moment_id, trigger_count, commands, rec,
+    )
 
     if detail_lines:
         lines.append("")
