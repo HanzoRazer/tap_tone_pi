@@ -215,36 +215,12 @@ def build_readme(session_dir: Path) -> str:
     ])
 
 
-def export_viewer_pack(
-    session_dir: Path,
-    out_dir: Path,
-    *,
-    as_zip: bool,
-) -> Path:
-    if not session_dir.exists():
-        raise FileNotFoundError(f"session_dir not found: {session_dir}")
+# -------------------------------------------------------------------------
+# Export helpers
+# -------------------------------------------------------------------------
 
-    # pack root
-    pack_root = out_dir / "viewer_pack_v1"
-    if pack_root.exists():
-        shutil.rmtree(pack_root)
-    pack_root.mkdir(parents=True, exist_ok=True)
-
-    files: List[FileEntry] = []
-
-    def add_file(src: Path, relpath: str):
-        dst = pack_root / relpath
-        copy_file(src, dst)
-        entry = FileEntry(
-            relpath=relpath.replace("\\", "/"),
-            sha256=sha256_file(dst),
-            bytes=dst.stat().st_size,
-            mime=guess_mime(dst),
-            kind=detect_kind(relpath),
-        )
-        files.append(entry)
-
-    # README
+def _add_readme(pack_root: Path, session_dir: Path, files: List[FileEntry]) -> None:
+    """Add README.txt to pack."""
     readme_text = build_readme(session_dir)
     readme_path = pack_root / "README.txt"
     write_text(readme_path, readme_text)
@@ -256,13 +232,20 @@ def export_viewer_pack(
         kind="provenance",
     ))
 
-    # session meta (existing files)
+
+def _add_session_meta(
+    pack_root: Path,
+    session_dir: Path,
+    files: List[FileEntry],
+    add_file_fn,
+) -> None:
+    """Add session metadata files (grid.json, metadata.json, session_meta.json)."""
     grid = session_dir / "grid.json"
     metadata = session_dir / "metadata.json"
     if grid.exists():
-        add_file(grid, "meta/grid.json")
+        add_file_fn(grid, "meta/grid.json")
     if metadata.exists():
-        add_file(metadata, "meta/metadata.json")
+        add_file_fn(metadata, "meta/metadata.json")
 
     # session_meta.json (canonical metadata for ToolBox compare UI)
     extracted = extract_session_metadata(session_dir)
@@ -288,7 +271,12 @@ def export_viewer_pack(
         kind="session_meta",
     ))
 
-    # points
+
+def _add_points(
+    session_dir: Path,
+    add_file_fn,
+) -> List[str]:
+    """Add point data (audio, spectra, analysis, provenance). Returns point IDs."""
     points_dir = session_dir / "points"
     if not points_dir.exists():
         raise FileNotFoundError(f"Phase2 points/ missing: {points_dir}")
@@ -307,52 +295,69 @@ def export_viewer_pack(
         analysis = point_folder / "analysis.json"
 
         if wav.exists():
-            add_file(wav, f"audio/points/{pid}.wav")
+            add_file_fn(wav, f"audio/points/{pid}.wav")
         if spectrum.exists():
-            add_file(spectrum, f"spectra/points/{pid}/spectrum.csv")
+            add_file_fn(spectrum, f"spectra/points/{pid}/spectrum.csv")
         if analysis.exists():
-            add_file(analysis, f"spectra/points/{pid}/analysis.json")
+            add_file_fn(analysis, f"spectra/points/{pid}/analysis.json")
         if cap.exists():
-            add_file(cap, f"provenance/points/{pid}/capture_meta.json")
+            add_file_fn(cap, f"provenance/points/{pid}/capture_meta.json")
 
-    # derived
+    return point_ids
+
+
+def _add_derived(session_dir: Path, add_file_fn) -> None:
+    """Add derived artifacts (ods, wolf)."""
     derived_dir = session_dir / "derived"
-    if derived_dir.exists():
-        ods = derived_dir / "ods_snapshot.json"
-        wc = derived_dir / "wolf_candidates.json"
-        wsi = derived_dir / "wsi_curve.csv"
-        if ods.exists():
-            add_file(ods, "ods/ods_snapshot.json")
-        if wc.exists():
-            add_file(wc, "wolf/wolf_candidates.json")
-        if wsi.exists():
-            add_file(wsi, "wolf/wsi_curve.csv")
+    if not derived_dir.exists():
+        return
+    ods = derived_dir / "ods_snapshot.json"
+    wc = derived_dir / "wolf_candidates.json"
+    wsi = derived_dir / "wsi_curve.csv"
+    if ods.exists():
+        add_file_fn(ods, "ods/ods_snapshot.json")
+    if wc.exists():
+        add_file_fn(wc, "wolf/wolf_candidates.json")
+    if wsi.exists():
+        add_file_fn(wsi, "wolf/wsi_curve.csv")
 
-    # coherence (optional separate dir)
+
+def _add_coherence(session_dir: Path, add_file_fn) -> None:
+    """Add coherence data (optional)."""
     coh_dir = session_dir / "coherence"
-    if coh_dir.exists():
-        coh = coh_dir / "coherence_summary.json"
-        if coh.exists():
-            add_file(coh, "coherence/coherence_summary.json")
+    if not coh_dir.exists():
+        return
+    coh = coh_dir / "coherence_summary.json"
+    if coh.exists():
+        add_file_fn(coh, "coherence/coherence_summary.json")
 
-    # plots
+
+def _add_plots(session_dir: Path, add_file_fn) -> None:
+    """Add plots."""
     plots_dir = session_dir / "plots"
-    if plots_dir.exists():
-        for png in sorted(plots_dir.glob("*.png")):
-            add_file(png, f"plots/{png.name}")
+    if not plots_dir.exists():
+        return
+    for png in sorted(plots_dir.glob("*.png")):
+        add_file_fn(png, f"plots/{png.name}")
 
-    # ------------------------------------------------------------------
-    # PR #17: session_timeline_v1.json (read-only, fail-closed)
-    # ------------------------------------------------------------------
+
+def _add_timeline(session_dir: Path, add_file_fn) -> None:
+    """Add session timeline (PR #17, fail-closed)."""
     try:
         from tap_tone_pi.core.session_timeline import export_session_timeline
         tl_path = export_session_timeline(session_dir)
         if tl_path is not None and tl_path.is_file():
-            add_file(tl_path, "meta/session_timeline_v1.json")
+            add_file_fn(tl_path, "meta/session_timeline_v1.json")
     except (ImportError, OSError, ValueError, KeyError):
         pass  # Non-fatal: pack is valid without timeline
 
-    # manifest (schema_version matches contracts/viewer_pack_v1.schema.json)
+
+def _build_manifest(
+    files: List[FileEntry],
+    session_dir: Path,
+    point_ids: List[str],
+) -> Dict[str, Any]:
+    """Build manifest dict and compute bundle_sha256."""
     manifest: Dict[str, Any] = {
         "schema_version": "v1",
         "schema_id": "viewer_pack_v1",
@@ -386,16 +391,13 @@ def export_viewer_pack(
     # bundle sha = sha256 of manifest JSON bytes (before adding bundle_sha256)
     manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8")
     bundle_sha = sha256_bytes(manifest_bytes)
-
     manifest["bundle_sha256"] = bundle_sha
-    manifest_path = pack_root / "manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
 
-    # ========================================
-    # Pre-export validation gate
-    # ========================================
-    # Manifest uses viewer_pack.json internally but validator expects it
-    # Rename for validation compatibility
+    return manifest
+
+
+def _validate_and_gate(pack_root: Path, manifest_path: Path) -> None:
+    """Run validation and raise on failure."""
     viewer_pack_json = pack_root / "viewer_pack.json"
     if not viewer_pack_json.exists():
         shutil.copy2(manifest_path, viewer_pack_json)
@@ -422,17 +424,73 @@ def export_viewer_pack(
             f"See {report_path}"
         )
 
+
+def _zip_pack(pack_root: Path, out_dir: Path, session_dir: Path) -> Path:
+    """Create zip archive of pack."""
+    zip_path = out_dir / f"{session_dir.name}__viewer_pack_v1.zip"
+    if zip_path.exists():
+        zip_path.unlink()
+    with ZipFile(zip_path, "w", compression=ZIP_DEFLATED) as z:
+        for fp in pack_root.rglob("*"):
+            if fp.is_file():
+                arc = fp.relative_to(pack_root.parent).as_posix()
+                z.write(fp, arcname=arc)
+    return zip_path
+
+
+# -------------------------------------------------------------------------
+# Main export function
+# -------------------------------------------------------------------------
+
+def export_viewer_pack(
+    session_dir: Path,
+    out_dir: Path,
+    *,
+    as_zip: bool,
+) -> Path:
+    if not session_dir.exists():
+        raise FileNotFoundError(f"session_dir not found: {session_dir}")
+
+    # Initialize pack root
+    pack_root = out_dir / "viewer_pack_v1"
+    if pack_root.exists():
+        shutil.rmtree(pack_root)
+    pack_root.mkdir(parents=True, exist_ok=True)
+
+    files: List[FileEntry] = []
+
+    def add_file(src: Path, relpath: str):
+        dst = pack_root / relpath
+        copy_file(src, dst)
+        entry = FileEntry(
+            relpath=relpath.replace("\\", "/"),
+            sha256=sha256_file(dst),
+            bytes=dst.stat().st_size,
+            mime=guess_mime(dst),
+            kind=detect_kind(relpath),
+        )
+        files.append(entry)
+
+    # Add pack components
+    _add_readme(pack_root, session_dir, files)
+    _add_session_meta(pack_root, session_dir, files, add_file)
+    point_ids = _add_points(session_dir, add_file)
+    _add_derived(session_dir, add_file)
+    _add_coherence(session_dir, add_file)
+    _add_plots(session_dir, add_file)
+    _add_timeline(session_dir, add_file)
+
+    # Build and write manifest
+    manifest = _build_manifest(files, session_dir, point_ids)
+    manifest_path = pack_root / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+
+    # Validate
+    _validate_and_gate(pack_root, manifest_path)
+
     # Zip if requested
     if as_zip:
-        zip_path = out_dir / f"{session_dir.name}__viewer_pack_v1.zip"
-        if zip_path.exists():
-            zip_path.unlink()
-        with ZipFile(zip_path, "w", compression=ZIP_DEFLATED) as z:
-            for fp in pack_root.rglob("*"):
-                if fp.is_file():
-                    arc = fp.relative_to(pack_root.parent).as_posix()
-                    z.write(fp, arcname=arc)
-        return zip_path
+        return _zip_pack(pack_root, out_dir, session_dir)
 
     return pack_root
 
