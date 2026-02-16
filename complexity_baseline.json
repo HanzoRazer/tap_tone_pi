@@ -1,0 +1,132 @@
+{
+  "threshold": 25,
+  "violation_count": 18,
+  "violations": [
+    {
+      "file": "scripts/bending_stiffness_mode.py",
+      "function": "main",
+      "complexity": 77,
+      "line": 229,
+      "letter": "F"
+    },
+    {
+      "file": "tap_tone_pi/agentic/spine/moments.py",
+      "function": "detect_moments",
+      "complexity": 77,
+      "line": 50,
+      "letter": "F"
+    },
+    {
+      "file": "tap_tone/validate/viewer_pack_v1.py",
+      "function": "validate_pack",
+      "complexity": 75,
+      "line": 141,
+      "letter": "F"
+    },
+    {
+      "file": "generate_report.py",
+      "function": "build_report",
+      "complexity": 56,
+      "line": 158,
+      "letter": "F"
+    },
+    {
+      "file": "tap_tone_pi/agentic/spine/shadow_record.py",
+      "function": "_validate_shadow_record_v1",
+      "complexity": 53,
+      "line": 41,
+      "letter": "F"
+    },
+    {
+      "file": "scripts/session_close.py",
+      "function": "main",
+      "complexity": 48,
+      "line": 610,
+      "letter": "F"
+    },
+    {
+      "file": "tap_tone_pi/gui/app.py",
+      "function": "__init__",
+      "complexity": 46,
+      "line": 200,
+      "letter": "M"
+    },
+    {
+      "file": "tap_tone/cli/gold_run.py",
+      "function": "run_gold_run",
+      "complexity": 43,
+      "line": 297,
+      "letter": "F"
+    },
+    {
+      "file": "scripts/phase2/export_viewer_pack_v1.py",
+      "function": "export_viewer_pack",
+      "complexity": 43,
+      "line": 218,
+      "letter": "F"
+    },
+    {
+      "file": "tap_tone_pi/cli/wizard.py",
+      "function": "run_wizard",
+      "complexity": 42,
+      "line": 25,
+      "letter": "F"
+    },
+    {
+      "file": "tap_tone_pi/agent/render.py",
+      "function": "render_cli_shadow_record",
+      "complexity": 40,
+      "line": 206,
+      "letter": "F"
+    },
+    {
+      "file": "analyzer/widgets/bode_plot.py",
+      "function": "_update_plot",
+      "complexity": 35,
+      "line": 188,
+      "letter": "M"
+    },
+    {
+      "file": "tap_tone_pi/agentic/spine/uwsm_update.py",
+      "function": "_extract_evidence",
+      "complexity": 34,
+      "line": 161,
+      "letter": "F"
+    },
+    {
+      "file": "analyzer/loaders/evidence_types.py",
+      "function": "classify_file",
+      "complexity": 33,
+      "line": 132,
+      "letter": "F"
+    },
+    {
+      "file": "tap_tone_pi/cli/main.py",
+      "function": "cmd_measure",
+      "complexity": 31,
+      "line": 299,
+      "letter": "F"
+    },
+    {
+      "file": "tap_tone_pi/gui/app.py",
+      "function": "do_quality_measure",
+      "complexity": 30,
+      "line": 1491,
+      "letter": "M"
+    },
+    {
+      "file": "scripts/phase2/validate_viewer_pack_v1.py",
+      "function": "validate_manifest_shape",
+      "complexity": 28,
+      "line": 212,
+      "letter": "F"
+    },
+    {
+      "file": "analyzer/loaders/wsi_curve.py",
+      "function": "_parse_csv",
+      "complexity": 27,
+      "line": 126,
+      "letter": "F"
+    }
+  ]
+}
