@@ -22,52 +22,41 @@ from pathlib import Path
 import numpy as np
 
 
-def run_wizard(args: argparse.Namespace) -> int:
-    """Run the hardware setup wizard."""
-    from tap_tone_pi.capture import list_devices, record_audio
-    from tap_tone_pi.core.analysis import analyze_tap
-    from tap_tone_pi.core.user_config import (
-        AudioDeviceConfig,
-        UserConfig,
-        load_config,
-        save_config,
-        clear_config,
-        CONFIG_FILE,
-    )
+def _check_existing_config(args: argparse.Namespace) -> bool | None:
+    """Check for existing config and prompt for re-run.
 
-    # Handle --show flag
-    if getattr(args, "show", False):
-        return _show_config()
+    Returns:
+        True if wizard should continue
+        False if user declined
+        None if no existing config
+    """
+    from tap_tone_pi.core.user_config import load_config
 
-    # Handle --reset flag
-    if getattr(args, "reset", False):
-        if clear_config():
-            print("Cleared saved configuration.")
-        else:
-            print("No saved configuration to clear.")
-
-    print()
-    print("=" * 60)
-    print("  tap_tone_pi — Hardware Setup Wizard")
-    print("=" * 60)
-    print()
-
-    # Check for existing config
     existing = load_config()
-    if existing and existing.audio_device and not getattr(args, "reset", False):
-        print(f"Existing configuration found:")
-        print(f"  Device: [{existing.audio_device.index}] {existing.audio_device.name}")
-        print(f"  Sample rate: {existing.audio_device.sample_rate} Hz")
-        print(f"  Validated: {existing.audio_device.validated_at}")
-        print()
+    if not existing or not existing.audio_device or getattr(args, "reset", False):
+        return None
 
-        response = _prompt("Re-run wizard? [y/N]: ").strip().lower()
-        if response not in ("y", "yes"):
-            print("Keeping existing configuration.")
-            return 0
-        print()
+    print(f"Existing configuration found:")
+    print(f"  Device: [{existing.audio_device.index}] {existing.audio_device.name}")
+    print(f"  Sample rate: {existing.audio_device.sample_rate} Hz")
+    print(f"  Validated: {existing.audio_device.validated_at}")
+    print()
 
-    # Step 1: List devices
+    response = _prompt("Re-run wizard? [y/N]: ").strip().lower()
+    if response not in ("y", "yes"):
+        print("Keeping existing configuration.")
+        return False
+    print()
+    return True
+
+
+def _list_input_devices() -> list[dict] | None:
+    """List and display available input devices.
+
+    Returns list of input devices, or None if no devices found.
+    """
+    from tap_tone_pi.capture import list_devices
+
     print("Step 1: Detecting audio devices...")
     print("-" * 40)
 
@@ -77,7 +66,7 @@ def run_wizard(args: argparse.Namespace) -> int:
     if not input_devices:
         print("ERROR: No audio input devices found!")
         print("Please connect a microphone and try again.")
-        return 1
+        return None
 
     print(f"Found {len(input_devices)} input device(s):\n")
     for d in input_devices:
@@ -86,7 +75,11 @@ def run_wizard(args: argparse.Namespace) -> int:
         print(f"       Channels: {d['max_input_channels']}, Default rate: {rate} Hz")
     print()
 
-    # Step 2: Select device
+    return input_devices
+
+
+def _select_device(input_devices: list[dict]) -> dict:
+    """Prompt user to select a device. Returns selected device dict."""
     print("Step 2: Select audio device")
     print("-" * 40)
 
@@ -118,8 +111,11 @@ def run_wizard(args: argparse.Namespace) -> int:
     selected_device = next(d for d in input_devices if d["index"] == selected_idx)
     print(f"\nSelected: [{selected_idx}] {selected_device['name']}")
     print()
+    return selected_device
 
-    # Step 3: Select sample rate
+
+def _select_sample_rate(selected_device: dict) -> int:
+    """Prompt user for sample rate. Returns selected rate."""
     print("Step 3: Sample rate")
     print("-" * 40)
 
@@ -139,8 +135,13 @@ def run_wizard(args: argparse.Namespace) -> int:
 
     print(f"Using: {sample_rate} Hz")
     print()
+    return sample_rate
 
-    # Step 4: Test recording
+
+def _do_test_recording(selected_idx: int, sample_rate: int):
+    """Perform test recording. Returns (result, error_code) or (None, 1) on failure."""
+    from tap_tone_pi.capture import record_audio
+
     print("Step 4: Test recording")
     print("-" * 40)
     print("We'll do a 2-second test capture.")
@@ -164,15 +165,19 @@ def run_wizard(args: argparse.Namespace) -> int:
             channels=1,
             seconds=2.0,
         )
+        print("Recording complete. Analyzing...")
+        print()
+        return result, 0
     except Exception as e:
         print(f"ERROR: Recording failed: {e}")
         print("Please check your device connection and try again.")
-        return 1
+        return None, 1
 
-    print("Recording complete. Analyzing...")
-    print()
 
-    # Step 5: Analyze and validate
+def _validate_audio(result) -> str:
+    """Validate audio levels and show results. Returns status string."""
+    from tap_tone_pi.core.analysis import analyze_tap
+
     print("Step 5: Audio validation")
     print("-" * 40)
 
@@ -190,7 +195,16 @@ def run_wizard(args: argparse.Namespace) -> int:
 
     # Verdict
     status = _assess_levels(peak_level, analysis.rms, analysis.clipped, analysis.confidence)
+    _print_status_verdict(status)
 
+    # Show peaks if found
+    _print_peaks(analysis)
+
+    return status
+
+
+def _print_status_verdict(status: str) -> None:
+    """Print validation verdict based on status."""
     if status == "good":
         print("  [OK] Audio levels look good!")
     elif status == "quiet":
@@ -205,10 +219,11 @@ def run_wizard(args: argparse.Namespace) -> int:
     elif status == "silent":
         print("  [ERROR] No audio detected!")
         print("          Check microphone connection and permissions.")
-
     print()
 
-    # Show peaks if found
+
+def _print_peaks(analysis) -> None:
+    """Print detected frequency peaks."""
     if analysis.peaks:
         print("  Detected peaks:")
         for p in analysis.peaks[:5]:
@@ -218,10 +233,13 @@ def run_wizard(args: argparse.Namespace) -> int:
     else:
         print("  No frequency peaks detected.")
         print("  (This is OK if you didn't tap, or the tap was too quiet)")
-
     print()
 
-    # Step 6: Save configuration
+
+def _save_wizard_config(selected_device: dict, sample_rate: int, status: str) -> int:
+    """Save configuration if validation passed. Returns exit code."""
+    from tap_tone_pi.core.user_config import AudioDeviceConfig, UserConfig, save_config
+
     print("Step 6: Save configuration")
     print("-" * 40)
 
@@ -238,7 +256,7 @@ def run_wizard(args: argparse.Namespace) -> int:
 
     # Create and save config
     device_config = AudioDeviceConfig(
-        index=selected_idx,
+        index=selected_device["index"],
         name=selected_device["name"],
         sample_rate=sample_rate,
         channels=1,
@@ -247,6 +265,12 @@ def run_wizard(args: argparse.Namespace) -> int:
     user_config = UserConfig(audio_device=device_config)
     config_path = save_config(user_config)
 
+    _print_success(config_path)
+    return 0
+
+
+def _print_success(config_path: Path) -> None:
+    """Print success message after saving config."""
     print()
     print("=" * 60)
     print("  Setup complete!")
@@ -263,7 +287,55 @@ def run_wizard(args: argparse.Namespace) -> int:
     print("  To re-run this wizard: ttp setup --reset")
     print()
 
-    return 0
+
+def run_wizard(args: argparse.Namespace) -> int:
+    """Run the hardware setup wizard."""
+    from tap_tone_pi.core.user_config import clear_config
+
+    # Handle --show flag
+    if getattr(args, "show", False):
+        return _show_config()
+
+    # Handle --reset flag
+    if getattr(args, "reset", False):
+        if clear_config():
+            print("Cleared saved configuration.")
+        else:
+            print("No saved configuration to clear.")
+
+    print()
+    print("=" * 60)
+    print("  tap_tone_pi — Hardware Setup Wizard")
+    print("=" * 60)
+    print()
+
+    # Check for existing config
+    existing_check = _check_existing_config(args)
+    if existing_check is False:
+        return 0
+
+    # Step 1: List devices
+    input_devices = _list_input_devices()
+    if not input_devices:
+        return 1
+
+    # Step 2: Select device
+    selected_device = _select_device(input_devices)
+
+    # Step 3: Select sample rate
+    sample_rate = _select_sample_rate(selected_device)
+
+    # Step 4: Test recording
+    result, err = _do_test_recording(selected_device["index"], sample_rate)
+    if err:
+        return err
+
+    # Step 5: Validate audio
+    status = _validate_audio(result)
+
+    # Step 6: Save configuration
+    return _save_wizard_config(selected_device, sample_rate, status)
+
 
 
 def _show_config() -> int:
