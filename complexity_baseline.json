@@ -1,33 +1,12 @@
 {
   "threshold": 25,
-  "violation_count": 15,
+  "violation_count": 22,
   "violations": [
     {
       "file": "scripts\\bending_stiffness_mode.py",
       "function": "main",
       "complexity": 77,
       "line": 229,
-      "letter": "F"
-    },
-    {
-      "file": "tap_tone_pi\\agentic\\spine\\moments.py",
-      "function": "detect_moments",
-      "complexity": 77,
-      "line": 50,
-      "letter": "F"
-    },
-    {
-      "file": "generate_report.py",
-      "function": "build_report",
-      "complexity": 56,
-      "line": 158,
-      "letter": "F"
-    },
-    {
-      "file": "tap_tone_pi\\agentic\\spine\\shadow_record.py",
-      "function": "_validate_shadow_record_v1",
-      "complexity": 53,
-      "line": 41,
       "letter": "F"
     },
     {
@@ -42,13 +21,6 @@
       "function": "__init__",
       "complexity": 46,
       "line": 200,
-      "letter": "F"
-    },
-    {
-      "file": "scripts\\phase2\\export_viewer_pack_v1.py",
-      "function": "export_viewer_pack",
-      "complexity": 43,
-      "line": 218,
       "letter": "F"
     },
     {
@@ -105,6 +77,83 @@
       "function": "validate_manifest_shape",
       "complexity": 28,
       "line": 212,
+      "letter": "D"
+    },
+    {
+      "file": "scripts\\session_close.py",
+      "function": "auto_repair_ledger_if_tag",
+      "complexity": 25,
+      "line": 272,
+      "letter": "D"
+    },
+    {
+      "file": "tap_tone_pi\\agent\\messages.py",
+      "function": "build_agent_message",
+      "complexity": 25,
+      "line": 647,
+      "letter": "D"
+    },
+    {
+      "file": "tap_tone_pi\\agent\\messages.py",
+      "function": "_merge_actions",
+      "complexity": 24,
+      "line": 565,
+      "letter": "D"
+    },
+    {
+      "file": "tap_tone_pi\\gui\\export.py",
+      "function": "export_gui_session",
+      "complexity": 24,
+      "line": 157,
+      "letter": "D"
+    },
+    {
+      "file": "analyzer\\loaders\\transfer_function.py",
+      "function": "_parse_generic",
+      "complexity": 23,
+      "line": 290,
+      "letter": "D"
+    },
+    {
+      "file": "scripts\\viewer_pack_validate.py",
+      "function": "validate_viewer_pack",
+      "complexity": 23,
+      "line": 99,
+      "letter": "D"
+    },
+    {
+      "file": "tap_tone_pi\\workflow\\operator_loop.py",
+      "function": "run_single",
+      "complexity": 23,
+      "line": 230,
+      "letter": "D"
+    },
+    {
+      "file": "tap_tone_pi\\workflow\\operator_loop.py",
+      "function": "_run_shadow_hook_inner",
+      "complexity": 23,
+      "line": 512,
+      "letter": "D"
+    },
+    {
+      "file": "scripts\\plot_coherence_phase.py",
+      "function": "main",
+      "complexity": 22,
+      "line": 127,
+      "letter": "D"
+    },
+    {
+      "file": "tap_tone\\validate\\viewer_pack_v1.py",
+      "function": "_validate_point_spectrum",
+      "complexity": 22,
+      "line": 316,
+      "letter": "D"
+    },
+    {
+      "file": "tap_tone_pi\\agentic\\spine\\moments.py",
+      "function": "detect_moments",
+      "complexity": 22,
+      "line": 208,
       "letter": "D"
     }
   ]
