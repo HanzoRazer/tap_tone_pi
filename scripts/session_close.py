@@ -510,6 +510,192 @@ def zip_dir(
                 zf.write(p, arcname=rel)
 
 
+def _handle_scan_all_malformed(args: argparse.Namespace, ledger_path: Path) -> int:
+    """Scan-all-malformed inspection mode (no modifications, no close file written)."""
+    # --suggest-action implies --classify behavior
+    want_suggest = bool(args.scan_all_malformed_suggest_action)
+    want_classify = bool(args.scan_all_malformed_classify) or want_suggest
+
+    summary = scan_all_malformed_jsonl_indexes(
+        ledger_path,
+        sample_k=int(args.scan_all_malformed_with_sample or 0),
+        keep_full=want_classify,
+    )
+
+    malformed = summary["malformed_indexes"]
+    max_n = max(0, int(args.scan_all_malformed_max))
+    samples = summary.get("malformed_samples") or []
+    k = summary.get("sample_k") or 0
+
+    print("Ledger malformed scan (JSONL)")
+    print(f"Ledger: {ledger_path}")
+    print(
+        f"Non-blank lines: {summary['nonblank_lines']} | "
+        f"Parseable: {summary['parseable_lines']} | "
+        f"Malformed: {summary['malformed_count']}"
+    )
+
+    if not malformed:
+        print("No malformed JSONL lines detected.")
+        return 0
+
+    if k > 0 or want_classify:
+        if k > 0:
+            print(f"Malformed lines (0-based), showing up to {max_n} with first {k} chars:")
+        else:
+            print(f"Malformed lines (0-based), showing up to {max_n}:")
+        shown = samples[:max_n]
+        for item in shown:
+            tag = ""
+            suggest = ""
+            if want_classify:
+                full = item.get("full_line") or ""
+                tag_val = classify_malformed_jsonl_line(full)
+                tag = f"[{tag_val}] "
+                if want_suggest:
+                    suggest = suggest_action_for_tag(tag_val)
+            sample_txt = item.get("sample")
+            if sample_txt is None:
+                full = item.get("full_line") or ""
+                sample_txt = full[:120] + ("…" if len(full) > 120 else "")
+            print(f"  - {item['idx']}: {tag}{sample_txt}")
+            if suggest:
+                print(f"      ↳ {suggest}")
+        if len(malformed) > max_n:
+            print(f"  ... (+{len(malformed) - max_n} more)")
+    else:
+        print(f"Malformed line indexes (0-based), showing up to {max_n}:")
+        for idx in malformed[:max_n]:
+            print(f"  - {idx}")
+        if len(malformed) > max_n:
+            print(f"  ... (+{len(malformed) - max_n} more)")
+    return 2  # Exit code 2 indicates corruption exists
+
+
+def _handle_repair_dry_run(args: argparse.Namespace, ledger_path: Path) -> int:
+    """Dry-run preview (no modifications, early exit)."""
+    preview = get_last_malformed_line_preview(ledger_path, context_n=max(0, args.show_bad_line_context))
+
+    print("Ledger repair dry-run preview")
+    print(f"Ledger: {ledger_path}")
+    print(f"Result: {preview.get('reason')}")
+    if "last_bad_idx" in preview:
+        print(f"last_bad_idx: {preview.get('last_bad_idx')}  last_nonblank_idx: {preview.get('last_nonblank_idx')}")
+
+    ctx = preview.get("context_prev") or []
+    if ctx:
+        print(f"---- context: {len(ctx)} preceding non-blank line(s) ----")
+        for item in ctx:
+            print(f"[{item['idx']}] {item['line']}")
+        print("---- end context ----")
+
+    if preview.get("bad_line") is not None:
+        print("---- last malformed line (verbatim) ----")
+        print(preview["bad_line"])
+        print("---- end ----")
+
+    if preview.get("reason") == "malformed_not_last_line":
+        return 2
+    return 0
+
+
+def _do_ledger_repair(args: argparse.Namespace, ledger_path: Path) -> Optional[Dict[str, Any]]:
+    """Attempt ledger repair if requested."""
+    if args.auto_repair_if:
+        return auto_repair_ledger_if_tag(
+            ledger_path,
+            required_tag=args.auto_repair_if,
+            backup_suffix=args.repair_backup_suffix,
+            max_drop=args.auto_repair_max_drop,
+            require_no_blank_lines=bool(args.auto_repair_if_only),
+        )
+    elif args.repair_ledger:
+        return repair_ledger_truncate_last_bad_line(ledger_path, backup_suffix=args.repair_backup_suffix)
+    return None
+
+
+def _build_close_obj(
+    session_id: str,
+    session_dir: Path,
+    operator: str,
+    signer: str,
+    ledger_path: Path,
+    ledger_sha: str,
+    ledger_lines: int,
+    ledger_parseable: int,
+    calibration_path: Path,
+    calibration_sha: Optional[str],
+    repair_info: Optional[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Build the session_close object."""
+    return {
+        "schema": {
+            "name": "session_close",
+            "version": "1.0",
+            "created_at_utc": utc_now_iso(),
+        },
+        "session": {
+            "session_id": session_id,
+            "session_dir_name": session_dir.name,
+        },
+        "signing": {
+            "operator": operator,
+            "signer": signer,
+        },
+        "artifacts": {
+            "ledger": {
+                "relpath": ledger_path.relative_to(session_dir).as_posix(),
+                "sha256": ledger_sha,
+                "lines": ledger_lines,
+                "parseable_lines": ledger_parseable,
+            },
+            "calibration": {
+                "present": calibration_path.exists(),
+                "relpath": calibration_path.relative_to(session_dir).as_posix() if calibration_path.exists() else None,
+                "sha256": calibration_sha,
+            },
+        },
+        "ledger_repair": repair_info,
+        "zip": None,
+    }
+
+
+def _handle_zip_archive(
+    args: argparse.Namespace,
+    session_dir: Path,
+    session_id: str,
+    close_path: Path,
+    close_obj: Dict[str, Any],
+) -> None:
+    """Create zip archive and update close_obj."""
+    if args.zip_out:
+        zip_path = Path(args.zip_out).expanduser().resolve()
+    else:
+        zip_path = session_dir.parent / f"session_{session_id}.zip"
+
+    excludes = list(args.zip_exclude or [])
+    for p in [".venv", "__pycache__", ".pytest_cache", ".mypy_cache", ".DS_Store"]:
+        if p not in excludes:
+            excludes.append(p)
+
+    zip_dir(session_dir, zip_path, exclude_patterns=excludes)
+
+    zip_sha = sha256_file(zip_path)
+    close_obj["zip"] = {
+        "created": True,
+        "relpath": zip_path.resolve().as_posix(),
+        "sha256": zip_sha,
+        "bytes": zip_path.stat().st_size,
+        "excluded_patterns": excludes,
+    }
+    tmp2 = close_path.with_suffix(".tmp")
+    write_json(tmp2, strip_nulls(close_obj))
+    tmp2.replace(close_path)
+
+    print(f"Wrote: {close_path}")
+    print(f"Zip:   {zip_path} ({zip_path.stat().st_size} bytes)")
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         prog="session_close",
@@ -622,123 +808,20 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not ledger_path.exists():
         raise SystemExit(f"ERROR: ledger not found: {ledger_path}")
 
-    # Scan-all-malformed inspection mode (no modifications, no close file written)
+    # Scan-all-malformed inspection mode
     if args.scan_all_malformed:
-        # --suggest-action implies --classify behavior
-        want_suggest = bool(args.scan_all_malformed_suggest_action)
-        want_classify = bool(args.scan_all_malformed_classify) or want_suggest
+        return _handle_scan_all_malformed(args, ledger_path)
 
-        summary = scan_all_malformed_jsonl_indexes(
-            ledger_path,
-            sample_k=int(args.scan_all_malformed_with_sample or 0),
-            keep_full=want_classify,
-        )
-
-        malformed = summary["malformed_indexes"]
-        max_n = max(0, int(args.scan_all_malformed_max))
-        samples = summary.get("malformed_samples") or []
-        k = summary.get("sample_k") or 0
-
-        print("Ledger malformed scan (JSONL)")
-        print(f"Ledger: {ledger_path}")
-        print(
-            f"Non-blank lines: {summary['nonblank_lines']} | "
-            f"Parseable: {summary['parseable_lines']} | "
-            f"Malformed: {summary['malformed_count']}"
-        )
-
-        if malformed:
-            if k > 0 or want_classify:
-                if k > 0:
-                    print(f"Malformed lines (0-based), showing up to {max_n} with first {k} chars:")
-                else:
-                    print(f"Malformed lines (0-based), showing up to {max_n}:")
-                # samples already correspond to all malformed lines in order
-                shown = samples[:max_n]
-                for item in shown:
-                    tag = ""
-                    suggest = ""
-                    if want_classify:
-                        full = item.get("full_line") or ""
-                        tag_val = classify_malformed_jsonl_line(full)
-                        tag = f"[{tag_val}] "
-                        if want_suggest:
-                            suggest = suggest_action_for_tag(tag_val)
-                    sample_txt = item.get("sample")
-                    if sample_txt is None:
-                        # If user forgot sample flag, still show a short prefix for readability
-                        full = item.get("full_line") or ""
-                        sample_txt = full[:120] + ("…" if len(full) > 120 else "")
-                    print(f"  - {item['idx']}: {tag}{sample_txt}")
-                    if suggest:
-                        print(f"      ↳ {suggest}")
-                if len(malformed) > max_n:
-                    print(f"  ... (+{len(malformed) - max_n} more)")
-            else:
-                print(f"Malformed line indexes (0-based), showing up to {max_n}:")
-                for idx in malformed[:max_n]:
-                    print(f"  - {idx}")
-                if len(malformed) > max_n:
-                    print(f"  ... (+{len(malformed) - max_n} more)")
-            # Exit code 2 indicates corruption exists (useful in scripts/CI)
-            return 2
-
-        print("No malformed JSONL lines detected.")
-        return 0
-
-    # Dry-run preview (no modifications, early exit)
+    # Dry-run preview
     if args.repair_dry_run:
-        preview = get_last_malformed_line_preview(ledger_path, context_n=max(0, args.show_bad_line_context))
-
-        print("Ledger repair dry-run preview")
-        print(f"Ledger: {ledger_path}")
-        print(f"Result: {preview.get('reason')}")
-        if "last_bad_idx" in preview:
-            print(f"last_bad_idx: {preview.get('last_bad_idx')}  last_nonblank_idx: {preview.get('last_nonblank_idx')}")
-
-        # Print context lines if requested
-        ctx = preview.get("context_prev") or []
-        if ctx:
-            print(f"---- context: {len(ctx)} preceding non-blank line(s) ----")
-            for item in ctx:
-                print(f"[{item['idx']}] {item['line']}")
-            print("---- end context ----")
-
-        if preview.get("bad_line") is not None:
-            # Show the exact line that would be truncated / is malformed
-            print("---- last malformed line (verbatim) ----")
-            print(preview["bad_line"])
-            print("---- end ----")
-
-        # Exit code:
-        # 0 = nothing to repair OR repair is possible (informational)
-        # 2 = malformed exists but not safely truncatable (signals deeper corruption)
-        if preview.get("reason") == "malformed_not_last_line":
-            return 2
-        return 0
+        return _handle_repair_dry_run(args, ledger_path)
 
     calibration_path = session_dir / args.calibration
     close_path = session_dir / args.close_out
 
     # Scan ledger (and optionally repair)
-    repair_info: Optional[Dict[str, Any]] = None
-    _, ledger_lines, ledger_parseable, last_bad_idx = scan_jsonl_lines(ledger_path)
-
-    # Auto-repair (explicit) takes precedence over manual repair flag
-    if args.auto_repair_if and not args.repair_dry_run:
-        repair_info = auto_repair_ledger_if_tag(
-            ledger_path,
-            required_tag=args.auto_repair_if,
-            backup_suffix=args.repair_backup_suffix,
-            max_drop=args.auto_repair_max_drop,
-            require_no_blank_lines=bool(args.auto_repair_if_only),
-        )
-        # Re-scan after potential repair
-        _, ledger_lines, ledger_parseable, last_bad_idx = scan_jsonl_lines(ledger_path)
-    elif args.repair_ledger and not args.repair_dry_run:
-        repair_info = repair_ledger_truncate_last_bad_line(ledger_path, backup_suffix=args.repair_backup_suffix)
-        # Re-scan after potential repair
-        _, ledger_lines, ledger_parseable, last_bad_idx = scan_jsonl_lines(ledger_path)
+    repair_info = _do_ledger_repair(args, ledger_path) if not args.repair_dry_run else None
+    _, ledger_lines, ledger_parseable, _ = scan_jsonl_lines(ledger_path)
 
     # Hash after potential repair
     ledger_sha = sha256_file(ledger_path)
@@ -760,36 +843,11 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     calibration_sha = sha256_file(calibration_path) if calibration_path.exists() else None
 
-    close_obj: Dict[str, Any] = {
-        "schema": {
-            "name": "session_close",
-            "version": "1.0",
-            "created_at_utc": utc_now_iso(),
-        },
-        "session": {
-            "session_id": session_id,
-            "session_dir_name": session_dir.name,
-        },
-        "signing": {
-            "operator": operator,
-            "signer": signer,
-        },
-        "artifacts": {
-            "ledger": {
-                "relpath": ledger_path.relative_to(session_dir).as_posix(),
-                "sha256": ledger_sha,
-                "lines": ledger_lines,
-                "parseable_lines": ledger_parseable,
-            },
-            "calibration": {
-                "present": calibration_path.exists(),
-                "relpath": calibration_path.relative_to(session_dir).as_posix() if calibration_path.exists() else None,
-                "sha256": calibration_sha,
-            },
-        },
-        "ledger_repair": repair_info,
-        "zip": None,
-    }
+    close_obj = _build_close_obj(
+        session_id, session_dir, operator, signer,
+        ledger_path, ledger_sha, ledger_lines, ledger_parseable,
+        calibration_path, calibration_sha, repair_info,
+    )
 
     # Write session_close.json (atomic-ish)
     tmp = close_path.with_suffix(".tmp")
@@ -798,35 +856,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Optional zip archive
     if args.zip:
-        if args.zip_out:
-            zip_path = Path(args.zip_out).expanduser().resolve()
-        else:
-            zip_path = session_dir.parent / f"session_{session_id}.zip"
-
-        # Default excludes
-        excludes = list(args.zip_exclude or [])
-        # Always exclude common junk unless user wants them
-        for p in [".venv", "__pycache__", ".pytest_cache", ".mypy_cache", ".DS_Store"]:
-            if p not in excludes:
-                excludes.append(p)
-
-        zip_dir(session_dir, zip_path, exclude_patterns=excludes)
-
-        zip_sha = sha256_file(zip_path)
-        # Update close file with zip info
-        close_obj["zip"] = {
-            "created": True,
-            "relpath": zip_path.resolve().as_posix(),
-            "sha256": zip_sha,
-            "bytes": zip_path.stat().st_size,
-            "excluded_patterns": excludes,
-        }
-        tmp2 = close_path.with_suffix(".tmp")
-        write_json(tmp2, strip_nulls(close_obj))
-        tmp2.replace(close_path)
-
-        print(f"Wrote: {close_path}")
-        print(f"Zip:   {zip_path} ({zip_path.stat().st_size} bytes)")
+        _handle_zip_archive(args, session_dir, session_id, close_path, close_obj)
         return 0
 
     print(f"Wrote: {close_path}")
