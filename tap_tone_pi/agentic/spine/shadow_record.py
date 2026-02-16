@@ -35,11 +35,11 @@ def _utc_now_iso() -> str:
 
 
 # -------------------------------------------------------------------------
-# Validator
+# Validator helpers
 # -------------------------------------------------------------------------
 
-def _validate_shadow_record_v1(rec: Dict[str, Any]) -> None:
-    """Lightweight shape check.  Raises ``ValueError`` on invalid records."""
+def _validate_required_keys(rec: Dict[str, Any]) -> None:
+    """Validate top-level required keys exist."""
     required_top = [
         "schema_id", "schema_version", "timestamp",
         "session_id", "run_id", "mode",
@@ -49,6 +49,9 @@ def _validate_shadow_record_v1(rec: Dict[str, Any]) -> None:
         if k not in rec:
             raise ValueError(f"shadow record missing key: {k}")
 
+
+def _validate_schema_fields(rec: Dict[str, Any]) -> None:
+    """Validate schema_id, schema_version, session_id, run_id, mode."""
     if rec["schema_id"] != _SCHEMA_ID:
         raise ValueError(f"shadow record schema_id must be {_SCHEMA_ID!r}")
     if rec["schema_version"] != _SCHEMA_VERSION:
@@ -61,8 +64,9 @@ def _validate_shadow_record_v1(rec: Dict[str, Any]) -> None:
     if rec["mode"] not in _VALID_MODES:
         raise ValueError("shadow record mode must be one of M0/M1/M2")
 
-    # -- moment --
-    moment = rec["moment"]
+
+def _validate_moment(moment: Any) -> None:
+    """Validate moment object structure."""
     if not isinstance(moment, dict):
         raise ValueError("shadow record moment must be an object")
     for k in ("id", "confidence", "trigger_event_count"):
@@ -77,74 +81,89 @@ def _validate_shadow_record_v1(rec: Dict[str, Any]) -> None:
             and moment["trigger_event_count"] >= 0):
         raise ValueError("shadow record moment.trigger_event_count must be int >= 0")
 
-    # -- commands --
-    commands = rec["commands"]
+
+def _validate_commands(commands: Any) -> None:
+    """Validate commands object structure."""
     if not isinstance(commands, dict) or "count" not in commands:
         raise ValueError("shadow record commands must be an object with count")
     if not (isinstance(commands["count"], int) and commands["count"] >= 0):
         raise ValueError("shadow record commands.count must be int >= 0")
 
-    # -- error --
-    err = rec["error"]
-    if err is not None:
-        if not isinstance(err, dict):
-            raise ValueError("shadow record error must be null or object")
-        for k in ("type", "message", "stage"):
-            if k not in err:
-                raise ValueError(f"shadow record error missing key: {k}")
-        if not isinstance(err["type"], str) or not err["type"]:
-            raise ValueError("shadow record error.type must be non-empty str")
-        if not isinstance(err["message"], str):
-            raise ValueError("shadow record error.message must be str")
-        if not isinstance(err["stage"], str) or not err["stage"]:
-            raise ValueError("shadow record error.stage must be non-empty str")
 
-    # -- advisory --
-    advisory = rec["advisory"]
-    if advisory is not None:
-        if not isinstance(advisory, dict):
-            raise ValueError("shadow record advisory must be null or object")
-        for k in ("action", "summary", "focus", "confidence"):
-            if k not in advisory:
-                raise ValueError(f"shadow record advisory missing key: {k}")
-        if advisory["action"] not in _VALID_ACTIONS:
-            raise ValueError(
-                "shadow record advisory.action must be a valid AttentionAction name"
-            )
-        if not isinstance(advisory["summary"], str) or not advisory["summary"]:
-            raise ValueError("shadow record advisory.summary must be non-empty str")
-        if not (isinstance(advisory["confidence"], (int, float))
-                and 0.0 <= float(advisory["confidence"]) <= 1.0):
-            raise ValueError(
-                "shadow record advisory.confidence must be number in [0,1]"
-            )
-        focus = advisory["focus"]
-        if focus is not None:
-            if not isinstance(focus, dict):
-                raise ValueError("shadow record advisory.focus must be null or object")
-            for k in ("target_type", "target_id", "highlight_region"):
-                if k not in focus:
-                    raise ValueError(
-                        f"shadow record advisory.focus missing key: {k}"
-                    )
-            if not isinstance(focus["target_type"], str) or not focus["target_type"]:
-                raise ValueError(
-                    "shadow record advisory.focus.target_type must be non-empty str"
-                )
-            if not isinstance(focus["target_id"], str) or not focus["target_id"]:
-                raise ValueError(
-                    "shadow record advisory.focus.target_id must be non-empty str"
-                )
+def _validate_error(err: Any) -> None:
+    """Validate error object structure (if not None)."""
+    if err is None:
+        return
+    if not isinstance(err, dict):
+        raise ValueError("shadow record error must be null or object")
+    for k in ("type", "message", "stage"):
+        if k not in err:
+            raise ValueError(f"shadow record error missing key: {k}")
+    if not isinstance(err["type"], str) or not err["type"]:
+        raise ValueError("shadow record error.type must be non-empty str")
+    if not isinstance(err["message"], str):
+        raise ValueError("shadow record error.message must be str")
+    if not isinstance(err["stage"], str) or not err["stage"]:
+        raise ValueError("shadow record error.stage must be non-empty str")
 
-    # -- policy_trace (optional, PR #19) --
-    ptrace = rec.get("policy_trace")
-    if ptrace is not None:
-        if not isinstance(ptrace, dict):
-            raise ValueError("shadow record policy_trace must be null or object")
-        if "rule_id" not in ptrace or not isinstance(ptrace["rule_id"], str):
-            raise ValueError(
-                "shadow record policy_trace must contain a non-empty rule_id str"
-            )
+
+def _validate_focus(focus: Any) -> None:
+    """Validate advisory.focus object structure (if not None)."""
+    if focus is None:
+        return
+    if not isinstance(focus, dict):
+        raise ValueError("shadow record advisory.focus must be null or object")
+    for k in ("target_type", "target_id", "highlight_region"):
+        if k not in focus:
+            raise ValueError(f"shadow record advisory.focus missing key: {k}")
+    if not isinstance(focus["target_type"], str) or not focus["target_type"]:
+        raise ValueError("shadow record advisory.focus.target_type must be non-empty str")
+    if not isinstance(focus["target_id"], str) or not focus["target_id"]:
+        raise ValueError("shadow record advisory.focus.target_id must be non-empty str")
+
+
+def _validate_advisory(advisory: Any) -> None:
+    """Validate advisory object structure (if not None)."""
+    if advisory is None:
+        return
+    if not isinstance(advisory, dict):
+        raise ValueError("shadow record advisory must be null or object")
+    for k in ("action", "summary", "focus", "confidence"):
+        if k not in advisory:
+            raise ValueError(f"shadow record advisory missing key: {k}")
+    if advisory["action"] not in _VALID_ACTIONS:
+        raise ValueError("shadow record advisory.action must be a valid AttentionAction name")
+    if not isinstance(advisory["summary"], str) or not advisory["summary"]:
+        raise ValueError("shadow record advisory.summary must be non-empty str")
+    if not (isinstance(advisory["confidence"], (int, float))
+            and 0.0 <= float(advisory["confidence"]) <= 1.0):
+        raise ValueError("shadow record advisory.confidence must be number in [0,1]")
+    _validate_focus(advisory["focus"])
+
+
+def _validate_policy_trace(ptrace: Any) -> None:
+    """Validate policy_trace object structure (if present)."""
+    if ptrace is None:
+        return
+    if not isinstance(ptrace, dict):
+        raise ValueError("shadow record policy_trace must be null or object")
+    if "rule_id" not in ptrace or not isinstance(ptrace["rule_id"], str):
+        raise ValueError("shadow record policy_trace must contain a non-empty rule_id str")
+
+
+# -------------------------------------------------------------------------
+# Validator
+# -------------------------------------------------------------------------
+
+def _validate_shadow_record_v1(rec: Dict[str, Any]) -> None:
+    """Lightweight shape check.  Raises ``ValueError`` on invalid records."""
+    _validate_required_keys(rec)
+    _validate_schema_fields(rec)
+    _validate_moment(rec["moment"])
+    _validate_commands(rec["commands"])
+    _validate_error(rec["error"])
+    _validate_advisory(rec["advisory"])
+    _validate_policy_trace(rec.get("policy_trace"))
 
 
 # -------------------------------------------------------------------------
