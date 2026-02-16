@@ -38,7 +38,7 @@ def _parse_iso_utc(s: str) -> Optional[datetime]:
         if s.endswith("Z"):
             s = s[:-1] + "+00:00"
         return datetime.fromisoformat(s)
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         return None
 
 
@@ -63,7 +63,7 @@ def _extract_confidence_map(uwsm: dict) -> Dict[str, float]:
         if isinstance(d, dict) and "confidence" in d:
             try:
                 out[str(dim)] = float(d["confidence"])
-            except Exception:
+            except (ImportError, OSError, ValueError, KeyError, AttributeError):
                 out[str(dim)] = 0.0
     return out
 
@@ -101,7 +101,7 @@ def load_uwsm_state(*, now: Optional[datetime] = None) -> Tuple[dict, Dict[str, 
         ts = data.get("updated_at") or uwsm.get("updated_at")
         updated_at = _parse_iso_utc(ts) or now
         return uwsm, {str(k): float(v) for k, v in conf.items()}, updated_at
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         return uwsm, conf, updated_at
 
 
@@ -129,11 +129,11 @@ def apply_uwsm_decay(
         decay = d.get("decay", {}) or {}
         try:
             half_life_days = float(decay.get("half_life_days", 14) or 14)
-        except Exception:
+        except (ImportError, OSError, ValueError, KeyError, AttributeError):
             half_life_days = 14.0
         try:
             floor = float(decay.get("floor", 0.20) or 0.20)
-        except Exception:
+        except (ImportError, OSError, ValueError, KeyError, AttributeError):
             floor = 0.20
 
         if half_life_days <= 0:
@@ -142,7 +142,7 @@ def apply_uwsm_decay(
         # Prefer confidence map if present; fall back to UWSM
         try:
             conf0 = float(confidence.get(dim, d.get("confidence", floor)))
-        except Exception:
+        except (ImportError, OSError, ValueError, KeyError, AttributeError):
             conf0 = float(d.get("confidence", floor) or floor)
 
         # Clamp inputs
@@ -186,8 +186,8 @@ def save_uwsm_state(
             f.flush()
             try:
                 os.fsync(f.fileno())
-            except Exception:
+            except (ImportError, OSError, ValueError, KeyError, AttributeError):
                 pass
         tmp.replace(path)
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         return

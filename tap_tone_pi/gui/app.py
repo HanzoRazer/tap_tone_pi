@@ -227,7 +227,7 @@ class QualityVerdictViewer(tk.Toplevel):
                 _persisted_dh = get_show_directive_history(
                     pathlib.Path(session_dir), default=None,
                 )
-            except Exception:
+            except (ImportError, OSError, ValueError, KeyError, AttributeError):
                 _persisted_dh = None
 
         if isinstance(_persisted_dh, bool):
@@ -413,7 +413,7 @@ class QualityVerdictViewer(tk.Toplevel):
                         on_dismiss=lambda: mark_trust_banner_dismissed(_te_sd),
                     )
                     _te_banner.pack(fill=tk.X, pady=(0, 8))
-            except Exception:
+            except (ImportError, OSError, ValueError, KeyError, AttributeError):
                 pass
 
         # -----------------------------------------------------------------
@@ -430,7 +430,7 @@ class QualityVerdictViewer(tk.Toplevel):
                 from tap_tone_pi.gui.advisory_state import has_responded as _adv_responded
                 if _adv_responded(pathlib.Path(self.session_dir)):
                     _adv_already_handled = True
-            except Exception:
+            except (ImportError, OSError, ValueError, KeyError, AttributeError):
                 pass
 
         if self.session_dir is not None and not _adv_already_handled:
@@ -444,7 +444,7 @@ class QualityVerdictViewer(tk.Toplevel):
                         advisory_summary = adv.get("summary")
                         advisory_detail = adv.get("detail") or adv.get("details")
                         advisory_action = adv.get("action")
-            except Exception:
+            except (ImportError, OSError, ValueError, KeyError, AttributeError):
                 advisory_rec = None
 
         if advisory_rec is not None and isinstance(advisory_summary, str) and advisory_summary.strip():
@@ -500,10 +500,10 @@ class QualityVerdictViewer(tk.Toplevel):
                     frame.after(delay * (steps + 1), lambda: (
                         frame.pack_forget() if frame.winfo_exists() else None
                     ))
-                except Exception:
+                except (ImportError, OSError, ValueError, KeyError, AttributeError):
                     try:
                         frame.pack_forget()
-                    except Exception:
+                    except (ImportError, OSError, ValueError, KeyError, AttributeError):
                         pass
 
             def _record(outcome: str) -> None:
@@ -518,21 +518,21 @@ class QualityVerdictViewer(tk.Toplevel):
                         status_var.set("Thanks \u2014 recorded.")
                     else:
                         status_var.set("Thanks.")
-                except Exception:
+                except (ImportError, OSError, ValueError, KeyError, AttributeError):
                     status_var.set("Thanks.")
 
                 # Persist so advisory stays hidden on reopen
                 try:
                     from tap_tone_pi.gui.advisory_state import mark_responded
                     mark_responded(pathlib.Path(self.session_dir))
-                except Exception:
+                except (ImportError, OSError, ValueError, KeyError, AttributeError):
                     pass
 
                 # Hide buttons, then fade the whole frame
                 try:
                     ack_btn.pack_forget()
                     dis_btn.pack_forget()
-                except Exception:
+                except (ImportError, OSError, ValueError, KeyError, AttributeError):
                     pass
                 _fade_and_hide(adv_frame)
 
@@ -567,7 +567,7 @@ class QualityVerdictViewer(tk.Toplevel):
                 from tap_tone_pi.gui.tooltip import Tooltip
                 Tooltip(ack_btn, "Record that you reviewed and accept this advisory.")
                 Tooltip(dis_btn, "Dismiss this advisory without acting on it.")
-            except Exception:
+            except (ImportError, OSError, ValueError, KeyError, AttributeError):
                 pass
 
         # -----------------------------------------------------------------
@@ -585,7 +585,7 @@ class QualityVerdictViewer(tk.Toplevel):
                     cursor="hand2",
                 )
                 tl_btn.pack(anchor=tk.W, pady=(6, 0))
-            except Exception:
+            except (ImportError, OSError, ValueError, KeyError, AttributeError):
                 pass
 
         # -----------------------------------------------------------------
@@ -605,7 +605,7 @@ class QualityVerdictViewer(tk.Toplevel):
                             pathlib.Path(self.session_dir),
                             self._show_directive_history,
                         )
-                    except Exception:
+                    except (ImportError, OSError, ValueError, KeyError, AttributeError):
                         pass
                 self._render_directive_history_panel()
 
@@ -708,7 +708,7 @@ class QualityVerdictViewer(tk.Toplevel):
         if self._directive_history_frame is not None:
             try:
                 self._directive_history_frame.destroy()
-            except Exception:
+            except (ImportError, OSError, ValueError, KeyError, AttributeError):
                 pass
             self._directive_history_frame = None
 
@@ -738,7 +738,7 @@ class QualityVerdictViewer(tk.Toplevel):
                         _dh_mid = _dh_m.get("id")
                         if isinstance(_dh_mid, str) and _dh_mid.strip():
                             moment_id = _dh_mid.strip()
-            except Exception:
+            except (ImportError, OSError, ValueError, KeyError, AttributeError):
                 moment_id = None
 
             rows = load_directive_events(
@@ -767,7 +767,7 @@ class QualityVerdictViewer(tk.Toplevel):
             txt.pack(fill=tk.X, expand=True)
             txt.insert("1.0", "\n".join(lines))
             txt.config(state=tk.DISABLED)
-        except Exception:
+        except (ImportError, OSError, ValueError, KeyError, AttributeError):
             # Fail-closed: leave panel hidden
             return
 

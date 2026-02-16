@@ -531,7 +531,7 @@ class SetupWizardDialog(tk.Toplevel):
                 if self.device_selector.set_selected(config.audio_device.index):
                     self._sample_rate.set(config.audio_device.sample_rate)
                     self._selected_device = self.device_selector.get_selected()
-        except Exception:
+        except (ImportError, OSError, ValueError, KeyError, AttributeError):
             pass
 
     def _on_close(self) -> None:
@@ -660,7 +660,7 @@ class SetupWizardDialog(tk.Toplevel):
             # Load existing or create new
             try:
                 config = load_config()
-            except Exception:
+            except (ImportError, OSError, ValueError, KeyError, AttributeError):
                 config = UserConfig()
 
             config.audio_device = device_config
@@ -839,7 +839,7 @@ class SessionInfo:
                                     with open(qc_file) as f:
                                         qc = json.load(f)
                                         latest_verdict = qc.get("verdict", "unknown")
-                                except Exception:
+                                except (ImportError, OSError, ValueError, KeyError, AttributeError):
                                     pass
             elif (path / "analysis").exists():
                 session_type = "bending"
@@ -848,7 +848,7 @@ class SessionInfo:
             elif any(path.glob("*.wav")):
                 session_type = "tap_tone"
 
-        except Exception:
+        except (ImportError, OSError, ValueError, KeyError, AttributeError):
             pass
 
         return cls(
@@ -1071,7 +1071,7 @@ class SessionBrowserDialog(tk.Toplevel):
                             status,
                         ),
                     )
-                except Exception:
+                except (ImportError, OSError, ValueError, KeyError, AttributeError):
                     pass
 
         # Update summary

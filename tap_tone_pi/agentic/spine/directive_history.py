@@ -35,7 +35,7 @@ def _safe_load_json(line: str) -> Optional[dict[str, Any]]:
     try:
         obj = json.loads(line)
         return obj if isinstance(obj, dict) else None
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         return None
 
 
@@ -59,7 +59,7 @@ def load_directive_events(
 
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         return []
 
     rows: list[DirectiveEventRow] = []

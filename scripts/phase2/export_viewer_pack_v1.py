@@ -349,7 +349,7 @@ def export_viewer_pack(
         tl_path = export_session_timeline(session_dir)
         if tl_path is not None and tl_path.is_file():
             add_file(tl_path, "meta/session_timeline_v1.json")
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError):
         pass  # Non-fatal: pack is valid without timeline
 
     # manifest (schema_version matches contracts/viewer_pack_v1.schema.json)

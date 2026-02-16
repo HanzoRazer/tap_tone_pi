@@ -150,7 +150,7 @@ def _generate_spectrum_csv(audio_path: Path, analysis_path: Path, output_path: P
                 writer.writerow([f"{freq:.2f}", f"{mag:.8f}"])
 
         return True
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         return False
 
 

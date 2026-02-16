@@ -45,7 +45,7 @@ def read_jsonl_count(path: Path) -> Tuple[int, int]:
         try:
             json.loads(ln)
             parseable += 1
-        except Exception:
+        except json.JSONDecodeError:
             # Ignore malformed line; a partial last line can happen after crashes.
             pass
     return line_count, parseable
@@ -71,7 +71,7 @@ def scan_jsonl_lines(path: Path) -> Tuple[List[str], int, int, Optional[int]]:
         try:
             json.loads(ln)
             ok += 1
-        except Exception:
+        except json.JSONDecodeError:
             last_bad_idx = i
 
     return lines, nonblank, ok, last_bad_idx
@@ -185,7 +185,7 @@ def scan_all_malformed_jsonl_indexes(path: Path, sample_k: int = 0, keep_full: b
         try:
             json.loads(ln)
             ok += 1
-        except Exception:
+        except json.JSONDecodeError:
             bad_indexes.append(i)
             if k > 0 or need_full:
                 s_prefix = (ln[:k] + ("…" if len(ln) > k else "")) if k > 0 else None
@@ -313,7 +313,7 @@ def auto_repair_ledger_if_tag(
         ln = lines[i]
         try:
             json.loads(ln)
-        except Exception:
+        except json.JSONDecodeError:
             tag = classify_malformed_jsonl_line(ln)
             malformed.append({"idx": i, "tag": tag, "line": ln})
 
@@ -469,7 +469,7 @@ def parse_percent(s: str) -> float:
         s = s[:-1].strip()
     try:
         v = float(s)
-    except Exception:
+    except json.JSONDecodeError:
         raise ValueError(f"Invalid percent value: {s!r} (expected like 100% or 99.5%)")
     if v < 0.0 or v > 100.0:
         raise ValueError(f"Percent out of range: {v} (expected 0..100)")

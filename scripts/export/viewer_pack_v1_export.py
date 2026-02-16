@@ -387,7 +387,7 @@ def build_pack_tree_phase2(session_dir: Path, pack_dir: Path) -> tuple[List[File
             dst_relpath = "meta/session_timeline_v1.json"
             if _copy_file(tl_path, pack_dir / dst_relpath):
                 entries.append(_make_entry(pack_dir / dst_relpath, dst_relpath))
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError):
         pass  # Non-fatal: pack is valid without timeline
 
     return entries, contents, point_ids

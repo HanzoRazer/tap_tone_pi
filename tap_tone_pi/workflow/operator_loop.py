@@ -191,7 +191,7 @@ class OperatorLoop:
             with p.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(rec, ensure_ascii=False))
                 f.write("\n")
-        except Exception:
+        except (ImportError, OSError, ValueError, KeyError, AttributeError):
             return
 
     def _emit(self, state: LoopState, data: dict[str, Any] | None = None) -> None:
@@ -506,7 +506,7 @@ class OperatorLoop:
         """
         try:
             self._run_shadow_hook_inner(attempt)
-        except Exception:
+        except (ImportError, OSError, ValueError, KeyError, AttributeError):
             return
 
     def _run_shadow_hook_inner(self, attempt: Attempt) -> None:
@@ -550,7 +550,7 @@ class OperatorLoop:
                 continue
             try:
                 events.append(json.loads(line))
-            except Exception:
+            except (ImportError, OSError, ValueError, KeyError, AttributeError):
                 # skip malformed lines; fail-closed behavior continues
                 continue
 
@@ -620,7 +620,7 @@ class OperatorLoop:
                 commands_dispatched = dispatch_commands(
                     self._view_adapter, issue_commands,
                 )
-            except Exception:
+            except (ImportError, OSError, ValueError, KeyError, AttributeError):
                 pass  # fail-closed
 
         directive = (decision or {}).get("directive")

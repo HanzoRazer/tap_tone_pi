@@ -363,7 +363,7 @@ class MainWindow(QMainWindow):
                             phase=tf_data.phase,
                             coherence=tf_data.coherence
                         )
-                    except Exception:
+                    except (KeyError, TypeError, ValueError, AttributeError):
                         pass  # Not a valid transfer function format
 
                 # Load session info

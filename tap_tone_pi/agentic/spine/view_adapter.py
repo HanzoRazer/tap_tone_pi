@@ -118,7 +118,7 @@ def dispatch_commands(
             else:
                 continue  # unknown command — skip silently
             dispatched += 1
-        except Exception:
+        except (ImportError, OSError, ValueError, KeyError, AttributeError):
             pass  # fail-closed
 
     return dispatched

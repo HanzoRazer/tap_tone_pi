@@ -18,7 +18,7 @@ def git_changed_paths(base: str = "origin/main") -> list[str]:
     # Detect changed files against base (fallback to HEAD~ if not available)
     try:
         out = subprocess.check_output(["git", "diff", "--name-only", base, "HEAD"], text=True)
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError):
         out = subprocess.check_output(["git", "diff", "--name-only", "HEAD~1", "HEAD"], text=True)
     return [p.strip() for p in out.splitlines() if p.strip()]
 

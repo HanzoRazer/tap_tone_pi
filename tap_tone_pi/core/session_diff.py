@@ -177,7 +177,7 @@ def _load_analysis(path: Path) -> dict[str, Any] | None:
     try:
         with open(analysis_file) as f:
             return json.load(f)
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         return None
 
 

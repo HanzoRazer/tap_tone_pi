@@ -60,7 +60,7 @@ def _coerce_directive(obj: Any) -> Optional[AttentionDirectiveV1]:
                 focus=focus_obj,
                 detail=str(obj.get("detail") or ""),
             )
-        except Exception:
+        except (ImportError, OSError, ValueError, KeyError, AttributeError):
             return None
     return None
 

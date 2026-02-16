@@ -55,7 +55,7 @@ def record_latest_directive_outcome(
             emit_attention_acknowledged,
             emit_attention_dismissed,
         )
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         return False
 
     try:
@@ -83,5 +83,5 @@ def record_latest_directive_outcome(
             )
 
         return True
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         return False

@@ -50,7 +50,7 @@ def load_timeline(
             obj = json.loads(path.read_text(encoding="utf-8"))
             if isinstance(obj, dict):
                 return obj
-        except Exception:
+        except (ImportError, OSError, ValueError, KeyError, AttributeError):
             return None
 
     # Fallback: live-export (e.g. from a session dir that hasn't been packed)
@@ -63,7 +63,7 @@ def load_timeline(
                 obj = json.loads(written.read_text(encoding="utf-8"))
                 if isinstance(obj, dict):
                     return obj
-        except Exception:
+        except (ImportError, OSError, ValueError, KeyError, AttributeError):
             pass
 
     return None

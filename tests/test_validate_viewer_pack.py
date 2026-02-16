@@ -18,7 +18,7 @@ import pytest
 # ---------------------------------------------------------------------------
 try:
     import tap_tone_pi  # noqa: F401
-except Exception:
+except ImportError:
     pytest.skip(
         "Editable install required for viewer pack validation tests. "
         "Run: pip install -e .",

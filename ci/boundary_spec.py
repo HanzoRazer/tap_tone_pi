@@ -44,7 +44,7 @@ class BoundarySpec:
                 continue
             try:
                 text = path.read_text(encoding="utf-8")
-            except Exception:
+            except (ImportError, OSError, ValueError, KeyError):
                 # If a file can't be read, treat as a violation so CI doesn't silently pass.
                 violations.append(
                     Violation(

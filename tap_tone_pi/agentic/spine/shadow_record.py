@@ -246,7 +246,7 @@ def write_shadow_record(
         try:
             import os
             os.fsync(f.fileno())
-        except Exception:
+        except (ImportError, OSError, ValueError, KeyError, AttributeError):
             pass
     tmp.replace(latest_file)
 
@@ -278,7 +278,7 @@ def load_latest_shadow_record(
             if validate:
                 _validate_shadow_record_v1(rec)
             return rec
-        except Exception:
+        except (ImportError, OSError, ValueError, KeyError, AttributeError):
             pass  # fall through to JSONL
 
     append_file = session_dir / append_path
@@ -287,7 +287,7 @@ def load_latest_shadow_record(
 
     try:
         lines = append_file.read_text(encoding="utf-8").splitlines()
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         return None
 
     for line in reversed(lines):
@@ -298,7 +298,7 @@ def load_latest_shadow_record(
             if validate:
                 _validate_shadow_record_v1(rec)
             return rec
-        except Exception:
+        except (ImportError, OSError, ValueError, KeyError, AttributeError):
             continue
 
     return None

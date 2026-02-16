@@ -102,7 +102,7 @@ def _maybe_render_directive(
         )
         if block and block.strip():
             print("\n" + block)
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         # Silent by default — directive is additive, never break CLI
         return
 
@@ -355,7 +355,7 @@ def cmd_measure(args: argparse.Namespace) -> int:
                 comp = r.component or "-"
                 ts = r.timestamp or "-"
                 print(f"  {ts}  {r.event_type}  directive_id={did}  component={comp}")
-        except Exception:
+        except (ImportError, OSError, ValueError, KeyError, AttributeError):
             print("Directive events: none")
         return 0
 
@@ -845,7 +845,7 @@ def _count_session_points(session_dir: Path) -> int | None:
     if jsonl.exists():
         try:
             return sum(1 for _ in jsonl.open())
-        except Exception:
+        except (ImportError, OSError, ValueError, KeyError, AttributeError):
             pass
     return None
 
@@ -1171,7 +1171,7 @@ def cmd_export_session_timeline(args: argparse.Namespace) -> int:
             return 0
         print(f"Wrote: {p}")
         return 0
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         print("No session timeline exported.")
         return 0
 

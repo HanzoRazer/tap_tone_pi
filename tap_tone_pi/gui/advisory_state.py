@@ -25,7 +25,7 @@ def _read_state(session_dir: Path) -> Dict[str, Any]:
         return {}
     try:
         return json.loads(p.read_text(encoding="utf-8")) or {}
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         return {}
 
 
@@ -36,7 +36,7 @@ def _write_state(session_dir: Path, data: Dict[str, Any]) -> None:
         _state_path(session_dir).write_text(
             json.dumps(data, indent=2), encoding="utf-8",
         )
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         pass
 
 
@@ -45,7 +45,7 @@ def has_responded(session_dir: Path) -> bool:
     try:
         data = _read_state(session_dir)
         return bool(data.get("responded"))
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         return False
 
 
@@ -61,7 +61,7 @@ def mark_responded(session_dir: Path, *, directive_id: Optional[str] = None) -> 
             .replace("+00:00", "Z"),
         })
         _write_state(session_dir, payload)
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         pass
 
 
@@ -79,7 +79,7 @@ def get_show_directive_history(
         if isinstance(v, bool):
             return v
         return default
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         return default
 
 
@@ -92,7 +92,7 @@ def set_show_directive_history(session_dir: Path, value: bool) -> None:
         data = _read_state(session_dir)
         data["show_directive_history"] = bool(value)
         _write_state(session_dir, data)
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         pass
 
 
@@ -101,7 +101,7 @@ def is_trust_banner_dismissed(session_dir: Path) -> bool:
     try:
         data = _read_state(session_dir)
         return bool(data.get("trust_banner_dismissed"))
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         return False
 
 
@@ -116,5 +116,5 @@ def mark_trust_banner_dismissed(session_dir: Path) -> None:
             .replace("+00:00", "Z")
         )
         _write_state(session_dir, data)
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         pass

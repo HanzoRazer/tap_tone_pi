@@ -38,5 +38,5 @@ def try_open_url(url: str) -> bool:
                 return False
 
         return bool(webbrowser.open(url, new=2))
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError):
         return False

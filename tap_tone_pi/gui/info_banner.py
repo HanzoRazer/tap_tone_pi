@@ -62,10 +62,10 @@ class InfoBanner(tk.Frame):
     def _dismiss(self) -> None:
         try:
             self.pack_forget()
-        except Exception:
+        except (ImportError, OSError, ValueError, KeyError, AttributeError):
             pass
         if callable(self._on_dismiss):
             try:
                 self._on_dismiss()  # type: ignore[operator]
-            except Exception:
+            except (ImportError, OSError, ValueError, KeyError, AttributeError):
                 pass

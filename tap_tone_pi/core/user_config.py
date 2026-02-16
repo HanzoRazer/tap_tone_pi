@@ -170,7 +170,7 @@ class UserConfig:
                 cfg.ftue = FtueState.from_dict(ftue_raw)
             else:
                 cfg.ftue = FtueState()
-        except Exception:
+        except (ImportError, OSError, ValueError, KeyError, AttributeError):
             cfg.ftue = FtueState()
 
         return cfg
@@ -305,7 +305,7 @@ def update_ftue_from_verdict(
     try:
         if verdict.verdict == Verdict.PASS:
             ftue.pass_count_lifetime = int(ftue.pass_count_lifetime) + 1
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         pass
 
     if policy_version is not None:

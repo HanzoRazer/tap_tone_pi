@@ -48,7 +48,7 @@ def _read_json(path: Path) -> Optional[dict[str, Any]]:
     try:
         if path.exists():
             return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError):
         return None
     return None
 

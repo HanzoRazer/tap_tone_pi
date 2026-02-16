@@ -29,7 +29,7 @@ import numpy as np
 # Optional hardware capture (only used when not --synthetic)
 try:
     import sounddevice as sd
-except Exception:
+except (ImportError, OSError, ValueError, KeyError):
     sd = None  # type: ignore
 
 import sys

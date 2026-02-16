@@ -294,7 +294,7 @@ def render_cli_shadow_record(
     if isinstance(confidence, (int, float)):
         try:
             detail_lines.append(f"  Confidence: {float(confidence):.2f}")
-        except Exception:
+        except (ImportError, OSError, ValueError, KeyError, AttributeError):
             pass
 
     # verbose extras also live in the Details block

@@ -54,12 +54,12 @@ def append_chladni_to_run_manifest(
             emit_manifest.append_entry(doc, e["path"], e["sha256"], e.get("artifact_type"))
         emit_manifest.save_manifest(doc, manifest_path)
         return manifest_path
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError):
         # Fallback path: minimal manifest writer
         if manifest_path.exists():
             try:
                 doc = json.loads(manifest_path.read_text(encoding="utf-8"))
-            except Exception:
+            except (ImportError, OSError, ValueError, KeyError):
                 doc = {}
         else:
             doc = {}

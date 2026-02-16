@@ -27,14 +27,14 @@ def _read_json(path: Path) -> Optional[dict[str, Any]]:
             return None
         obj = json.loads(path.read_text(encoding="utf-8"))
         return obj if isinstance(obj, dict) else None
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         return None
 
 
 def _safe_mkdir(p: Path) -> None:
     try:
         p.mkdir(parents=True, exist_ok=True)
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         pass
 
 
@@ -125,5 +125,5 @@ def export_session_timeline(
         _safe_mkdir(out_path.parent)
         out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         return out_path
-    except Exception:
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
         return None

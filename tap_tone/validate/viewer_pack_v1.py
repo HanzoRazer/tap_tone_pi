@@ -82,7 +82,7 @@ def _repo_root() -> Path:
     """
     try:
         return Path(__file__).resolve().parents[2]
-    except Exception:
+    except (IndexError, OSError):
         return Path.cwd()
 
 
@@ -97,7 +97,7 @@ def _load_contract_schema(schema_relpath: str) -> Optional[Dict[str, Any]]:
             return None
         obj = json.loads(p.read_text(encoding="utf-8"))
         return obj if isinstance(obj, dict) else None
-    except Exception:
+    except (OSError, json.JSONDecodeError, ValueError):
         return None
 
 
@@ -312,7 +312,7 @@ def validate_pack(
                         shared_freq_grid = freqs
                         first_spectrum_pid = pid
                         break
-            except Exception:
+            except (IndexError, OSError, KeyError, TypeError):
                 pass
 
     # ========================================
