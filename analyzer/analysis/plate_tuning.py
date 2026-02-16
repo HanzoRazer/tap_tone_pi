@@ -1,11 +1,13 @@
 """
 Plate Tuning Regression Engine.
 
-Predicts frequency changes based on mass removal for guitar top/back tuning.
-Uses linear regression on builder's measurements to project tuning trajectory.
+Computes linear regression on mass vs frequency measurements.
+Outputs are objective mathematical results, not prescriptive advice.
 
 Physics basis: f ∝ √(Stiffness / Mass)
 For small changes: Δf/f ≈ -0.5 × Δm/m (mass dominates when thinning uniformly)
+
+This module performs measurement analysis only - no advisory logic.
 """
 
 from dataclasses import dataclass, field
@@ -67,8 +69,8 @@ class RegressionResult:
             return float('inf')  # Slope too flat
         return (target_freq_hz - self.intercept) / self.slope
 
-    def mass_to_remove(self, current_mass_g: float, target_freq_hz: float) -> float:
-        """Calculate how much mass to remove to reach target frequency."""
+    def compute_mass_delta(self, current_mass_g: float, target_freq_hz: float) -> float:
+        """Compute mass difference between current and predicted target mass."""
         target_mass = self.predict_mass_for_freq(target_freq_hz)
         return current_mass_g - target_mass
 
@@ -175,28 +177,26 @@ class PlateTuningRegression:
         if not self.points:
             return None
 
-        # Current state (most recent point)
+        # Current state (most recent measurement point)
         current = self.points[-1]
 
-        # Predict
-        mass_to_remove = self.result.mass_to_remove(
+        # Compute predictions (objective math)
+        target_mass = self.result.predict_mass_for_freq(self.target_freq_hz)
+        mass_delta = self.result.compute_mass_delta(
             current.mass_g,
             self.target_freq_hz
         )
-
-        target_mass = self.result.predict_mass_for_freq(self.target_freq_hz)
 
         return {
             "current_mass_g": current.mass_g,
             "current_freq_hz": current.freq_hz,
             "target_freq_hz": self.target_freq_hz,
             "target_mass_g": target_mass,
-            "mass_to_remove_g": mass_to_remove,
+            "mass_delta_g": mass_delta,  # positive = current > target
             "hz_per_gram": self.result.hz_per_gram,
             "r_squared": self.result.r_squared,
             "confidence": "high" if self.result.r_squared > 0.9 else
                          "medium" if self.result.r_squared > 0.7 else "low",
-            "direction": "remove" if mass_to_remove > 0 else "add"
         }
 
     def get_trajectory_data(self) -> Dict[str, Any]:

@@ -1,11 +1,13 @@
 """
-Plate Tuning Widget - Regression-based frequency prediction for lutherie.
+Plate Tuning Widget - Regression-based frequency analysis for lutherie.
 
-Allows builders to:
-1. Enter measurement points (mass, frequency, deflection)
-2. Set a target frequency
-3. See regression line and prediction
-4. Know how much wood to remove
+Measurement-only scope:
+1. Record measurement points (mass, frequency, deflection)
+2. Compute linear regression (freq vs mass)
+3. Display regression line with R² fit quality
+4. Show predicted mass at any target frequency (objective math)
+
+Note: This is objective data display, not prescriptive advice.
 """
 
 from typing import Optional, List
@@ -103,8 +105,8 @@ class PlateTuningWidget(QWidget):
 
         left_layout.addWidget(table_group)
 
-        # Prediction display
-        pred_group = QGroupBox("Prediction")
+        # Regression results display
+        pred_group = QGroupBox("Regression Results")
         pred_layout = QGridLayout(pred_group)
 
         pred_layout.addWidget(QLabel("Current:"), 0, 0)
@@ -117,10 +119,10 @@ class PlateTuningWidget(QWidget):
         self.target_label.setStyleSheet("font-weight: bold; color: #4a9;")
         pred_layout.addWidget(self.target_label, 1, 1)
 
-        pred_layout.addWidget(QLabel("Remove:"), 2, 0)
-        self.remove_label = QLabel("-")
-        self.remove_label.setStyleSheet("font-weight: bold; font-size: 14pt; color: #f80;")
-        pred_layout.addWidget(self.remove_label, 2, 1)
+        pred_layout.addWidget(QLabel("Mass at target:"), 2, 0)
+        self.predicted_mass_label = QLabel("-")
+        self.predicted_mass_label.setStyleSheet("font-weight: bold; font-size: 14pt; color: #4a9;")
+        pred_layout.addWidget(self.predicted_mass_label, 2, 1)
 
         pred_layout.addWidget(QLabel("Rate:"), 3, 0)
         self.rate_label = QLabel("-")
@@ -346,7 +348,7 @@ class PlateTuningWidget(QWidget):
         if not pred:
             self.current_label.setText("-")
             self.target_label.setText("-")
-            self.remove_label.setText("-")
+            self.predicted_mass_label.setText("-")
             self.rate_label.setText("-")
             self.fit_label.setText("-")
             return
@@ -358,17 +360,15 @@ class PlateTuningWidget(QWidget):
             f"{pred['target_mass_g']:.1f}g @ {pred['target_freq_hz']:.1f} Hz"
         )
 
-        remove = pred['mass_to_remove_g']
-        if remove > 0:
-            self.remove_label.setText(f"↓ {remove:.1f} g")
-            self.remove_label.setStyleSheet(
-                "font-weight: bold; font-size: 14pt; color: #f80;"
-            )
-        else:
-            self.remove_label.setText(f"(already below target)")
-            self.remove_label.setStyleSheet(
-                "font-weight: bold; font-size: 11pt; color: #4a9;"
-            )
+        # Display predicted mass at target frequency (objective data)
+        target_mass = pred['target_mass_g']
+        current_mass = pred['current_mass_g']
+        delta = current_mass - target_mass
+
+        self.predicted_mass_label.setText(f"{target_mass:.1f} g (Δ {delta:+.1f} g)")
+        self.predicted_mass_label.setStyleSheet(
+            "font-weight: bold; font-size: 14pt; color: #4a9;"
+        )
 
         hz_per_g = pred['hz_per_gram']
         self.rate_label.setText(f"{hz_per_g:.2f} Hz/gram")
