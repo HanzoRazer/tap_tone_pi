@@ -152,49 +152,23 @@ def _add_header_footer(canvas, doc):
     canvas.restoreState()
 
 # ----------------------------
-# Report builder
+# Section builders
 # ----------------------------
 
-def build_report(bundle_dir: Path, out_pdf: Path, *, title: str, author: str) -> None:
-    styles = getSampleStyleSheet()
-    H1, H2, BODY, MONO = _h1(styles), _h2(styles), _body(styles), _mono(styles)
-
-    metadata = _read_json(bundle_dir / "metadata.json") or {}
-    geometry = _read_json(bundle_dir / "geometry.json") or {}
-    grid = _read_json(bundle_dir / "grid.json") or {}
-    excitation = _read_json(bundle_dir / "excitation.json") or {}
-    wolf = _read_json(bundle_dir / "derived" / "wolf_map.json") or _read_json(bundle_dir / "wolf_map.json") or {}
-    resonance = _read_json(bundle_dir / "derived" / "resonance_table.json") or _read_json(bundle_dir / "resonance_table.json") or {}
-    manifest = _read_json(bundle_dir / "manifest.json") or {}
-
-    # Derived "front matter" values
+def _build_cover_section(story, styles, title, bundle_dir, metadata, manifest, units, H2, BODY):
+    """Build cover page with title, metadata, and abstract."""
     now = _dt.datetime.now()
     experiment_id = metadata.get("experiment_id") or manifest.get("experiment_id") or metadata.get("run_id") or "n/a"
     instrument_id = metadata.get("instrument_id") or "n/a"
     build_stage = metadata.get("build_stage") or "n/a"
-    units = (grid.get("units") or geometry.get("units") or metadata.get("units") or "mm")
 
-    doc = SimpleDocTemplate(
-        str(out_pdf),
-        pagesize=letter,
-        leftMargin=0.85*inch,
-        rightMargin=0.85*inch,
-        topMargin=0.9*inch,
-        bottomMargin=0.85*inch,
-        title=title,
-        author=author,
-    )
-
-    story: list[Any] = []
-
-    # Cover
     story.append(Paragraph(title, styles["Title"]))
     story.append(Spacer(1, 8))
     story.append(Paragraph("Operational Acoustic-Structural Mapping (Speaker Drive, Roving Measurement)", BODY))
     story.append(Spacer(1, 16))
 
     cover_kv = [
-        ("Author", author),
+        ("Author", metadata.get("author", "(author)")),
         ("Date", _fmt_dt(now)),
         ("Experiment ID", _safe(experiment_id)),
         ("Instrument ID", _safe(instrument_id)),
@@ -215,16 +189,12 @@ def build_report(bundle_dir: Path, out_pdf: Path, *, title: str, author: str) ->
     story.append(Paragraph(abstract_text, BODY))
     story.append(PageBreak())
 
-    # 1 Introduction
-    story.append(Paragraph("1. Introduction", H1))
-    story.append(Paragraph(
-        "Goal: achieve high observability of coupled vibro-acoustic behavior with minimal intrusion (no added plate mass). "
-        "This report documents apparatus, protocol, signal processing, results, and an error/confidence framework suitable "
-        "for repeatable shop or lab use.",
-        BODY
-    ))
 
-    # 2 System Description
+def _build_system_section(story, metadata, geometry, grid, units, H1, H2, BODY, MONO):
+    """Build physical system description with geometry and grid subsections."""
+    instrument_id = metadata.get("instrument_id") or "n/a"
+    build_stage = metadata.get("build_stage") or "n/a"
+
     story.append(Paragraph("2. Physical System Description", H1))
     sys_kv = [
         ("Instrument ID", _safe(instrument_id)),
@@ -259,7 +229,9 @@ def build_report(bundle_dir: Path, out_pdf: Path, *, title: str, author: str) ->
             if len(pts) > 24:
                 story.append(Paragraph(f"(Showing first 24 of {len(pts)} points.)", BODY))
 
-    # 3 Apparatus
+
+def _build_apparatus_section(story, metadata, excitation, H1, BODY):
+    """Build experimental apparatus section."""
     story.append(Paragraph("3. Experimental Apparatus", H1))
     app_kv = [
         ("Excitation", _safe(excitation.get("type") or metadata.get("excitation_type") or "speaker-air drive")),
@@ -272,46 +244,14 @@ def build_report(bundle_dir: Path, out_pdf: Path, *, title: str, author: str) ->
     ]
     story.append(_kv_table(app_kv))
 
-    # 4 Protocol
-    story.append(Paragraph("4. Measurement Protocol", H1))
-    prot = metadata.get("protocol") or (
-        "Place the instrument on a repeatable support fixture. Position the excitation speaker at the documented "
-        "distance and angle. Keep the reference microphone fixed at the documented location. Move the roving "
-        "microphone to each grid point (mm coordinates) and record synchronized 2-channel audio for the configured "
-        "duration. Repeat as required to quantify variance. Apply gating when using impulse response methods to "
-        "reduce room reflection contamination."
-    )
-    story.append(Paragraph(prot, BODY))
 
-    # 5 Signal Processing
-    story.append(Paragraph("5. Signal Processing", H1))
-    story.append(Paragraph(
-        "Operational transfer estimate uses cross/auto spectral densities: H_ir(f)=G_ir(f)/G_rr(f). "
-        "Coherence is used as a validity gate. For time-gated impulse response workflows, a deconvolution "
-        "step yields h(t), followed by windowing h_g(t) prior to FFT.",
-        BODY
-    ))
-
-    # 6 Results
-    story.append(Paragraph("6. Results", H1))
-
-    # Wolf map summary
+def _build_wolf_section(story, wolf, H2, BODY):
+    """Build wolf-region indicators section."""
     story.append(Paragraph("6.1 Wolf-Region Indicators", H2))
-    if isinstance(wolf, dict) and wolf:
-        # wolf_map.json might be list or dict; accept both
-        wolf_points = wolf.get("points") if isinstance(wolf.get("points"), list) else None
-        if wolf_points is None and isinstance(wolf, dict) and "0" not in wolf:
-            # maybe the dict is actually a list serialized differently; ignore
-            pass
 
-    wolf_data = None
-    if isinstance(wolf, list):
-        wolf_data = wolf
-    elif isinstance(wolf, dict) and isinstance(wolf.get("points"), list):
-        wolf_data = wolf["points"]
+    wolf_data = _extract_wolf_data(wolf)
 
     if wolf_data:
-        # show top localized points
         wolf_sorted = sorted(
             wolf_data,
             key=lambda r: float(r.get("localization_index", 0.0) or 0.0),
@@ -343,7 +283,18 @@ def build_report(bundle_dir: Path, out_pdf: Path, *, title: str, author: str) ->
             BODY
         ))
 
-    # Resonance table summary (optional)
+
+def _extract_wolf_data(wolf: Any) -> Optional[list]:
+    """Extract wolf data points from various formats."""
+    if isinstance(wolf, list):
+        return wolf
+    if isinstance(wolf, dict) and isinstance(wolf.get("points"), list):
+        return wolf["points"]
+    return None
+
+
+def _build_resonance_section(story, resonance, H2, BODY):
+    """Build resonance summary section."""
     story.append(Paragraph("6.2 Resonance Summary (optional)", H2))
     res_rows = []
     if isinstance(resonance, dict) and isinstance(resonance.get("rows"), list):
@@ -363,20 +314,97 @@ def build_report(bundle_dir: Path, out_pdf: Path, *, title: str, author: str) ->
     else:
         story.append(Paragraph("No resonance_table.json present (this is optional).", BODY))
 
-    # Plots section
+
+def _build_plots_section(story, bundle_dir, H2, BODY):
+    """Build plots section with embedded images."""
     story.append(Paragraph("6.3 Plots", H2))
     imgs = _find_plot_images(bundle_dir, max_images=10)
     if imgs:
         story.append(Paragraph("Selected plots included from bundle/plots:", BODY))
         for img_path in imgs:
-            # fit image to page width
             im = Image(str(img_path))
             im._restrictSize(6.4*inch, 4.5*inch)
             story.append(KeepTogether([Paragraph(f"<b>{img_path.name}</b>", BODY), im, Spacer(1, 10)]))
     else:
         story.append(Paragraph("No PNG plots found in bundle/plots.", BODY))
 
-    # 7 Error analysis
+
+# ----------------------------
+# Report builder
+# ----------------------------
+
+def build_report(bundle_dir: Path, out_pdf: Path, *, title: str, author: str) -> None:
+    styles = getSampleStyleSheet()
+    H1, H2, BODY, MONO = _h1(styles), _h2(styles), _body(styles), _mono(styles)
+
+    metadata = _read_json(bundle_dir / "metadata.json") or {}
+    geometry = _read_json(bundle_dir / "geometry.json") or {}
+    grid = _read_json(bundle_dir / "grid.json") or {}
+    excitation = _read_json(bundle_dir / "excitation.json") or {}
+    wolf = _read_json(bundle_dir / "derived" / "wolf_map.json") or _read_json(bundle_dir / "wolf_map.json") or {}
+    resonance = _read_json(bundle_dir / "derived" / "resonance_table.json") or _read_json(bundle_dir / "resonance_table.json") or {}
+    manifest = _read_json(bundle_dir / "manifest.json") or {}
+
+    units = (grid.get("units") or geometry.get("units") or metadata.get("units") or "mm")
+
+    doc = SimpleDocTemplate(
+        str(out_pdf),
+        pagesize=letter,
+        leftMargin=0.85*inch,
+        rightMargin=0.85*inch,
+        topMargin=0.9*inch,
+        bottomMargin=0.85*inch,
+        title=title,
+        author=author,
+    )
+
+    story: list[Any] = []
+
+    # 1. Cover + Abstract
+    _build_cover_section(story, styles, title, bundle_dir, metadata, manifest, units, H2, BODY)
+
+    # 2. Introduction
+    story.append(Paragraph("1. Introduction", H1))
+    story.append(Paragraph(
+        "Goal: achieve high observability of coupled vibro-acoustic behavior with minimal intrusion (no added plate mass). "
+        "This report documents apparatus, protocol, signal processing, results, and an error/confidence framework suitable "
+        "for repeatable shop or lab use.",
+        BODY
+    ))
+
+    # 3. Physical System Description
+    _build_system_section(story, metadata, geometry, grid, units, H1, H2, BODY, MONO)
+
+    # 4. Apparatus
+    _build_apparatus_section(story, metadata, excitation, H1, BODY)
+
+    # 5. Protocol
+    story.append(Paragraph("4. Measurement Protocol", H1))
+    prot = metadata.get("protocol") or (
+        "Place the instrument on a repeatable support fixture. Position the excitation speaker at the documented "
+        "distance and angle. Keep the reference microphone fixed at the documented location. Move the roving "
+        "microphone to each grid point (mm coordinates) and record synchronized 2-channel audio for the configured "
+        "duration. Repeat as required to quantify variance. Apply gating when using impulse response methods to "
+        "reduce room reflection contamination."
+    )
+    story.append(Paragraph(prot, BODY))
+
+    # 6. Signal Processing
+    story.append(Paragraph("5. Signal Processing", H1))
+    story.append(Paragraph(
+        "Operational transfer estimate uses cross/auto spectral densities: H_ir(f)=G_ir(f)/G_rr(f). "
+        "Coherence is used as a validity gate. For time-gated impulse response workflows, a deconvolution "
+        "step yields h(t), followed by windowing h_g(t) prior to FFT.",
+        BODY
+    ))
+
+    # 7. Results
+    story.append(Paragraph("6. Results", H1))
+    _build_wolf_section(story, wolf, H2, BODY)
+    _build_resonance_section(story, resonance, H2, BODY)
+    _build_plots_section(story, bundle_dir, H2, BODY)
+
+    # 8. Error Analysis
     story.append(Paragraph("7. Error Analysis and Confidence", H1))
     story.append(Paragraph(
         "Uncertainty sources include microphone positioning tolerances, excitation repeatability, environmental reflections "
@@ -385,7 +413,7 @@ def build_report(bundle_dir: Path, out_pdf: Path, *, title: str, author: str) ->
         BODY
     ))
 
-    # 8 Appendices
+    # 9. Appendices
     story.append(Paragraph("8. Appendices", H1))
     story.append(Paragraph("8.1 Manifest (if present)", H2))
     if manifest:
@@ -393,7 +421,7 @@ def build_report(bundle_dir: Path, out_pdf: Path, *, title: str, author: str) ->
     else:
         story.append(Paragraph("manifest.json not present.", BODY))
 
-    # Build
+    # Build PDF
     out_pdf.parent.mkdir(parents=True, exist_ok=True)
     doc.build(story, onFirstPage=_add_header_footer, onLaterPages=_add_header_footer)
 
