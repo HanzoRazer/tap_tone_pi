@@ -1,42 +1,7 @@
 {
   "threshold": 25,
-  "violation_count": 22,
+  "violation_count": 8,
   "violations": [
-    {
-      "file": "scripts\\bending_stiffness_mode.py",
-      "function": "main",
-      "complexity": 77,
-      "line": 229,
-      "letter": "F"
-    },
-    {
-      "file": "scripts\\session_close.py",
-      "function": "main",
-      "complexity": 48,
-      "line": 610,
-      "letter": "F"
-    },
-    {
-      "file": "tap_tone_pi\\gui\\app.py",
-      "function": "__init__",
-      "complexity": 46,
-      "line": 200,
-      "letter": "F"
-    },
-    {
-      "file": "tap_tone\\cli\\gold_run.py",
-      "function": "run_gold_run",
-      "complexity": 43,
-      "line": 297,
-      "letter": "F"
-    },
-    {
-      "file": "tap_tone_pi\\cli\\wizard.py",
-      "function": "run_wizard",
-      "complexity": 42,
-      "line": 25,
-      "letter": "F"
-    },
     {
       "file": "tap_tone_pi\\agent\\render.py",
       "function": "render_cli_shadow_record",
@@ -69,7 +34,7 @@
       "file": "tap_tone_pi\\gui\\app.py",
       "function": "do_quality_measure",
       "complexity": 30,
-      "line": 1491,
+      "line": 1423,
       "letter": "D"
     },
     {
@@ -80,17 +45,17 @@
       "letter": "D"
     },
     {
-      "file": "scripts\\session_close.py",
-      "function": "auto_repair_ledger_if_tag",
-      "complexity": 25,
-      "line": 272,
-      "letter": "D"
-    },
-    {
       "file": "tap_tone_pi\\agent\\messages.py",
       "function": "build_agent_message",
       "complexity": 25,
       "line": 647,
+      "letter": "D"
+    },
+    {
+      "file": "scripts\\session_close.py",
+      "function": "auto_repair_ledger_if_tag",
+      "complexity": 25,
+      "line": 272,
       "letter": "D"
     },
     {
@@ -108,17 +73,10 @@
       "letter": "D"
     },
     {
-      "file": "analyzer\\loaders\\transfer_function.py",
-      "function": "_parse_generic",
-      "complexity": 23,
-      "line": 290,
-      "letter": "D"
-    },
-    {
-      "file": "scripts\\viewer_pack_validate.py",
-      "function": "validate_viewer_pack",
-      "complexity": 23,
-      "line": 99,
+      "file": "scripts\\bending_stiffness_mode.py",
+      "function": "_build_calibration_block",
+      "complexity": 24,
+      "line": 413,
       "letter": "D"
     },
     {
@@ -136,10 +94,17 @@
       "letter": "D"
     },
     {
-      "file": "scripts\\plot_coherence_phase.py",
-      "function": "main",
-      "complexity": 22,
-      "line": 127,
+      "file": "scripts\\viewer_pack_validate.py",
+      "function": "validate_viewer_pack",
+      "complexity": 23,
+      "line": 99,
+      "letter": "D"
+    },
+    {
+      "file": "analyzer\\loaders\\transfer_function.py",
+      "function": "_parse_generic",
+      "complexity": 23,
+      "line": 290,
       "letter": "D"
     },
     {
@@ -154,6 +119,13 @@
       "function": "detect_moments",
       "complexity": 22,
       "line": 208,
+      "letter": "D"
+    },
+    {
+      "file": "scripts\\plot_coherence_phase.py",
+      "function": "main",
+      "complexity": 22,
+      "line": 127,
       "letter": "D"
     }
   ]
