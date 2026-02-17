@@ -8,6 +8,51 @@ The Tap Tone Pi analyzer delivers approximately **90% of commercial analyzer cap
 
 ---
 
+## Current Hardware Stack
+
+The Tap Tone Pi analyzer is built on commodity hardware:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  COMPUTE PLATFORM                                           │
+│  Raspberry Pi 4/5 (or desktop PC)                          │
+│  Python 3.10+, sounddevice, numpy                          │
+│  Cost: $50-80                                              │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              │ USB
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  AUDIO CAPTURE (Choose One)                                 │
+│                                                             │
+│  Option A: USB Measurement Mic (UMIK-1 class)              │
+│    - Built-in preamp + 24-bit ADC                          │
+│    - Plug-and-play, flat response                          │
+│    - Cost: ~$75-100                                        │
+│                                                             │
+│  Option B: USB Audio Interface + XLR Mic                   │
+│    - Interface: Behringer UMC22, M-Audio M-Track Solo      │
+│    - Mic: Behringer ECM8000 (omni measurement)             │
+│    - 24-bit ADC, phantom power                             │
+│    - Cost: ~$100 combined                                  │
+└─────────────────────────────────────────────────────────────┘
+
+TOTAL HARDWARE COST: ~$150-200
+```
+
+### Hardware Specifications
+
+| Spec | Tap Tone Pi Stack | Notes |
+|------|-------------------|-------|
+| ADC Resolution | 24-bit | Consumer-grade converters |
+| Sample Rates | 8-192 kHz | Standard USB audio class |
+| Noise Floor | ~-85 dBV | Limited by preamp/ADC |
+| Dynamic Range | 90-96 dB | Limited by ADC quality |
+| THD+N | -80 to -90 dB | Limited by analog front-end |
+| Channels | 1-2 | USB audio interface dependent |
+
+---
+
 ## Measurement Accuracy Comparison
 
 | Specification | Tap Tone Pi | Mid-Range ($3-10k) | High-End ($15-50k+) |
@@ -272,6 +317,130 @@ These gaps require hardware changes and are **not** targeted for improvement:
 5. **64+ channel synchronized capture** - Requires specialized hardware
 
 For applications requiring these specifications, commercial analyzers remain the appropriate choice.
+
+---
+
+## Deep Dive: Audio Precision APx555 — The Gold Standard
+
+To understand why certain gaps cannot be closed, it's instructive to examine what a $40-60k professional analyzer provides.
+
+### Audio Precision APx555 Specifications
+
+| Specification | Tap Tone Pi (~$150) | Audio Precision APx555 ($40-60k) |
+|---------------|---------------------|----------------------------------|
+| **Residual THD+N** | -80 to -90 dB | **-120 dB** |
+| **Noise Floor** | ~1-3 µV (estimated) | **1.0 µV** (specified, verified) |
+| **Dynamic Range** | 90-96 dB | **>120 dB** (per ADC stage) |
+| **FFT Resolution** | 16K-64K points typical | **1.2 million points** |
+| **ADC Resolution** | 24-bit (consumer) | 24-bit (instrumentation-grade) |
+| **Frequency Range** | 20 Hz - 20 kHz typical | DC to **1 MHz** |
+| **Calibration** | User/uncalibrated | **NIST-traceable**, annual cert |
+| **Input Ranges** | Fixed or 2-3 settings | **6 dB steps** (optimized SNR) |
+| **Second Harmonic** | Measurable to ~0.006% | **31 nV RMS** (31 parts-per-billion) |
+
+### What $40-60k Buys You
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  ANALOG FRONT-END                                           │
+│  - Ultra-low-noise discrete preamps (not IC-based)         │
+│  - Precision resistor networks (0.01% tolerance)           │
+│  - Multiple gain stages with 6dB steps                     │
+│  - Shielded, temperature-compensated circuits              │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  ADC/DAC                                                    │
+│  - Instrumentation-grade converters (not consumer audio)   │
+│  - Multiple ADCs per channel for extended dynamic range    │
+│  - Precision clocking (femtosecond jitter)                 │
+│  - DC-coupled for low-frequency accuracy                   │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  SIGNAL GENERATOR                                           │
+│  - Ultra-low distortion oscillator (-120 dB THD)           │
+│  - Arbitrary waveform generation                           │
+│  - IMD test signals (SMPTE, CCIF, DIN)                     │
+│  - Sweep with tracking analyzer                            │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  CALIBRATION & CERTIFICATION                                │
+│  - Factory calibration to NIST standards                   │
+│  - Annual recertification ($1-2k/year)                     │
+│  - Documented measurement uncertainty                       │
+│  - Traceable reference standards                           │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  SOFTWARE & SUPPORT                                         │
+│  - APx500 measurement software                             │
+│  - Automated test sequences                                │
+│  - Industry-standard limit masks                           │
+│  - Phone/email support with SLA                            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### The Critical Measurement Floor Difference
+
+The -120 dB THD+N floor means the APx555 can measure distortion **1000x smaller** than our hardware can detect:
+
+| Stack | THD+N Floor | Minimum Measurable Distortion |
+|-------|-------------|-------------------------------|
+| Tap Tone Pi | -85 dB | ~0.006% |
+| Audio Precision | -120 dB | ~0.0001% |
+
+For **tap tone analysis** and **relative acoustic measurement**, our -85 dB floor is more than sufficient — the specimen itself introduces far more variation than that. But for:
+
+- Certifying a $10k DAC for production specs
+- Measuring power amplifier THD for a datasheet
+- QC on medical or aerospace audio equipment
+
+...the AP's precision is required.
+
+### APx555 Pricing Breakdown (2024-2025)
+
+| Configuration | Price |
+|---------------|-------|
+| Base APx555 B-Series | ~$40,000 |
+| With Advanced Digital I/O | ~$42,000 |
+| Bluetooth I/O Module | +$7,000 |
+| HDMI I/O Module | +$7,000 |
+| Serial Digital I/O Module | +$7,000 |
+| PDM I/O Module | +$7,000 |
+| **Fully Loaded** | **$60,000+** |
+| Annual Calibration | $1,000-2,000/year |
+
+### The Value Equation
+
+```
+Audio Precision APx555:
+├── Absolute measurements traceable to NIST
+├── Measures distortion to 0.0001%
+├── 1 MHz bandwidth
+├── Annual calibration certification
+└── Required for: product certification, R&D on high-end audio
+
+Tap Tone Pi:
+├── Relative measurements (A vs B comparison)
+├── Measures distortion to ~0.006%
+├── 20 kHz bandwidth (sufficient for acoustics)
+├── Self-calibration (Phase 3 improvement)
+└── Sufficient for: modal analysis, QC, education, research
+```
+
+**Bottom line:** For **0.5% of the cost**, we deliver **90% of the capability** for applications where relative measurement matters more than absolute traceability.
+
+### References
+
+- [APx555B Audio Analyzer | Audio Precision](https://www.ap.com/analyzers-accessories/apx555)
+- [APx555 Installation and Specifications (PDF)](https://www.ap.com/fileadmin-ap/technical-library/APx555_B_Series_Installation_and_Specifications.pdf)
+- [Measuring Distortion on the Cheap — Neurochrome](https://neurochrome.com/pages/measuring-distortion-on-the-cheap)
 
 ---
 
