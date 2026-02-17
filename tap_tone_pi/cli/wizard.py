@@ -22,6 +22,8 @@ from pathlib import Path
 
 import numpy as np
 
+from tap_tone_pi.cli.validators import confirm_action
+
 
 def _check_existing_config(args: argparse.Namespace) -> bool | None:
     """Check for existing config and prompt for re-run.
@@ -307,6 +309,14 @@ def run_wizard(args: argparse.Namespace) -> int:
 
     # Handle --reset flag
     if getattr(args, "reset", False):
+        # Check if there's actually a config to reset
+        from tap_tone_pi.core.user_config import load_config, CONFIG_FILE
+        existing = load_config()
+        if existing and existing.audio_device:
+            confirm_action(
+                f"This will clear your saved configuration at {CONFIG_FILE}.",
+                force=getattr(args, "force", False),
+            )
         if clear_config():
             print("Cleared saved configuration.")
         else:
@@ -442,6 +452,12 @@ def build_setup_parser(subparsers) -> None:
         "--show",
         action="store_true",
         help="Show current saved configuration",
+    )
+    p.add_argument(
+        "--force",
+        "-f",
+        action="store_true",
+        help="Skip confirmation prompts (for --reset)",
     )
     p.set_defaults(fn=run_wizard)
 

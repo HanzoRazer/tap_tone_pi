@@ -833,6 +833,8 @@ def cmd_export_pack(args: argparse.Namespace) -> int:
     """Export a session as viewer_pack_v1 ZIP."""
     import subprocess
 
+    from tap_tone_pi.cli.validators import confirm_overwrite
+
     # Consistent with other CLI commands - resolve against PROJECT_ROOT
     session_path = Path(args.session)
     if not session_path.is_absolute():
@@ -846,6 +848,9 @@ def cmd_export_pack(args: argparse.Namespace) -> int:
     if not session_path.exists():
         print(f"Session not found: {session_path}", file=sys.stderr)
         return 1
+
+    # Confirm overwrite if output exists
+    confirm_overwrite(out_path, force=getattr(args, "force", False))
 
     # Guardrail: exporter expects Phase 2 session structure
     grid_json = session_path / "grid.json"
@@ -1356,6 +1361,12 @@ uploads to ToolBox for analysis.
         "--json",
         action="store_true",
         help="Emit validation results as JSON",
+    )
+    p_export.add_argument(
+        "--force",
+        "-f",
+        action="store_true",
+        help="Overwrite output file without confirmation",
     )
     p_export.set_defaults(fn=cmd_export_pack)
 
