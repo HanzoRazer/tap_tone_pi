@@ -695,7 +695,7 @@ def cmd_sessions(args: argparse.Namespace) -> int:
 
 def cmd_gold_run(args: argparse.Namespace) -> int:
     """Dispatch to gold-run module."""
-    from tap_tone.cli.gold_run import main as gold_run_main
+    from tap_tone_pi.cli.gold_run import main as gold_run_main
 
     gold_argv = []
     gold_argv.extend(["--specimen-id", args.specimen_id])

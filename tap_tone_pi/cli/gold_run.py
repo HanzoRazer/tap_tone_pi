@@ -31,7 +31,7 @@ from typing import Any, List, Optional, TYPE_CHECKING
 
 # Defer hardware-dependent imports to runtime
 if TYPE_CHECKING:
-    from tap_tone.config import AnalysisConfig
+    from tap_tone_pi.core.config import AnalysisConfig
 
 
 @dataclass
@@ -161,7 +161,7 @@ def pick_open_url(
 
 def _resolve_device(device_spec: int | str | None) -> int | None:
     """Resolve device spec to index."""
-    from tap_tone.capture import list_devices  # Lazy import
+    from tap_tone_pi.capture import list_devices  # Lazy import
 
     if device_spec is None:
         return None
@@ -204,7 +204,7 @@ def _capture_point_auto_trigger(
 
     Returns (audio_array, trigger_provenance) or None on failure.
     """
-    from tap_tone.capture.auto_trigger import (
+    from tap_tone_pi.core.auto_trigger import (
         AutoTriggerConfig,
         capture_one_impulse,
     )
@@ -259,8 +259,8 @@ def _capture_point(
     an_cfg: "AnalysisConfig",
 ) -> tuple[Any, Any]:
     """Capture and analyze a single point. Returns (capture, analysis)."""
-    from tap_tone.capture import record_audio
-    from tap_tone.analysis import analyze_tap
+    from tap_tone_pi.capture import record_audio
+    from tap_tone_pi.core.analysis import analyze_tap
 
     cap = record_audio(
         device=device,
@@ -325,8 +325,8 @@ def _capture_single_point_auto(
     auto_trigger_provenance: list,
 ) -> Optional[str]:
     """Capture a single point with auto-trigger. Returns error_message or None on success."""
-    from tap_tone.storage import persist_capture
-    from tap_tone.analysis import analyze_tap
+    from tap_tone_pi.io.storage import persist_capture
+    from tap_tone_pi.core.analysis import analyze_tap
 
     cap_result = _capture_point_auto_trigger(device_idx, cfg, label, i, total)
     if cap_result is None:
@@ -370,7 +370,7 @@ def _capture_single_point_manual(
     total: int,
 ) -> Optional[str]:
     """Capture a single point with manual retries. Returns error_message or None on success."""
-    from tap_tone.storage import persist_capture
+    from tap_tone_pi.io.storage import persist_capture
 
     print(f"\n[{i + 1}/{total}] Capturing point {label}...")
     print(f"    Tap the specimen now (timeout: {cfg.tap_timeout_s}s)")
@@ -503,7 +503,7 @@ def _do_ingest(cfg: GoldRunConfig, result: GoldRunResult) -> None:
     result.ingest_attempted = True
     print(f"[gold-run] Ingesting to {cfg.ingest_url}...")
 
-    from tap_tone.ingest import ingest_zip
+    from tap_tone_pi.ingest import ingest_zip
 
     ingest_result = ingest_zip(
         zip_path=result.zip_path,
@@ -555,7 +555,7 @@ def _handle_ingest_browser(
         print("    Browser: skipped (--no-open)")
         return
 
-    from tap_tone.util import try_open_url
+    from tap_tone_pi.util import try_open_url
 
     if cfg.open_viewer and not bundle_sha:
         print(
@@ -603,7 +603,7 @@ def run_gold_run(cfg: GoldRunConfig) -> GoldRunResult:
     session_dir.mkdir(parents=True, exist_ok=True)
 
     # Analysis config (lazy import)
-    from tap_tone.config import AnalysisConfig
+    from tap_tone_pi.core.config import AnalysisConfig
 
     an_cfg = AnalysisConfig(peak_min_hz=cfg.min_peak_hz, peak_max_hz=cfg.max_peak_hz)
 

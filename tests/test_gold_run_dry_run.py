@@ -13,7 +13,7 @@ def tmp_out(tmp_path: Path) -> Path:
 
 def test_gold_run_dry_run_exits_zero(tmp_out):
     """gold-run --dry-run should exit 0 without capturing."""
-    from tap_tone.cli.gold_run import main as gold_run_main
+    from tap_tone_pi.cli.gold_run import main as gold_run_main
 
     rc = gold_run_main(
         [
@@ -32,7 +32,7 @@ def test_gold_run_dry_run_exits_zero(tmp_out):
 
 def test_gold_run_dry_run_json_output(tmp_out, capsys):
     """gold-run --dry-run --json should emit valid JSON."""
-    from tap_tone.cli.gold_run import main as gold_run_main
+    from tap_tone_pi.cli.gold_run import main as gold_run_main
 
     rc = gold_run_main(
         [
@@ -57,7 +57,7 @@ def test_gold_run_dry_run_json_output(tmp_out, capsys):
 
 def test_gold_run_custom_points(tmp_out, capsys):
     """gold-run --points 5 should generate 5 point labels."""
-    from tap_tone.cli.gold_run import main as gold_run_main
+    from tap_tone_pi.cli.gold_run import main as gold_run_main
 
     rc = gold_run_main(
         [

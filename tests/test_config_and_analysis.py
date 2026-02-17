@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from tap_tone.config import CaptureConfig, AnalysisConfig
-from tap_tone.analysis import Peak, AnalysisResult, analyze_tap
+from tap_tone_pi.core.config import CaptureConfig, AnalysisConfig
+from tap_tone_pi.core.analysis import Peak, AnalysisResult, analyze_tap
 
 
 class TestConfig:

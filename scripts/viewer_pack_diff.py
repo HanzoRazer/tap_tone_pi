@@ -41,7 +41,7 @@ import numpy as np
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tap_tone.viewer_pack.manifest import (
+from tap_tone_pi.viewer_pack.manifest import (
     load_viewer_pack,
     find_files_by_kind,
     read_file_from_pack,

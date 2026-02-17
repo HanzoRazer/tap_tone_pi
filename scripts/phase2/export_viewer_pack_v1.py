@@ -40,10 +40,10 @@ from typing import Any, Dict, List, Optional, Tuple
 from zipfile import ZipFile, ZIP_DEFLATED
 
 # Pre-export validation gate
-from tap_tone.validate.viewer_pack_v1 import validate_pack, write_validation_report
+from tap_tone_pi.validate.viewer_pack_v1 import validate_pack, write_validation_report
 
 # Session metadata export
-from tap_tone.export_metadata import SessionMetaV1, write_session_meta
+from tap_tone_pi.export_metadata import SessionMetaV1, write_session_meta
 
 
 def extract_session_metadata(session_dir: Path) -> Dict[str, Any]:

@@ -34,7 +34,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 # Session metadata export
-from tap_tone.export_metadata import SessionMetaV1, write_session_meta
+from tap_tone_pi.export_metadata import SessionMetaV1, write_session_meta
 
 # ============================================================================
 # Constants

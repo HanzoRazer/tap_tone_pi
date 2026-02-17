@@ -2,7 +2,7 @@
 """ToolBox ZIP ingest - POST viewer_pack to RMOS acoustics import endpoint.
 
 Usage:
-    from tap_tone.ingest import ingest_zip
+    from tap_tone_pi.ingest import ingest_zip
 
     # Local ToolBox (no auth)
     result = ingest_zip(

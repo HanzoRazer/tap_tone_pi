@@ -7,10 +7,10 @@ from pathlib import Path
 from statistics import mean, pstdev
 from typing import Any
 
-from tap_tone.capture import record_audio
-from tap_tone.analysis import analyze_tap
-from tap_tone.config import CaptureConfig, AnalysisConfig
-from tap_tone.storage import persist_capture
+from tap_tone_pi.capture import record_audio
+from tap_tone_pi.core.analysis import analyze_tap
+from tap_tone_pi.core.config import CaptureConfig, AnalysisConfig
+from tap_tone_pi.io.storage import persist_capture
 
 
 def main() -> None:

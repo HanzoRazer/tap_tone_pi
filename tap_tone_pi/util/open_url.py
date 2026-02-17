@@ -2,7 +2,7 @@
 """Best-effort URL opening in default browser.
 
 Usage:
-    from tap_tone.util import try_open_url
+    from tap_tone_pi.util import try_open_url
 
     if try_open_url("http://localhost:8000/library"):
         print("Opened!")

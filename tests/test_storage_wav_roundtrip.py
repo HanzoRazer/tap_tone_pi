@@ -10,8 +10,8 @@ instead of write_wav_mono(path, audio, sample_rate)).
 import numpy as np
 
 from modes._shared.wav_io import read_wav_mono
-from tap_tone.storage import persist_capture
-from tap_tone.analysis import AnalysisResult, Peak
+from tap_tone_pi.io.storage import persist_capture
+from tap_tone_pi.core.analysis import AnalysisResult, Peak
 
 
 def _make_synthetic_analysis(audio: np.ndarray, sample_rate: int) -> AnalysisResult:

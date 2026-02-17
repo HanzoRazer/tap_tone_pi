@@ -11,7 +11,7 @@ before restructuring.
 import json
 import numpy as np
 
-from tap_tone.analysis import analyze_tap, analysis_to_json_dict, AnalysisResult
+from tap_tone_pi.core.analysis import analyze_tap, analysis_to_json_dict, AnalysisResult
 
 
 def _make_synthetic_tap(
