@@ -311,7 +311,7 @@ These issues affect code quality, documentation, or non-critical paths.
 | P1 | M7 | Uncertainty-based diff | 1 hour | ✅ Complete |
 | P2 | All | Minor issues | 4 hours total | 🔴 Not started |
 
-**Completed: 2026-02-17** — All 4 CRITICAL and 5 MODERATE fixes implemented. 1268 tests passing.
+**Completed: 2026-02-17** — All 4 CRITICAL and 5 MODERATE fixes implemented. 1303 tests passing.
 
 ---
 
@@ -352,6 +352,91 @@ where λ = modal constant (4.730 for free-free fundamental)
 - CSV export (flat table for spreadsheet import)
 
 **Tests:** 53 new tests covering calculations, presets, cross-validation, and physical realism.
+
+---
+
+### QA/QC Lab Specification Sheet ✅
+
+**Files:** `tap_tone_pi/bending/qa_lab_spec.py`, `tests/test_qa_lab_spec.py`
+
+**Completed: 2026-02-17**
+
+Comprehensive laboratory specification sheet for tonewood QA/QC, integrating
+all measurement data sources into a single, traceable record.
+
+**Structure (9 Sections):**
+
+1. **Sample Identification & Traceability**
+   - specimen_id, batch_id, run_id, session_id
+   - species, grain_direction, material_source
+
+2. **Test Setup & Parameters**
+   - operator_id, device_id, fixture_id, mic_id
+   - calibration_date, is_calibrated
+   - temperature_c, humidity_rh, protocol_version
+
+3. **Primary Measurements**
+   - Dimensions (L, W, H), mass, density
+   - Frequencies, amplitudes
+
+4. **Derived Properties** (from Gore spreadsheet)
+   - E_static, E_dynamic, SI
+   - wave_speed, specific_stiffness, radiation_ratio
+   - Instrument matching and preset comparison
+
+5. **Modal Analysis**
+   - Mode identification (frequency, damping_ratio, Q, confidence)
+   - Dominant mode, MAC matrix, modal overlap warning
+
+6. **Error Analysis (GUM-compliant)**
+   - Combined uncertainty, expanded uncertainty
+   - Coverage factor, effective DOF
+   - Component breakdown, dominant error source
+   - E_uncertainty_GPa, SI_uncertainty
+
+7. **Quality Assessment**
+   - Verdict (pass/warn/fail), policy_version
+   - Triggered rules (rule_id, severity, message)
+   - Cross-validation result, confidence score, SNR
+
+8. **Special Analysis**
+   - Wolf tone: wolf_detected, worst_wolf_freq_hz, beat_hz, severity
+   - Chladni: pattern_matched, match_confidence
+
+9. **Audit Trail**
+   - software_version, schema_version
+   - entry_hash_sha256 (integrity verification)
+   - Raw data paths and hashes
+   - export_timestamp_utc
+
+**Key Features:**
+- Deterministic hash for integrity verification
+- JSON and CSV export formats
+- Integrates with: gore_spreadsheet, damping/modes, wolf_beat, uncertainty/budget, quality_policy, export_metadata
+- 35 new tests
+
+**Usage:**
+```python
+from tap_tone_pi.bending.qa_lab_spec import (
+    build_qa_lab_spec_entry,
+    export_qa_lab_csv,
+    export_qa_lab_json,
+)
+
+entry = build_qa_lab_spec_entry(
+    specimen_id="Sitka_001_L",
+    direction="L",
+    thickness_mm=3.0,
+    bending_json_path="bending_moe.json",
+    acoustic_json_path="peaks.json",
+    operator_id="JSmith",
+    device_id="DEV001",
+    is_calibrated=True,
+)
+
+export_qa_lab_csv([entry], "qa_report.csv")
+export_qa_lab_json([entry], "qa_report.json")
+```
 
 ---
 
