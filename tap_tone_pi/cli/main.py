@@ -23,6 +23,7 @@ Usage:
 """
 
 from __future__ import annotations
+from typing import Callable
 
 import argparse
 import json
@@ -381,7 +382,7 @@ def _list_directive_events_cli(session_dir: Path, args: argparse.Namespace) -> i
     return 0
 
 
-def _make_measure_state_callback(args: argparse.Namespace):
+def _make_measure_state_callback(args: argparse.Namespace) -> Callable:
     """Create state callback for measure CLI feedback."""
     from tap_tone_pi.workflow import LoopState
 

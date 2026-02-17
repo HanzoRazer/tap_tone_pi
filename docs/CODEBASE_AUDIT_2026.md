@@ -312,11 +312,19 @@ These issues affect code quality, documentation, or non-critical paths.
 
 ---
 
-### m7. Missing Type Hints in Public API
+### m7. Missing Type Hints in Public API ✅
+
+**File:** Multiple modules
 
 **Problem:** Several public functions lack type hints, reducing IDE support.
 
-**Fix:** Add comprehensive type hints for public API.
+**Fix:** Added return type hints to all public API functions:
+- `tap_tone_pi/__init__.py`: `__getattr__() -> Any`
+- `tap_tone_pi/capture/__init__.py`: `__getattr__() -> Any`, `_get_auto_trigger_exports() -> dict[str, Any]`
+- `tap_tone_pi/testing/float_compare.py`: All `approx_*` functions return `Any`
+- `tap_tone_pi/cli/wizard.py`: `_do_test_recording() -> tuple`
+- `tap_tone_pi/cli/main.py`: `_make_measure_state_callback() -> Callable`
+- `tap_tone_pi/agentic/spine/`: Helper functions with `-> Any` return types
 
 ---
 
@@ -342,9 +350,9 @@ These issues affect code quality, documentation, or non-critical paths.
 | P2 | m4 | Grid ID extended rows | 30 min | ✅ Complete |
 | P2 | m5 | Retry decorator tests | 30 min | ✅ Complete |
 | P2 | m6 | Clipping threshold fix | 15 min | ✅ Complete |
-| P2 | m7 | Type hints (partial) | ongoing | 🟡 In progress |
+| P2 | m7 | Type hints | 30 min | ✅ Complete |
 
-**Completed: 2026-02-17** — All 4 CRITICAL, 8 MODERATE, and 6 of 7 MINOR fixes implemented. 1423 tests passing.
+**Completed: 2026-02-17** — All 4 CRITICAL, 8 MODERATE, and 7 MINOR fixes implemented. 1423 tests passing.
 
 ---
 

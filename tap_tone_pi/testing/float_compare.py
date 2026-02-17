@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from typing import Union
+from typing import Any, Union
 
 
 # ============================================================================
@@ -77,7 +77,7 @@ class TolerancePresets:
     SAMPLE_RATE_REL = 0.001  # 0.1% (covers rounding)
 
 
-def approx_freq(expected: float, *, abs_tol: float = None, rel_tol: float = None):
+def approx_freq(expected: float, *, abs_tol: float = None, rel_tol: float = None) -> Any:
     """
     Pytest approx for frequency values.
 
@@ -91,7 +91,7 @@ def approx_freq(expected: float, *, abs_tol: float = None, rel_tol: float = None
     return pytest.approx(expected, abs=abs_tol, rel=rel_tol)
 
 
-def approx_magnitude(expected: float, *, abs_tol: float = None, rel_tol: float = None):
+def approx_magnitude(expected: float, *, abs_tol: float = None, rel_tol: float = None) -> Any:
     """
     Pytest approx for magnitude values (normalized 0-1).
 
@@ -105,7 +105,7 @@ def approx_magnitude(expected: float, *, abs_tol: float = None, rel_tol: float =
     return pytest.approx(expected, abs=abs_tol, rel=rel_tol)
 
 
-def approx_phase(expected: float, *, abs_tol: float = None):
+def approx_phase(expected: float, *, abs_tol: float = None) -> Any:
     """
     Pytest approx for phase values (degrees).
 
@@ -118,7 +118,7 @@ def approx_phase(expected: float, *, abs_tol: float = None):
     return pytest.approx(expected, abs=abs_tol)
 
 
-def approx_stiffness(expected: float, *, rel_tol: float = None):
+def approx_stiffness(expected: float, *, rel_tol: float = None) -> Any:
     """
     Pytest approx for stiffness/MOE values.
 
@@ -131,7 +131,7 @@ def approx_stiffness(expected: float, *, rel_tol: float = None):
     return pytest.approx(expected, rel=rel_tol)
 
 
-def approx_time(expected: float, *, abs_tol: float = None):
+def approx_time(expected: float, *, abs_tol: float = None) -> Any:
     """
     Pytest approx for time/duration values.
 
@@ -144,7 +144,7 @@ def approx_time(expected: float, *, abs_tol: float = None):
     return pytest.approx(expected, abs=abs_tol)
 
 
-def approx_physical(expected: float, *, rel_tol: float = None):
+def approx_physical(expected: float, *, rel_tol: float = None) -> Any:
     """
     Pytest approx for physical constants (density, etc.).
 

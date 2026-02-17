@@ -237,7 +237,7 @@ def auto_detect_device() -> int | None:
     return None
 
 
-def _get_auto_trigger_exports():
+def _get_auto_trigger_exports() -> dict[str, Any]:
     """Lazy load auto-trigger support to improve startup time."""
     from tap_tone_pi.core.auto_trigger import (
         TriggerState,
@@ -257,7 +257,7 @@ def _get_auto_trigger_exports():
     }
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     """Lazy load auto-trigger exports on first access."""
     _auto_trigger_names = {
         "TriggerState", "TriggerConfig", "TriggerResult",

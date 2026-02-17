@@ -23,11 +23,13 @@ Production-grade physics modules (Phase 3):
 
 """
 
+from typing import Any
+
 __version__ = "2.0.0"
 __all__ = ["__version__"]
 
 # Lazy imports for production-grade physics modules
-def __getattr__(name):
+def __getattr__(name: str) -> Any:
     """Lazy loading of submodules."""
     if name == "damping":
         from . import damping

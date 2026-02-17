@@ -34,7 +34,7 @@ PRIORITY: Dict[MomentName, int] = {
 }
 
 
-def _get(e: Any, key: str, default=None):
+def _get(e: Any, key: str, default: Any = None) -> Any:
     if isinstance(e, dict):
         return e.get(key, default)
     return getattr(e, key, default)

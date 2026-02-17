@@ -28,7 +28,7 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
-def _get(e: Any, key: str, default=None):
+def _get(e: Any, key: str, default: Any = None) -> Any:
     if isinstance(e, dict):
         return e.get(key, default)
     return getattr(e, key, default)

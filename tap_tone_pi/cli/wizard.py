@@ -147,7 +147,7 @@ def _select_sample_rate(selected_device: dict) -> int:
     return sample_rate
 
 
-def _do_test_recording(selected_idx: int, sample_rate: int):
+def _do_test_recording(selected_idx: int, sample_rate: int) -> tuple:
     """Perform test recording. Returns (result, error_code) or (None, 1) on failure."""
     from tap_tone_pi.capture import record_audio
 
