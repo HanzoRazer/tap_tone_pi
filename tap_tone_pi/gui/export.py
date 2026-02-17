@@ -117,15 +117,12 @@ def _generate_spectrum_csv(audio_path: Path, analysis_path: Path, output_path: P
         return False
 
     try:
-        from scipy.io import wavfile
+        from tap_tone_pi.io.wav import read_wav_mono
 
-        sr, audio = wavfile.read(str(audio_path))
+        audio, meta = read_wav_mono(audio_path)
+        sr = meta.sample_rate
 
-        # Convert to float
-        if audio.dtype == np.int16:
-            audio = audio.astype(np.float32) / 32768.0
-        elif audio.dtype == np.int32:
-            audio = audio.astype(np.float32) / 2147483648.0
+        # read_wav_mono already returns float32 [-1, 1]
 
         # Mono
         if audio.ndim > 1:

@@ -154,6 +154,25 @@ def _write_wav(path: str | Path, x: np.ndarray, fs: int, *, pcm_bits: int = 16) 
     wavfile.write(str(p), int(fs), (y * 32767.0).astype(np.int16))
 
 
+def write_wav_int16(path: str | Path, x: np.ndarray, fs: int) -> None:
+    """Write raw int16 PCM audio to WAV (no float conversion).
+
+    Use this when you already have int16 audio data (e.g., from capture devices).
+    For float32 [-1,1] signals, use write_wav_mono() instead.
+    """
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    y = np.asarray(x)
+    if y.dtype \!= np.int16:
+        # Convert if needed
+        if np.issubdtype(y.dtype, np.floating):
+            y = np.clip(y, -1.0, 1.0)
+            y = (y * 32767.0).astype(np.int16)
+        else:
+            y = y.astype(np.int16)
+    wavfile.write(str(p), int(fs), y)
+
+
 def level_dbfs(x: np.ndarray) -> float:
     """RMS level in dBFS for float32 [-1,1] signals."""
     y = np.asarray(x, dtype=np.float32)

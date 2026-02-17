@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Callable, Any, Optional
 
 import numpy as np
-from scipy.io import wavfile
+from tap_tone_pi.io.wav import write_wav_int16
 
 from tap_tone_pi.capture import (
     record_audio,
@@ -336,7 +336,7 @@ class OperatorLoop:
 
         # Save audio
         audio_path = attempt_dir / "audio.wav"
-        wavfile.write(str(audio_path), cap_result.sample_rate, cap_result.audio)
+        write_wav_int16(audio_path, cap_result.audio, cap_result.sample_rate)
         attempt.audio_path = "audio.wav"
 
         # Event: audio artifact created

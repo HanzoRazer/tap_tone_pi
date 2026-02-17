@@ -1379,8 +1379,8 @@ class App(tk.Tk):
             )
 
             # Save audio and analysis
-            from scipy.io import wavfile
-            wavfile.write(str(attempt_dir / "audio.wav"), cap.sample_rate, cap.audio)
+            from tap_tone_pi.io.wav import write_wav_int16
+            write_wav_int16(attempt_dir / "audio.wav", cap.audio, cap.sample_rate)
 
             with open(attempt_dir / "analysis.json", "w") as f:
                 json.dump({
@@ -1536,10 +1536,10 @@ class App(tk.Tk):
         verdict,
     ) -> None:
         """Save audio, analysis, and quality check results."""
-        from scipy.io import wavfile
+        from tap_tone_pi.io.wav import write_wav_int16
 
         audio_path = attempt_dir / "audio.wav"
-        wavfile.write(str(audio_path), cap.sample_rate, cap.audio)
+        write_wav_int16(audio_path, cap.audio, cap.sample_rate)
 
         analysis_path = attempt_dir / "analysis.json"
         with open(analysis_path, "w") as f:
