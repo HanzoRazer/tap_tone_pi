@@ -1066,8 +1066,24 @@ complete -c tap-tone -w ttp
 
 def build_parser() -> argparse.ArgumentParser:
     """Build the unified CLI argument parser."""
+    epilog = """Quick Start:
+  ttp setup              # First time? Run hardware wizard
+  ttp devices            # List audio devices
+  ttp quick              # Zero-config capture (auto-detect)
+  ttp measure --out ./s1 # Quality-gated measurement session
+
+Common Workflows:
+  ttp gold-run --specimen-id "SG-001" --device 1 --out-dir ./runs
+  ttp phase2 --grid grid.json --out ./runs_phase2
+  ttp export-pack --session ./runs_phase2/session_* --out pack.zip
+
+Documentation: https://github.com/HanzoRazer/tap_tone_pi
+"""
     p = argparse.ArgumentParser(
-        prog="ttp", description="Tap Tone Pi — Acoustic measurement instrument (v2.0.0)"
+        prog="ttp",
+        description="Tap Tone Pi — Acoustic measurement instrument (v2.0.0)",
+        epilog=epilog,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     sub = p.add_subparsers(dest="cmd", required=True)
 
@@ -1088,7 +1104,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_dev.set_defaults(fn=cmd_devices)
 
     # record
-    p_rec = sub.add_parser("record", help="Record one window and analyze")
+    p_rec = sub.add_parser(
+        "record",
+        help="Record one window and analyze",
+        epilog="""Examples:
+  ttp record --out ./session1
+  ttp record --out ./session1 --device 2 --seconds 3.0
+  ttp record --out ./session1 --label "bridge_A1" --agent
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     p_rec.add_argument("--device", type=int, default=None, help="Input device index")
     p_rec.add_argument("--sample-rate", type=int, default=48000)
     p_rec.add_argument("--channels", type=int, default=1)
@@ -1127,14 +1152,34 @@ def build_parser() -> argparse.ArgumentParser:
 
     # quick (NEW!)
     p_quick = sub.add_parser(
-        "quick", help="Zero-config quick capture (auto-detect device)"
+        "quick",
+        help="Zero-config quick capture (auto-detect device)",
+        epilog="""Examples:
+  ttp quick           # Capture and show frequency analysis
+  ttp quick --plot    # Also display spectrum plot
+
+The quick command auto-detects your audio device and captures a single
+tap without requiring any configuration. Great for testing your setup.
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p_quick.add_argument("--plot", action="store_true", help="Show spectrum plot")
     p_quick.set_defaults(fn=cmd_quick)
 
     # measure (NEW! - quality-gated)
     p_meas = sub.add_parser(
-        "measure", help="Quality-gated measurement with operator loop"
+        "measure",
+        help="Quality-gated measurement with operator loop",
+        epilog="""Examples:
+  ttp measure --out ./session1                    # Basic measurement
+  ttp measure --out ./session1 --auto-trigger     # Wait for tap onset
+  ttp measure --out ./session1 --agent --expert   # Detailed agent output
+  ttp measure --out ./session1 --point "A1"       # Named measurement point
+
+The measure command enforces quality gates. If a capture fails QC,
+you'll be prompted to retry or override with a reason.
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p_meas.add_argument("--device", type=int, default=None, help="Input device index")
     p_meas.add_argument("--sample-rate", type=int, default=48000, help="Sample rate Hz")
@@ -1194,7 +1239,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_meas.set_defaults(fn=cmd_measure)
 
     # gold-run
-    p_gold = sub.add_parser("gold-run", help="One-command Gold Standard Run")
+    p_gold = sub.add_parser(
+        "gold-run",
+        help="One-command Gold Standard Run",
+        epilog="""Examples:
+  ttp gold-run --specimen-id "SG-001" --device 1 --out-dir ./runs
+  ttp gold-run --specimen-id "SG-001" --device 1 --out-dir ./runs --points 5
+  ttp gold-run --specimen-id "SG-001" --device 1 --out-dir ./runs --dry-run
+  ttp gold-run --specimen-id "SG-001" --device 1 --out-dir ./runs --ingest
+
+The gold-run command captures multiple points in sequence and optionally
+uploads to ToolBox for analysis.
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     p_gold.add_argument("--specimen-id", required=True, help="Specimen identifier")
     p_gold.add_argument("--device", required=True, help="Audio device")
     p_gold.add_argument("--out-dir", required=True, help="Output directory")
