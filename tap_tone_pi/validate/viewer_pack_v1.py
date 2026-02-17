@@ -133,7 +133,7 @@ def _read_csv_columns(path: Path) -> tuple[List[str], List[Dict[str, str]]]:
     """Read CSV and return (headers, rows as dicts)."""
     with open(path, "r", encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
-        headers = reader.fieldnames or []
+        headers = list(reader.fieldnames or [])
         rows = list(reader)
     return headers, rows
 
