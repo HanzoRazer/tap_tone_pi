@@ -1491,6 +1491,11 @@ uploads to ToolBox for analysis.
     )
     p_est.set_defaults(fn=cmd_export_session_timeline)
 
+    # calibrate (Phase 3 P0)
+    from tap_tone_pi.cli.calibrate import add_calibrate_subcommand
+
+    add_calibrate_subcommand(sub)
+
     return p
 
 
