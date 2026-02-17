@@ -296,70 +296,33 @@ def cmd_quick(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_measure(args: argparse.Namespace) -> int:
-    """Quality-gated measurement with operator loop."""
-    from tap_tone_pi.core.user_config import (
-        get_saved_device,
-        load_config,
-        save_config,
-        UserConfig,
-        update_ftue_from_verdict,
-    )
-    from tap_tone_pi.core.quality_gate import format_verdict_summary
-    from tap_tone_pi.core.quality_policy import Verdict
-    from tap_tone_pi.workflow import OperatorLoop, LoopState
+def _list_directive_events_cli(session_dir: Path, args: argparse.Namespace) -> int:
+    """List directive events (early exit handler)."""
+    try:
+        from tap_tone_pi.agentic.spine.directive_history import load_directive_events
 
-    # ---- FTUE: load once per measure session ----
-    cfg = load_config() or UserConfig()
-
-    # Increment session counter once per cmd_measure invocation (deterministic)
-    cfg.ftue = update_ftue_from_verdict(
-        cfg.ftue,
-        verdict=None,
-        policy_version=None,
-        increment_session=True,
-    )
-    save_config(cfg)
-
-    # Resolve device
-    device = args.device
-    sample_rate = args.sample_rate
-    if device is None:
-        saved = get_saved_device()
-        if saved:
-            device = saved.index
-            sample_rate = saved.sample_rate
-            print(f"Using saved device: [{device}] {saved.name}")
-
-    # Create session directory
-    session_dir = Path(args.out)
-    session_dir.mkdir(parents=True, exist_ok=True)
-
-    # -----------------------------------------------------------------
-    # Directive event listing (PR #14) — read-only timeline, early exit
-    # -----------------------------------------------------------------
-    if getattr(args, "list_directive_events", False):
-        try:
-            from tap_tone_pi.agentic.spine.directive_history import load_directive_events
-
-            rows = load_directive_events(
-                session_dir,
-                limit=int(getattr(args, "directive_events_limit", 10)),
-            )
-            if not rows:
-                print("Directive events: none")
-                return 0
-            print("Directive events:")
-            for r in rows:
-                did = r.directive_id or "-"
-                comp = r.component or "-"
-                ts = r.timestamp or "-"
-                print(f"  {ts}  {r.event_type}  directive_id={did}  component={comp}")
-        except (ImportError, OSError, ValueError, KeyError, AttributeError):
+        rows = load_directive_events(
+            session_dir,
+            limit=int(getattr(args, "directive_events_limit", 10)),
+        )
+        if not rows:
             print("Directive events: none")
-        return 0
+            return 0
+        print("Directive events:")
+        for r in rows:
+            did = r.directive_id or "-"
+            comp = r.component or "-"
+            ts = r.timestamp or "-"
+            print(f"  {ts}  {r.event_type}  directive_id={did}  component={comp}")
+    except (ImportError, OSError, ValueError, KeyError, AttributeError):
+        print("Directive events: none")
+    return 0
 
-    # State callback for CLI feedback
+
+def _make_measure_state_callback(args: argparse.Namespace):
+    """Create state callback for measure CLI feedback."""
+    from tap_tone_pi.workflow import LoopState
+
     def on_state(state: LoopState, data: dict) -> None:
         if state == LoopState.PREFLIGHT:
             print("Preflight checks...")
@@ -377,15 +340,185 @@ def cmd_measure(args: argparse.Namespace) -> int:
             print("Analyzing...")
         elif state == LoopState.GATING:
             print("Checking quality...")
+    return on_state
+
+
+def _show_analysis_summary(result) -> None:
+    """Display analysis summary from measurement result."""
+    if not result.analysis:
+        return
+    print(f"\nDominant: {result.analysis.dominant_hz or 'n/a'} Hz")
+    print(f"RMS: {result.analysis.rms:.4f}  Confidence: {result.analysis.confidence:.2f}")
+    if result.analysis.peaks:
+        print("Top peaks:")
+        for pk in result.analysis.peaks[:5]:
+            print(f"  - {pk.freq_hz:7.1f} Hz  (mag: {pk.magnitude:.3f})")
+
+
+def _handle_verdict_display(
+    result,
+    args: argparse.Namespace,
+    cfg,
+    session_tracker,
+    point_id: str,
+    attempt_num: int,
+    max_attempts: int,
+    device,
+    sample_rate: int,
+    save_config_fn,
+    update_ftue_fn,
+) -> None:
+    """Handle verdict display and FTUE updates."""
+    from tap_tone_pi.core.quality_gate import format_verdict_summary
+
+    if not result.verdict:
+        return
+
+    if session_tracker is not None:
+        from tap_tone_pi.agent.messages import format_verdict_summary_agent
+
+        session_tracker.record_verdict(result.verdict)
+        cfg.ftue = update_ftue_fn(
+            cfg.ftue,
+            verdict=result.verdict,
+            policy_version=getattr(result.verdict, "policy_version", None),
+            increment_session=False,
+        )
+        save_config_fn(cfg)
+
+        ctx = session_tracker.make_context(
+            workflow="measure",
+            point_id=point_id,
+            attempt_num=attempt_num,
+            max_attempts=max_attempts,
+            device_name=str(device or "default"),
+            sample_rate=sample_rate,
+            policy_version=getattr(result.verdict, "policy_version", None),
+            pass_count_lifetime=cfg.ftue.pass_count_lifetime,
+            session_count_lifetime=cfg.ftue.session_count_lifetime,
+            override_count_lifetime=cfg.ftue.override_count_lifetime,
+            seen_rule_ids=tuple(cfg.ftue.seen_rule_ids),
+            show_details=True,
+            expert_mode=getattr(args, 'expert', False),
+        )
+        print("\n" + format_verdict_summary_agent(ctx, result.verdict))
+    else:
+        print(f"\n{format_verdict_summary(result.verdict)}")
+
+
+def _handle_measure_error(attempt_num: int, max_attempts: int, error: str) -> tuple:
+    """Handle measurement error, return (should_continue, exit_code)."""
+    print(f"\nERROR: {error}")
+    if attempt_num < max_attempts:
+        retry = input("Retry? [Y/n]: ").strip().lower()
+        if retry in ("n", "no"):
+            print("Measurement aborted.")
+            return False, 1
+        return True, None
+    else:
+        print("Max attempts reached.")
+        return False, 1
+
+
+def _handle_pass_verdict(loop, result) -> int:
+    """Handle PASS verdict, return exit code."""
+    print(f"\nMeasurement ACCEPTED.")
+    print(f"Saved to: {loop.store.get_attempt_dir(result.attempt)}")
+    return 0
+
+
+def _handle_warn_verdict(loop, result) -> tuple:
+    """Handle WARN verdict, return (accepted, exit_code)."""
+    print(f"\nMeasurement has warnings.")
+    accept = input("Accept anyway? [Y/n]: ").strip().lower()
+    if accept not in ("n", "no"):
+        print(f"Measurement ACCEPTED (with warnings).")
+        print(f"Saved to: {loop.store.get_attempt_dir(result.attempt)}")
+        return True, 0
+    return False, None
+
+
+def _handle_fail_verdict(
+    loop,
+    result,
+    point_id: str,
+    attempt_num: int,
+    max_attempts: int,
+    cfg,
+    save_config_fn,
+) -> tuple:
+    """Handle FAIL verdict, return (should_continue, exit_code)."""
+    print(f"\nMeasurement FAILED quality gate.")
+
+    if attempt_num < max_attempts:
+        retry = input("Retry? [Y/n]: ").strip().lower()
+        if retry in ("n", "no"):
+            override = input("Override with reason? [leave blank to abort]: ").strip()
+            if override:
+                loop.override_failed(point_id, override)
+                cfg.ftue.override_count_lifetime += 1
+                save_config_fn(cfg)
+                print(f"Measurement OVERRIDDEN: {override}")
+                print(f"Saved to: {loop.store.get_attempt_dir(result.attempt)}")
+                return False, 0
+            print("Measurement aborted.")
+            return False, 1
+        return True, None
+    else:
+        override = input("Max attempts reached. Override with reason? [leave blank to fail]: ").strip()
+        if override:
+            loop.override_failed(point_id, override)
+            cfg.ftue.override_count_lifetime += 1
+            save_config_fn(cfg)
+            print(f"Measurement OVERRIDDEN: {override}")
+            return False, 0
+        print("Measurement FAILED.")
+        return False, 1
+
+
+
+def cmd_measure(args: argparse.Namespace) -> int:
+    """Quality-gated measurement with operator loop."""
+    from tap_tone_pi.core.user_config import (
+        get_saved_device,
+        load_config,
+        save_config,
+        UserConfig,
+        update_ftue_from_verdict,
+    )
+    from tap_tone_pi.core.quality_policy import Verdict
+    from tap_tone_pi.workflow import OperatorLoop
+
+    # ---- FTUE: load once per measure session ----
+    cfg = load_config() or UserConfig()
+    cfg.ftue = update_ftue_from_verdict(cfg.ftue, verdict=None, policy_version=None, increment_session=True)
+    save_config(cfg)
+
+    # Resolve device
+    device = args.device
+    sample_rate = args.sample_rate
+    if device is None:
+        saved = get_saved_device()
+        if saved:
+            device = saved.index
+            sample_rate = saved.sample_rate
+            print(f"Using saved device: [{device}] {saved.name}")
+
+    # Create session directory
+    session_dir = Path(args.out)
+    session_dir.mkdir(parents=True, exist_ok=True)
+
+    # Directive event listing (early exit)
+    if getattr(args, "list_directive_events", False):
+        return _list_directive_events_cli(session_dir, args)
 
     # Create operator loop
-    loop = OperatorLoop(session_dir=session_dir, callback=on_state)
+    loop = OperatorLoop(session_dir=session_dir, callback=_make_measure_state_callback(args))
 
-    # Run measurement loop with retries
     max_attempts = args.max_attempts
     point_id = args.point or "point_001"
 
-    # PR7: single source of session history (replaces manual tracking)
+    # PR7: single source of session history
     session_tracker = None
     if getattr(args, 'agent', False):
         from tap_tone_pi.agent.messages import SessionTracker
@@ -404,113 +537,35 @@ def cmd_measure(args: argparse.Namespace) -> int:
         )
 
         if result.error:
-            print(f"\nERROR: {result.error}")
-            if attempt_num < max_attempts:
-                retry = input("Retry? [Y/n]: ").strip().lower()
-                if retry in ("n", "no"):
-                    print("Measurement aborted.")
-                    return 1
-                continue
-            else:
-                print("Max attempts reached.")
-                return 1
+            should_continue, exit_code = _handle_measure_error(attempt_num, max_attempts, result.error)
+            if not should_continue:
+                return exit_code
+            continue
 
-        # Show analysis summary
-        if result.analysis:
-            print(f"\nDominant: {result.analysis.dominant_hz or 'n/a'} Hz")
-            print(f"RMS: {result.analysis.rms:.4f}  Confidence: {result.analysis.confidence:.2f}")
-            if result.analysis.peaks:
-                print("Top peaks:")
-                for p in result.analysis.peaks[:5]:
-                    print(f"  - {p.freq_hz:7.1f} Hz  (mag: {p.magnitude:.3f})")
+        _show_analysis_summary(result)
 
-        # Show quality verdict
-        if result.verdict:
-            if session_tracker is not None:
-                from tap_tone_pi.agent.messages import (
-                    format_verdict_summary_agent,
-                )
+        _handle_verdict_display(
+            result, args, cfg, session_tracker, point_id, attempt_num,
+            max_attempts, device, sample_rate, save_config, update_ftue_from_verdict,
+        )
 
-                # PR7: record verdict once — SessionTracker is the canonical history
-                session_tracker.record_verdict(result.verdict)
-
-                # FTUE: record exposure + PASS increments (deterministic)
-                cfg.ftue = update_ftue_from_verdict(
-                    cfg.ftue,
-                    verdict=result.verdict,
-                    policy_version=getattr(result.verdict, "policy_version", None),
-                    increment_session=False,
-                )
-                save_config(cfg)
-
-                ctx = session_tracker.make_context(
-                    workflow="measure",
-                    point_id=point_id,
-                    attempt_num=attempt_num,
-                    max_attempts=max_attempts,
-                    device_name=str(device or "default"),
-                    sample_rate=sample_rate,
-                    policy_version=getattr(result.verdict, "policy_version", None),
-                    pass_count_lifetime=cfg.ftue.pass_count_lifetime,
-                    session_count_lifetime=cfg.ftue.session_count_lifetime,
-                    override_count_lifetime=cfg.ftue.override_count_lifetime,
-                    seen_rule_ids=tuple(cfg.ftue.seen_rule_ids),
-                    show_details=True,
-                    expert_mode=getattr(args, 'expert', False),
-                )
-                print("\n" + format_verdict_summary_agent(ctx, result.verdict))
-            else:
-                print(f"\n{format_verdict_summary(result.verdict)}")
-
-        # --- Directive co-render (PR #3) — all terminal verdicts ---
         _maybe_render_directive(args, session_dir)
 
-        # Handle verdict
         if result.verdict.verdict == Verdict.PASS:
-            print(f"\nMeasurement ACCEPTED.")
-            print(f"Saved to: {loop.store.get_attempt_dir(result.attempt)}")
-            return 0
+            return _handle_pass_verdict(loop, result)
 
         elif result.verdict.verdict == Verdict.WARN:
-            print(f"\nMeasurement has warnings.")
-            accept = input("Accept anyway? [Y/n]: ").strip().lower()
-            if accept not in ("n", "no"):
-                print(f"Measurement ACCEPTED (with warnings).")
-                print(f"Saved to: {loop.store.get_attempt_dir(result.attempt)}")
-                return 0
+            accepted, exit_code = _handle_warn_verdict(loop, result)
+            if accepted:
+                return exit_code
             # else: continue to retry
 
         else:  # FAIL
-            print(f"\nMeasurement FAILED quality gate.")
-            if attempt_num < max_attempts:
-                retry = input("Retry? [Y/n]: ").strip().lower()
-                if retry in ("n", "no"):
-                    # Offer override
-                    override = input("Override with reason? [leave blank to abort]: ").strip()
-                    if override:
-                        loop.override_failed(point_id, override)
-
-                        cfg.ftue.override_count_lifetime += 1
-                        save_config(cfg)
-
-                        print(f"Measurement OVERRIDDEN: {override}")
-                        print(f"Saved to: {loop.store.get_attempt_dir(result.attempt)}")
-                        return 0
-                    print("Measurement aborted.")
-                    return 1
-            else:
-                # Max attempts - offer override
-                override = input("Max attempts reached. Override with reason? [leave blank to fail]: ").strip()
-                if override:
-                    loop.override_failed(point_id, override)
-
-                    cfg.ftue.override_count_lifetime += 1
-                    save_config(cfg)
-
-                    print(f"Measurement OVERRIDDEN: {override}")
-                    return 0
-                print("Measurement FAILED.")
-                return 1
+            should_continue, exit_code = _handle_fail_verdict(
+                loop, result, point_id, attempt_num, max_attempts, cfg, save_config,
+            )
+            if not should_continue:
+                return exit_code
 
     return 1
 
