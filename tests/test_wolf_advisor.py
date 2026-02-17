@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from tap_tone.wolf_beat import (
+from tap_tone_pi.wolf.wolf_beat import (
     WolfBeatResult,
     AvoidedCrossingModel,
     analyze_wolf_beat,
@@ -11,7 +11,7 @@ from tap_tone.wolf_beat import (
     simulate_damping_increase,
 )
 
-from tap_tone.wolf_advisor import (
+from tap_tone_pi.wolf.wolf_advisor import (
     MitigationType,
     ConfidenceLevel,
     MitigationRecommendation,
