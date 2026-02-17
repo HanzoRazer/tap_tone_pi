@@ -185,17 +185,11 @@ class BodePlotWidget(QWidget):
 
         return result[:n_points]
 
-    def _update_plot(self):
-        """Update the plot with current data."""
-        self._ax_mag.clear()
-        self._ax_phase.clear()
+    def _decimate_data_if_needed(self) -> tuple:
+        """Decimate data arrays if exceeding MAX_POINTS.
 
-        if not self._frequencies or not self._magnitude_db:
-            self._setup_axes_style()
-            self._canvas.draw()
-            return
-
-        # Apply decimation if needed
+        Returns (freq, mag_db, phase, coh) potentially decimated.
+        """
         if len(self._frequencies) > self.MAX_POINTS:
             freq = self._decimate(self._frequencies, self.MAX_POINTS)
             mag_db = self._decimate(self._magnitude_db, self.MAX_POINTS)
@@ -206,17 +200,106 @@ class BodePlotWidget(QWidget):
             mag_db = self._magnitude_db
             phase = self._phase
             coh = self._coherence
+        return freq, mag_db, phase, coh
 
-        # Apply frequency range
+    def _apply_freq_range_filter(
+        self,
+        freq: List[float],
+        mag_db: List[float],
+        phase: List[float],
+        coh: List[float],
+    ) -> tuple:
+        """Apply frequency range filter to data arrays.
+
+        Returns (freq, mag_db, phase, coh) filtered to selected range.
+        """
         freq_range = self._get_freq_range()
-        if freq_range:
-            mask = [(f >= freq_range[0] and f <= freq_range[1]) for f in freq]
-            freq = [f for f, m in zip(freq, mask) if m]
-            mag_db = [v for v, m in zip(mag_db, mask) if m]
-            if phase:
-                phase = [v for v, m in zip(phase, mask) if m]
-            if coh:
-                coh = [v for v, m in zip(coh, mask) if m]
+        if not freq_range:
+            return freq, mag_db, phase, coh
+
+        mask = [(f >= freq_range[0] and f <= freq_range[1]) for f in freq]
+        freq = [f for f, m in zip(freq, mask) if m]
+        mag_db = [v for v, m in zip(mag_db, mask) if m]
+        if phase:
+            phase = [v for v, m in zip(phase, mask) if m]
+        if coh:
+            coh = [v for v, m in zip(coh, mask) if m]
+        return freq, mag_db, phase, coh
+
+    def _plot_coherence(self, freq: List[float], coh: List[float]) -> None:
+        """Plot coherence overlay on magnitude axes."""
+        if not self._show_coherence_cb.isChecked() or not coh:
+            return
+
+        ax_coh = self._ax_mag.twinx()
+        ax_coh.semilogx(freq, coh, 'g-', linewidth=0.8, alpha=0.7, label='Coherence')
+        ax_coh.set_ylabel('Coherence', color='#4a4')
+        ax_coh.set_ylim(0, 1.1)
+        ax_coh.tick_params(colors='#4a4')
+        # Draw coherence threshold line
+        ax_coh.axhline(y=0.8, color='#4a4', linestyle='--', alpha=0.5)
+
+    def _plot_peaks(self, freq_range: tuple) -> None:
+        """Plot peak markers on magnitude axes."""
+        if not self._show_peaks_cb.isChecked() or not self._peaks:
+            return
+
+        for peak in self._peaks:
+            peak_freq = peak.get('freq_hz', 0)
+            if freq_range and (peak_freq < freq_range[0] or peak_freq > freq_range[1]):
+                continue
+
+            # Find nearest magnitude value
+            peak_mag = peak.get('magnitude_db')
+            if peak_mag is None and 'magnitude' in peak:
+                # Convert linear to dB
+                from analyzer.loaders.transfer_function import linear_to_db
+                peak_mag = linear_to_db(peak['magnitude'])
+
+            self._ax_mag.axvline(x=peak_freq, color='#ff6b6b', linestyle='--',
+                                 alpha=0.6, linewidth=0.8)
+            # Annotate peak
+            if peak_mag is not None:
+                self._ax_mag.annotate(
+                    f'{peak_freq:.0f}Hz',
+                    xy=(peak_freq, peak_mag),
+                    xytext=(5, 5),
+                    textcoords='offset points',
+                    fontsize=8,
+                    color='#ff6b6b',
+                    alpha=0.8
+                )
+
+    def _plot_phase(self, freq: List[float], phase: List[float]) -> None:
+        """Plot phase curve on phase axes."""
+        if not self._show_phase_cb.isChecked() or not phase:
+            self._ax_phase.set_visible(False)
+            return
+
+        self._ax_phase.semilogx(freq, phase, 'm-', linewidth=1, label='Phase')
+        self._ax_phase.set_ylabel('Phase (°)', color='white')
+        self._ax_phase.set_xlabel('Frequency (Hz)', color='white')
+
+        # Add reference lines
+        for ref in [-180, -90, 0, 90, 180]:
+            if min(phase) <= ref <= max(phase):
+                self._ax_phase.axhline(y=ref, color='#555', linestyle=':',
+                                       alpha=0.5, linewidth=0.5)
+
+
+    def _update_plot(self):
+        """Update the plot with current data."""
+        self._ax_mag.clear()
+        self._ax_phase.clear()
+
+        if not self._frequencies or not self._magnitude_db:
+            self._setup_axes_style()
+            self._canvas.draw()
+            return
+
+        # Get and filter data
+        freq, mag_db, phase, coh = self._decimate_data_if_needed()
+        freq, mag_db, phase, coh = self._apply_freq_range_filter(freq, mag_db, phase, coh)
 
         if not freq:
             self._setup_axes_style()
@@ -228,58 +311,10 @@ class BodePlotWidget(QWidget):
         self._ax_mag.set_ylabel('Magnitude (dB)', color='white')
         self._ax_mag.set_title('Transfer Function (Bode Plot)', color='white', fontsize=10)
 
-        # Plot coherence if enabled
-        if self._show_coherence_cb.isChecked() and coh:
-            ax_coh = self._ax_mag.twinx()
-            ax_coh.semilogx(freq, coh, 'g-', linewidth=0.8, alpha=0.7, label='Coherence')
-            ax_coh.set_ylabel('Coherence', color='#4a4')
-            ax_coh.set_ylim(0, 1.1)
-            ax_coh.tick_params(colors='#4a4')
-
-            # Draw coherence threshold line
-            ax_coh.axhline(y=0.8, color='#4a4', linestyle='--', alpha=0.5)
-
-        # Plot peaks if enabled
-        if self._show_peaks_cb.isChecked() and self._peaks:
-            for peak in self._peaks:
-                peak_freq = peak.get('freq_hz', 0)
-                if freq_range and (peak_freq < freq_range[0] or peak_freq > freq_range[1]):
-                    continue
-
-                # Find nearest magnitude value
-                peak_mag = peak.get('magnitude_db')
-                if peak_mag is None and 'magnitude' in peak:
-                    # Convert linear to dB
-                    from analyzer.loaders.transfer_function import linear_to_db
-                    peak_mag = linear_to_db(peak['magnitude'])
-
-                self._ax_mag.axvline(x=peak_freq, color='#ff6b6b', linestyle='--',
-                                     alpha=0.6, linewidth=0.8)
-                # Annotate peak
-                if peak_mag is not None:
-                    self._ax_mag.annotate(
-                        f'{peak_freq:.0f}Hz',
-                        xy=(peak_freq, peak_mag),
-                        xytext=(5, 5),
-                        textcoords='offset points',
-                        fontsize=8,
-                        color='#ff6b6b',
-                        alpha=0.8
-                    )
-
-        # Plot phase if enabled
-        if self._show_phase_cb.isChecked() and phase:
-            self._ax_phase.semilogx(freq, phase, 'm-', linewidth=1, label='Phase')
-            self._ax_phase.set_ylabel('Phase (°)', color='white')
-            self._ax_phase.set_xlabel('Frequency (Hz)', color='white')
-
-            # Add reference lines
-            for ref in [-180, -90, 0, 90, 180]:
-                if min(phase) <= ref <= max(phase):
-                    self._ax_phase.axhline(y=ref, color='#555', linestyle=':',
-                                           alpha=0.5, linewidth=0.5)
-        else:
-            self._ax_phase.set_visible(False)
+        # Plot overlays
+        self._plot_coherence(freq, coh)
+        self._plot_peaks(self._get_freq_range())
+        self._plot_phase(freq, phase)
 
         self._setup_axes_style()
         self._figure.tight_layout()
@@ -385,6 +420,108 @@ class WsiPlotWidget(QWidget):
         self._show_coh_cb.setEnabled(wsi_data.has_coherence() if wsi_data else False)
         self._show_pd_cb.setEnabled(wsi_data.has_phase_disorder() if wsi_data else False)
         self._update_plot()
+
+    def _decimate_data_if_needed(self) -> tuple:
+        """Decimate data arrays if exceeding MAX_POINTS.
+
+        Returns (freq, mag_db, phase, coh) potentially decimated.
+        """
+        if len(self._frequencies) > self.MAX_POINTS:
+            freq = self._decimate(self._frequencies, self.MAX_POINTS)
+            mag_db = self._decimate(self._magnitude_db, self.MAX_POINTS)
+            phase = self._decimate(self._phase, self.MAX_POINTS) if self._phase else []
+            coh = self._decimate(self._coherence, self.MAX_POINTS) if self._coherence else []
+        else:
+            freq = self._frequencies
+            mag_db = self._magnitude_db
+            phase = self._phase
+            coh = self._coherence
+        return freq, mag_db, phase, coh
+
+    def _apply_freq_range_filter(
+        self,
+        freq: List[float],
+        mag_db: List[float],
+        phase: List[float],
+        coh: List[float],
+    ) -> tuple:
+        """Apply frequency range filter to data arrays.
+
+        Returns (freq, mag_db, phase, coh) filtered to selected range.
+        """
+        freq_range = self._get_freq_range()
+        if not freq_range:
+            return freq, mag_db, phase, coh
+
+        mask = [(f >= freq_range[0] and f <= freq_range[1]) for f in freq]
+        freq = [f for f, m in zip(freq, mask) if m]
+        mag_db = [v for v, m in zip(mag_db, mask) if m]
+        if phase:
+            phase = [v for v, m in zip(phase, mask) if m]
+        if coh:
+            coh = [v for v, m in zip(coh, mask) if m]
+        return freq, mag_db, phase, coh
+
+    def _plot_coherence(self, freq: List[float], coh: List[float]) -> None:
+        """Plot coherence overlay on magnitude axes."""
+        if not self._show_coherence_cb.isChecked() or not coh:
+            return
+
+        ax_coh = self._ax_mag.twinx()
+        ax_coh.semilogx(freq, coh, 'g-', linewidth=0.8, alpha=0.7, label='Coherence')
+        ax_coh.set_ylabel('Coherence', color='#4a4')
+        ax_coh.set_ylim(0, 1.1)
+        ax_coh.tick_params(colors='#4a4')
+        # Draw coherence threshold line
+        ax_coh.axhline(y=0.8, color='#4a4', linestyle='--', alpha=0.5)
+
+    def _plot_peaks(self, freq_range: tuple) -> None:
+        """Plot peak markers on magnitude axes."""
+        if not self._show_peaks_cb.isChecked() or not self._peaks:
+            return
+
+        for peak in self._peaks:
+            peak_freq = peak.get('freq_hz', 0)
+            if freq_range and (peak_freq < freq_range[0] or peak_freq > freq_range[1]):
+                continue
+
+            # Find nearest magnitude value
+            peak_mag = peak.get('magnitude_db')
+            if peak_mag is None and 'magnitude' in peak:
+                # Convert linear to dB
+                from analyzer.loaders.transfer_function import linear_to_db
+                peak_mag = linear_to_db(peak['magnitude'])
+
+            self._ax_mag.axvline(x=peak_freq, color='#ff6b6b', linestyle='--',
+                                 alpha=0.6, linewidth=0.8)
+            # Annotate peak
+            if peak_mag is not None:
+                self._ax_mag.annotate(
+                    f'{peak_freq:.0f}Hz',
+                    xy=(peak_freq, peak_mag),
+                    xytext=(5, 5),
+                    textcoords='offset points',
+                    fontsize=8,
+                    color='#ff6b6b',
+                    alpha=0.8
+                )
+
+    def _plot_phase(self, freq: List[float], phase: List[float]) -> None:
+        """Plot phase curve on phase axes."""
+        if not self._show_phase_cb.isChecked() or not phase:
+            self._ax_phase.set_visible(False)
+            return
+
+        self._ax_phase.semilogx(freq, phase, 'm-', linewidth=1, label='Phase')
+        self._ax_phase.set_ylabel('Phase (°)', color='white')
+        self._ax_phase.set_xlabel('Frequency (Hz)', color='white')
+
+        # Add reference lines
+        for ref in [-180, -90, 0, 90, 180]:
+            if min(phase) <= ref <= max(phase):
+                self._ax_phase.axhline(y=ref, color='#555', linestyle=':',
+                                       alpha=0.5, linewidth=0.5)
+
 
     def _update_plot(self):
         """Update the plot."""
