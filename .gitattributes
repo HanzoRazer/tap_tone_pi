@@ -13,3 +13,11 @@
 
 # Force JSON to use LF
 *.json text eol=lf
+
+# Force INI and config files to use LF
+*.ini text eol=lf
+*.toml text eol=lf
+*.cfg text eol=lf
+*.txt text eol=lf
+*.md text eol=lf
+Makefile text eol=lf
