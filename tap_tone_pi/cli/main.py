@@ -1496,6 +1496,16 @@ uploads to ToolBox for analysis.
 
     add_calibrate_subcommand(sub)
 
+    # generate (Phase 3 P1)
+    from tap_tone_pi.cli.generate import add_generate_subcommand
+
+    add_generate_subcommand(sub)
+
+    # verify (Phase 3 P1)
+    from tap_tone_pi.cli.verify import add_verify_subcommand
+
+    add_verify_subcommand(sub)
+
     return p
 
 
