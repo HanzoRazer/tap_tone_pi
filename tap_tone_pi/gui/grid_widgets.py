@@ -20,7 +20,7 @@ try:
         GridPoint,
         GridSession,
         PointStatus,
-        PointProgress,
+        PointProgress,  # noqa: F401
     )
 
     HAS_GRID = True

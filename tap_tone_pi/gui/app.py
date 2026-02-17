@@ -65,7 +65,7 @@ except ImportError:
 
 # Direct imports from tap_tone_pi (Phase 6 enhancement)
 try:
-    from tap_tone_pi.core.analysis import analyze_tap, AnalysisResult, Peak
+    from tap_tone_pi.core.analysis import analyze_tap, AnalysisResult, Peak  # noqa: F401
     from tap_tone_pi.io.wav import read_wav_mono
 
     HAS_DIRECT_ANALYSIS = True
@@ -74,7 +74,7 @@ except ImportError:
 
 # Quality gate imports (Phase 7 enhancement)
 try:
-    from tap_tone_pi.core.quality_gate import check_quality, format_verdict_summary
+    from tap_tone_pi.core.quality_gate import check_quality, format_verdict_summary  # noqa: F401
     from tap_tone_pi.core.quality_policy import Verdict, QualityVerdict, Severity
 
     HAS_QUALITY_GATE = True
@@ -86,7 +86,7 @@ try:
     from tap_tone_pi.core.auto_trigger import (
         record_audio_triggered,
         TriggerState,
-        TriggerResult,
+        TriggerResult,  # noqa: F401
     )
 
     HAS_AUTO_TRIGGER = True
@@ -98,7 +98,7 @@ try:
     from tap_tone_pi.gui.widgets import (
         StatusBar,
         StatusLevel,
-        AudioLevelMeter,
+        AudioLevelMeter,  # noqa: F401
         SetupWizardDialog,
         CaptureProgressDialog,
         SessionBrowserDialog,
@@ -114,10 +114,10 @@ except ImportError:
 try:
     from tap_tone_pi.gui.grid_widgets import (
         GridEditorDialog,
-        GridProgressPanel,
+        GridProgressPanel,  # noqa: F401
         GridMeasureDialog,
     )
-    from tap_tone_pi.core.grid import Grid, GridSession, PointStatus
+    from tap_tone_pi.core.grid import Grid, GridSession, PointStatus  # noqa: F401
 
     HAS_GRID = True
 except ImportError:
@@ -125,7 +125,7 @@ except ImportError:
 
 # Viewer pack export (Phase 11 enhancement)
 try:
-    from tap_tone_pi.gui.export import export_gui_session, ExportResult
+    from tap_tone_pi.gui.export import export_gui_session, ExportResult  # noqa: F401
 
     HAS_EXPORT = True
 except ImportError:

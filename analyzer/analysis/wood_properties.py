@@ -169,7 +169,7 @@ def estimate_stiffness_from_frequency(
         lambda_n = 4.730
 
     # Moment of inertia for rectangular cross-section
-    I = (width_m * thickness_m**3) / 12
+    moment_I = (width_m * thickness_m**3) / 12
 
     # Cross-sectional area
     A = width_m * thickness_m

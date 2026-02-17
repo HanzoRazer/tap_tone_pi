@@ -242,7 +242,7 @@ class TestCmdMeasureFtueWiring:
 
         import tap_tone_pi.agent.messages as messages_mod
 
-        original_format = messages_mod.format_verdict_summary_agent
+        _original_format = messages_mod.format_verdict_summary_agent
         monkeypatch.setattr(
             messages_mod, "format_verdict_summary_agent", capture_format
         )

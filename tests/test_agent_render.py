@@ -65,7 +65,7 @@ class TestRenderCLI:
         output = render_cli(sample_message, color=False)
         # Override requires input, should have marker
         lines = output.split("\n")
-        override_line = [l for l in lines if "Override" in l][0]
+        override_line = [line for line in lines if "Override" in l][0]
         assert "*" in override_line
 
     def test_includes_learning_hint(self, sample_message):

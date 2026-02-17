@@ -115,6 +115,10 @@ __all__ = [
     "MeasurementAgent",
     "standalone_build_agent_message",
     "standalone_infer_user_stage",
+    "STANDALONE_RULE_SPECS",
+    "STANDALONE_VERDICT_TEMPLATES",
+    "STANDALONE_FTUE_HINTS",
+    "StandaloneVerdictTemplate",
     # FTUE helpers
     "get_ftue_hint",
     "max_rules_to_show",

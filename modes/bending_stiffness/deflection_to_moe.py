@@ -10,8 +10,8 @@ def E_3point(F, L_mm, b_mm, h_mm, d_mm):
     b = b_mm / 1000
     h = h_mm / 1000
     d = d_mm / 1000
-    I = b * h**3 / 12.0
-    return (F * L**3) / (48.0 * I * d)  # Pa
+    moment_I = b * h**3 / 12.0
+    return (F * L**3) / (48.0 * moment_I * d)  # Pa
 
 
 def E_4point(F, L_mm, b_mm, h_mm, d_mm, a_mm=None):
@@ -20,8 +20,8 @@ def E_4point(F, L_mm, b_mm, h_mm, d_mm, a_mm=None):
     b = b_mm / 1000
     h = h_mm / 1000
     d = d_mm / 1000
-    I = b * h**3 / 12.0
-    return (F * a * (3 * L**2 - 4 * a**2)) / (24.0 * I * d)  # Pa
+    moment_I = b * h**3 / 12.0
+    return (F * a * (3 * L**2 - 4 * a**2)) / (24.0 * moment_I * d)  # Pa
 
 
 def calc(

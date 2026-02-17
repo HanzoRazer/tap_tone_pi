@@ -30,7 +30,7 @@ import numpy as np
 # Optional imports for visualization
 try:
     import matplotlib.pyplot as plt
-    from matplotlib.colors import LinearSegmentedColormap
+    from matplotlib.colors import LinearSegmentedColormap  # noqa: F401
 
     HAS_MATPLOTLIB = True
 except ImportError:

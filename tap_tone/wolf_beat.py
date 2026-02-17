@@ -408,7 +408,7 @@ def find_peak_pairs(
             # Coupling index estimate (dimensionless)
             # From: delta_f approx k_c / (omega_0 * sqrt(m_s*m_b))
             # Coupling index ~ delta_f * omega_0 / f_0^2 (normalized)
-            omega_0 = 2 * np.pi * center_freq
+            _omega_0 = 2 * np.pi * center_freq
             coupling_index = delta_f / center_freq  # Simple normalized measure
 
             pair = PeakPair(
@@ -592,7 +592,7 @@ def estimate_coupling_from_split(
     Returns:
         Estimated coupling stiffness k_c in N/m
     """
-    omega_0 = 2 * np.pi * center_freq_hz
+    _omega_0 = 2 * np.pi * center_freq_hz
     k_c = delta_f_hz * 2 * np.pi * omega_0 * effective_mass_kg
     return k_c
 

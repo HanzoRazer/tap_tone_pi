@@ -6,12 +6,12 @@ expected entries (WAV, peaks, images, chladni_run.json) and that the
 recorded sha256 values match recomputed hashes. Also asserts idempotency:
 re-running the indexer does not duplicate manifest entries.
 """
-import json
-import hashlib
-import shutil
-import subprocess
-import sys
-from pathlib import Path
+import json # noqa: E402
+import hashlib # noqa: E402
+import shutil # noqa: E402
+import subprocess # noqa: E402
+import sys # noqa: E402
+from pathlib import Path # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 RUN_DIR = REPO / "out" / "DEMO" / "chladni"

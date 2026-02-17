@@ -167,7 +167,7 @@ def compute_ei_three_point(k_force_per_deflection: float, span_mm: float) -> flo
 # ----------------------------
 # Statistics / Uncertainty
 # ----------------------------
-import math as _math
+import math as _math # noqa: E402
 
 
 def mean_std(vals: List[float]) -> Tuple[float, float]:

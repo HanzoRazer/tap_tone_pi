@@ -631,18 +631,18 @@ class SetupWizardDialog(tk.Toplevel):
                     try:
                         self.after(
                             0,
-                            lambda l=normalized: self.meter.set_level(l)
+                            lambda level=normalized: self.meter.set_level(level)
                             if self._recording
                             else None,
                         )
                     except tk.TclError:
                         break  # Widget destroyed
 
-            except Exception:
+            except Exception as e:
                 self.after(
                     0,
                     lambda: self.test_status.configure(
-                        text=f"Error: {e}", fg="#f44336"
+                        text=f"Error: {str(e)}", fg="#f44336"
                     ),
                 )
                 break
@@ -1468,7 +1468,7 @@ class PackDiffDialog(tk.Toplevel):
                 self.status_label.configure(text="Comparison complete", fg="#4CAF50")
 
         except Exception as e:
-            self.status_label.configure(text=f"Error: {e}", fg="#f44336")
+            self.status_label.configure(text=f"Error: {str(e)}", fg="#f44336")
 
     def _display_results(self) -> None:
         """Display comparison results in the UI."""

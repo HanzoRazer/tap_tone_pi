@@ -177,7 +177,7 @@ def wsi_curve(
     wsi_vals: List[float] = []
     details: List[Dict[str, float]] = []
 
-    ids = [p.point_id for p in spectra]
+    _ids = [p.point_id for p in spectra]
 
     for bi in idxs:
         # per point magnitudes/coherence/phase at this bin

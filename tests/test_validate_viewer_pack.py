@@ -48,7 +48,7 @@ def exported_packs(tmp_path_factory) -> dict[str, Path]:
             continue
 
         pack_name = f"{session_dir.name}__viewer_pack_v1"
-        pack_dir = out_dir / pack_name
+        _pack_dir = out_dir / pack_name
 
         result = subprocess.run(
             [

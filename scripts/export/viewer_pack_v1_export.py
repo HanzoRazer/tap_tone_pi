@@ -564,7 +564,7 @@ def export_viewer_pack(
         )
 
         # Add manifest to entries (but don't re-hash bundle)
-        manifest_entry = _make_entry(manifest_path, "manifest.json")
+        _manifest_entry = _make_entry(manifest_path, "manifest.json")
 
         # Create zip
         out_path.parent.mkdir(parents=True, exist_ok=True)

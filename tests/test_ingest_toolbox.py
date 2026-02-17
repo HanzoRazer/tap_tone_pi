@@ -13,7 +13,7 @@ import pytest
 
 pytest.importorskip("requests", reason="requests package required for ingest tests")
 
-from tap_tone.ingest.toolbox import ingest_zip, IngestResult, INGEST_ENDPOINT
+from tap_tone.ingest.toolbox import ingest_zip, IngestResult, INGEST_ENDPOINT # noqa: E402
 
 
 class TestIngestResult:

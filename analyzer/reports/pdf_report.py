@@ -72,7 +72,7 @@ def generate_pdf_report(
 def check_pdf_support() -> bool:
     """Check if PDF generation is supported."""
     try:
-        import weasyprint
+        import weasyprint  # noqa: F401
 
         return True
     except ImportError:

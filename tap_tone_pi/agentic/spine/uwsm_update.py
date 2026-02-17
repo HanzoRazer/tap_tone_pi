@@ -150,7 +150,7 @@ def apply_uwsm_updates(
 
     # 2) Apply evidence in order
     for ev in evidences:
-        dim = ev["dimension"]
+        _dim = ev["dimension"]
         audits.extend(_apply_evidence(uwsm, ev))
 
     uwsm["updated_at"] = _now_iso()
@@ -343,7 +343,7 @@ def _extract_evidence(events: List[Any]) -> List[dict]:
 
 
 def _apply_evidence(uwsm: dict, ev: dict) -> List[dict]:
-    dim = ev["dimension"]
+    _dim = ev["dimension"]
     e_type = ev["type"]
     candidate = ev["value"]
     eid = ev.get("event_id", "")

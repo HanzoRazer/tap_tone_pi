@@ -56,7 +56,7 @@ def _get_action_id(action: Any) -> str:
 # =============================================================================
 
 
-def render_cli(msg: AgentMessage, color: bool = True) -> str:
+def render_cli(msg: Any, color: bool = True) -> str:
     """Render AgentMessage for CLI output.
 
     Args:
@@ -125,7 +125,7 @@ def _colorize(text: str, severity: str) -> str:
 # =============================================================================
 
 
-def render_gui(msg: AgentMessage) -> dict:
+def render_gui(msg: Any) -> dict:
     """Render AgentMessage for GUI consumption.
 
     Returns a dict suitable for GUI binding:
@@ -176,7 +176,7 @@ def render_gui(msg: AgentMessage) -> dict:
 # =============================================================================
 
 
-def render_compact(msg: AgentMessage) -> str:
+def render_compact(msg: Any) -> str:
     """Render a one-line summary for logging."""
     severity = _get_severity(msg)
     action_ids = [_get_action_id(a) for a in msg.suggested_actions]

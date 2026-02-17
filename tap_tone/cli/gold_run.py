@@ -225,7 +225,7 @@ def _capture_point_auto_trigger(
 
     # Progress callback for console output
     def on_progress(msg: str) -> None:
-        prefix = f"[{point_idx+1}/{total_points}] {label}"
+        _prefix = f"[{point_idx+1}/{total_points}] {label}"
         print(f"    {msg}")
 
     print(

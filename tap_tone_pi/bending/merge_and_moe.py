@@ -144,7 +144,7 @@ def _calculate_moe(
     h = thickness_mm / 1000.0
 
     # Second moment of area (m^4)
-    I = b * h**3 / 12.0
+    moment_I = b * h**3 / 12.0
 
     # Slope in N/m
     S = slope_N_per_mm * 1000.0

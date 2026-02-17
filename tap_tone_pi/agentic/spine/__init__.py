@@ -32,7 +32,7 @@ from .replay import run_shadow_replay, load_events, ReplayConfig
 from .shadow_record import (
     write_shadow_record,
     load_latest_shadow_record,
-    _validate_shadow_record_v1,
+    _validate_shadow_record_v1,  # noqa: F401 - used in tests
 )
 from .view_adapter import ViewAdapter, NullViewAdapter, dispatch_commands
 
