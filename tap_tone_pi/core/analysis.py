@@ -3,12 +3,6 @@
 This module provides the primary analyze_tap() function for extracting
 frequency peaks from impulse response audio.
 
-Migration
----------
-    # Old import (deprecated)
-    from tap_tone.analysis import analyze_tap, Peak, AnalysisResult
-
-    # New import (v2.0.0+)
     from tap_tone_pi.core.analysis import analyze_tap, Peak, AnalysisResult
 """
 

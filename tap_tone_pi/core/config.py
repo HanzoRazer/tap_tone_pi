@@ -1,12 +1,6 @@
 """Configuration dataclasses for capture and analysis.
 
-Migration
----------
-    # Old import (deprecated)
-    from tap_tone.config import CaptureConfig, AnalysisConfig
-
-    # New import (v2.0.0+)
-    from tap_tone_pi.core.config import CaptureConfig, AnalysisConfig
+from tap_tone_pi.core.config import CaptureConfig, AnalysisConfig
 """
 
 from __future__ import annotations
