@@ -626,3 +626,276 @@ def predict_wolf_severity_change(
         return f"Wolf REDUCED (ratio {new_merge_ratio:.2f} vs {worst.merge_ratio:.2f})"
     else:
         return f"Wolf UNCHANGED or worse (ratio {new_merge_ratio:.2f})"
+
+
+# -----------------------------------------------------------------------------
+# Dimensionless Avoided-Crossing Model
+# -----------------------------------------------------------------------------
+
+@dataclass
+class AvoidedCrossingModel:
+    """
+    Dimensionless parametric model for coupled string-body oscillator.
+
+    From the characteristic equation of the coupled system:
+        λ±(ξ) = [1 + ξ² ± √((1 - ξ²)² + 4Ω²ξ²)] / 2
+
+    Where:
+        ξ = ωs/ωb   (string-to-body frequency ratio, detuning parameter)
+        Ω² = κ²/(4ωb²mb)  (dimensionless coupling strength)
+        λ = ω²/ωb²  (normalized eigenfrequency squared)
+
+    At resonance (ξ = 1):
+        Δλ = 2Ω  (minimum gap = coupling strength)
+
+    The beat frequency in Hz:
+        f_beat = (f_b / 2) * |√λ₊ - √λ₋|
+    """
+
+    omega_b_hz: float           # Body mode frequency (Hz)
+    coupling_omega: float       # Dimensionless coupling Ω (0 to ~0.2)
+    gamma_b_hz: float = 5.0     # Body mode linewidth (Hz)
+    gamma_s_hz: float = 2.0     # String linewidth (Hz, typically < body)
+
+    def eigenvalues(self, xi: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Compute normalized eigenvalues λ±(ξ).
+
+        Args:
+            xi: Array of detuning values ωs/ωb
+
+        Returns:
+            (lambda_minus, lambda_plus) arrays
+        """
+        xi = np.asarray(xi)
+        omega_sq = self.coupling_omega ** 2
+
+        # Discriminant
+        term1 = (1 - xi ** 2) ** 2
+        term2 = 4 * omega_sq * xi ** 2
+        discriminant = np.sqrt(term1 + term2)
+
+        # Eigenvalues
+        sum_term = 1 + xi ** 2
+        lambda_minus = (sum_term - discriminant) / 2
+        lambda_plus = (sum_term + discriminant) / 2
+
+        return lambda_minus, lambda_plus
+
+    def frequencies_hz(self, xi: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Compute actual frequencies f± in Hz.
+
+        Args:
+            xi: Detuning values ωs/ωb
+
+        Returns:
+            (f_minus_hz, f_plus_hz) arrays
+        """
+        lambda_m, lambda_p = self.eigenvalues(xi)
+
+        # f = f_b * √λ
+        f_minus = self.omega_b_hz * np.sqrt(np.maximum(lambda_m, 0))
+        f_plus = self.omega_b_hz * np.sqrt(np.maximum(lambda_p, 0))
+
+        return f_minus, f_plus
+
+    def beat_frequency_hz(self, xi: np.ndarray) -> np.ndarray:
+        """
+        Compute beat frequency |f₊ - f₋| in Hz.
+
+        Args:
+            xi: Detuning values
+
+        Returns:
+            Beat frequency array
+        """
+        f_m, f_p = self.frequencies_hz(xi)
+        return np.abs(f_p - f_m)
+
+    def min_split_hz(self) -> float:
+        """
+        Minimum split at resonance (ξ = 1).
+
+        This is the "avoided crossing gap" = Ω * f_b
+        """
+        # At ξ=1: Δλ = 2Ω, so Δf ≈ Ω * f_b for small Ω
+        return self.coupling_omega * self.omega_b_hz
+
+    def is_resolvable_at(self, xi: float) -> bool:
+        """
+        Check if split is resolvable at given detuning.
+
+        Criterion: Δf > (γ_b + γ_s)
+        """
+        beat = self.beat_frequency_hz(np.array([xi]))[0]
+        combined_gamma = self.gamma_b_hz + self.gamma_s_hz
+        return beat > combined_gamma
+
+    def damping_collapse_threshold(self) -> float:
+        """
+        Find the ξ where the split equals the combined linewidth.
+
+        Below this, the wolf becomes unresolvable (peaks merge).
+        Returns the detuning ξ at threshold, or 0 if always merged.
+        """
+        combined_gamma = self.gamma_b_hz + self.gamma_s_hz
+        min_split = self.min_split_hz()
+
+        if min_split < combined_gamma:
+            # Even at resonance, peaks are merged
+            return 0.0
+
+        # Binary search for threshold
+        xi_vals = np.linspace(0.5, 1.5, 1000)
+        beats = self.beat_frequency_hz(xi_vals)
+
+        # Find where beat crosses combined_gamma
+        above = beats > combined_gamma
+        if np.all(above) or np.all(~above):
+            return 1.0  # Threshold at resonance
+
+        # Find first crossing
+        crossings = np.where(np.diff(above.astype(int)) != 0)[0]
+        if len(crossings) > 0:
+            return float(xi_vals[crossings[0]])
+
+        return 1.0
+
+    def sweep_curve(
+        self,
+        xi_min: float = 0.7,
+        xi_max: float = 1.3,
+        n_points: int = 200,
+    ) -> dict:
+        """
+        Generate full avoided-crossing curve data.
+
+        Returns dict with:
+            xi: detuning array
+            f_minus: lower branch frequencies
+            f_plus: upper branch frequencies
+            beat_hz: beat frequencies
+            resolvable: boolean array
+            severity: severity classification array
+        """
+        xi = np.linspace(xi_min, xi_max, n_points)
+        f_m, f_p = self.frequencies_hz(xi)
+        beat = self.beat_frequency_hz(xi)
+
+        combined_gamma = self.gamma_b_hz + self.gamma_s_hz
+        resolvable = beat > combined_gamma
+        merge_ratio = beat / (combined_gamma + 1e-12)
+
+        severity = []
+        for mr, bf in zip(merge_ratio, beat):
+            severity.append(_classify_wolf_severity(mr, bf))
+
+        return {
+            "xi": xi.tolist(),
+            "f_minus_hz": f_m.tolist(),
+            "f_plus_hz": f_p.tolist(),
+            "beat_hz": beat.tolist(),
+            "merge_ratio": merge_ratio.tolist(),
+            "resolvable": resolvable.tolist(),
+            "severity": severity,
+            "combined_gamma_hz": combined_gamma,
+            "coupling_omega": self.coupling_omega,
+            "omega_b_hz": self.omega_b_hz,
+        }
+
+    def to_dict(self) -> dict:
+        """Serialize model parameters."""
+        return {
+            "omega_b_hz": self.omega_b_hz,
+            "coupling_omega": self.coupling_omega,
+            "gamma_b_hz": self.gamma_b_hz,
+            "gamma_s_hz": self.gamma_s_hz,
+            "min_split_hz": self.min_split_hz(),
+            "damping_collapse_threshold_xi": self.damping_collapse_threshold(),
+        }
+
+    @classmethod
+    def from_measurement(
+        cls,
+        pair: PeakPair,
+        string_linewidth_hz: float = 2.0,
+    ) -> "AvoidedCrossingModel":
+        """
+        Create model from measured peak pair.
+
+        Args:
+            pair: Detected wolf pair from analyze_wolf_beat()
+            string_linewidth_hz: Estimated string linewidth
+
+        Returns:
+            AvoidedCrossingModel fitted to measurement
+        """
+        # Extract parameters
+        omega_b = pair.center_freq_hz
+        delta_f = pair.delta_f_hz
+
+        # Estimate coupling: Ω ≈ Δf / f_b (at resonance)
+        coupling_omega = delta_f / omega_b
+
+        # Use measured body linewidth (average of pair)
+        gamma_b = (pair.lower.gamma_hz + pair.upper.gamma_hz) / 2
+
+        return cls(
+            omega_b_hz=omega_b,
+            coupling_omega=coupling_omega,
+            gamma_b_hz=gamma_b,
+            gamma_s_hz=string_linewidth_hz,
+        )
+
+
+def simulate_mass_addition(
+    model: AvoidedCrossingModel,
+    mass_factor: float,
+) -> AvoidedCrossingModel:
+    """
+    Simulate effect of adding mass (wolf eliminator).
+
+    Physics: Adding mass m' to effective mass m:
+        - New coupling: Ω' = Ω / √(1 + m'/m) = Ω / √(mass_factor)
+        - Body frequency: unchanged (mass is on string side)
+
+    Args:
+        model: Current avoided-crossing model
+        mass_factor: 1 + (added_mass / effective_mass)
+
+    Returns:
+        New model with reduced coupling
+    """
+    new_coupling = model.coupling_omega / np.sqrt(mass_factor)
+
+    return AvoidedCrossingModel(
+        omega_b_hz=model.omega_b_hz,
+        coupling_omega=new_coupling,
+        gamma_b_hz=model.gamma_b_hz,
+        gamma_s_hz=model.gamma_s_hz,
+    )
+
+
+def simulate_damping_increase(
+    model: AvoidedCrossingModel,
+    damping_factor: float,
+) -> AvoidedCrossingModel:
+    """
+    Simulate effect of increasing damping.
+
+    Physics: Adding damping increases linewidth proportionally.
+
+    Args:
+        model: Current avoided-crossing model
+        damping_factor: Multiplier for linewidths
+
+    Returns:
+        New model with increased linewidths
+    """
+    return AvoidedCrossingModel(
+        omega_b_hz=model.omega_b_hz,
+        coupling_omega=model.coupling_omega,
+        gamma_b_hz=model.gamma_b_hz * damping_factor,
+        gamma_s_hz=model.gamma_s_hz * damping_factor,
+    )

@@ -142,6 +142,40 @@ CHLADNI_ANALYZER = ToolCapabilityV1(
 )
 
 
+WOLF_BEAT_ADVISOR = ToolCapabilityV1(
+    tool_id="tap_tone_wolf_advisor",
+    version="2.0.0",
+    display_name="Wolf Beat Advisor",
+    description=(
+        "Physics-based decision support for wolf tone mitigation. "
+        "Uses dimensionless avoided-crossing model to analyze coupled "
+        "string-body oscillator behavior and generate prioritized "
+        "mitigation recommendations (mass addition, damping, structural). "
+        "Provides operator guidance, NOT autonomous decisions."
+    ),
+    actions=[
+        CapabilityAction.ANALYZE_SPECTRUM,
+        CapabilityAction.GENERATE_REPORT,
+    ],
+    input_schemas=["wolf_beat_analysis_v1"],
+    output_schemas=["wolf_advisor_result_v1", "wolf_directive_v1"],
+    safe_defaults=SafeDefaults(
+        redaction_layer=2,
+        timeout_seconds=30,
+        require_confirmation=True,  # Advisory requires operator review
+    ),
+    tags=[
+        "wolf_tone",
+        "decision_support",
+        "mitigation",
+        "physics",
+        "coupled_oscillator",
+        "avoided_crossing",
+    ],
+    source_repo="tap_tone_pi",
+)
+
+
 # -----------------------------------------------------------------------------
 # Registry
 # -----------------------------------------------------------------------------
@@ -151,6 +185,7 @@ _ALL_CAPABILITIES = [
     WOLF_DETECTOR,
     ODS_ANALYZER,
     CHLADNI_ANALYZER,
+    WOLF_BEAT_ADVISOR,
 ]
 
 
