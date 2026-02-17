@@ -311,7 +311,47 @@ These issues affect code quality, documentation, or non-critical paths.
 | P1 | M7 | Uncertainty-based diff | 1 hour | ✅ Complete |
 | P2 | All | Minor issues | 4 hours total | 🔴 Not started |
 
-**Completed: 2026-02-17** — All 4 CRITICAL and 5 MODERATE fixes implemented. 1201 tests passing.
+**Completed: 2026-02-17** — All 4 CRITICAL and 5 MODERATE fixes implemented. 1268 tests passing.
+
+---
+
+## New Features Added
+
+### Gore-Style Stiffness Index System ✅
+
+**Files:** `tap_tone_pi/bending/gore_stiffness.py`, `tap_tone_pi/bending/gore_spreadsheet.py`
+
+**Completed: 2026-02-17**
+
+Comprehensive Gore spreadsheet system for tonewood analysis, integrating static bending
+and acoustic tap tone measurements with cross-validation.
+
+**Core Calculations:**
+- Stiffness Index: `SI = E × h³` (GPa·mm³)
+- Thickness targeting: `h = (SI_target / E)^(1/3)`
+- Orthotropic ratios: `E_L / E_C` (typical 10-20 for tonewoods)
+
+**Dynamic MOE from Tap Tone:**
+```
+E_dynamic = (48 × π² × f² × ρ × L⁴) / (λ⁴ × h²)
+where λ = modal constant (4.730 for free-free fundamental)
+```
+
+**Cross-Validation:**
+- Compares static (bending) vs dynamic (acoustic) E
+- Agreement levels: good (<5%), marginal (<10%), poor (>threshold)
+- Warnings for unusual divergence patterns
+
+**Instrument Presets:**
+- Classical guitar, Dreadnought, OM, Parlor, Archtop
+- Ukuleles (soprano, concert, tenor), Mandolin
+- Each with SI_L min/typical/max ranges
+
+**Output Formats:**
+- JSON primary (full data, provenance, cross-validation)
+- CSV export (flat table for spreadsheet import)
+
+**Tests:** 53 new tests covering calculations, presets, cross-validation, and physical realism.
 
 ---
 
