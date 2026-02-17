@@ -70,6 +70,34 @@ def cmd_devices(_args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_preflight(args: argparse.Namespace) -> int:
+    """Run pre-flight hardware check."""
+    from tap_tone_pi.cli.preflight import run_preflight, print_preflight_result
+    from tap_tone_pi.core.user_config import get_saved_device
+
+    # Use saved device config if no device specified
+    device = args.device
+    sample_rate = args.sample_rate
+    if device is None:
+        saved = get_saved_device()
+        if saved:
+            device = saved.index
+            sample_rate = saved.sample_rate
+            print(f"Using saved device: [{device}] {saved.name}")
+
+    result = run_preflight(
+        device=device,
+        sample_rate=sample_rate,
+        duration=args.duration,
+        quiet=False,
+    )
+
+    print("")
+    print_preflight_result(result)
+
+    return 0 if result.ok else 1
+
+
 # -------------------------------------------------------------------------
 # Directive Co-Render Helper (PR #3)
 # -------------------------------------------------------------------------
@@ -545,6 +573,11 @@ def cmd_measure(args: argparse.Namespace) -> int:
             device = saved.index
             sample_rate = saved.sample_rate
             print(f"Using saved device: [{device}] {saved.name}")
+
+    # Pre-flight hardware check
+    if not getattr(args, "skip_preflight", False):
+        from tap_tone_pi.cli.preflight import require_preflight
+        require_preflight(device=device, sample_rate=sample_rate)
 
     # Create session directory
     session_dir = Path(args.out)
@@ -1025,7 +1058,7 @@ def _bash_completion() -> str:
     """Generate bash completion script."""
     return """
 _ttp_completions() {
-    local commands="setup devices measure record live quick gold-run gui phase2 chladni bending export-pack evidence-check last sessions completion"
+    local commands="setup devices preflight measure record live quick gold-run gui phase2 chladni bending export-pack evidence-check last sessions completion"
     COMPREPLY=($(compgen -W "$commands" -- "${COMP_WORDS[COMP_CWORD]}"))
 }
 complete -F _ttp_completions ttp
@@ -1042,6 +1075,7 @@ _ttp() {
     local commands=(
         'setup:Hardware setup wizard (run first!)'
         'devices:List audio devices'
+        'preflight:Run pre-flight hardware check'
         'measure:Quality-gated measurement (recommended)'
         'record:Record one window and analyze'
         'live:Loop record+analyze'
@@ -1069,6 +1103,7 @@ def _fish_completion() -> str:
     return """
 complete -c ttp -f -n "__fish_use_subcommand" -a setup -d "Hardware setup wizard (run first!)"
 complete -c ttp -f -n "__fish_use_subcommand" -a devices -d "List audio devices"
+complete -c ttp -f -n "__fish_use_subcommand" -a preflight -d "Run pre-flight hardware check"
 complete -c ttp -f -n "__fish_use_subcommand" -a measure -d "Quality-gated measurement (recommended)"
 complete -c ttp -f -n "__fish_use_subcommand" -a record -d "Record one window and analyze"
 complete -c ttp -f -n "__fish_use_subcommand" -a live -d "Loop record+analyze"
@@ -1126,6 +1161,27 @@ Documentation: https://github.com/HanzoRazer/tap_tone_pi
     # devices
     p_dev = sub.add_parser("devices", help="List audio devices")
     p_dev.set_defaults(fn=cmd_devices)
+
+    # preflight (hardware check)
+    p_pre = sub.add_parser(
+        "preflight",
+        help="Run pre-flight hardware check",
+        epilog="""Examples:
+  ttp preflight               # Check default/saved device
+  ttp preflight --device 2    # Check specific device
+  ttp preflight --duration 1  # Longer test capture (1 second)
+
+The preflight command verifies your audio hardware is ready:
+- Device exists and can be opened
+- Audio levels are detectable (not silent)
+- No clipping in test capture
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p_pre.add_argument("--device", type=int, default=None, help="Device index to test")
+    p_pre.add_argument("--sample-rate", type=int, default=48000, help="Sample rate Hz")
+    p_pre.add_argument("--duration", type=float, default=0.5, help="Test duration seconds")
+    p_pre.set_defaults(fn=cmd_preflight)
 
     # record
     p_rec = sub.add_parser(
@@ -1259,6 +1315,12 @@ you'll be prompted to retry or override with a reason.
         default=10,
         dest="directive_events_limit",
         help="Max number of directive events to show (default: 10). Requires --list-directive-events.",
+    )
+    p_meas.add_argument(
+        "--skip-preflight",
+        action="store_true",
+        dest="skip_preflight",
+        help="Skip pre-flight hardware check (not recommended)",
     )
     p_meas.set_defaults(fn=cmd_measure)
 
