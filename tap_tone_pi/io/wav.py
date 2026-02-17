@@ -163,7 +163,7 @@ def write_wav_int16(path: str | Path, x: np.ndarray, fs: int) -> None:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     y = np.asarray(x)
-    if y.dtype \!= np.int16:
+    if y.dtype != np.int16:
         # Convert if needed
         if np.issubdtype(y.dtype, np.floating):
             y = np.clip(y, -1.0, 1.0)

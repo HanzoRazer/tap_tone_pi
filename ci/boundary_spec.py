@@ -88,6 +88,10 @@ class BoundarySpec:
                         out.append(v)
 
             elif isinstance(node, ast.ImportFrom):
+                # Skip relative imports (level > 0 means from . or from .. etc)
+                # Relative imports are internal to the package, not cross-repo
+                if node.level > 0:
+                    continue
                 if node.module:
                     mod = node.module
                     v = self._check_import(mod, path, node.lineno, node.col_offset)
