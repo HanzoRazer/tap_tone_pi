@@ -57,6 +57,7 @@ def record_audio(
     sample_rate: int = 48000,
     channels: int = 1,
     seconds: float = 2.5,
+    show_countdown: bool = False,
 ) -> CaptureResult:
     """Record audio from an input device.
 
@@ -65,6 +66,7 @@ def record_audio(
         sample_rate: Sample rate in Hz
         channels: Number of channels (must be 1 for now)
         seconds: Duration to record
+        show_countdown: If True, display countdown during recording
 
     Returns:
         CaptureResult with audio data and sample rate
@@ -85,9 +87,38 @@ def record_audio(
 
     n_samples = int(sample_rate * seconds)
 
+    # Optionally show countdown in a separate thread
+    stop_countdown = None
+    if show_countdown:
+        import sys
+        import threading
+        import time
+
+        stop_countdown = threading.Event()
+
+        def _countdown() -> None:
+            assert stop_countdown is not None
+            for remaining in range(int(seconds), 0, -1):
+                if stop_countdown.is_set():
+                    break
+                sys.stdout.write("\rRecording... " + str(remaining) + "s ")
+                sys.stdout.flush()
+                time.sleep(1)
+
+        countdown_thread = threading.Thread(target=_countdown, daemon=True)
+        countdown_thread.start()
+
     # Record float32 in [-1, 1]
     audio = sd.rec(frames=n_samples, channels=channels, dtype="float32", blocking=True)
     audio = audio.reshape(-1)  # mono
+
+    # Clean up countdown display
+    if show_countdown and stop_countdown is not None:
+        import sys
+
+        stop_countdown.set()
+        sys.stdout.write("\rRecording... done!   \n")
+        sys.stdout.flush()
 
     # Replace NaNs (rare but possible)
     audio = np.nan_to_num(audio, nan=0.0)

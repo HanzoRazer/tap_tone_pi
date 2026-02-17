@@ -135,13 +135,12 @@ def cmd_record(args: argparse.Namespace) -> int:
     )
     an_cfg = AnalysisConfig()
 
-    print(f"Recording {cap_cfg.seconds}s from device {cap_cfg.device or 'default'}...")
-
     cap = record_audio(
         device=cap_cfg.device,
         sample_rate=cap_cfg.sample_rate,
         channels=cap_cfg.channels,
         seconds=cap_cfg.seconds,
+        show_countdown=True,
     )
 
     print("Analyzing...")
@@ -270,7 +269,13 @@ def cmd_quick(args: argparse.Namespace) -> int:
 
     # Capture
     print("Recording 2.5s...")
-    cap = record_audio(device=device, sample_rate=sample_rate, channels=1, seconds=2.5)
+    cap = record_audio(
+        device=device,
+        sample_rate=sample_rate,
+        channels=1,
+        seconds=2.5,
+        show_countdown=True,
+    )
 
     # Analyze
     print("Analyzing...")
