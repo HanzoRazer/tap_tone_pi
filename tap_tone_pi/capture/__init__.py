@@ -2,14 +2,13 @@
 Audio and sensor acquisition (sounddevice, serial).
 
 Canonical location for all capture functionality. Migrated from tap_tone/capture.py.
+Lazy imports are used for numpy/sounddevice to improve CLI startup time.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
-
-import numpy as np
+from typing import TYPE_CHECKING, Any
 
 from tap_tone_pi.core.errors import (
     DeviceError,
@@ -22,7 +21,7 @@ from tap_tone_pi.core.errors import (
 )
 
 if TYPE_CHECKING:
-    pass
+    import numpy as np
 
 
 @dataclass(frozen=True)
@@ -30,7 +29,7 @@ class CaptureResult:
     """Result of an audio capture operation."""
 
     sample_rate: int
-    audio: np.ndarray  # shape: (n_samples,)
+    audio: Any  # np.ndarray, shape: (n_samples,) - use Any to avoid runtime numpy import
 
 
 def list_devices() -> list[dict]:
@@ -130,6 +129,7 @@ def record_audio(
         DeviceOpenError: If device can't be opened
         CaptureError: If recording fails
     """
+    import numpy as np
     import sounddevice as sd
 
     # Validate inputs
@@ -237,15 +237,39 @@ def auto_detect_device() -> int | None:
     return None
 
 
-# Auto-trigger support
-from tap_tone_pi.core.auto_trigger import (  # noqa: E402
-    TriggerState,
-    TriggerConfig,
-    TriggerResult,
-    TriggerCallback,
-    AutoTriggerDetector,
-    record_audio_triggered,
-)
+def _get_auto_trigger_exports():
+    """Lazy load auto-trigger support to improve startup time."""
+    from tap_tone_pi.core.auto_trigger import (
+        TriggerState,
+        TriggerConfig,
+        TriggerResult,
+        TriggerCallback,
+        AutoTriggerDetector,
+        record_audio_triggered,
+    )
+    return {
+        "TriggerState": TriggerState,
+        "TriggerConfig": TriggerConfig,
+        "TriggerResult": TriggerResult,
+        "TriggerCallback": TriggerCallback,
+        "AutoTriggerDetector": AutoTriggerDetector,
+        "record_audio_triggered": record_audio_triggered,
+    }
+
+
+def __getattr__(name: str):
+    """Lazy load auto-trigger exports on first access."""
+    _auto_trigger_names = {
+        "TriggerState", "TriggerConfig", "TriggerResult",
+        "TriggerCallback", "AutoTriggerDetector", "record_audio_triggered"
+    }
+    if name in _auto_trigger_names:
+        exports = _get_auto_trigger_exports()
+        # Cache in module globals for future access
+        globals().update(exports)
+        return exports[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 # Re-export for convenience
 __all__ = [
@@ -259,7 +283,7 @@ __all__ = [
     "DeviceOpenError",
     "CaptureError",
     "ValidationError",
-    # Auto-trigger
+    # Auto-trigger (lazy loaded)
     "TriggerState",
     "TriggerConfig",
     "TriggerResult",
