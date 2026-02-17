@@ -178,19 +178,35 @@ Environment variables: `CHLADNI_TOLERANCE_MODE`, `CHLADNI_TOLERANCE_PCT`, `CHLAD
 
 ---
 
-### M5. No Cross-Validation Between Phase 1 and Phase 2
+### M5. No Cross-Validation Between Phase 1 and Phase 2 ✅
+
+**File:** `tap_tone_pi/core/phase_crossval.py`
 
 **Problem:** Phase 1 (single-channel) and Phase 2 (dual-channel) can report different frequencies for the same mode without consistency checks.
 
-**Fix:** Add mode-linking function that correlates Phase 1 peaks with Phase 2 ODS results.
+**Fix:** Implemented mode-linking function that correlates Phase 1 peaks with Phase 2 ODS results:
+- `match_phases()`: Cross-validate P1 peaks against P2 modes with frequency-relative tolerance
+- `MatchStatus`: MATCHED, P1_ONLY, P2_ONLY, WEAK_MATCH
+- Flags inconsistencies (>30% unmatched modes)
+- JSON-serializable CrossValidationResult
+
+**See:** `tap_tone_pi/core/phase_crossval.py:match_phases()`
 
 ---
 
-### M6. Sample Rate Consistency Not Enforced
+### M6. Sample Rate Consistency Not Enforced ✅
+
+**File:** `tap_tone_pi/io/audio_container.py`
 
 **Problem:** Functions accept sample_rate as parameter but don't validate against actual audio data.
 
-**Fix:** Embed sample rate in audio container, validate on load.
+**Fix:** Implemented AudioContainer with embedded sample rate validation:
+- `AudioContainer`: Immutable dataclass bundling signal + sample_rate
+- `validate_sample_rate()`: Raises SampleRateMismatchError on mismatch
+- `load_wav_validated()`: Load with optional sample rate validation
+- Tolerance-based validation (default 0.1%)
+
+**See:** `tap_tone_pi/io/audio_container.py:AudioContainer`
 
 ---
 
@@ -218,11 +234,19 @@ Fallback hierarchy:
 
 ---
 
-### M8. Missing Tolerance for Floating-Point Comparison
+### M8. Missing Tolerance for Floating-Point Comparison ✅
+
+**File:** `tap_tone_pi/testing/float_compare.py`
 
 **Problem:** Several tests use exact equality for floating-point values.
 
-**Fix:** Use np.isclose() or pytest.approx() with appropriate tolerances.
+**Fix:** Implemented domain-specific tolerance helpers:
+- `TolerancePresets`: Domain-aware tolerances (frequency, magnitude, phase, stiffness)
+- `approx_freq()`, `approx_magnitude()`, `approx_stiffness()`: pytest.approx wrappers
+- `assert_freq_close()`: FFT-aware frequency comparison with bin width tolerance
+- `freq_isclose()`, `magnitude_isclose()`: numpy-compatible helpers
+
+**See:** `tap_tone_pi/testing/float_compare.py`
 
 ---
 
@@ -308,10 +332,13 @@ These issues affect code quality, documentation, or non-critical paths.
 | P1 | M2 | Percentile bounds | 30 min | ✅ Complete |
 | P1 | M3 | Auto-trigger settling | 1 hour | ✅ Complete |
 | P1 | M4 | Relative freq tolerance | 30 min | ✅ Complete |
+| P1 | M5 | Phase 1/2 cross-validation | 1 hour | ✅ Complete |
+| P1 | M6 | Sample rate consistency | 1 hour | ✅ Complete |
 | P1 | M7 | Uncertainty-based diff | 1 hour | ✅ Complete |
+| P1 | M8 | Float comparison tolerance | 30 min | ✅ Complete |
 | P2 | All | Minor issues | 4 hours total | 🔴 Not started |
 
-**Completed: 2026-02-17** — All 4 CRITICAL and 5 MODERATE fixes implemented. 1303 tests passing.
+**Completed: 2026-02-17** — All 4 CRITICAL and 8 MODERATE fixes implemented. 1402 tests passing.
 
 ---
 
