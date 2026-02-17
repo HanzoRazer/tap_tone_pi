@@ -14,7 +14,7 @@ This document consolidates all development phases and tracks progress toward mak
 | Product Features (v2.1-v2.2) | ✅ Complete | Agent layer, GUI polish, auto-trigger, session browser |
 | Phase 1: CLI UX | ✅ Complete | Error handling, preflight, API docs |
 | Phase 2: Test Hardening | ✅ Complete | Unit tests, retry logic, validators |
-| **Phase 3: Analyzer Value** | 🔄 In Progress | Self-calibration, uncertainty, signal generator |
+| **Phase 3: Analyzer Value** | ✅ Complete | Self-calibration, uncertainty, signal generator, rub & buzz |
 
 ---
 
@@ -148,7 +148,7 @@ This document consolidates all development phases and tracks progress toward mak
 
 ---
 
-## 🔄 Phase 3: Analyzer Product Improvements
+## Completed: Phase 3 — Analyzer Product Improvements
 
 **Goal:** Close gaps with commercial analyzers to increase value proposition
 
@@ -224,44 +224,44 @@ Based on [ANALYZER_COMPARISON.md](ANALYZER_COMPARISON.md), these improvements ca
 
 **Value Add:** Production QC capability, visual pass/fail
 
-### 3.6 Application Notes — P2
+### 3.6 Application Notes — P2 ✅
 **Gap:** Users don't know how to apply the analyzer to their problems
 **Solution:** Create application-specific guides
 
 | Note | Status | Description |
 |------|--------|-------------|
-| AN-001 | ⬜ Pending | Measuring frequency response of a speaker |
-| AN-002 | ⬜ Pending | Finding resonant modes in a plate |
-| AN-003 | ⬜ Pending | Transfer function measurement setup |
-| AN-004 | ⬜ Pending | Coherence and measurement quality |
-| AN-005 | ⬜ Pending | Comparing two specimens |
+| AN-001 | ✅ Complete | Measuring frequency response of a speaker |
+| AN-002 | ✅ Complete | Finding resonant modes in a plate |
+| AN-003 | ✅ Complete | Transfer function measurement setup |
+| AN-004 | ✅ Complete | Coherence and measurement quality |
+| AN-005 | ✅ Complete | Comparing two specimens |
 
 **Value Add:** Reduces learning curve, demonstrates capability
 
-### 3.7 Rub & Buzz Detection — P2
+### 3.7 Rub & Buzz Detection — P2 ✅
 **Gap:** Cannot detect mechanical defects
 **Solution:** Add time-domain analysis for transient defects
 
 | Task | Status | Description |
 |------|--------|-------------|
-| Swept sine integration | ⬜ Pending | Requires signal generator |
-| Envelope tracking | ⬜ Pending | Detect intermittent contact |
-| Frequency-dependent threshold | ⬜ Pending | Adaptive detection |
-| Defect location estimation | ⬜ Pending | Approximate defect position |
+| Swept sine integration | ✅ Complete | Requires signal generator |
+| Envelope tracking | ✅ Complete | Detect intermittent contact |
+| Frequency-dependent threshold | ✅ Complete | Adaptive detection |
+| Defect classification | ✅ Complete | Approximate defect position |
 
 **Value Add:** Speaker/driver QC, acoustic defect detection
 
-### 3.8 Theory Documentation — P2
+### 3.8 Theory Documentation — P2 ✅
 **Gap:** Users don't understand what the numbers mean
 **Solution:** Add theory of operation docs
 
 | Topic | Status | Description |
 |-------|--------|-------------|
-| FFT fundamentals | ⬜ Pending | Windowing, resolution, leakage |
-| Coherence interpretation | ⬜ Pending | What coherence tells you |
-| Transfer function meaning | ⬜ Pending | H1, H2, Hv estimators |
-| Uncertainty and averaging | ⬜ Pending | Why average, how many |
-| Common measurement errors | ⬜ Pending | Pitfalls and how to avoid |
+| FFT fundamentals | ✅ Complete | Windowing, resolution, leakage |
+| Coherence interpretation | ✅ Complete | What coherence tells you |
+| Transfer function meaning | ✅ Complete | H1, H2, Hv estimators |
+| Uncertainty and averaging | ✅ Complete | Why average, how many |
+| Common measurement errors | ✅ Complete | Pitfalls and how to avoid |
 
 **Value Add:** User confidence, fewer support questions
 
@@ -335,7 +335,8 @@ For applications requiring these specifications, commercial analyzers remain app
 | Session diff | 15 | ✅ |
 | GUI export | 11 | ✅ |
 | Moment detection | 8 | ✅ |
-| **Total** | **961** | ✅ |
+| Rub & Buzz | 27 | ✅ |
+| **Total** | **988+** | ✅ |
 
 ---
 

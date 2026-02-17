@@ -15,7 +15,30 @@ Subpackages:
 - cli: Command-line interface
 - gui: Tkinter GUI
 
+Production-grade physics modules (Phase 3):
+- damping: Modal damping extraction with cross-validation
+- uncertainty: ISO GUM-compliant uncertainty quantification
+- transfer_function: H1/H2/Hv estimators with coherence
+- multitap: Multi-tap statistical analysis
+
 """
 
 __version__ = "2.0.0"
 __all__ = ["__version__"]
+
+# Lazy imports for production-grade physics modules
+def __getattr__(name):
+    """Lazy loading of submodules."""
+    if name == "damping":
+        from . import damping
+        return damping
+    elif name == "uncertainty":
+        from . import uncertainty
+        return uncertainty
+    elif name == "transfer_function":
+        from . import transfer_function
+        return transfer_function
+    elif name == "multitap":
+        from . import multitap
+        return multitap
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
