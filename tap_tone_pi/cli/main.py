@@ -111,11 +111,22 @@ def _maybe_render_directive(
 def cmd_record(args: argparse.Namespace) -> int:
     """Record a single tap and analyze (QC recorded, not gated)."""
     from tap_tone_pi.capture import record_audio
-    from tap_tone_pi.core.config import CaptureConfig, AnalysisConfig
+    from tap_tone_pi.cli.validators import (
+        validate_device_index,
+        validate_output_dir,
+        validate_sample_rate,
+        validate_duration,
+    )
     from tap_tone_pi.core.analysis import analyze_tap
+    from tap_tone_pi.core.config import AnalysisConfig, CaptureConfig
     from tap_tone_pi.core.quality_gate import check_quality
-    from tap_tone_pi.io.storage import persist_capture
     from tap_tone_pi.core.user_config import get_saved_device
+    from tap_tone_pi.io.storage import persist_capture
+
+    # Validate inputs early with clear error messages
+    validate_output_dir(args.out)
+    validate_sample_rate(args.sample_rate)
+    validate_duration(args.seconds)
 
     # Use saved device config if no device specified
     device = args.device
@@ -126,6 +137,9 @@ def cmd_record(args: argparse.Namespace) -> int:
             device = saved.index
             sample_rate = saved.sample_rate
             print(f"Using saved device: [{device}] {saved.name}")
+
+    # Validate device exists
+    validate_device_index(device)
 
     cap_cfg = CaptureConfig(
         device=device,
