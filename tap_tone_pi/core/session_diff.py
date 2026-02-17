@@ -210,7 +210,7 @@ def _extract_peaks(data: dict[str, Any]) -> list[tuple[str, float, float]]:
         for i, p in enumerate(data["peaks"]):
             freq = p.get("freq_hz") or p.get("frequency")
             amp = p.get("magnitude") or p.get("amp") or p.get("amplitude", 1.0)
-            label = p.get("label", f"P{i+1}")
+            label = p.get("label", f"P{i + 1}")
             if freq:
                 peaks.append((label, float(freq), float(amp)))
 
@@ -358,7 +358,7 @@ def format_diff_report(diff: SessionDiff) -> str:
         lines.append(
             f"  {'Label':<10} {'Freq A':>10} {'Freq B':>10} {'Δ Hz':>10} {'Status':<10}"
         )
-        lines.append(f"  {'-'*10} {'-'*10} {'-'*10} {'-'*10} {'-'*10}")
+        lines.append(f"  {'-' * 10} {'-' * 10} {'-' * 10} {'-' * 10} {'-' * 10}")
 
         for p in diff.peaks:
             freq_a_str = f"{p.freq_a:.1f}" if p.freq_a else "-"
@@ -373,7 +373,7 @@ def format_diff_report(diff: SessionDiff) -> str:
     if diff.metrics:
         lines.append("Metric Changes:")
         lines.append(f"  {'Metric':<20} {'Before':>12} {'After':>12} {'Δ%':>10}")
-        lines.append(f"  {'-'*20} {'-'*12} {'-'*12} {'-'*10}")
+        lines.append(f"  {'-' * 20} {'-' * 12} {'-' * 12} {'-' * 10}")
 
         for m in diff.metrics:
             val_a_str = f"{m.value_a:.4f}" if m.value_a else "-"

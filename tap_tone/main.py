@@ -13,7 +13,7 @@ def cmd_devices(_: argparse.Namespace) -> int:
     devs = list_devices()
     for d in devs:
         print(
-            f'[{d["index"]}] {d["name"]} (in={d["max_input_channels"]}, out={d["max_output_channels"]})'
+            f"[{d['index']}] {d['name']} (in={d['max_input_channels']}, out={d['max_output_channels']})"
         )
     return 0
 

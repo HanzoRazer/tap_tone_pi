@@ -151,40 +151,40 @@ class App(tk.Tk):
     def do_tap_live(self, vals):
         outdir = self.outdir()
         dur, sr = vals[0].get(), vals[1].get()
-        cmd = f"python modes/tap_tone/tap_fft_logger.py --outfile {outdir/'tap_tone.json'} --plot {outdir/'spectrum.png'} --duration {dur} --sr {sr} --labels A0 T11 B11"
+        cmd = f"python modes/tap_tone/tap_fft_logger.py --outfile {outdir / 'tap_tone.json'} --plot {outdir / 'spectrum.png'} --duration {dur} --sr {sr} --labels A0 T11 B11"
         run(cmd)
 
     def do_tap_offline(self, path_var):
         outdir = self.outdir()
-        cmd = f"python modes/tap_tone/offline_from_wav.py --wav {path_var.get()} --outfile {outdir/'tap_tone_offline.json'} --labels A0 T11 B11"
+        cmd = f"python modes/tap_tone/offline_from_wav.py --wav {path_var.get()} --outfile {outdir / 'tap_tone_offline.json'} --labels A0 T11 B11"
         run(cmd)
 
     def do_moe_single(self, binds):
         outdir = self.outdir()
         b = binds
-        cmd = f"python modes/bending_stiffness/deflection_to_moe.py --method {b['method']} --span {b['span']} --width {b['width']} --thickness {b['thickness']} --force {b['force']} --deflection {b['deflection']} --out {outdir/'bending_test.json'}"
+        cmd = f"python modes/bending_stiffness/deflection_to_moe.py --method {b['method']} --span {b['span']} --width {b['width']} --thickness {b['thickness']} --force {b['force']} --deflection {b['deflection']} --out {outdir / 'bending_test.json'}"
         if b["density"].strip():
             cmd += f" --density {b['density']}"
         run(cmd)
 
     def do_moe_batch(self, path_var):
         outdir = self.outdir()
-        cmd = f"python modes/bending_stiffness/deflection_to_moe.py --csv {path_var.get()} --out {outdir/'moe_results.csv'}"
+        cmd = f"python modes/bending_stiffness/deflection_to_moe.py --csv {path_var.get()} --out {outdir / 'moe_results.csv'}"
         run(cmd)
 
     def do_provenance(self, path_var):
         outdir = self.outdir()
-        cmd = f"python modes/provenance_import/attach_grain_provenance.py --file {path_var.get()} --out {outdir/'provenance.json'}"
+        cmd = f"python modes/provenance_import/attach_grain_provenance.py --file {path_var.get()} --out {outdir / 'provenance.json'}"
         run(cmd)
 
     def do_loadcell(self, cfg_var):
         outdir = self.outdir()
-        cmd = f"python modes/acquisition/loadcell_serial.py --config {cfg_var.get()} --out {outdir/'load_series.json'}"
+        cmd = f"python modes/acquisition/loadcell_serial.py --config {cfg_var.get()} --out {outdir / 'load_series.json'}"
         run(cmd)
 
     def do_dial(self, port_var):
         outdir = self.outdir()
-        cmd = f"python modes/acquisition/dial_indicator_serial.py --port {port_var.get()} --out {outdir/'displacement_series.json'}"
+        cmd = f"python modes/acquisition/dial_indicator_serial.py --port {port_var.get()} --out {outdir / 'displacement_series.json'}"
         run(cmd)
 
     def do_manifest(self):

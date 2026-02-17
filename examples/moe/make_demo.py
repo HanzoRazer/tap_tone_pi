@@ -6,9 +6,9 @@ Hardware-free MOE demo:
 Creates out/DEMO/moe/moe_result.json conforming to moe_result.schema.json.
 This is a minimal "facts-only" artifact for CI validation (no hardware).
 """
-import json   # noqa: E402
-from pathlib import Path   # noqa: E402
-from datetime import datetime, timezone   # noqa: E402
+import json  # noqa: E402
+from pathlib import Path  # noqa: E402
+from datetime import datetime, timezone  # noqa: E402
 
 OUT = Path("out/DEMO/moe")
 

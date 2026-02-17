@@ -185,7 +185,7 @@ class TimelineViewerDialog(tk.Toplevel):
             ("Session ID", str(data.get("session_id", "—"))),
             (
                 "Schema",
-                f'{data.get("schema_id", "?")} v{data.get("schema_version", "?")}',
+                f"{data.get('schema_id', '?')} v{data.get('schema_version', '?')}",
             ),
         ]
         for lbl, val in pairs:
@@ -230,7 +230,7 @@ class TimelineViewerDialog(tk.Toplevel):
 
         pairs: List[tuple[str, str]] = [
             ("Moment ID", str(moment.get("id", "—"))),
-            ("Confidence", f'{moment.get("confidence", "—")}'),
+            ("Confidence", f"{moment.get('confidence', '—')}"),
             ("Trigger events", str(moment.get("trigger_event_count", "—"))),
         ]
         for lbl, val in pairs:

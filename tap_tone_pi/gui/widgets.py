@@ -638,11 +638,12 @@ class SetupWizardDialog(tk.Toplevel):
                     except tk.TclError:
                         break  # Widget destroyed
 
-            except Exception as e:
+            except Exception as ex:
+                err_msg = str(ex)
                 self.after(
                     0,
-                    lambda: self.test_status.configure(
-                        text=f"Error: {str(e)}", fg="#f44336"
+                    lambda err=err_msg: self.test_status.configure(
+                        text=f"Error: {err}", fg="#f44336"
                     ),
                 )
                 break

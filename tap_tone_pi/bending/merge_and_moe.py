@@ -151,11 +151,11 @@ def _calculate_moe(
 
     if method == "3point":
         # E = S * L³ / (48 * I)
-        return S * L**3 / (48.0 * I)
+        return S * L**3 / (48.0 * moment_I)
     else:
         # 4-point: E = S * a * (3L² - 4a²) / (24 * I)
         a = (inner_span_mm / 1000.0) if inner_span_mm else L / 3.0
-        return S * a * (3 * L * L - 4 * a * a) / (24.0 * I)
+        return S * a * (3 * L * L - 4 * a * a) / (24.0 * moment_I)
 
 
 def main() -> None:
@@ -301,7 +301,7 @@ def main() -> None:
     print(f"Wrote {csv_path}")
     print(f"Wrote {sidecar_path}")
     print(f"Wrote {moe_path}")
-    print(f"  E = {E_pa/1e9:.3f} GPa (R² = {r2:.4f})")
+    print(f"  E = {E_pa / 1e9:.3f} GPa (R² = {r2:.4f})")
 
 
 if __name__ == "__main__":

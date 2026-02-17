@@ -190,7 +190,7 @@ def _resolve_device(device_spec: int | str | None) -> int | None:
 
 def _generate_point_labels(n: int) -> List[str]:
     """Generate point labels A1..AN."""
-    return [f"A{i+1}" for i in range(n)]
+    return [f"A{i + 1}" for i in range(n)]
 
 
 def _capture_point_auto_trigger(
@@ -225,11 +225,11 @@ def _capture_point_auto_trigger(
 
     # Progress callback for console output
     def on_progress(msg: str) -> None:
-        _prefix = f"[{point_idx+1}/{total_points}] {label}"
+        _prefix = f"[{point_idx + 1}/{total_points}] {label}"
         print(f"    {msg}")
 
     print(
-        f"\n[{point_idx+1}/{total_points}] {label}: Armed. Tap now (timeout {cfg.tap_timeout_s}s)..."
+        f"\n[{point_idx + 1}/{total_points}] {label}: Armed. Tap now (timeout {cfg.tap_timeout_s}s)..."
     )
 
     try:
@@ -372,7 +372,7 @@ def _capture_single_point_manual(
     """Capture a single point with manual retries. Returns error_message or None on success."""
     from tap_tone.storage import persist_capture
 
-    print(f"\n[{i+1}/{total}] Capturing point {label}...")
+    print(f"\n[{i + 1}/{total}] Capturing point {label}...")
     print(f"    Tap the specimen now (timeout: {cfg.tap_timeout_s}s)")
 
     for attempt in range(cfg.max_retries):
@@ -396,10 +396,10 @@ def _capture_single_point_manual(
                 return None
             else:
                 reason = "clipped" if analysis.clipped else "low signal"
-                print(f"    ⚠ Attempt {attempt+1}: {reason}, retrying...")
+                print(f"    ⚠ Attempt {attempt + 1}: {reason}, retrying...")
 
         except Exception as e:
-            print(f"    ⚠ Attempt {attempt+1} failed: {e}")
+            print(f"    ⚠ Attempt {attempt + 1} failed: {e}")
 
     return f"Failed to capture point {label} after {cfg.max_retries} attempts"
 

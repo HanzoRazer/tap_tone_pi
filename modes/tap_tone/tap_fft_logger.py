@@ -48,7 +48,7 @@ def main():
 
     labels = {}
     for i, (f, amp) in enumerate(top):
-        labels[(a.labels[i] if i < len(a.labels) else f"p{i+1}")] = {
+        labels[(a.labels[i] if i < len(a.labels) else f"p{i + 1}")] = {
             "freq_hz": round(f, 2),
             "amp": round(float(amp), 2),
         }

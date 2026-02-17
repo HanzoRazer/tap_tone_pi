@@ -592,7 +592,7 @@ def estimate_coupling_from_split(
     Returns:
         Estimated coupling stiffness k_c in N/m
     """
-    _omega_0 = 2 * np.pi * center_freq_hz
+    omega_0 = 2 * np.pi * center_freq_hz
     k_c = delta_f_hz * 2 * np.pi * omega_0 * effective_mass_kg
     return k_c
 

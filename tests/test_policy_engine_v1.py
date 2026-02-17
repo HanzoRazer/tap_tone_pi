@@ -180,9 +180,9 @@ def test_m1_directive_has_summary_and_no_title(uwsm_default, cap_view_allowed):
     assert directive is not None
 
     # PR #8: directive must be contract dataclass
-    assert isinstance(
-        directive, AttentionDirectiveV1
-    ), f"Expected AttentionDirectiveV1, got {type(directive).__name__}"
+    assert isinstance(directive, AttentionDirectiveV1), (
+        f"Expected AttentionDirectiveV1, got {type(directive).__name__}"
+    )
     assert isinstance(directive.summary, str)
     assert directive.summary.strip() != ""
 

@@ -176,7 +176,7 @@ def cmd_capture(args: argparse.Namespace) -> int:
     captured = []
     for i, point in enumerate(points):
         print(
-            f"\n[{i+1}/{len(points)}] Point {point.id} at ({point.x}, {point.y}) {units}"
+            f"\n[{i + 1}/{len(points)}] Point {point.id} at ({point.x}, {point.y}) {units}"
         )
         input("  Position roving sensor, then press ENTER to capture...")
 

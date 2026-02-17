@@ -1933,8 +1933,8 @@ class App(tk.Tk):
         sr = entry_vars[1].get()
         cmd = (
             f"python modes/tap_tone/tap_fft_logger.py "
-            f"--outfile {outdir/'tap_tone.json'} "
-            f"--plot {outdir/'spectrum.png'} "
+            f"--outfile {outdir / 'tap_tone.json'} "
+            f"--plot {outdir / 'spectrum.png'} "
             f"--duration {dur} --sr {sr} --labels A0 T11 B11"
         )
         run(cmd)
@@ -1981,7 +1981,7 @@ class App(tk.Tk):
             cmd = (
                 f"python modes/tap_tone/offline_from_wav.py "
                 f"--wav {path_var.get()} "
-                f"--outfile {outdir/'tap_tone_offline.json'} --labels A0 T11 B11"
+                f"--outfile {outdir / 'tap_tone_offline.json'} --labels A0 T11 B11"
             )
             run(cmd)
 
@@ -2004,7 +2004,7 @@ class App(tk.Tk):
             f"python modes/bending_stiffness/deflection_to_moe.py "
             f"--method {method} --span {span} --width {width} "
             f"--thickness {thickness} --force {force} --deflection {deflection} "
-            f"--out {outdir/'bending_test.json'}"
+            f"--out {outdir / 'bending_test.json'}"
         )
         if density.strip():
             cmd += f" --density {density}"
@@ -2015,7 +2015,7 @@ class App(tk.Tk):
         outdir = self.outdir()
         cmd = (
             f"python modes/bending_stiffness/deflection_to_moe.py "
-            f"--csv {path_var.get()} --out {outdir/'moe_results.csv'}"
+            f"--csv {path_var.get()} --out {outdir / 'moe_results.csv'}"
         )
         run(cmd)
 
@@ -2024,7 +2024,7 @@ class App(tk.Tk):
         outdir = self.outdir()
         cmd = (
             f"python modes/provenance_import/attach_grain_provenance.py "
-            f"--file {path_var.get()} --out {outdir/'provenance.json'}"
+            f"--file {path_var.get()} --out {outdir / 'provenance.json'}"
         )
         run(cmd)
 
@@ -2033,7 +2033,7 @@ class App(tk.Tk):
         outdir = self.outdir()
         cmd = (
             f"python modes/acquisition/loadcell_serial.py "
-            f"--config {cfg_var.get()} --out {outdir/'load_series.json'}"
+            f"--config {cfg_var.get()} --out {outdir / 'load_series.json'}"
         )
         run(cmd)
 
@@ -2042,7 +2042,7 @@ class App(tk.Tk):
         outdir = self.outdir()
         cmd = (
             f"python modes/acquisition/dial_indicator_serial.py "
-            f"--port {port_var.get()} --out {outdir/'displacement_series.json'}"
+            f"--port {port_var.get()} --out {outdir / 'displacement_series.json'}"
         )
         run(cmd)
 

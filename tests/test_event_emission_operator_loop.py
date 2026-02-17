@@ -242,9 +242,9 @@ class TestEventJsonValidity:
         )
         for i, line in enumerate(lines):
             obj = json.loads(line)
-            assert (
-                obj["privacy_layer"] == 0
-            ), f"Line {i}: privacy_layer={obj['privacy_layer']}, expected 0"
+            assert obj["privacy_layer"] == 0, (
+                f"Line {i}: privacy_layer={obj['privacy_layer']}, expected 0"
+            )
 
     def test_event_types_are_from_vocabulary(self, tmp_path, patch_passing):
         """All event_type values must be from the known vocabulary."""
@@ -263,9 +263,9 @@ class TestEventJsonValidity:
         )
         for i, line in enumerate(lines):
             obj = json.loads(line)
-            assert (
-                obj["event_type"] in valid_types
-            ), f"Line {i}: unexpected event_type={obj['event_type']!r}"
+            assert obj["event_type"] in valid_types, (
+                f"Line {i}: unexpected event_type={obj['event_type']!r}"
+            )
 
     def test_correlation_id_consistent(self, tmp_path, patch_passing):
         """All events from one run_single share the same correlation_id."""

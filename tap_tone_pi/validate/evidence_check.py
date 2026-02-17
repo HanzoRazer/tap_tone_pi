@@ -419,7 +419,7 @@ def render_human(report: EvidenceReport) -> str:
     lines: list[str] = []
     lines.append(f"Evidence check: {report.session_dir}")
     lines.append(
-        f"Type: {report.session_type}  " f"Attempts: {report.summary.attempts_scanned}"
+        f"Type: {report.session_type}  Attempts: {report.summary.attempts_scanned}"
     )
     lines.append(
         f"FAIL={report.summary.fail_count} "

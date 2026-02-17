@@ -257,9 +257,9 @@ class TestViewerPackV1Gate:
         """Schema must have expected structure."""
         schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
 
-        assert (
-            schema.get("additionalProperties") is False
-        ), "Schema must have additionalProperties: false"
+        assert schema.get("additionalProperties") is False, (
+            "Schema must have additionalProperties: false"
+        )
 
         required = schema.get("required", [])
         expected_required = [
@@ -341,9 +341,9 @@ class TestViewerPackV1Gate:
         )
 
         result = run_validator(invalid_pack)
-        assert (
-            result.returncode == 2
-        ), f"Validator should reject invalid manifest (exit 2), got {result.returncode}"
+        assert result.returncode == 2, (
+            f"Validator should reject invalid manifest (exit 2), got {result.returncode}"
+        )
 
     def test_validator_rejects_extra_keys(self, temp_output_dir: Path):
         """Validator must reject manifests with unexpected keys (additionalProperties: false)."""
@@ -407,9 +407,9 @@ class TestViewerPackSchemaFreeze:
         schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
         props = schema.get("properties", {})
         sid = props.get("schema_id", {})
-        assert (
-            sid.get("const") == "viewer_pack_v1"
-        ), "schema_id const must be 'viewer_pack_v1'"
+        assert sid.get("const") == "viewer_pack_v1", (
+            "schema_id const must be 'viewer_pack_v1'"
+        )
 
     def test_kind_vocabulary_is_known(self):
         """All kind values in schema must be from known vocabulary."""

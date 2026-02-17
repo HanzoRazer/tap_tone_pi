@@ -31,9 +31,9 @@ def _import_detector():
         MOMENTS_IMPORT_PATH, reason=f"{MOMENTS_IMPORT_PATH} not implemented yet"
     )
     detect_moments = getattr(mod, "detect_moments", None)
-    assert callable(
-        detect_moments
-    ), "Expected a callable detect_moments(events) in spine.moments"
+    assert callable(detect_moments), (
+        "Expected a callable detect_moments(events) in spine.moments"
+    )
     return detect_moments
 
 

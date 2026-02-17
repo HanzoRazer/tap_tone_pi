@@ -201,9 +201,9 @@ class TestKindAssignments:
 
         for f in manifest["files"]:
             if f["relpath"].startswith("ods/"):
-                assert (
-                    f["kind"] == "transfer_function"
-                ), f"Wrong kind for {f['relpath']}"
+                assert f["kind"] == "transfer_function", (
+                    f"Wrong kind for {f['relpath']}"
+                )
 
     def test_session_meta_kind(self, exported_pack):
         """meta/session_meta.json should have session_meta kind."""

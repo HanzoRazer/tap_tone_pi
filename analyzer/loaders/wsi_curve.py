@@ -172,7 +172,7 @@ def _parse_json_array(arr):
         w = obj.get("wsi") or obj.get("wolf_stress_index")
         wsi.append(float(w) if w is not None else 0.0)
         loc_val = obj.get("loc") or obj.get("localization")
-        loc.append(float(loc_val) if l is not None else 0.0)
+        loc.append(float(loc_val) if loc_val is not None else 0.0)
         g = obj.get("grad") or obj.get("gradient")
         grad.append(float(g) if g is not None else 0.0)
         pd = obj.get("phase_disorder") or obj.get("pd")

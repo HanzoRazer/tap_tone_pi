@@ -90,6 +90,6 @@ def test_chladni_manifest_hashes_and_idempotency():
     _run_cmd([sys.executable, "examples/chladni/make_demo.py"])
     doc2 = json.loads(MANIFEST.read_text(encoding="utf-8"))
     after_count = len(doc2.get("artifacts") or [])
-    assert (
-        after_count == before_count
-    ), "manifest append is not idempotent; artifact duplication detected"
+    assert after_count == before_count, (
+        "manifest append is not idempotent; artifact duplication detected"
+    )

@@ -233,9 +233,9 @@ def validate_viewer_pack(
 
 def print_report(result: ValidationResult, zip_path: Path) -> None:
     """Print validation report to stdout."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Viewer Pack Validation: {zip_path.name}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     if result.valid:
         print(f"\n✓ VALID ({result.checks_passed} checks passed)")

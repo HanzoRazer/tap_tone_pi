@@ -343,7 +343,7 @@ def _extract_evidence(events: List[Any]) -> List[dict]:
 
 
 def _apply_evidence(uwsm: dict, ev: dict) -> List[dict]:
-    _dim = ev["dimension"]
+    dim = ev["dimension"]
     e_type = ev["type"]
     candidate = ev["value"]
     eid = ev.get("event_id", "")

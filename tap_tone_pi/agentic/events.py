@@ -334,7 +334,7 @@ def create_wolf_tone_directive(
         summary=f"Potential wolf tone at {freq_hz:.0f}Hz",
         detail=(
             f"The analyzer detected a potential wolf tone at {freq_hz:.1f}Hz "
-            f"with {confidence*100:.0f}% confidence. This frequency may cause "
+            f"with {confidence * 100:.0f}% confidence. This frequency may cause "
             f"tonal issues. Consider adjusting bracing or soundboard thickness."
         ),
         focus=FocusTarget(

@@ -96,9 +96,9 @@ class TestValidatorCLI:
             text=True,
             env=_get_subprocess_env(),
         )
-        assert (
-            result.returncode == 0
-        ), f"Validator failed:\n{result.stderr}\n{result.stdout}"
+        assert result.returncode == 0, (
+            f"Validator failed:\n{result.stderr}\n{result.stdout}"
+        )
         assert "OK" in result.stdout
 
     @pytest.mark.parametrize("session_dir", golden_sessions())
@@ -142,9 +142,9 @@ class TestValidatorCLI:
             text=True,
             env=_get_subprocess_env(),
         )
-        assert (
-            result.returncode == 0
-        ), f"Validator failed on zip:\n{result.stderr}\n{result.stdout}"
+        assert result.returncode == 0, (
+            f"Validator failed on zip:\n{result.stderr}\n{result.stdout}"
+        )
         assert "OK" in result.stdout
 
 

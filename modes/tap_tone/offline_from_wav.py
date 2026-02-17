@@ -68,7 +68,7 @@ def main() -> None:
     # Build labels dict
     labels: Dict[str, Any] = {}
     for i, (f, amp) in enumerate(top):
-        name = a.labels[i] if i < len(a.labels) else f"p{i+1}"
+        name = a.labels[i] if i < len(a.labels) else f"p{i + 1}"
         labels[name] = {"freq_hz": round(f, 2), "amp": round(float(amp), 2)}
 
     # Write JSON

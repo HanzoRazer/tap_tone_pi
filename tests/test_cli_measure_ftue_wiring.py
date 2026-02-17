@@ -234,7 +234,7 @@ class TestCmdMeasureFtueWiring:
 
         # Capture the AgentContext that gets created
         captured_ctx = []
-        original_format = None
+        _original_format = None
 
         def capture_format(ctx, verdict):
             captured_ctx.append(ctx)

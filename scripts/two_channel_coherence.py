@@ -528,7 +528,7 @@ def main() -> None:
             if (not args.all) and (d["max_input_channels"] <= 0):
                 continue
             print(
-                f'[{d["index"]}] {d["name"]} (in={d["max_input_channels"]}, default_sr={d["default_samplerate"]})'
+                f"[{d['index']}] {d['name']} (in={d['max_input_channels']}, default_sr={d['default_samplerate']})"
             )
         return
 

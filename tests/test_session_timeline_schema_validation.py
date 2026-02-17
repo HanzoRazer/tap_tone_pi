@@ -54,9 +54,9 @@ def test_schema_registered_in_registry() -> None:
     """session_timeline must appear in schema_registry.json."""
     reg = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
     schemas = reg.get("schemas", {})
-    assert (
-        "session_timeline" in schemas
-    ), f"session_timeline not found in registry keys: {list(schemas.keys())}"
+    assert "session_timeline" in schemas, (
+        f"session_timeline not found in registry keys: {list(schemas.keys())}"
+    )
     entry = schemas["session_timeline"]
     assert entry["path"] == "contracts/schemas/session_timeline_v1.schema.json"
     assert entry["schema_version_const"] == "session_timeline_v1"

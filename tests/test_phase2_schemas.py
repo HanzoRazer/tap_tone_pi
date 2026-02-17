@@ -208,22 +208,22 @@ class TestPhase2ODSSnapshotSchema:
 
             # Validate arrays
             assert isinstance(pt["H_mag"], list), f"Point {i} H_mag should be array"
-            assert isinstance(
-                pt["H_phase_deg"], list
-            ), f"Point {i} H_phase_deg should be array"
-            assert isinstance(
-                pt["coherence"], list
-            ), f"Point {i} coherence should be array"
+            assert isinstance(pt["H_phase_deg"], list), (
+                f"Point {i} H_phase_deg should be array"
+            )
+            assert isinstance(pt["coherence"], list), (
+                f"Point {i} coherence should be array"
+            )
 
             # Array lengths should match freqs_hz length
             n_freqs = len(data["freqs_hz"])
             assert len(pt["H_mag"]) == n_freqs, f"Point {i} H_mag length mismatch"
-            assert (
-                len(pt["H_phase_deg"]) == n_freqs
-            ), f"Point {i} H_phase_deg length mismatch"
-            assert (
-                len(pt["coherence"]) == n_freqs
-            ), f"Point {i} coherence length mismatch"
+            assert len(pt["H_phase_deg"]) == n_freqs, (
+                f"Point {i} H_phase_deg length mismatch"
+            )
+            assert len(pt["coherence"]) == n_freqs, (
+                f"Point {i} coherence length mismatch"
+            )
 
 
 class TestPhase2NoExtraFields:

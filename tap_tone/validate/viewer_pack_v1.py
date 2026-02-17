@@ -276,7 +276,7 @@ def _validate_wsi(
             if adm not in ("true", "false"):
                 report.add_error(
                     "W-002",
-                    f"WSI curve: invalid admissible value '{row.get('admissible', '')}' at row {i+2}",
+                    f"WSI curve: invalid admissible value '{row.get('admissible', '')}' at row {i + 2}",
                     rel_path,
                 )
                 break
@@ -392,7 +392,7 @@ def _validate_point_spectrum(
 
         if f is None:
             report.add_error(
-                "S-002", f"Spectrum {pid}: invalid freq_hz at row {i+2}", rel_path
+                "S-002", f"Spectrum {pid}: invalid freq_hz at row {i + 2}", rel_path
             )
             parse_errors = True
             continue
@@ -401,14 +401,16 @@ def _validate_point_spectrum(
 
         if m is None:
             report.add_error(
-                "S-005", f"Spectrum {pid}: invalid H_mag at row {i+2}", rel_path
+                "S-005", f"Spectrum {pid}: invalid H_mag at row {i + 2}", rel_path
             )
             parse_errors = True
         else:
             # S-005: Finite Magnitudes
             if not math.isfinite(m):
                 report.add_error(
-                    "S-005", f"Spectrum {pid}: non-finite H_mag at row {i+2}", rel_path
+                    "S-005",
+                    f"Spectrum {pid}: non-finite H_mag at row {i + 2}",
+                    rel_path,
                 )
                 parse_errors = True
 
@@ -420,7 +422,7 @@ def _validate_point_spectrum(
         if freq_hz_values[i] <= freq_hz_values[i - 1]:
             report.add_error(
                 "S-003",
-                f"Spectrum {pid}: freq_hz not strictly increasing at row {i+2} ({freq_hz_values[i-1]} >= {freq_hz_values[i]})",
+                f"Spectrum {pid}: freq_hz not strictly increasing at row {i + 2} ({freq_hz_values[i - 1]} >= {freq_hz_values[i]})",
                 rel_path,
             )
             break
@@ -685,7 +687,7 @@ def validate_pack(
     ):
         report.add_error(
             "T-002",
-            "CI requires timeline_valid==1 when session_timeline_v1.json " "is present",
+            "CI requires timeline_valid==1 when session_timeline_v1.json is present",
         )
 
     return _finalize()

@@ -170,9 +170,9 @@ def test_m2_overload_dispatches_reset_view(tmp_path: Path) -> None:
 
     # Check adapter received reset_view
     reset_cmds = [c for c in adapter.commands if c["name"] == "reset_view"]
-    assert (
-        len(reset_cmds) >= 1
-    ), f"Expected reset_view in adapter commands: {adapter.commands}"
+    assert len(reset_cmds) >= 1, (
+        f"Expected reset_view in adapter commands: {adapter.commands}"
+    )
 
     # Shadow record should show commands_count > 0
     rec = load_latest_shadow_record(tmp_path)

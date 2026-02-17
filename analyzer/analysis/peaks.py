@@ -183,7 +183,7 @@ class PeakDetector:
                 elif 400 < freq < 600:
                     peak["mode"] = "tap tone"
                 else:
-                    peak["mode"] = f"mode {i+1}"
+                    peak["mode"] = f"mode {i + 1}"
 
         return sorted_peaks
 

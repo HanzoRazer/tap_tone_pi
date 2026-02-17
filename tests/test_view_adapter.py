@@ -268,9 +268,9 @@ def test_policy_m2_overload_issues_reset_view() -> None:
         capability={"automation_limits": {"agent_can_adjust_view": True}},
     )
     cmds = out.get("issue_commands", [])
-    assert any(
-        c.get("name") == "reset_view" for c in cmds
-    ), f"Expected reset_view in commands: {cmds}"
+    assert any(c.get("name") == "reset_view" for c in cmds), (
+        f"Expected reset_view in commands: {cmds}"
+    )
 
 
 def test_policy_m2_overload_no_commands_when_denied() -> None:

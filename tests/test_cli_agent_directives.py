@@ -115,9 +115,9 @@ class TestRenderShadowRecord:
     def test_returns_none_for_no_moment(self):
         rec = _make_none_record()
         output = render_cli_shadow_record(rec)
-        assert (
-            output is None
-        ), "Should not render when moment is NONE and advisory is None"
+        assert output is None, (
+            "Should not render when moment is NONE and advisory is None"
+        )
 
     def test_returns_none_for_bad_input(self):
         assert render_cli_shadow_record(None) is None

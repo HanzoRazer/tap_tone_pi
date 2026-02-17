@@ -60,7 +60,7 @@ def read_wav_mono_or_stereo(wav_path: Path) -> tuple[int, np.ndarray]:
     # decode PCM (supports 16-bit only here; keep simple)
     if sampwidth != 2:
         raise ValueError(
-            f"Unsupported WAV sample width {sampwidth*8} bits. Expected 16-bit PCM."
+            f"Unsupported WAV sample width {sampwidth * 8} bits. Expected 16-bit PCM."
         )
     x = np.frombuffer(frames, dtype=np.int16).astype(np.float32) / 32767.0
     if ch > 1:
@@ -240,12 +240,12 @@ def main() -> None:
             )
 
     print("[OK] Wrote PNGs:")
-    print(f"  {cap_dir/'coherence.png'}")
-    print(f"  {cap_dir/'phase_deg.png'}")
+    print(f"  {cap_dir / 'coherence.png'}")
+    print(f"  {cap_dir / 'phase_deg.png'}")
     if args.plot_spectrum and spec_path.exists():
-        print(f"  {cap_dir/'spectrum.png'}")
+        print(f"  {cap_dir / 'spectrum.png'}")
     if args.plot_waveform and wav_path.exists():
-        print(f"  {cap_dir/'waveform.png'}")
+        print(f"  {cap_dir / 'waveform.png'}")
 
 
 if __name__ == "__main__":

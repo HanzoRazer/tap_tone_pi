@@ -77,9 +77,9 @@ def test_persist_capture_wav_roundtrip(tmp_path):
     )
 
     # Check signal shape
-    assert (
-        y.shape == audio.shape
-    ), f"Shape mismatch: expected {audio.shape}, got {y.shape}"
+    assert y.shape == audio.shape, (
+        f"Shape mismatch: expected {audio.shape}, got {y.shape}"
+    )
 
     # Check signal content (allowing for int16 quantization)
     max_abs_err = float(np.max(np.abs(y - audio)))

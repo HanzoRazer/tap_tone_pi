@@ -69,9 +69,9 @@ class TestAnalyzeTapBasic:
 
         assert result.dominant_hz is not None
         # Allow ±5 Hz tolerance for FFT bin resolution
-        assert (
-            abs(result.dominant_hz - target_freq) < 5.0
-        ), f"Expected ~{target_freq} Hz, got {result.dominant_hz} Hz"
+        assert abs(result.dominant_hz - target_freq) < 5.0, (
+            f"Expected ~{target_freq} Hz, got {result.dominant_hz} Hz"
+        )
 
     def test_detects_multiple_peaks(self):
         """analyze_tap finds multiple peaks in multi-frequency signal."""
@@ -207,6 +207,6 @@ class TestAnalyzeTapParameters:
             result = analyze_tap(audio, sample_rate=sr)
 
             assert result.dominant_hz is not None
-            assert (
-                abs(result.dominant_hz - 440.0) < 10.0
-            ), f"Failed at {sr} Hz sample rate"
+            assert abs(result.dominant_hz - 440.0) < 10.0, (
+                f"Failed at {sr} Hz sample rate"
+            )

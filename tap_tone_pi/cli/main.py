@@ -64,8 +64,8 @@ def cmd_devices(_args: argparse.Namespace) -> int:
         inputs = d["max_input_channels"]
         outputs = d["max_output_channels"]
         marker = " *" if inputs > 0 else ""
-        print(f'  [{d["index"]:2d}] {d["name"]}{marker}')
-        print(f'       in={inputs}, out={outputs}, rate={d["default_samplerate"]}')
+        print(f"  [{d['index']:2d}] {d['name']}{marker}")
+        print(f"       in={inputs}, out={outputs}, rate={d['default_samplerate']}")
     print("\n  * = has input channels (usable for capture)\n")
     return 0
 

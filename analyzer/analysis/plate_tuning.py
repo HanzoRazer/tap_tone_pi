@@ -222,7 +222,7 @@ class PlateTuningRegression:
             "points": {
                 "mass_g": masses,
                 "freq_hz": freqs,
-                "labels": [f"#{i+1}" for i in range(len(self.points))],
+                "labels": [f"#{i + 1}" for i in range(len(self.points))],
             },
             "line": None,
             "target": None,

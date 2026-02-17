@@ -175,7 +175,7 @@ class TestOperatorLoopInit:
 
     def test_init_starts_in_idle(self, tmp_path, patch_all_passing):
         """OperatorLoop starts in IDLE state."""
-        _loop = OperatorLoop(session_dir=tmp_path)
+        loop = OperatorLoop(session_dir=tmp_path)
         assert loop.state == LoopState.IDLE
 
 
@@ -189,7 +189,7 @@ class TestPreflight:
 
     def test_preflight_passes_with_device(self, tmp_path, patch_all_passing):
         """preflight() passes when input device exists."""
-        _loop = OperatorLoop(session_dir=tmp_path)
+        loop = OperatorLoop(session_dir=tmp_path)
 
         ok, msg = loop.preflight()
 
@@ -202,7 +202,7 @@ class TestPreflight:
 
         monkeypatch.setattr(ol_module, "list_devices", lambda: [])
 
-        _loop = OperatorLoop(session_dir=tmp_path)
+        loop = OperatorLoop(session_dir=tmp_path)
 
         ok, msg = loop.preflight()
 
@@ -220,7 +220,7 @@ class TestRunSinglePassPath:
 
     def test_run_single_pass_returns_success(self, tmp_path, patch_all_passing):
         """run_single returns success when quality passes."""
-        _loop = OperatorLoop(session_dir=tmp_path)
+        loop = OperatorLoop(session_dir=tmp_path)
 
         result = loop.run_single(
             point_id="test_point",
@@ -236,7 +236,7 @@ class TestRunSinglePassPath:
 
     def test_run_single_creates_attempt_dir(self, tmp_path, patch_all_passing):
         """run_single creates attempt directory."""
-        _loop = OperatorLoop(session_dir=tmp_path)
+        loop = OperatorLoop(session_dir=tmp_path)
 
         loop.run_single(point_id="pt_A", device=0, sample_rate=48000, duration=2.5)
 
@@ -245,7 +245,7 @@ class TestRunSinglePassPath:
 
     def test_run_single_writes_audio(self, tmp_path, patch_all_passing):
         """run_single saves audio.wav to attempt directory."""
-        _loop = OperatorLoop(session_dir=tmp_path)
+        loop = OperatorLoop(session_dir=tmp_path)
 
         loop.run_single(point_id="pt_B", device=0, sample_rate=48000, duration=2.5)
 
@@ -254,7 +254,7 @@ class TestRunSinglePassPath:
 
     def test_run_single_writes_analysis(self, tmp_path, patch_all_passing):
         """run_single saves analysis.json to attempt directory."""
-        _loop = OperatorLoop(session_dir=tmp_path)
+        loop = OperatorLoop(session_dir=tmp_path)
 
         loop.run_single(point_id="pt_C", device=0, sample_rate=48000, duration=2.5)
 
@@ -268,7 +268,7 @@ class TestRunSinglePassPath:
 
     def test_run_single_writes_quality_check(self, tmp_path, patch_all_passing):
         """run_single saves quality_check.json to attempt directory."""
-        _loop = OperatorLoop(session_dir=tmp_path)
+        loop = OperatorLoop(session_dir=tmp_path)
 
         loop.run_single(point_id="pt_D", device=0, sample_rate=48000, duration=2.5)
 
@@ -290,7 +290,7 @@ class TestRunSingleWarnPath:
 
     def test_run_single_warn_returns_success(self, tmp_path, patch_with_warn):
         """run_single with WARN verdict still succeeds."""
-        _loop = OperatorLoop(session_dir=tmp_path)
+        loop = OperatorLoop(session_dir=tmp_path)
 
         result = loop.run_single(
             point_id="warn_point",
@@ -314,7 +314,7 @@ class TestRunSingleFailPath:
 
     def test_run_single_fail_returns_failure(self, tmp_path, patch_with_fail):
         """run_single with FAIL verdict returns failure."""
-        _loop = OperatorLoop(session_dir=tmp_path)
+        loop = OperatorLoop(session_dir=tmp_path)
 
         result = loop.run_single(
             point_id="fail_point",
@@ -329,7 +329,7 @@ class TestRunSingleFailPath:
 
     def test_run_single_fail_still_saves_artifacts(self, tmp_path, patch_with_fail):
         """Failed attempts still save their artifacts."""
-        _loop = OperatorLoop(session_dir=tmp_path)
+        loop = OperatorLoop(session_dir=tmp_path)
 
         loop.run_single(point_id="fail_save", device=0, sample_rate=48000, duration=2.5)
 
@@ -364,7 +364,7 @@ class TestRetryBehavior:
         monkeypatch.setattr(ol_module, "analyze_tap", _fake_analyze_tap)
         monkeypatch.setattr(ol_module, "check_quality", check_first_fail)
 
-        _loop = OperatorLoop(session_dir=tmp_path)
+        loop = OperatorLoop(session_dir=tmp_path)
 
         # First two attempts fail
         r1 = loop.run_single("retry_pt", 0, 48000, 2.5)
@@ -391,7 +391,7 @@ class TestOverrideBehavior:
 
     def test_override_failed_succeeds(self, tmp_path, patch_with_fail):
         """override_failed marks failed attempt as overridden."""
-        _loop = OperatorLoop(session_dir=tmp_path)
+        loop = OperatorLoop(session_dir=tmp_path)
 
         result = loop.run_single("override_pt", 0, 48000, 2.5)
         assert result.succeeded is False
@@ -408,7 +408,7 @@ class TestOverrideBehavior:
 
     def test_override_nonexistent_returns_none(self, tmp_path, patch_all_passing):
         """override_failed returns None for nonexistent point."""
-        _loop = OperatorLoop(session_dir=tmp_path)
+        loop = OperatorLoop(session_dir=tmp_path)
 
         result = loop.override_failed(
             point_id="no_such_point",
@@ -419,7 +419,7 @@ class TestOverrideBehavior:
 
     def test_override_passed_returns_none(self, tmp_path, patch_all_passing):
         """override_failed returns None for passed attempt."""
-        _loop = OperatorLoop(session_dir=tmp_path)
+        loop = OperatorLoop(session_dir=tmp_path)
 
         loop.run_single("pass_pt", 0, 48000, 2.5)
 
@@ -432,7 +432,7 @@ class TestOverrideBehavior:
 
     def test_override_requires_reason(self, tmp_path, patch_with_fail):
         """override_failed raises ValueError for empty reason."""
-        _loop = OperatorLoop(session_dir=tmp_path)
+        loop = OperatorLoop(session_dir=tmp_path)
 
         loop.run_single("reason_test", 0, 48000, 2.5)
 
@@ -455,7 +455,7 @@ class TestStateTracking:
         def callback(state, data):
             states_seen.append(state)
 
-        _loop = OperatorLoop(session_dir=tmp_path, callback=callback)
+        loop = OperatorLoop(session_dir=tmp_path, callback=callback)
         loop.run_single("cb_test", 0, 48000, 2.5)
 
         # Should see: PREFLIGHT, READY, CAPTURING, ANALYZING, GATING, PASSED
@@ -477,7 +477,7 @@ class TestLoopResult:
 
     def test_loop_result_from_success(self, tmp_path, patch_all_passing):
         """LoopResult contains correct fields on success."""
-        _loop = OperatorLoop(session_dir=tmp_path)
+        loop = OperatorLoop(session_dir=tmp_path)
 
         result = loop.run_single("lr_test", 0, 48000, 2.5)
 
@@ -492,7 +492,7 @@ class TestLoopResult:
 
     def test_loop_result_from_failure(self, tmp_path, patch_with_fail):
         """LoopResult contains correct fields on failure."""
-        _loop = OperatorLoop(session_dir=tmp_path)
+        loop = OperatorLoop(session_dir=tmp_path)
 
         result = loop.run_single("lr_fail", 0, 48000, 2.5)
 

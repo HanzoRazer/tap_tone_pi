@@ -99,7 +99,7 @@ def main() -> None:
         idxs = sorted([int(c["index"]) for c in listed])
         if idxs != list(range(ch_decl)):
             raise SystemExit(
-                f"[FAIL] channels.json indices {idxs} must cover 0..{ch_decl-1}"
+                f"[FAIL] channels.json indices {idxs} must cover 0..{ch_decl - 1}"
             )
 
     print("[OK] Bundle valid.")

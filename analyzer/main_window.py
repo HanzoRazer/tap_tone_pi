@@ -632,7 +632,7 @@ class MainWindow(QMainWindow):
             self.statusbar.showMessage(
                 f"Wood: {props.radiation_coefficient:.1f} R-coeff, "
                 f"Grade {props.quality_grade}, "
-                f"{props.confidence*100:.0f}% confidence"
+                f"{props.confidence * 100:.0f}% confidence"
             )
 
         except Exception as e:

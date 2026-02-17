@@ -348,9 +348,9 @@ class TestGracefulFailure:
 
         shadow = tmp_path / "spine_shadow.jsonl"
         lines = shadow.read_text(encoding="utf-8").strip().splitlines()
-        assert (
-            len(lines) >= 2
-        ), f"Expected >=2 shadow lines for 2 attempts, got {len(lines)}"
+        assert len(lines) >= 2, (
+            f"Expected >=2 shadow lines for 2 attempts, got {len(lines)}"
+        )
 
 
 # =========================================================================
@@ -371,9 +371,9 @@ class TestM1AdvisoryPopulation:
         # A PASS run emits analysis_completed which triggers a moment;
         # M1 should produce a directive (advisory != None)
         if rec["moment"]["id"] != "NONE":
-            assert (
-                rec["advisory"] is not None
-            ), "M1 should populate advisory when a moment is detected"
+            assert rec["advisory"] is not None, (
+                "M1 should populate advisory when a moment is detected"
+            )
 
     def test_advisory_has_action(self, tmp_path, patch_passing):
         """Advisory action must be a known policy action string."""
@@ -393,9 +393,9 @@ class TestM1AdvisoryPopulation:
                 "ABORT",
                 "NONE",
             }
-            assert (
-                rec["advisory"]["action"] in allowed
-            ), f"Unexpected action: {rec['advisory']['action']}"
+            assert rec["advisory"]["action"] in allowed, (
+                f"Unexpected action: {rec['advisory']['action']}"
+            )
 
     def test_advisory_has_summary(self, tmp_path, patch_passing):
         """Advisory summary must be a non-empty string."""

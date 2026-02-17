@@ -493,7 +493,7 @@ Examples:
         print(json.dumps(output, indent=2))
     else:
         print("\nViewer Pack Diff Complete")
-        print(f"{'='*40}")
+        print(f"{'=' * 40}")
         print(f"Baseline: {args.baseline.name}")
         print(f"Modified: {args.modified.name}")
         print(f"Shared points: {len(result.shared_points)}")

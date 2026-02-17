@@ -179,7 +179,7 @@ def estimate_stiffness_from_frequency(
     # E = (f * 2π * L² / λ²)² * (ρ * A / I)
 
     omega = 2 * np.pi * fundamental_hz
-    E = (omega * length_m**2 / lambda_n**2) ** 2 * (density_kg_m3 * A / I)
+    E = (omega * length_m**2 / lambda_n**2) ** 2 * (density_kg_m3 * A / moment_I)
 
     return E / 1e9  # Convert to GPa
 

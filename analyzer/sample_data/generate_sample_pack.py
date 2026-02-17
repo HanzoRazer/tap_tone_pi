@@ -111,7 +111,7 @@ def generate_peaks_data(spectrum_data: dict) -> list:
                 "freq_hz": float(freq_hz[idx]),
                 "magnitude": float(magnitude[idx]),
                 "coherence": float(coherence[idx]),
-                "mode": f"Mode {i+1}" if i > 0 else "Fundamental",
+                "mode": f"Mode {i + 1}" if i > 0 else "Fundamental",
                 "q_factor": float(np.random.uniform(30, 100)),
             }
         )

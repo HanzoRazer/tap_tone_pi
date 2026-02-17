@@ -42,7 +42,7 @@ def _make_synthetic_sweep(
         # Add a burst at this frequency with some decay
         burst_duration = 0.3
         burst_samples = int(sample_rate * burst_duration)
-        burst__t = np.arange(burst_samples, dtype=np.float32) / sample_rate
+        burst_t = np.arange(burst_samples, dtype=np.float32) / sample_rate
 
         # Resonant response (damped sinusoid)
         decay = np.exp(-freq / q * burst_t)
@@ -117,9 +117,9 @@ class TestChladniPeakExtraction:
                     matches += 1
                     break
 
-        assert (
-            matches >= 1
-        ), f"Should detect at least 1 target frequency. Detected: {detected}"
+        assert matches >= 1, (
+            f"Should detect at least 1 target frequency. Detected: {detected}"
+        )
 
     def test_empty_wav_returns_no_peaks(self, tmp_path):
         """Peak extraction handles silence gracefully."""
@@ -140,7 +140,7 @@ class TestChladniPeakExtraction:
         """Peak extraction finds a single pure tone."""
         sample_rate = 48000
         freq = 440.0
-        _t = np.arange(sample_rate, dtype=np.float32) / sample_rate
+        t = np.arange(sample_rate, dtype=np.float32) / sample_rate
         audio = (0.5 * np.sin(2.0 * np.pi * freq * t)).astype(np.float32)
 
         wav_path = tmp_path / "tone.wav"
@@ -158,7 +158,7 @@ class TestChladniPeakExtraction:
         sample_rate = 48000
 
         # Create signal with peaks at 100 Hz and 500 Hz
-        _t = np.arange(sample_rate, dtype=np.float32) / sample_rate
+        t = np.arange(sample_rate, dtype=np.float32) / sample_rate
         audio = (
             0.5 * np.sin(2.0 * np.pi * 100.0 * t)
             + 0.5 * np.sin(2.0 * np.pi * 500.0 * t)
@@ -185,7 +185,7 @@ class TestChladniWavRoundtrip:
         """WAV write/read preserves signal for peak detection."""
         sample_rate = 48000
         freq = 185.0
-        _t = np.arange(sample_rate, dtype=np.float32) / sample_rate
+        t = np.arange(sample_rate, dtype=np.float32) / sample_rate
         original = (0.5 * np.sin(2.0 * np.pi * freq * t)).astype(np.float32)
 
         wav_path = tmp_path / "roundtrip.wav"
@@ -203,7 +203,7 @@ class TestChladniWavRoundtrip:
         target_freq = 440.0
 
         for sr in [44100, 48000]:
-            _t = np.arange(sr, dtype=np.float32) / sr
+            t = np.arange(sr, dtype=np.float32) / sr
             audio = (0.5 * np.sin(2.0 * np.pi * target_freq * t)).astype(np.float32)
 
             wav_path = tmp_path / f"tone_{sr}.wav"
@@ -244,6 +244,6 @@ class TestChladniOutputStructure:
         detected = _extract_peaks_from_wav(wav_path, min_hz=min_hz, max_hz=max_hz)
 
         for peak in detected:
-            assert (
-                min_hz <= peak <= max_hz
-            ), f"Peak {peak} outside band [{min_hz}, {max_hz}]"
+            assert min_hz <= peak <= max_hz, (
+                f"Peak {peak} outside band [{min_hz}, {max_hz}]"
+            )

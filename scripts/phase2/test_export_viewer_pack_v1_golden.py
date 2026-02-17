@@ -151,9 +151,9 @@ class TestGoldenExport:
         _, manifest = exported_pack
 
         for entry in manifest["files"]:
-            assert (
-                entry["kind"] in VALID_KINDS
-            ), f"Invalid kind '{entry['kind']}' for {entry['relpath']}"
+            assert entry["kind"] in VALID_KINDS, (
+                f"Invalid kind '{entry['kind']}' for {entry['relpath']}"
+            )
 
     def test_points_list_matches_audio(self, exported_pack):
         """points[] must match audio files."""
@@ -168,9 +168,9 @@ class TestGoldenExport:
         }
         manifest_points = set(manifest["points"])
 
-        assert (
-            audio_points == manifest_points
-        ), f"Points mismatch: {audio_points} vs {manifest_points}"
+        assert audio_points == manifest_points, (
+            f"Points mismatch: {audio_points} vs {manifest_points}"
+        )
 
     def test_measurement_only_flag(self, exported_pack):
         """measurement_only must be True."""
@@ -201,9 +201,9 @@ class TestGoldenExport:
         ods_files = [e for e in manifest["files"] if e["relpath"].startswith("ods/")]
         assert len(ods_files) > 0, "No ODS files found in pack"
         for entry in ods_files:
-            assert (
-                entry["kind"] == "transfer_function"
-            ), f"ODS should be transfer_function, got {entry['kind']}"
+            assert entry["kind"] == "transfer_function", (
+                f"ODS should be transfer_function, got {entry['kind']}"
+            )
 
 
 class TestBothSessionsExportIdentically:

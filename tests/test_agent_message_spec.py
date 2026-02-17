@@ -41,9 +41,9 @@ class TestRuleSpecs:
         """All actions in rule specs must be valid ActionIds."""
         for rule_id, spec in RULE_SPECS.items():
             for action in spec.agent_actions:
-                assert isinstance(
-                    action.action_id, ActionId
-                ), f"Invalid action_id in {rule_id}: {action.action_id}"
+                assert isinstance(action.action_id, ActionId), (
+                    f"Invalid action_id in {rule_id}: {action.action_id}"
+                )
                 assert len(action.label) > 0
                 assert len(action.rationale) > 0
 
