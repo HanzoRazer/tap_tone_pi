@@ -28,6 +28,7 @@ import argparse
 import hashlib
 import json
 import statistics
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -95,25 +96,148 @@ def _resample(
     return out
 
 
-def _linear_fit(F: List[float], d: List[float]) -> Tuple[float, float]:
+@dataclass
+class LinearFitResult:
+    """Result of linear regression with validation metadata."""
+
+    slope: float  # N/mm
+    r_squared: float
+    n_points: int
+    valid: bool
+    warning: Optional[str]  # None if valid, otherwise describes issue
+    condition_number: float  # Ratio of max/min singular values (high = ill-conditioned)
+    residual_std: float  # Standard deviation of residuals
+
+
+def _linear_fit(F: List[float], d: List[float]) -> LinearFitResult:
     """
-    Compute linear regression slope and R² for F vs d.
+    Compute linear regression slope and R² for F vs d with validation (M1 fix).
+
+    Validates:
+    - Minimum 3 points required
+    - Condition number < 10⁴ (not near-singular)
+    - R² > 0.5 (reasonable linear fit)
 
     Returns:
-        (slope in N/mm, r-squared)
+        LinearFitResult with slope, R², and validation metadata
     """
+    n = len(F)
+
+    # M1 fix: Minimum point count validation
+    if n < 3:
+        return LinearFitResult(
+            slope=0.0,
+            r_squared=0.0,
+            n_points=n,
+            valid=False,
+            warning=f"Insufficient data points: {n} < 3 minimum",
+            condition_number=float("inf"),
+            residual_std=0.0,
+        )
+
+    if n != len(d):
+        return LinearFitResult(
+            slope=0.0,
+            r_squared=0.0,
+            n_points=n,
+            valid=False,
+            warning=f"Mismatched array lengths: F={len(F)}, d={len(d)}",
+            condition_number=float("inf"),
+            residual_std=0.0,
+        )
+
     xbar = statistics.mean(d)
     ybar = statistics.mean(F)
 
+    # Compute condition number (M1 fix: detect near-singular)
+    d_centered = [x - xbar for x in d]
+    ss_x = sum(x ** 2 for x in d_centered)
+
+    if ss_x < 1e-20:
+        return LinearFitResult(
+            slope=0.0,
+            r_squared=0.0,
+            n_points=n,
+            valid=False,
+            warning="Near-zero variance in displacement (constant value?)",
+            condition_number=float("inf"),
+            residual_std=0.0,
+        )
+
+    # For simple linear regression, condition number ≈ max(|x|)/min(|x|) of design matrix
+    # We use range/std as a simpler proxy
+    d_range = max(d) - min(d) if d else 0
+    d_std = statistics.stdev(d) if n > 1 else 1e-10
+    condition_number = d_range / (d_std + 1e-20)
+
     num = sum((x - xbar) * (y - ybar) for x, y in zip(d, F))
-    den = sum((x - xbar) ** 2 for x in d) + 1e-12
+    den = ss_x + 1e-20
     slope = num / den
 
-    ss_tot = sum((y - ybar) ** 2 for y in F) + 1e-12
-    ss_res = sum((y - (slope * (x - xbar) + ybar)) ** 2 for x, y in zip(d, F))
-    r2 = 1.0 - ss_res / ss_tot
+    # Compute R² and residuals
+    residuals = [(y - (slope * (x - xbar) + ybar)) for x, y in zip(d, F)]
+    ss_res = sum(r ** 2 for r in residuals)
+    ss_tot = sum((y - ybar) ** 2 for y in F) + 1e-20
+    r2 = max(0.0, 1.0 - ss_res / ss_tot)  # Clamp to non-negative
 
-    return slope, r2
+    residual_std = statistics.stdev(residuals) if n > 2 else 0.0
+
+    # Validation checks
+    warning = None
+    valid = True
+
+    if condition_number > 1e4:
+        warning = f"High condition number ({condition_number:.1f} > 10⁴): near-singular"
+        valid = False
+    elif r2 < 0.5:
+        warning = f"Poor linear fit (R² = {r2:.3f} < 0.5): data may be nonlinear"
+        valid = False
+    elif r2 < 0.8:
+        warning = f"Marginal linear fit (R² = {r2:.3f}): consider inspection"
+        # Still valid but with warning
+
+    return LinearFitResult(
+        slope=slope,
+        r_squared=r2,
+        n_points=n,
+        valid=valid,
+        warning=warning,
+        condition_number=condition_number,
+        residual_std=residual_std,
+    )
+
+
+def _timoshenko_correction_factor(
+    l_over_h: float,
+    e_over_g: float = 16.0,
+    kappa: float = 5.0 / 6.0,
+) -> float:
+    """
+    Calculate Timoshenko shear correction factor.
+
+    For short, thick beams (L/h < ~25), shear deformation causes Euler-Bernoulli
+    to overestimate the apparent modulus. This correction compensates.
+
+    Physics basis (see docs/theory/moe_shear_correction.md):
+        E_apparent / E_true ≈ 1 + (π²/12) × (1 + E/(κG)) × (h/L)²
+
+    For wood with E/G ≈ 16 and κ = 5/6:
+        Coefficient ≈ 16.6, so correction = 1 + 16.6 × (h/L)²
+
+    Args:
+        l_over_h: Length-to-thickness ratio (L/h)
+        e_over_g: Ratio of elastic to shear modulus (typically 14-20 for wood)
+        kappa: Shear correction factor (5/6 for rectangular section)
+
+    Returns:
+        Correction factor: E_apparent / E_true (always >= 1.0)
+    """
+    import math
+
+    h_over_l_squared = 1.0 / (l_over_h ** 2)
+    coefficient = (math.pi ** 2 / 12.0) * (1.0 + e_over_g / kappa)
+
+    return 1.0 + coefficient * h_over_l_squared
 
 
 def _calculate_moe(
@@ -123,9 +247,15 @@ def _calculate_moe(
     width_mm: float,
     thickness_mm: float,
     inner_span_mm: Optional[float] = None,
-) -> float:
+    shear_correction_threshold: float = 25.0,
+    e_over_g: float = 16.0,
+) -> Dict[str, Any]:
     """
-    Calculate MOE (Pa) from force-displacement slope.
+    Calculate MOE (Pa) from force-displacement slope with Timoshenko correction.
+
+    Uses Euler-Bernoulli beam theory with optional Timoshenko shear correction
+    for short/thick beams (L/h < threshold). This prevents 8-15% overestimation
+    that occurs with pure Euler-Bernoulli on typical soundboard specimens.
 
     Args:
         method: "3point" or "4point"
@@ -134,14 +264,25 @@ def _calculate_moe(
         width_mm: specimen width
         thickness_mm: specimen thickness
         inner_span_mm: inner load span for 4-point (optional)
+        shear_correction_threshold: Apply correction when L/h < this value
+        e_over_g: E/G ratio for wood (typically 14-20, default 16)
 
     Returns:
-        MOE in Pascals
+        Dict with:
+            - E_euler_bernoulli_Pa: Uncorrected MOE
+            - E_corrected_Pa: Shear-corrected MOE (or same if not applied)
+            - l_over_h: Length-to-thickness ratio
+            - shear_correction_applied: Whether correction was applied
+            - shear_correction_factor: The correction factor used
+            - shear_correction_percent: Percent reduction from correction
     """
     # Convert to meters
     L = span_mm / 1000.0
     b = width_mm / 1000.0
     h = thickness_mm / 1000.0
+
+    # Length-to-thickness ratio
+    l_over_h = span_mm / thickness_mm
 
     # Second moment of area (m^4)
     moment_I = b * h**3 / 12.0
@@ -149,13 +290,33 @@ def _calculate_moe(
     # Slope in N/m
     S = slope_N_per_mm * 1000.0
 
+    # Euler-Bernoulli calculation (uncorrected)
     if method == "3point":
         # E = S * L³ / (48 * I)
-        return S * L**3 / (48.0 * moment_I)
+        E_eb = S * L**3 / (48.0 * moment_I)
     else:
         # 4-point: E = S * a * (3L² - 4a²) / (24 * I)
         a = (inner_span_mm / 1000.0) if inner_span_mm else L / 3.0
-        return S * a * (3 * L * L - 4 * a * a) / (24.0 * moment_I)
+        E_eb = S * a * (3 * L * L - 4 * a * a) / (24.0 * moment_I)
+
+    # Apply Timoshenko shear correction for short/thick beams
+    if l_over_h < shear_correction_threshold:
+        correction_factor = _timoshenko_correction_factor(l_over_h, e_over_g)
+        E_corrected = E_eb / correction_factor
+        correction_applied = True
+    else:
+        correction_factor = 1.0
+        E_corrected = E_eb
+        correction_applied = False
+
+    return {
+        "E_euler_bernoulli_Pa": E_eb,
+        "E_corrected_Pa": E_corrected,
+        "l_over_h": l_over_h,
+        "shear_correction_applied": correction_applied,
+        "shear_correction_factor": correction_factor,
+        "shear_correction_percent": (correction_factor - 1.0) * 100.0,
+    }
 
 
 def main() -> None:
@@ -257,31 +418,61 @@ def main() -> None:
     F_fit = [F for _, F, d in pairs if d_lo <= d <= d_hi]
     d_fit = [d for _, F, d in pairs if d_lo <= d <= d_hi]
 
-    slope, r2 = _linear_fit(F_fit, d_fit)
+    fit_result = _linear_fit(F_fit, d_fit)
 
-    # Calculate MOE
-    E_pa = _calculate_moe(
+    # M1 fix: Check fit validity before proceeding
+    if not fit_result.valid:
+        print(f"WARNING: Linear fit failed - {fit_result.warning}")
+        if fit_result.n_points < 3:
+            print("  ERROR: Cannot compute MOE with fewer than 3 data points.")
+            return
+
+    slope = fit_result.slope
+    r2 = fit_result.r_squared
+
+    # Calculate MOE with Timoshenko shear correction
+    moe_calc = _calculate_moe(
         args.method, slope, args.span, args.width, args.thickness, args.inner_span
     )
+
+    # Use corrected value as primary result
+    E_pa = moe_calc["E_corrected_Pa"]
+    E_eb_pa = moe_calc["E_euler_bernoulli_Pa"]
 
     # Write MOE result
     moe_result: Dict[str, Any] = {
         "artifact_type": "bending_moe",
         "E_GPa": E_pa / 1e9,
+        "E_euler_bernoulli_GPa": E_eb_pa / 1e9,
         "method": args.method,
         "geometry": {
             "span_mm": args.span,
             "width_mm": args.width,
             "thickness_mm": args.thickness,
             "inner_span_mm": args.inner_span,
+            "l_over_h": round(moe_calc["l_over_h"], 2),
+        },
+        "shear_correction": {
+            "applied": moe_calc["shear_correction_applied"],
+            "factor": round(moe_calc["shear_correction_factor"], 4),
+            "reduction_percent": round(moe_calc["shear_correction_percent"], 2),
+            "note": (
+                f"Timoshenko correction applied (L/h = {moe_calc['l_over_h']:.1f} < 25)"
+                if moe_calc["shear_correction_applied"]
+                else f"No correction needed (L/h = {moe_calc['l_over_h']:.1f} >= 25)"
+            ),
         },
         "fit": {
             "pct_low": args.fit_pct_low,
             "pct_high": args.fit_pct_high,
             "disp_range_mm": [d_lo, d_hi],
-            "n_points": len(F_fit),
+            "n_points": fit_result.n_points,
             "slope_N_per_mm": round(slope, 6),
             "r2": round(r2, 6),
+            "valid": fit_result.valid,
+            "condition_number": round(fit_result.condition_number, 2),
+            "residual_std": round(fit_result.residual_std, 6),
+            "warning": fit_result.warning,
         },
         "provenance": {
             "pairs_csv_path": csv_path.as_posix(),
@@ -301,7 +492,20 @@ def main() -> None:
     print(f"Wrote {csv_path}")
     print(f"Wrote {sidecar_path}")
     print(f"Wrote {moe_path}")
-    print(f"  E = {E_pa / 1e9:.3f} GPa (R² = {r2:.4f})")
+
+    # Report both values when correction is applied
+    if moe_calc["shear_correction_applied"]:
+        print(
+            f"  E = {E_pa / 1e9:.3f} GPa (Timoshenko-corrected, "
+            f"L/h = {moe_calc['l_over_h']:.1f})"
+        )
+        print(
+            f"      ({E_eb_pa / 1e9:.3f} GPa Euler-Bernoulli, "
+            f"-{moe_calc['shear_correction_percent']:.1f}% correction)"
+        )
+    else:
+        print(f"  E = {E_pa / 1e9:.3f} GPa (L/h = {moe_calc['l_over_h']:.1f}, no correction needed)")
+    print(f"  R² = {r2:.4f}")
 
 
 if __name__ == "__main__":

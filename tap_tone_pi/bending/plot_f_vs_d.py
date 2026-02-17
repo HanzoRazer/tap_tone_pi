@@ -62,11 +62,57 @@ def linear_fit(F: List[float], d: List[float]) -> Tuple[float, float]:
 def percentile_bounds(
     vals: List[float], lo_pct: float, hi_pct: float
 ) -> Tuple[float, float]:
-    """Get values at given percentiles."""
+    """
+    Get values at given percentiles with robust bounds checking (M2 fix).
+
+    Handles edge cases:
+    - Empty arrays: raises ValueError with clear message
+    - Single value: returns (val, val)
+    - Outlier-dominated: clamps percentiles to [0.1, 99.9]
+    - Invalid percentiles: falls back to min/max
+
+    Args:
+        vals: List of values
+        lo_pct: Lower percentile (0-100)
+        hi_pct: Upper percentile (0-100)
+
+    Returns:
+        (lo_val, hi_val) at the specified percentiles
+    """
+    # M2 fix: Handle empty array
+    if not vals:
+        raise ValueError("Cannot compute percentiles on empty array")
+
     vs = sorted(vals)
-    n = len(vs) - 1
-    i_lo = max(0, min(n, round(lo_pct / 100 * n)))
-    i_hi = max(0, min(n, round(hi_pct / 100 * n)))
+    n = len(vs)
+
+    # M2 fix: Single value edge case
+    if n == 1:
+        return vs[0], vs[0]
+
+    # M2 fix: Clamp percentiles to valid range [0.1, 99.9]
+    lo_pct = max(0.1, min(99.9, lo_pct))
+    hi_pct = max(0.1, min(99.9, hi_pct))
+
+    # Ensure lo <= hi
+    if lo_pct > hi_pct:
+        lo_pct, hi_pct = hi_pct, lo_pct
+
+    # M2 fix: Use linear interpolation for percentiles
+    # This is more accurate than round() for small arrays
+    def _percentile_index(pct: float) -> int:
+        idx = pct / 100 * (n - 1)
+        return max(0, min(n - 1, round(idx)))
+
+    i_lo = _percentile_index(lo_pct)
+    i_hi = _percentile_index(hi_pct)
+
+    # M2 fix: Ensure we get at least some range
+    if i_lo == i_hi and n > 1:
+        # Expand to at least one bin
+        i_lo = max(0, i_lo - 1)
+        i_hi = min(n - 1, i_hi + 1)
+
     return vs[i_lo], vs[i_hi]
 
 

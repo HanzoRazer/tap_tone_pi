@@ -60,9 +60,10 @@ class TriggerConfig:
     post_trigger_seconds: float = 2.5  # Recording duration after trigger
     timeout_seconds: float = 30.0  # Maximum wait time for trigger
 
-    # Settling
+    # Settling (M3 fix: configurable ADC settling)
     baseline_samples: int = 10  # Number of chunks to establish baseline
     settle_ms: int = 200  # Settling time after start before arming
+    discard_initial_ms: int = 50  # M3 fix: Discard first N ms for ADC settling
 
     def __post_init__(self):
         """Validate configuration."""
@@ -74,6 +75,8 @@ class TriggerConfig:
             raise ValueError("pre_trigger_ms must be >= 0")
         if self.post_trigger_seconds <= 0:
             raise ValueError("post_trigger_seconds must be > 0")
+        if self.discard_initial_ms < 0:
+            raise ValueError("discard_initial_ms must be >= 0")
 
 
 @dataclass
@@ -143,6 +146,8 @@ class AutoTriggerDetector:
         )
         self._post_trigger_samples = int(sample_rate * self.config.post_trigger_seconds)
         self._settle_chunks = max(1, self.config.settle_ms // self.config.chunk_ms)
+        # M3 fix: Calculate discard chunks for ADC settling
+        self._discard_chunks = max(0, self.config.discard_initial_ms // self.config.chunk_ms)
 
         # State
         self._state = TriggerState.IDLE
@@ -210,8 +215,15 @@ class AutoTriggerDetector:
 
         with self._lock:
             if self._state == TriggerState.LISTENING:
-                # Update baseline during settling period
-                if self._chunks_received <= self._settle_chunks:
+                # M3 fix: Discard initial samples for ADC settling
+                if self._chunks_received <= self._discard_chunks:
+                    # Don't use these samples for baseline or pre-buffer
+                    # ADC may have DC offset drift or transient artifacts
+                    return
+
+                # Update baseline during settling period (after discard window)
+                effective_chunk = self._chunks_received - self._discard_chunks
+                if effective_chunk <= self._settle_chunks:
                     self._rms_history.append(current_rms)
                     self._baseline_rms = float(np.mean(self._rms_history))
                     self._pre_buffer.append(audio.copy())
