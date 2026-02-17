@@ -119,20 +119,37 @@ Where:
 - No damping information
 - Requires accurate measurements
 
-**Command:**
+**Command (recommended — Gore-style module with multi-point fit):**
 ```bash
-# Single measurement
-python -m modes.bending_stiffness.deflection_to_moe \
-  --method 3point \
-  --span 400 \
-  --width 20 \
-  --thickness 3.0 \
-  --force 4.9 \
-  --deflection 2.5 \
-  --density 0.42
+# Multi-point fit (recommended for stability)
+python -m tap_tone_pi.tonewood_deflection \
+  --span_mm 400 --width_mm 30 --thick_mm 3.0 \
+  --loads_N 5 10 15 --defl_mm 0.5 1.0 1.5 \
+  --strip_len_mm 450 --strip_mass_g 18.0
 
-# Batch from CSV
-python -m modes.bending_stiffness.deflection_to_moe --csv deflection_runs.csv
+# With thickness targeting (Gore method)
+python -m tap_tone_pi.tonewood_deflection \
+  --span_mm 400 --width_mm 30 --thick_mm 3.0 \
+  --loads_N 10 --defl_mm 1.0 \
+  --href_mm 2.8 --eref_GPa 12.0
+
+# From CSV (supports two schemas)
+python -m tap_tone_pi.tonewood_deflection \
+  --csv measurements.csv \
+  --span_mm 400 --width_mm 30 --thick_mm 3.0
+
+# JSON output for automation
+python -m tap_tone_pi.tonewood_deflection \
+  --span_mm 400 --width_mm 30 --thick_mm 3.0 \
+  --loads_N 5 10 15 --defl_mm 0.5 1.0 1.5 \
+  --json result.json
+```
+
+**Legacy command (single-point only):**
+```bash
+python -m modes.bending_stiffness.deflection_to_moe \
+  --method 3point --span 400 --width 20 --thickness 3.0 \
+  --force 4.9 --deflection 2.5 --density 0.42
 ```
 
 ---
@@ -296,22 +313,20 @@ ttp capture --auto-trigger --output ./session
 ttp gold-run --auto-trigger --output ./session
 ```
 
-### Deflection Calculation
+### Deflection Calculation (Gore-Style)
 ```bash
-# Single measurement (3-point)
-python -m modes.bending_stiffness.deflection_to_moe \
-  --method 3point \
-  --span 400 \
-  --width 50 \
-  --thickness 3.0 \
-  --force 9.81 \
-  --deflection 2.0 \
-  --density 0.42
+# Multi-point fit (recommended)
+python -m tap_tone_pi.tonewood_deflection \
+  --span_mm 400 --width_mm 30 --thick_mm 3.0 \
+  --loads_N 5 10 15 20 --defl_mm 0.5 1.0 1.5 2.0
 
-# Batch from CSV
-python -m modes.bending_stiffness.deflection_to_moe \
-  --csv my_measurements.csv \
-  --out results.csv
+# With density + thickness targeting
+python -m tap_tone_pi.tonewood_deflection \
+  --span_mm 400 --width_mm 30 --thick_mm 3.0 \
+  --loads_N 5 10 15 --defl_mm 0.5 1.0 1.5 \
+  --strip_len_mm 450 --strip_mass_g 18.0 \
+  --href_mm 2.8 --eref_GPa 12.0 \
+  --json result.json
 ```
 
 ### Output Files
