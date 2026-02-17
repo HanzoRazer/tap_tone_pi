@@ -22,7 +22,7 @@ warnings.warn(
 )
 
 # Re-export all public symbols from canonical location
-from tap_tone_pi.bending.merge_and_moe import ( # noqa: E402
+from tap_tone_pi.bending.merge_and_moe import (   # noqa: E402
     main,
     _sha256,
     _load_series,

@@ -98,7 +98,7 @@ class TestActionEscalation:
 
         actions = select_actions_for_verdict("warn", ["Q011"], ctx)
         # Should suggest lowering gain explicitly
-        _ =  " ".join(a.label.lower() for a in actions)
+        _ = " ".join(a.label.lower() for a in actions)
         # Either action_id or label should indicate gain adjustment
         _has_gain_action = any(
             a.action_id == ActionId.ADJUST_GAIN_DOWN or "gain" in a.label.lower()

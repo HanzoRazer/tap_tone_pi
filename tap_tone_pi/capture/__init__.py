@@ -128,7 +128,7 @@ def auto_detect_device() -> int | None:
 
 
 # Auto-trigger support
-from tap_tone_pi.core.auto_trigger import ( # noqa: E402
+from tap_tone_pi.core.auto_trigger import (   # noqa: E402
     TriggerState,
     TriggerConfig,
     TriggerResult,

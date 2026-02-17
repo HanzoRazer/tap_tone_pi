@@ -3,8 +3,8 @@ from __future__ import annotations
 """
 Tiny tone generator for tests (float32 in [-1, 1]).
 """
-import math # noqa: E402
-import numpy as np # noqa: E402
+import math   # noqa: E402
+import numpy as np   # noqa: E402
 
 
 def sine_tone(
