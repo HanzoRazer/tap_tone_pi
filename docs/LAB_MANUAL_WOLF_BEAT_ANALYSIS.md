@@ -180,7 +180,7 @@ Record conditions in session metadata.
 From the captured impulse responses, compute the frequency response function (FRF):
 
 ```python
-from tap_tone.analysis.wolf_beat import analyze_wolf_beat
+from tap_tone.wolf_beat import analyze_wolf_beat
 import numpy as np
 
 # Load transfer function data
@@ -257,7 +257,7 @@ for pair in result.pairs:
 A wolf eliminator adds mass to reduce the frequency split:
 
 ```python
-from tap_tone.analysis.wolf_beat import predict_wolf_severity_change
+from tap_tone.wolf_beat import predict_wolf_severity_change
 
 # Test adding a 5g mass (50% increase in effective mass)
 prediction = predict_wolf_severity_change(
@@ -483,7 +483,7 @@ All measurements must include:
 
 from pathlib import Path
 import numpy as np
-from tap_tone.analysis.wolf_beat import analyze_wolf_beat
+from tap_tone.wolf_beat import analyze_wolf_beat
 
 # Load session data
 session_dir = Path("runs/gold/2026-02-16/violin_01/session_001")

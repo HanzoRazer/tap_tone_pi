@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from tap_tone.analysis.wolf_beat import (
+from tap_tone.wolf_beat import (
     PeakInfo,
     PeakPair,
     WolfBeatResult,
