@@ -269,6 +269,113 @@ def ledger_has_blank_lines(path: Path) -> bool:
     return any((ln == "" or ln.strip() == "") for ln in lines)
 
 
+
+def _gather_malformed_lines(lines: list[str], nonblank_indexes: list[int]) -> list[dict]:
+    """Gather malformed lines with their indexes and tags."""
+    malformed: list[dict[str, Any]] = []
+    for i in nonblank_indexes:
+        ln = lines[i]
+        try:
+            json.loads(ln)
+        except json.JSONDecodeError:
+            tag = classify_malformed_jsonl_line(ln)
+            malformed.append({"idx": i, "tag": tag, "line": ln})
+    return malformed
+
+
+def _identify_trailing_malformed(
+    nonblank_indexes: list[int],
+    malformed: list[dict],
+) -> list[int]:
+    """Identify trailing malformed line indexes."""
+    trailing_malformed_idxs: list[int] = []
+    for idx in reversed(nonblank_indexes):
+        if any(m["idx"] == idx for m in malformed):
+            trailing_malformed_idxs.append(idx)
+        else:
+            break
+    return list(reversed(trailing_malformed_idxs))
+
+
+def _check_repair_preconditions(
+    malformed: list[dict],
+    trailing_malformed_idxs: list[int],
+    req: str,
+    max_drop: int,
+) -> Optional[Dict[str, Any]]:
+    """Check if repair is allowed. Returns error dict or None if OK."""
+    bad_tags = sorted({m["tag"] for m in malformed if m["tag"] != req})
+    if bad_tags:
+        return {
+            "repaired": False,
+            "reason": "tags_not_all_match",
+            "required_tag": req,
+            "other_tags": bad_tags,
+            "malformed_count": len(malformed),
+        }
+
+    if not trailing_malformed_idxs:
+        return {"repaired": False, "reason": "no_trailing_malformed_lines"}
+
+    trailing_set = set(trailing_malformed_idxs)
+    outside = [m["idx"] for m in malformed if m["idx"] not in trailing_set]
+    if outside:
+        return {
+            "repaired": False,
+            "reason": "malformed_not_confined_to_eof",
+            "outside_malformed_indexes": sorted(outside),
+            "trailing_malformed_indexes": trailing_malformed_idxs,
+        }
+
+    if len(trailing_malformed_idxs) > max_drop:
+        return {
+            "repaired": False,
+            "reason": "too_many_trailing_malformed_lines",
+            "trailing_malformed_count": len(trailing_malformed_idxs),
+            "max_drop": max_drop,
+            "trailing_malformed_indexes": trailing_malformed_idxs,
+        }
+
+    return None
+
+
+def _perform_ledger_repair(
+    ledger_path: Path,
+    lines: list[str],
+    trailing_malformed_idxs: list[int],
+    backup_suffix: str,
+    req: str,
+) -> Dict[str, Any]:
+    """Perform the actual repair by truncating trailing malformed lines."""
+    backup_path = (
+        ledger_path.with_suffix(ledger_path.suffix + backup_suffix)
+        if ledger_path.suffix
+        else ledger_path.with_name(ledger_path.name + backup_suffix)
+    )
+    backup_path.write_bytes(ledger_path.read_bytes())
+
+    drop_set = set(trailing_malformed_idxs)
+    kept_lines = [ln for i, ln in enumerate(lines) if i not in drop_set]
+
+    repaired_text = "\n".join(kept_lines).rstrip("\n") + "\n"
+    ledger_path.write_text(repaired_text, encoding="utf-8")
+
+    post = scan_all_malformed_jsonl_indexes(ledger_path, sample_k=0, keep_full=False)
+
+    return {
+        "repaired": True,
+        "reason": "auto_repair_truncated_trailing_malformed",
+        "required_tag": req,
+        "backup_path": backup_path.as_posix(),
+        "dropped_line_indexes": trailing_malformed_idxs,
+        "after": {
+            "malformed_count": post["malformed_count"],
+            "nonblank_lines": post["nonblank_lines"],
+            "parseable_lines": post["parseable_lines"],
+        },
+    }
+
+
 def auto_repair_ledger_if_tag(
     ledger_path: Path,
     *,
@@ -280,13 +387,8 @@ def auto_repair_ledger_if_tag(
     """
     Auto-repair strategy:
       - Scan all malformed lines and classify them.
-      - Only proceed if:
-          (a) malformed lines exist
-          (b) EVERY malformed line has classify == required_tag
-          (c) ALL malformed lines are confined to the end-of-file region (i.e., they are the last non-blank lines)
-          (d) count of trailing malformed non-blank lines <= max_drop
-      - Repair action:
-          truncate those trailing malformed non-blank lines
+      - Only proceed if conditions allow repair.
+      - Repair action: truncate trailing malformed non-blank lines.
       - Always writes backup first.
     Returns a dict describing what happened.
     """
@@ -302,97 +404,25 @@ def auto_repair_ledger_if_tag(
         }
 
     lines = ledger_path.read_text(encoding="utf-8", errors="replace").splitlines()
-
-    # Gather non-blank line indexes and parseability
     nonblank_indexes: list[int] = [i for i, ln in enumerate(lines) if ln.strip()]
+
     if not nonblank_indexes:
         return {"repaired": False, "reason": "ledger_empty_or_all_blank"}
 
-    malformed: list[dict[str, Any]] = []
-    for i in nonblank_indexes:
-        ln = lines[i]
-        try:
-            json.loads(ln)
-        except json.JSONDecodeError:
-            tag = classify_malformed_jsonl_line(ln)
-            malformed.append({"idx": i, "tag": tag, "line": ln})
-
+    malformed = _gather_malformed_lines(lines, nonblank_indexes)
     if not malformed:
         return {"repaired": False, "reason": "no_malformed_lines"}
 
-    # Check all tags match required
-    bad_tags = sorted({m["tag"] for m in malformed if m["tag"] != req})
-    if bad_tags:
-        return {
-            "repaired": False,
-            "reason": "tags_not_all_match",
-            "required_tag": req,
-            "other_tags": bad_tags,
-            "malformed_count": len(malformed),
-        }
-
-    # Identify trailing non-blank region
-    # We only allow malformed lines that are the final non-blank lines.
-    trailing_malformed_idxs: list[int] = []
-    for idx in reversed(nonblank_indexes):
-        # if this non-blank line is malformed, keep counting
-        if any(m["idx"] == idx for m in malformed):
-            trailing_malformed_idxs.append(idx)
-        else:
-            break  # hit first good line; stop trailing scan
-
-    trailing_malformed_idxs = list(reversed(trailing_malformed_idxs))  # oldest->newest
-
-    if not trailing_malformed_idxs:
-        return {"repaired": False, "reason": "no_trailing_malformed_lines"}
-
-    # Ensure there are NO malformed lines outside trailing region
-    trailing_set = set(trailing_malformed_idxs)
-    outside = [m["idx"] for m in malformed if m["idx"] not in trailing_set]
-    if outside:
-        return {
-            "repaired": False,
-            "reason": "malformed_not_confined_to_eof",
-            "outside_malformed_indexes": sorted(outside),
-            "trailing_malformed_indexes": trailing_malformed_idxs,
-        }
-
+    trailing_malformed_idxs = _identify_trailing_malformed(nonblank_indexes, malformed)
     max_drop = max(1, int(max_drop))
-    if len(trailing_malformed_idxs) > max_drop:
-        return {
-            "repaired": False,
-            "reason": "too_many_trailing_malformed_lines",
-            "trailing_malformed_count": len(trailing_malformed_idxs),
-            "max_drop": max_drop,
-            "trailing_malformed_indexes": trailing_malformed_idxs,
-        }
 
-    # Backup
-    backup_path = ledger_path.with_suffix(ledger_path.suffix + backup_suffix) if ledger_path.suffix else ledger_path.with_name(ledger_path.name + backup_suffix)
-    backup_path.write_bytes(ledger_path.read_bytes())
+    err = _check_repair_preconditions(malformed, trailing_malformed_idxs, req, max_drop)
+    if err:
+        return err
 
-    # Truncate: remove those trailing malformed lines (preserve others)
-    drop_set = set(trailing_malformed_idxs)
-    kept_lines = [ln for i, ln in enumerate(lines) if i not in drop_set]
-
-    repaired_text = "\n".join(kept_lines).rstrip("\n") + "\n"
-    ledger_path.write_text(repaired_text, encoding="utf-8")
-
-    # Post-scan summary
-    post = scan_all_malformed_jsonl_indexes(ledger_path, sample_k=0, keep_full=False)
-
-    return {
-        "repaired": True,
-        "reason": "auto_repair_truncated_trailing_malformed",
-        "required_tag": req,
-        "backup_path": backup_path.as_posix(),
-        "dropped_line_indexes": trailing_malformed_idxs,
-        "after": {
-            "malformed_count": post["malformed_count"],
-            "nonblank_lines": post["nonblank_lines"],
-            "parseable_lines": post["parseable_lines"],
-        },
-    }
+    return _perform_ledger_repair(
+        ledger_path, lines, trailing_malformed_idxs, backup_suffix, req,
+    )
 
 
 def get_last_malformed_line_preview(path: Path, context_n: int = 0) -> Dict[str, Any]:

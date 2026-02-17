@@ -209,36 +209,9 @@ def open_pack(path: str) -> PackSource:
 # Validation
 # --------------------------
 
-def validate_manifest_shape(manifest: Dict[str, Any]) -> Optional[str]:
-    # additionalProperties:false expectations
-    err = assert_no_extra_keys(manifest, ALLOWED_MANIFEST_KEYS, "manifest")
-    if err:
-        return err
 
-    required = [
-        "schema_version",
-        "schema_id",
-        "created_at_utc",
-        "source_capdir",
-        "detected_phase",
-        "measurement_only",
-        "interpretation",
-        "points",
-        "contents",
-        "files",
-        "bundle_sha256",
-    ]
-    err = assert_required_keys(manifest, required, "manifest")
-    if err:
-        return err
-
-    if manifest.get("schema_version") != "v1":
-        return f"manifest.schema_version must be 'v1', got {manifest.get('schema_version')!r}"
-    if manifest.get("schema_id") != "viewer_pack_v1":
-        return f"manifest.schema_id must be 'viewer_pack_v1', got {manifest.get('schema_id')!r}"
-
-    # contents strict keys
-    contents = manifest.get("contents")
+def _validate_contents_section(contents: Dict[str, Any]) -> Optional[str]:
+    """Validate manifest.contents section."""
     if not isinstance(contents, dict):
         return "manifest.contents must be an object"
     err = assert_no_extra_keys(contents, ALLOWED_CONTENTS_KEYS, "manifest.contents")
@@ -250,9 +223,11 @@ def validate_manifest_shape(manifest: Dict[str, Any]) -> Optional[str]:
     for k, v in contents.items():
         if not isinstance(v, bool):
             return f"manifest.contents.{k} must be boolean, got {type(v).__name__}"
+    return None
 
-    # files entries
-    files = manifest.get("files")
+
+def _validate_files_section(files: Any) -> Optional[str]:
+    """Validate manifest.files section."""
     if not isinstance(files, list):
         return "manifest.files must be an array"
     for i, e in enumerate(files):
@@ -264,21 +239,58 @@ def validate_manifest_shape(manifest: Dict[str, Any]) -> Optional[str]:
         err = assert_required_keys(e, ["relpath", "sha256", "bytes", "mime", "kind"], f"manifest.files[{i}]")
         if err:
             return err
-        if not isinstance(e["relpath"], str):
-            return f"manifest.files[{i}].relpath must be string"
-        rp_err = validate_relpath(e["relpath"])
-        if rp_err:
-            return f"manifest.files[{i}]: {rp_err}"
-        if not isinstance(e["sha256"], str) or len(e["sha256"]) < 16:
-            return f"manifest.files[{i}].sha256 must be string (looks like hash)"
-        if not isinstance(e["bytes"], int) or e["bytes"] < 0:
-            return f"manifest.files[{i}].bytes must be non-negative int"
-        if not isinstance(e["mime"], str) or not e["mime"]:
-            return f"manifest.files[{i}].mime must be non-empty string"
-        if not isinstance(e["kind"], str) or not e["kind"]:
-            return f"manifest.files[{i}].kind must be non-empty string"
+        err = _validate_file_entry_fields(e, i)
+        if err:
+            return err
+    return None
 
-    # points
+
+def _validate_file_entry_fields(e: Dict[str, Any], i: int) -> Optional[str]:
+    """Validate individual file entry fields."""
+    if not isinstance(e["relpath"], str):
+        return f"manifest.files[{i}].relpath must be string"
+    rp_err = validate_relpath(e["relpath"])
+    if rp_err:
+        return f"manifest.files[{i}]: {rp_err}"
+    if not isinstance(e["sha256"], str) or len(e["sha256"]) < 16:
+        return f"manifest.files[{i}].sha256 must be string (looks like hash)"
+    if not isinstance(e["bytes"], int) or e["bytes"] < 0:
+        return f"manifest.files[{i}].bytes must be non-negative int"
+    if not isinstance(e["mime"], str) or not e["mime"]:
+        return f"manifest.files[{i}].mime must be non-empty string"
+    if not isinstance(e["kind"], str) or not e["kind"]:
+        return f"manifest.files[{i}].kind must be non-empty string"
+    return None
+
+
+def validate_manifest_shape(manifest: Dict[str, Any]) -> Optional[str]:
+    # additionalProperties:false expectations
+    err = assert_no_extra_keys(manifest, ALLOWED_MANIFEST_KEYS, "manifest")
+    if err:
+        return err
+
+    required = [
+        "schema_version", "schema_id", "created_at_utc", "source_capdir",
+        "detected_phase", "measurement_only", "interpretation", "points",
+        "contents", "files", "bundle_sha256",
+    ]
+    err = assert_required_keys(manifest, required, "manifest")
+    if err:
+        return err
+
+    if manifest.get("schema_version") != "v1":
+        return f"manifest.schema_version must be 'v1', got {manifest.get('schema_version')!r}"
+    if manifest.get("schema_id") != "viewer_pack_v1":
+        return f"manifest.schema_id must be 'viewer_pack_v1', got {manifest.get('schema_id')!r}"
+
+    err = _validate_contents_section(manifest.get("contents"))
+    if err:
+        return err
+
+    err = _validate_files_section(manifest.get("files"))
+    if err:
+        return err
+
     pts = manifest.get("points")
     if not isinstance(pts, list) or not all(isinstance(x, str) for x in pts):
         return "manifest.points must be an array of strings"

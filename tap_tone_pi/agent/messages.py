@@ -644,6 +644,102 @@ def _merge_actions(
 # Core builder + render helpers
 # -----------------------------------------------------------------------------
 
+
+def _build_details_for_stage(
+    stage: str,
+    top_rules: List,
+    ctx: "AgentContext",
+    verdict_streak_suppress: bool,
+) -> List[str]:
+    """Build details section based on user stage and rules."""
+    details: List[str] = []
+
+    for tr in top_rules:
+        rid = _rule_id(tr)
+        spec = RULE_SPECS.get(rid)
+        if spec is None:
+            sev = "ERROR" if _severity(tr) == Severity.HARD else "WARN"
+            details.append(f"[{sev}] {rid}: {tr.message}")
+            continue
+
+        sev = "ERROR" if spec.severity == Severity.HARD else "WARN"
+
+        if verdict_streak_suppress or ctx.workflow == "phase2":
+            details.append(f"[{sev}] {rid}: {spec.first_fix}")
+            continue
+
+        mode = choose_explanation_mode(ctx, rid)
+        _append_details_for_mode(details, sev, rid, spec, mode, stage)
+
+    return details
+
+
+def _append_details_for_mode(
+    details: List[str],
+    sev: str,
+    rid: str,
+    spec,
+    mode: "ExplanationMode",
+    stage: str,
+) -> None:
+    """Append details based on explanation mode."""
+    if mode == ExplanationMode.COMPACT:
+        details.append(f"[{sev}] {rid}: Same issue — {spec.first_fix}")
+    elif mode == ExplanationMode.SHORT:
+        details.append(f"[{sev}] {rid}: {spec.operator_explanation}")
+    elif stage in ("first_run", "novice"):
+        details.append(f"[{sev}] {rid}: {spec.operator_explanation}")
+        details.append(f"      Fix: {spec.first_fix}")
+    elif stage == "expert":
+        details.append(f"[{sev}] {rid}: {spec.operator_explanation}")
+        details.append(f"      Why: {spec.why_it_matters}")
+        details.append(f"      Fix: {spec.first_fix}  (Fallback: {spec.fallback_fix})")
+    else:
+        details.append(f"[{sev}] {rid}: {spec.operator_explanation}")
+        details.append(f"      Fix: {spec.first_fix}")
+
+
+def _collect_rule_actions(top_rules: List) -> List["SuggestedAction"]:
+    """Collect suggested actions from top rules."""
+    rule_actions: List[SuggestedAction] = []
+    for tr in top_rules:
+        rid = _rule_id(tr)
+        spec = RULE_SPECS.get(rid)
+        if spec:
+            rule_actions.extend(spec.actions)
+    return rule_actions
+
+
+def _build_summary_text(tpl, ctx: "AgentContext") -> str:
+    """Build summary text with point/attempt info."""
+    summary = tpl.summary
+    if ctx.point_id:
+        summary = f"{summary} (Point: {ctx.point_id}, attempt {ctx.attempt_num}/{max(ctx.max_attempts, 1)})"
+    elif ctx.max_attempts > 1:
+        summary = f"{summary} (Attempt {ctx.attempt_num}/{ctx.max_attempts})"
+    return summary
+
+
+def _build_telemetry_tuple(
+    rule_ids: List[str],
+    verdict: "QualityVerdict",
+    stage: str,
+    ctx: "AgentContext",
+) -> tuple:
+    """Build telemetry tags tuple."""
+    return (
+        ("rule_ids", tuple(rule_ids)),
+        ("verdict", verdict.verdict.value),
+        ("user_stage", stage),
+        ("workflow", ctx.workflow),
+        ("attempt_num", ctx.attempt_num),
+        ("max_attempts", ctx.max_attempts),
+        ("device_name", ctx.device_name),
+        ("sample_rate", ctx.sample_rate),
+        ("policy_version", ctx.policy_version),
+    )
+
+
 def build_agent_message(ctx: AgentContext, verdict: QualityVerdict) -> AgentMessage:
     """
     Convert a QualityVerdict into an AgentMessage.
@@ -661,65 +757,16 @@ def build_agent_message(ctx: AgentContext, verdict: QualityVerdict) -> AgentMess
     rule_ids = [_rule_id(tr) for tr in triggered_sorted]
 
     show_details = ctx.show_details and (stage != "first_run" or ctx.workflow != "record")
-    # (first_run record: keep minimal unless UI expands)
-
-    # Details (PR6: three-tier explanation mode + verdict streak suppression)
-    details: List[str] = []
     top_rules = _top_k_rules_for_stage(stage, triggered_sorted)
     verdict_streak_suppress = should_suppress_for_verdict_streak(ctx)
 
+    # Build details
+    details: List[str] = []
     if show_details and top_rules:
-        for tr in top_rules:
-            rid = _rule_id(tr)
-            spec = RULE_SPECS.get(rid)
-            if spec is None:
-                # fallback: use the QC message directly
-                sev = "ERROR" if _severity(tr) == Severity.HARD else "WARN"
-                details.append(f"[{sev}] {rid}: {tr.message}")
-                continue
+        details = _build_details_for_stage(stage, top_rules, ctx, verdict_streak_suppress)
 
-            sev = "ERROR" if spec.severity == Severity.HARD else "WARN"
-
-            # PR6 Rule 4: verdict streak ≥ 3 → action-only
-            if verdict_streak_suppress:
-                details.append(f"[{sev}] {rid}: {spec.first_fix}")
-                continue
-
-            # PR6 Rule 5: phase2 forces compact
-            if ctx.workflow == "phase2":
-                details.append(f"[{sev}] {rid}: {spec.first_fix}")
-                continue
-
-            # PR6 Rule 2: three-tier explanation mode
-            mode = choose_explanation_mode(ctx, rid)
-
-            if mode == ExplanationMode.COMPACT:
-                # Heavy repetition — just the fix
-                details.append(f"[{sev}] {rid}: Same issue — {spec.first_fix}")
-            elif mode == ExplanationMode.SHORT:
-                # Seen before — one-line explanation + fix
-                details.append(f"[{sev}] {rid}: {spec.operator_explanation}")
-            elif stage in ("first_run", "novice"):
-                # FULL for novice/first_run: physical-action oriented
-                details.append(f"[{sev}] {rid}: {spec.operator_explanation}")
-                details.append(f"      Fix: {spec.first_fix}")
-            elif stage == "expert":
-                details.append(f"[{sev}] {rid}: {spec.operator_explanation}")
-                details.append(f"      Why: {spec.why_it_matters}")
-                details.append(f"      Fix: {spec.first_fix}  (Fallback: {spec.fallback_fix})")
-            else:  # regular, FULL mode
-                details.append(f"[{sev}] {rid}: {spec.operator_explanation}")
-                details.append(f"      Fix: {spec.first_fix}")
-
-    # Build rule action suggestions: take top rule's actions (most actionable) + any additional if multiple HARD
-    rule_actions: List[SuggestedAction] = []
-    for tr in top_rules:
-        rid = _rule_id(tr)
-        spec = RULE_SPECS.get(rid)
-        if not spec:
-            continue
-        rule_actions.extend(spec.actions)
-
+    # Build actions
+    rule_actions = _collect_rule_actions(top_rules)
     suggested_actions = _merge_actions(
         base=tpl.default_actions,
         rule_actions=rule_actions,
@@ -729,32 +776,15 @@ def build_agent_message(ctx: AgentContext, verdict: QualityVerdict) -> AgentMess
         rule_ids=rule_ids,
     )
 
-    # Learning hint (FTUE only, with fatigue suppression)
+    # Learning hint
     learning_hint = None
     if should_show_learning_hint(ctx, rule_ids, stage):
         learning_hint = _pick_ftue_hint(stage, ctx, rule_ids)
 
-    # Summary tweaks (contextual but non-interpretive)
-    summary = tpl.summary
-    if ctx.point_id:
-        summary = f"{summary} (Point: {ctx.point_id}, attempt {ctx.attempt_num}/{max(ctx.max_attempts, 1)})"
-    elif ctx.max_attempts > 1:
-        summary = f"{summary} (Attempt {ctx.attempt_num}/{ctx.max_attempts})"
+    summary = _build_summary_text(tpl, ctx)
+    telemetry = _build_telemetry_tuple(rule_ids, verdict, stage, ctx)
 
-    # Telemetry tags (as frozen tuple)
-    telemetry = (
-        ("rule_ids", tuple(rule_ids)),
-        ("verdict", verdict.verdict.value),
-        ("user_stage", stage),
-        ("workflow", ctx.workflow),
-        ("attempt_num", ctx.attempt_num),
-        ("max_attempts", ctx.max_attempts),
-        ("device_name", ctx.device_name),
-        ("sample_rate", ctx.sample_rate),
-        ("policy_version", ctx.policy_version),
-    )
-
-    # For first_run, keep details minimal unless explicitly requested
+    # First-run minimal details
     if stage == "first_run" and ctx.workflow in ("record", "measure") and not ctx.show_details:
         details = []
 
