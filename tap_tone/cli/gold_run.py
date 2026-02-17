@@ -55,6 +55,7 @@ class GoldRunConfig:
     export_zip: bool = True
     ingest: bool = True  # ON by default; opt-out via --no-ingest
     ingest_url: str = "http://localhost:8000"
+    api_token: Optional[str] = None  # Auth token for remote ToolBox (env: TOOLBOX_API_TOKEN)
     open_browser: bool = True  # ON by default; opt-out via --no-open
     open_viewer: bool = False  # OFF by default; opt-in via --open-viewer
     dry_run: bool = False
@@ -493,6 +494,7 @@ def _do_ingest(cfg: GoldRunConfig, result: GoldRunResult) -> None:
     ingest_result = ingest_zip(
         zip_path=result.zip_path,
         ingest_url=cfg.ingest_url,
+        api_token=cfg.api_token,
         session_id=cfg.session_id,
         batch_label=cfg.batch_label,
     )
@@ -671,6 +673,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Skip auto-ingest to ToolBox")
     p.add_argument("--ingest-url", default="http://localhost:8000",
                    help="ToolBox API URL (default: http://localhost:8000)")
+    p.add_argument("--api-token",
+                   help="API token for remote ToolBox auth (or set TOOLBOX_API_TOKEN env)")
     p.add_argument("--no-open", action="store_true",
                    help="Skip opening ToolBox library in browser after ingest")
     p.add_argument("--open-viewer", action="store_true",
@@ -703,6 +707,7 @@ def main(argv: list[str] | None = None) -> int:
         export_zip=not args.no_zip,
         ingest=not args.no_ingest,
         ingest_url=args.ingest_url,
+        api_token=args.api_token,
         open_browser=not args.no_open,
         open_viewer=args.open_viewer,
         dry_run=args.dry_run,

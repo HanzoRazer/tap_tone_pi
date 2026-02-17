@@ -1,22 +1,44 @@
 # tap_tone/ingest/toolbox.py
-"""ToolBox ZIP ingest — POST viewer_pack to RMOS acoustics import endpoint.
+"""ToolBox ZIP ingest - POST viewer_pack to RMOS acoustics import endpoint.
 
 Usage:
     from tap_tone.ingest import ingest_zip
 
+    # Local ToolBox (no auth)
     result = ingest_zip(
         zip_path="/path/to/viewer_pack.zip",
         ingest_url="http://localhost:8000",
     )
+
+    # Remote ToolBox (with auth token)
+    result = ingest_zip(
+        zip_path="/path/to/viewer_pack.zip",
+        ingest_url="https://toolbox.example.com",
+        api_token="your-api-token",
+    )
+
     if result.ok:
         print(f"Ingested: {result.run_id}")
+
+Environment variables:
+    TOOLBOX_URL: Default ToolBox URL (used if ingest_url not provided)
+    TOOLBOX_API_TOKEN: Default API token (used if api_token not provided)
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 import json
+
+
+# Environment variable names for defaults
+ENV_TOOLBOX_URL = "TOOLBOX_URL"
+ENV_TOOLBOX_API_TOKEN = "TOOLBOX_API_TOKEN"
+
+# Default values
+DEFAULT_INGEST_URL = "http://localhost:8000"
 
 
 @dataclass
@@ -44,10 +66,25 @@ class IngestResult:
 INGEST_ENDPOINT = "/api/rmos/acoustics/import-zip"
 
 
+def _resolve_url(ingest_url: Optional[str]) -> str:
+    """Resolve ingest URL from argument or environment."""
+    if ingest_url:
+        return ingest_url
+    return os.environ.get(ENV_TOOLBOX_URL, DEFAULT_INGEST_URL)
+
+
+def _resolve_token(api_token: Optional[str]) -> Optional[str]:
+    """Resolve API token from argument or environment."""
+    if api_token:
+        return api_token
+    return os.environ.get(ENV_TOOLBOX_API_TOKEN)
+
+
 def ingest_zip(
     zip_path: Path | str,
     *,
-    ingest_url: str = "http://localhost:8000",
+    ingest_url: Optional[str] = None,
+    api_token: Optional[str] = None,
     session_id: Optional[str] = None,
     batch_label: Optional[str] = None,
     timeout_s: float = 30.0,
@@ -57,7 +94,8 @@ def ingest_zip(
 
     Args:
         zip_path: Path to the viewer_pack_v1.zip file
-        ingest_url: Base URL of ToolBox (default: http://localhost:8000)
+        ingest_url: Base URL of ToolBox (default: TOOLBOX_URL env or localhost:8000)
+        api_token: API token for auth (default: TOOLBOX_API_TOKEN env or None)
         session_id: Optional session ID for grouping
         batch_label: Optional batch label for grouping
         timeout_s: Request timeout in seconds
@@ -66,11 +104,14 @@ def ingest_zip(
         IngestResult with status, run_id (on success), or error details
 
     Notes:
-        - Never raises exceptions — all errors are captured in IngestResult
+        - Never raises exceptions - all errors are captured in IngestResult
         - ZIP file is never deleted, even on failure
         - Uses requests library (lazy import)
+        - Auth header only sent if api_token is provided
     """
     zip_path = Path(zip_path)
+    resolved_url = _resolve_url(ingest_url)
+    resolved_token = _resolve_token(api_token)
 
     if not zip_path.exists():
         return IngestResult(
@@ -93,7 +134,12 @@ def ingest_zip(
             payload=None,
         )
 
-    url = f"{ingest_url.rstrip('/')}{INGEST_ENDPOINT}"
+    url = f"{resolved_url.rstrip('/')}{INGEST_ENDPOINT}"
+
+    # Build headers
+    headers: dict[str, str] = {}
+    if resolved_token:
+        headers["Authorization"] = f"Bearer {resolved_token}"
 
     # Build multipart form data
     try:
@@ -106,13 +152,19 @@ def ingest_zip(
                 data["batch_label"] = batch_label
 
             try:
-                resp = requests.post(url, files=files, data=data, timeout=timeout_s)
+                resp = requests.post(
+                    url,
+                    files=files,
+                    data=data,
+                    headers=headers if headers else None,
+                    timeout=timeout_s,
+                )
             except requests.exceptions.ConnectionError:
                 return IngestResult(
                     ok=False,
                     http_status=None,
                     run_id=None,
-                    error=f"Connection failed: {ingest_url} (is ToolBox running?)",
+                    error=f"Connection failed: {resolved_url} (is ToolBox running?)",
                     payload=None,
                 )
             except requests.exceptions.Timeout:
