@@ -11,5 +11,5 @@
 *.yml text eol=lf
 *.yaml text eol=lf
 
-# Force JSON to use LF  
+# Force JSON to use LF
 *.json text eol=lf
