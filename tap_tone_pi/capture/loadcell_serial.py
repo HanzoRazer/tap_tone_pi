@@ -30,10 +30,11 @@ Usage:
 Migration:
     # Old path (deprecated)
     python modes/acquisition/loadcell_serial.py --config ... --out ...
-    
+
     # New path (v2.0.0+)
     python -m tap_tone_pi.capture.loadcell_serial --config ... --out ...
 """
+
 from __future__ import annotations
 
 import argparse
@@ -91,9 +92,7 @@ def main() -> None:
     ap.add_argument(
         "--config", required=True, help="JSON config file for the load cell"
     )
-    ap.add_argument(
-        "--out", required=True, help="Output JSON path (load_series.json)"
-    )
+    ap.add_argument("--out", required=True, help="Output JSON path (load_series.json)")
     args = ap.parse_args()
 
     # Load config

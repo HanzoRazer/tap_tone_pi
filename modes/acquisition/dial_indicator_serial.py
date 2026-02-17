@@ -11,6 +11,7 @@ Usage:
     python modes/acquisition/dial_indicator_serial.py \
         --port /dev/ttyUSB0 --out out/disp.json --unit in --scale 25.4 --duration 10
 """
+
 from __future__ import annotations
 
 import argparse

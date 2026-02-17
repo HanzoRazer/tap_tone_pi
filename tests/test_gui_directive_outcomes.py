@@ -6,12 +6,12 @@ Validates:
 - Returns False gracefully when no shadow file exists
 - Falls back to run_id when advisory has no directive_id
 """
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-import pytest
 
 from tap_tone_pi.gui.directive_outcomes import record_latest_directive_outcome
 
@@ -19,6 +19,7 @@ from tap_tone_pi.gui.directive_outcomes import record_latest_directive_outcome
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _write_shadow_latest(
     session_dir: Path,
@@ -57,7 +58,9 @@ def _write_shadow_latest(
 
 
 def _read_last_event(session_dir: Path) -> dict:
-    lines = (session_dir / "events.jsonl").read_text(encoding="utf-8").strip().splitlines()
+    lines = (
+        (session_dir / "events.jsonl").read_text(encoding="utf-8").strip().splitlines()
+    )
     assert len(lines) >= 1, "events.jsonl has no lines"
     return json.loads(lines[-1])
 
@@ -66,14 +69,16 @@ def _read_last_event(session_dir: Path) -> dict:
 # Tests
 # ---------------------------------------------------------------------------
 
-class TestRecordAck:
 
+class TestRecordAck:
     def test_ack_appends_event(self, tmp_path: Path):
         sess = tmp_path / "sess"
         sess.mkdir()
         _write_shadow_latest(sess, directive_id="dir_ack_001")
 
-        ok = record_latest_directive_outcome(session_dir=sess, outcome="ack", component="gui")
+        ok = record_latest_directive_outcome(
+            session_dir=sess, outcome="ack", component="gui"
+        )
         assert ok is True
 
         ev = _read_last_event(sess)
@@ -95,13 +100,14 @@ class TestRecordAck:
 
 
 class TestRecordDismiss:
-
     def test_dismiss_appends_event(self, tmp_path: Path):
         sess = tmp_path / "sess"
         sess.mkdir()
         _write_shadow_latest(sess, directive_id="dir_dis_001")
 
-        ok = record_latest_directive_outcome(session_dir=sess, outcome="dismiss", component="gui")
+        ok = record_latest_directive_outcome(
+            session_dir=sess, outcome="dismiss", component="gui"
+        )
         assert ok is True
 
         ev = _read_last_event(sess)
@@ -111,7 +117,6 @@ class TestRecordDismiss:
 
 
 class TestGracefulFailure:
-
     def test_returns_false_when_no_shadow_file(self, tmp_path: Path):
         sess = tmp_path / "sess"
         sess.mkdir()

@@ -1,4 +1,5 @@
 """Tests for agent render functions."""
+
 import pytest
 from tap_tone_pi.agent import (
     StandaloneAgentMessage as AgentMessage,
@@ -21,9 +22,13 @@ def sample_message():
             "[WARN] Q011: Signal near clipping.",
         ],
         suggested_actions=[
-            SuggestedAction(ActionId.ADJUST_GAIN_DOWN, "Lower gain", "Prevents distortion"),
+            SuggestedAction(
+                ActionId.ADJUST_GAIN_DOWN, "Lower gain", "Prevents distortion"
+            ),
             SuggestedAction(ActionId.RETRY, "Retry", "Try again"),
-            SuggestedAction(ActionId.OVERRIDE, "Override", "Log exception", requires_input=True),
+            SuggestedAction(
+                ActionId.OVERRIDE, "Override", "Log exception", requires_input=True
+            ),
         ],
         learning_hint="Tip: Run 'ttp setup' to configure your device.",
         telemetry_tags={
@@ -123,7 +128,7 @@ class TestRenderGUI:
         result = render_gui(sample_message)
         buttons = result["action_buttons"]
         assert len(buttons) == 3
-        
+
         # Check structure
         first = buttons[0]
         assert "id" in first

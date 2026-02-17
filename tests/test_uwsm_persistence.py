@@ -1,6 +1,4 @@
-import json
-import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -42,7 +40,9 @@ def test_save_then_load_roundtrip(tmp_xdg: Path):
     conf["guidance_density"] = 0.77
     save_uwsm_state(uwsm, conf, now=now)
     uwsm2, conf2, ts2 = load_uwsm_state(now=now)
-    assert abs(float(uwsm2["dimensions"]["guidance_density"]["confidence"]) - 0.77) < 1e-6
+    assert (
+        abs(float(uwsm2["dimensions"]["guidance_density"]["confidence"]) - 0.77) < 1e-6
+    )
     assert abs(float(conf2["guidance_density"]) - 0.77) < 1e-6
 
 

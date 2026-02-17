@@ -1,9 +1,13 @@
 """Chladni manifest utilities — append artifacts to run-level manifest."""
+
 from __future__ import annotations
-import json, hashlib, os
+import json
+import hashlib
+import os
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Iterable, List
+
 
 def _sha256_file(path: Path) -> str:
     h = hashlib.sha256()
@@ -12,8 +16,10 @@ def _sha256_file(path: Path) -> str:
             h.update(chunk)
     return h.hexdigest()
 
+
 def _now_utc_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
 
 def append_chladni_to_run_manifest(
     run_dir: str | Path,
@@ -37,21 +43,44 @@ def append_chladni_to_run_manifest(
 
     images: List[Path] = [Path(p) for p in image_paths]
     entries = [
-        {"path": rel(wav_path),             "sha256": _sha256_file(Path(wav_path)),             "artifact_type": "chladni_wav"},
-        {"path": rel(peaks_json_path),      "sha256": _sha256_file(Path(peaks_json_path)),      "artifact_type": "chladni_peaks"},
+        {
+            "path": rel(wav_path),
+            "sha256": _sha256_file(Path(wav_path)),
+            "artifact_type": "chladni_wav",
+        },
+        {
+            "path": rel(peaks_json_path),
+            "sha256": _sha256_file(Path(peaks_json_path)),
+            "artifact_type": "chladni_peaks",
+        },
         *[
-            {"path": rel(ip),               "sha256": _sha256_file(ip),                         "artifact_type": "chladni_image"}
+            {
+                "path": rel(ip),
+                "sha256": _sha256_file(ip),
+                "artifact_type": "chladni_image",
+            }
             for ip in sorted(images, key=lambda x: x.name.lower())
         ],
-        {"path": rel(chladni_run_json_path),"sha256": _sha256_file(Path(chladni_run_json_path)),"artifact_type": "chladni_run"},
+        {
+            "path": rel(chladni_run_json_path),
+            "sha256": _sha256_file(Path(chladni_run_json_path)),
+            "artifact_type": "chladni_run",
+        },
     ]
 
     # Preferred path: shared manifest utility
     try:
         from modes._shared import emit_manifest  # type: ignore
-        doc = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else emit_manifest.new_manifest()
+
+        doc = (
+            json.loads(manifest_path.read_text(encoding="utf-8"))
+            if manifest_path.exists()
+            else emit_manifest.new_manifest()
+        )
         for e in entries:
-            emit_manifest.append_entry(doc, e["path"], e["sha256"], e.get("artifact_type"))
+            emit_manifest.append_entry(
+                doc, e["path"], e["sha256"], e.get("artifact_type")
+            )
         emit_manifest.save_manifest(doc, manifest_path)
         return manifest_path
     except (ImportError, OSError, ValueError, KeyError, AttributeError):
@@ -74,7 +103,9 @@ def append_chladni_to_run_manifest(
         if not isinstance(arts, list):
             arts = []
             doc["artifacts"] = arts
-        existing_paths = {a["path"] for a in arts if isinstance(a, dict) and "path" in a}
+        existing_paths = {
+            a["path"] for a in arts if isinstance(a, dict) and "path" in a
+        }
         for e in entries:
             if e["path"] not in existing_paths:
                 arts.append(e)

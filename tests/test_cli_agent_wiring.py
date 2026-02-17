@@ -5,7 +5,6 @@ which uses hermetic monkeypatching that doesn't touch DSP or hardware.
 
 This file only tests that the parser flags exist and default correctly.
 """
-import pytest
 
 from tap_tone_pi.cli.main import build_parser
 

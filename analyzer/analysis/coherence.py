@@ -11,7 +11,7 @@ def compute_coherence(
     input_signal: np.ndarray,
     output_signal: np.ndarray,
     sample_rate: float,
-    nperseg: int = 2048
+    nperseg: int = 2048,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Compute coherence between input and output signals.
@@ -28,18 +28,13 @@ def compute_coherence(
     Returns:
         Tuple of (frequencies, coherence)
     """
-    return scipy_coherence(
-        input_signal,
-        output_signal,
-        fs=sample_rate,
-        nperseg=nperseg
-    )
+    return scipy_coherence(input_signal, output_signal, fs=sample_rate, nperseg=nperseg)
 
 
 def analyze_coherence_quality(
     coherence: np.ndarray,
     frequencies: Optional[np.ndarray] = None,
-    threshold: float = 0.9
+    threshold: float = 0.9,
 ) -> Dict[str, Any]:
     """
     Analyze coherence data for measurement quality.
@@ -62,7 +57,7 @@ def analyze_coherence_quality(
             "std": 0.0,
             "pct_above_threshold": 0.0,
             "quality_grade": "F",
-            "issues": ["No coherence data"]
+            "issues": ["No coherence data"],
         }
 
     mean_coh = float(np.mean(coherence))
@@ -106,7 +101,7 @@ def analyze_coherence_quality(
         "pct_above_threshold": pct_above,
         "threshold": threshold,
         "quality_grade": grade,
-        "issues": issues
+        "issues": issues,
     }
 
 
@@ -114,7 +109,7 @@ def find_low_coherence_regions(
     frequencies: np.ndarray,
     coherence: np.ndarray,
     threshold: float = 0.7,
-    min_width_hz: float = 20
+    min_width_hz: float = 20,
 ) -> list:
     """
     Find frequency regions with low coherence.
@@ -157,22 +152,22 @@ def find_low_coherence_regions(
             width = frequencies[end_idx] - frequencies[start_idx]
             if width >= min_width_hz:
                 mean_coh = float(np.mean(coherence[start_idx:end_idx]))
-                regions.append((
-                    float(frequencies[start_idx]),
-                    float(frequencies[end_idx]),
-                    mean_coh
-                ))
+                regions.append(
+                    (
+                        float(frequencies[start_idx]),
+                        float(frequencies[end_idx]),
+                        mean_coh,
+                    )
+                )
 
     # Handle region at end
     if in_region:
         width = frequencies[-1] - frequencies[start_idx]
         if width >= min_width_hz:
             mean_coh = float(np.mean(coherence[start_idx:]))
-            regions.append((
-                float(frequencies[start_idx]),
-                float(frequencies[-1]),
-                mean_coh
-            ))
+            regions.append(
+                (float(frequencies[start_idx]), float(frequencies[-1]), mean_coh)
+            )
 
     return regions
 
@@ -194,7 +189,9 @@ def suggest_improvements(quality_analysis: Dict[str, Any]) -> list:
 
     if grade in ["D", "F"]:
         suggestions.append("Consider increasing averaging count (more taps)")
-        suggestions.append("Check microphone placement - too close or too far from specimen")
+        suggestions.append(
+            "Check microphone placement - too close or too far from specimen"
+        )
         suggestions.append("Reduce background noise if possible")
 
     if mean_coh < 0.8:
@@ -206,7 +203,9 @@ def suggest_improvements(quality_analysis: Dict[str, Any]) -> list:
         suggestions.append("Verify specimen is properly supported (minimal contact)")
 
     if quality_analysis.get("std", 0) > 0.15:
-        suggestions.append("Coherence varies widely - check for mode splitting or coupling")
+        suggestions.append(
+            "Coherence varies widely - check for mode splitting or coupling"
+        )
 
     if not suggestions:
         suggestions.append("Measurement quality is good - no improvements needed")

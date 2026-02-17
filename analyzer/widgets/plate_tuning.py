@@ -10,25 +10,33 @@ Measurement-only scope:
 Note: This is objective data display, not prescriptive advice.
 """
 
-from typing import Optional, List
+from typing import Optional
 import json
 from pathlib import Path
 
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QTableWidget, QTableWidgetItem, QPushButton, QLabel,
-    QLineEdit, QGroupBox, QSplitter, QHeaderView,
-    QFileDialog, QMessageBox, QFrame
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QGridLayout,
+    QTableWidget,
+    QTableWidgetItem,
+    QPushButton,
+    QLabel,
+    QLineEdit,
+    QGroupBox,
+    QSplitter,
+    QHeaderView,
+    QFileDialog,
+    QMessageBox,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QDoubleValidator, QColor
+from PyQt6.QtGui import QDoubleValidator
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-from analyzer.analysis.plate_tuning import (
-    PlateTuningRegression, TuningPoint, RegressionResult
-)
+from analyzer.analysis.plate_tuning import PlateTuningRegression, TuningPoint
 
 
 class PlateTuningWidget(QWidget):
@@ -81,10 +89,12 @@ class PlateTuningWidget(QWidget):
         table_layout = QVBoxLayout(table_group)
 
         self.table = QTableWidget(0, 4)
-        self.table.setHorizontalHeaderLabels([
-            "Mass (g)", "Freq (Hz)", "Defl X (mm)", "Defl Y (mm)"
-        ])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.setHorizontalHeaderLabels(
+            ["Mass (g)", "Freq (Hz)", "Defl X (mm)", "Defl Y (mm)"]
+        )
+        self.table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Stretch
+        )
         self.table.setMinimumHeight(150)
         table_layout.addWidget(self.table)
 
@@ -121,7 +131,9 @@ class PlateTuningWidget(QWidget):
 
         pred_layout.addWidget(QLabel("Mass at target:"), 2, 0)
         self.predicted_mass_label = QLabel("-")
-        self.predicted_mass_label.setStyleSheet("font-weight: bold; font-size: 14pt; color: #4a9;")
+        self.predicted_mass_label.setStyleSheet(
+            "font-weight: bold; font-size: 14pt; color: #4a9;"
+        )
         pred_layout.addWidget(self.predicted_mass_label, 2, 1)
 
         pred_layout.addWidget(QLabel("Rate:"), 3, 0)
@@ -154,7 +166,7 @@ class PlateTuningWidget(QWidget):
         right_layout.setContentsMargins(0, 0, 0, 0)
 
         # Matplotlib figure
-        self.figure = Figure(figsize=(8, 6), facecolor='#1e1e1e')
+        self.figure = Figure(figsize=(8, 6), facecolor="#1e1e1e")
         self.canvas = FigureCanvas(self.figure)
         self.ax = self.figure.add_subplot(111)
         self._setup_plot_style()
@@ -171,17 +183,17 @@ class PlateTuningWidget(QWidget):
 
     def _setup_plot_style(self):
         """Apply dark theme to plot."""
-        self.ax.set_facecolor('#252526')
-        self.ax.tick_params(colors='white')
-        self.ax.xaxis.label.set_color('white')
-        self.ax.yaxis.label.set_color('white')
-        self.ax.title.set_color('white')
+        self.ax.set_facecolor("#252526")
+        self.ax.tick_params(colors="white")
+        self.ax.xaxis.label.set_color("white")
+        self.ax.yaxis.label.set_color("white")
+        self.ax.title.set_color("white")
         for spine in self.ax.spines.values():
-            spine.set_color('#555')
-        self.ax.grid(True, alpha=0.3, color='#555')
-        self.ax.set_xlabel('Mass (g)')
-        self.ax.set_ylabel('Frequency (Hz)')
-        self.ax.set_title('Plate Tuning Trajectory')
+            spine.set_color("#555")
+        self.ax.grid(True, alpha=0.3, color="#555")
+        self.ax.set_xlabel("Mass (g)")
+        self.ax.set_ylabel("Frequency (Hz)")
+        self.ax.set_title("Plate Tuning Trajectory")
 
     def _add_point_row(self):
         """Add a new empty row to the table."""
@@ -254,14 +266,22 @@ class PlateTuningWidget(QWidget):
                 mass = float(mass_text)
                 freq = float(freq_text)
 
-                defl_x = float(defl_x_item.text()) if defl_x_item and defl_x_item.text() else None
-                defl_y = float(defl_y_item.text()) if defl_y_item and defl_y_item.text() else None
+                defl_x = (
+                    float(defl_x_item.text())
+                    if defl_x_item and defl_x_item.text()
+                    else None
+                )
+                defl_y = (
+                    float(defl_y_item.text())
+                    if defl_y_item and defl_y_item.text()
+                    else None
+                )
 
                 point = TuningPoint(
                     mass_g=mass,
                     freq_hz=freq,
                     deflection_x_mm=defl_x,
-                    deflection_y_mm=defl_y
+                    deflection_y_mm=defl_y,
                 )
                 self.regression.add_point(point)
 
@@ -281,13 +301,26 @@ class PlateTuningWidget(QWidget):
             freqs = data["points"]["freq_hz"]
             labels = data["points"]["labels"]
 
-            self.ax.scatter(masses, freqs, c='cyan', s=100, zorder=5,
-                           edgecolors='white', linewidths=1.5)
+            self.ax.scatter(
+                masses,
+                freqs,
+                c="cyan",
+                s=100,
+                zorder=5,
+                edgecolors="white",
+                linewidths=1.5,
+            )
 
             # Label points
             for m, f, lbl in zip(masses, freqs, labels):
-                self.ax.annotate(lbl, (m, f), textcoords="offset points",
-                               xytext=(5, 5), fontsize=9, color='white')
+                self.ax.annotate(
+                    lbl,
+                    (m, f),
+                    textcoords="offset points",
+                    xytext=(5, 5),
+                    fontsize=9,
+                    color="white",
+                )
 
         # Plot regression line
         if data["line"]:
@@ -295,10 +328,16 @@ class PlateTuningWidget(QWidget):
             line_f = data["line"]["freq_hz"]
             r2 = data["line"]["r_squared"]
 
-            color = '#4a9' if r2 > 0.9 else '#fa0' if r2 > 0.7 else '#f44'
-            self.ax.plot(line_m, line_f, color=color, linewidth=2,
-                        linestyle='--', alpha=0.8,
-                        label=f'R² = {r2:.3f}')
+            color = "#4a9" if r2 > 0.9 else "#fa0" if r2 > 0.7 else "#f44"
+            self.ax.plot(
+                line_m,
+                line_f,
+                color=color,
+                linewidth=2,
+                linestyle="--",
+                alpha=0.8,
+                label=f"R² = {r2:.3f}",
+            )
 
         # Plot target
         if data["target"]:
@@ -307,21 +346,38 @@ class PlateTuningWidget(QWidget):
 
             # Horizontal line at target frequency
             xlim = self.ax.get_xlim()
-            self.ax.axhline(y=target_f, color='#4a9', linestyle=':',
-                           alpha=0.7, linewidth=1.5)
-            self.ax.annotate(f'Target: {target_f:.0f} Hz',
-                           xy=(xlim[1], target_f),
-                           xytext=(-10, 5), textcoords='offset points',
-                           fontsize=10, color='#4a9', ha='right')
+            self.ax.axhline(
+                y=target_f, color="#4a9", linestyle=":", alpha=0.7, linewidth=1.5
+            )
+            self.ax.annotate(
+                f"Target: {target_f:.0f} Hz",
+                xy=(xlim[1], target_f),
+                xytext=(-10, 5),
+                textcoords="offset points",
+                fontsize=10,
+                color="#4a9",
+                ha="right",
+            )
 
             # Target point
             if target_m > 0 and data["line"]:
-                self.ax.scatter([target_m], [target_f], c='#4a9', s=150,
-                               marker='*', zorder=6, edgecolors='white')
-                self.ax.annotate(f'{target_m:.0f}g',
-                               xy=(target_m, target_f),
-                               xytext=(5, -15), textcoords='offset points',
-                               fontsize=9, color='#4a9')
+                self.ax.scatter(
+                    [target_m],
+                    [target_f],
+                    c="#4a9",
+                    s=150,
+                    marker="*",
+                    zorder=6,
+                    edgecolors="white",
+                )
+                self.ax.annotate(
+                    f"{target_m:.0f}g",
+                    xy=(target_m, target_f),
+                    xytext=(5, -15),
+                    textcoords="offset points",
+                    fontsize=9,
+                    color="#4a9",
+                )
 
         # Arrow from current to target
         if data["points"]["mass_g"] and data["target"] and data["line"]:
@@ -331,13 +387,14 @@ class PlateTuningWidget(QWidget):
             target_f = data["target"]["freq_hz"]
 
             if target_m > 0:
-                self.ax.annotate('',
+                self.ax.annotate(
+                    "",
                     xy=(target_m, target_f),
                     xytext=(current_m, current_f),
-                    arrowprops=dict(arrowstyle='->', color='#f80',
-                                   lw=2, ls='--'))
+                    arrowprops=dict(arrowstyle="->", color="#f80", lw=2, ls="--"),
+                )
 
-        self.ax.legend(loc='upper right', fontsize=9)
+        self.ax.legend(loc="upper right", fontsize=9)
         self.figure.tight_layout()
         self.canvas.draw()
 
@@ -361,8 +418,8 @@ class PlateTuningWidget(QWidget):
         )
 
         # Display predicted mass at target frequency (objective data)
-        target_mass = pred['target_mass_g']
-        current_mass = pred['current_mass_g']
+        target_mass = pred["target_mass_g"]
+        current_mass = pred["current_mass_g"]
         delta = current_mass - target_mass
 
         self.predicted_mass_label.setText(f"{target_mass:.1f} g (Δ {delta:+.1f} g)")
@@ -370,12 +427,12 @@ class PlateTuningWidget(QWidget):
             "font-weight: bold; font-size: 14pt; color: #4a9;"
         )
 
-        hz_per_g = pred['hz_per_gram']
+        hz_per_g = pred["hz_per_gram"]
         self.rate_label.setText(f"{hz_per_g:.2f} Hz/gram")
 
-        r2 = pred['r_squared']
-        conf = pred['confidence']
-        color = '#4a9' if conf == 'high' else '#fa0' if conf == 'medium' else '#f44'
+        r2 = pred["r_squared"]
+        conf = pred["confidence"]
+        color = "#4a9" if conf == "high" else "#fa0" if conf == "medium" else "#f44"
         self.fit_label.setText(f"{r2:.3f} ({conf})")
         self.fit_label.setStyleSheet(f"color: {color};")
 
@@ -386,9 +443,10 @@ class PlateTuningWidget(QWidget):
         self._sync_from_table()
 
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save Tuning Session",
+            self,
+            "Save Tuning Session",
             f"{self.regression.plate_name.replace(' ', '_')}_tuning.json",
-            "JSON Files (*.json)"
+            "JSON Files (*.json)",
         )
 
         if path:
@@ -402,8 +460,7 @@ class PlateTuningWidget(QWidget):
     def _load_session(self):
         """Load tuning session from file."""
         path, _ = QFileDialog.getOpenFileName(
-            self, "Load Tuning Session", "",
-            "JSON Files (*.json)"
+            self, "Load Tuning Session", "", "JSON Files (*.json)"
         )
 
         if path:
@@ -424,9 +481,13 @@ class PlateTuningWidget(QWidget):
                     self.table.setItem(row, 0, QTableWidgetItem(str(point.mass_g)))
                     self.table.setItem(row, 1, QTableWidgetItem(str(point.freq_hz)))
                     if point.deflection_x_mm is not None:
-                        self.table.setItem(row, 2, QTableWidgetItem(str(point.deflection_x_mm)))
+                        self.table.setItem(
+                            row, 2, QTableWidgetItem(str(point.deflection_x_mm))
+                        )
                     if point.deflection_y_mm is not None:
-                        self.table.setItem(row, 3, QTableWidgetItem(str(point.deflection_y_mm)))
+                        self.table.setItem(
+                            row, 3, QTableWidgetItem(str(point.deflection_y_mm))
+                        )
 
                 self._update_plot()
                 self._update_prediction()
@@ -438,9 +499,9 @@ class PlateTuningWidget(QWidget):
         """Load sample data for demonstration."""
         # Typical guitar top tuning progression
         sample_points = [
-            (145.0, 98.5),   # Starting point
-            (138.0, 92.0),   # After first thinning
-            (132.0, 88.5),   # Getting closer
+            (145.0, 98.5),  # Starting point
+            (138.0, 92.0),  # After first thinning
+            (132.0, 88.5),  # Getting closer
         ]
 
         self.table.setRowCount(0)

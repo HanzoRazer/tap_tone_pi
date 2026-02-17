@@ -2,6 +2,7 @@
 
 Creates directories like out/2026-01-20T17-22-31Z_abcdef/ and returns the Path.
 """
+
 from __future__ import annotations
 
 import secrets

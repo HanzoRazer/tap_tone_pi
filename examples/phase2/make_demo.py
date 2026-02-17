@@ -4,6 +4,7 @@ Hardware-free Phase-2 ODS demo:
 Creates runs_phase2/DEMO/session_0001/ with canonical filenames.
 This is a minimal "facts-only" artifact set for CI validation (no hardware).
 """
+
 from __future__ import annotations
 
 import json
@@ -39,7 +40,9 @@ def synth_2ch(freq: float = 200.0):
     # Reference: clean sine
     ref = 0.3 * np.sin(2 * np.pi * freq * t)
     # Roving: same + slight phase shift + noise
-    rov = 0.25 * np.sin(2 * np.pi * freq * t + 0.3) + 0.02 * np.random.randn(n).astype(np.float32)
+    rov = 0.25 * np.sin(2 * np.pi * freq * t + 0.3) + 0.02 * np.random.randn(n).astype(
+        np.float32
+    )
     return ref.astype(np.float32), rov.astype(np.float32)
 
 
@@ -60,7 +63,7 @@ def main():
         "environment": {"temp_c": 22.0, "humidity_rh": 45.0},
     }
     write_json(OUT / "session_meta.json", session_meta)
-    print(f"Wrote session_meta.json")
+    print("Wrote session_meta.json")
 
     # Create 3 demo points
     point_ids = ["A1", "A2", "B1"]
@@ -114,7 +117,7 @@ def main():
         },
     }
     write_json(derived_dir / "ods_snapshot.json", ods_snapshot)
-    print(f"Wrote ods_snapshot.json")
+    print("Wrote ods_snapshot.json")
 
     # Create minimal wolf candidates (matches phase2_wolf_candidates.schema.json)
     # Flat thresholds, not nested; provenance required
@@ -131,9 +134,9 @@ def main():
         },
     }
     write_json(derived_dir / "wolf_candidates.json", wolf_candidates)
-    print(f"Wrote wolf_candidates.json")
+    print("Wrote wolf_candidates.json")
 
-    print(f"\nPhase-2 demo complete!")
+    print("\nPhase-2 demo complete!")
     print(f"Artifacts under: {OUT}")
 
 

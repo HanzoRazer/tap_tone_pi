@@ -2,12 +2,12 @@
 
 Tests mock webbrowser — no actual browser opened.
 """
+
 from __future__ import annotations
 
 import os
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 
-import pytest
 
 from tap_tone.util.open_url import try_open_url
 
@@ -39,9 +39,9 @@ class TestTryOpenUrl:
 
     def test_headless_linux_no_display(self):
         """Test headless Linux (no DISPLAY) returns False without calling webbrowser."""
-        with patch("sys.platform", "linux"), \
-             patch.dict(os.environ, {"DISPLAY": "", "WAYLAND_DISPLAY": ""}, clear=True), \
-             patch("webbrowser.open") as mock_open:
+        with patch("sys.platform", "linux"), patch.dict(
+            os.environ, {"DISPLAY": "", "WAYLAND_DISPLAY": ""}, clear=True
+        ), patch("webbrowser.open") as mock_open:
             # Clear DISPLAY and WAYLAND_DISPLAY
             os.environ.pop("DISPLAY", None)
             os.environ.pop("WAYLAND_DISPLAY", None)
@@ -53,9 +53,9 @@ class TestTryOpenUrl:
 
     def test_linux_with_display(self):
         """Test Linux with DISPLAY set attempts to open."""
-        with patch("sys.platform", "linux"), \
-             patch.dict(os.environ, {"DISPLAY": ":0"}, clear=False), \
-             patch("webbrowser.open", return_value=True) as mock_open:
+        with patch("sys.platform", "linux"), patch.dict(
+            os.environ, {"DISPLAY": ":0"}, clear=False
+        ), patch("webbrowser.open", return_value=True) as mock_open:
             result = try_open_url("http://localhost:8000/library")
 
         assert result is True
@@ -63,9 +63,9 @@ class TestTryOpenUrl:
 
     def test_linux_with_wayland(self):
         """Test Linux with WAYLAND_DISPLAY set attempts to open."""
-        with patch("sys.platform", "linux"), \
-             patch.dict(os.environ, {"WAYLAND_DISPLAY": "wayland-0"}, clear=False), \
-             patch("webbrowser.open", return_value=True) as mock_open:
+        with patch("sys.platform", "linux"), patch.dict(
+            os.environ, {"WAYLAND_DISPLAY": "wayland-0"}, clear=False
+        ), patch("webbrowser.open", return_value=True) as mock_open:
             result = try_open_url("http://localhost:8000/library")
 
         assert result is True
@@ -73,8 +73,9 @@ class TestTryOpenUrl:
 
     def test_windows_always_attempts(self):
         """Test Windows platform always attempts to open."""
-        with patch("sys.platform", "win32"), \
-             patch("webbrowser.open", return_value=True) as mock_open:
+        with patch("sys.platform", "win32"), patch(
+            "webbrowser.open", return_value=True
+        ) as mock_open:
             result = try_open_url("http://localhost:8000/library")
 
         assert result is True
@@ -82,8 +83,9 @@ class TestTryOpenUrl:
 
     def test_macos_always_attempts(self):
         """Test macOS platform always attempts to open."""
-        with patch("sys.platform", "darwin"), \
-             patch("webbrowser.open", return_value=True) as mock_open:
+        with patch("sys.platform", "darwin"), patch(
+            "webbrowser.open", return_value=True
+        ) as mock_open:
             result = try_open_url("http://localhost:8000/library")
 
         assert result is True

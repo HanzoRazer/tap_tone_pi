@@ -1,10 +1,9 @@
 """Tests for ``ttp measure --list-directive-events`` (PR #14 Seg 1)."""
+
 import argparse
 import json
 from pathlib import Path
 from unittest import mock
-
-from tap_tone_pi.agentic.spine.directive_history import load_directive_events
 
 
 def _make_args(out: str) -> argparse.Namespace:

@@ -2,10 +2,9 @@
 
 Tests Attempt dataclass and AttemptStore persistence.
 """
+
 from __future__ import annotations
 
-import json
-from pathlib import Path
 
 import pytest
 
@@ -14,12 +13,13 @@ from tap_tone_pi.workflow.attempt import (
     AttemptStatus,
     AttemptStore,
 )
-from tap_tone_pi.core.quality_policy import QualityVerdict, Verdict, TriggeredRule
+from tap_tone_pi.core.quality_policy import QualityVerdict, Verdict
 
 
 # =============================================================================
 # Attempt Dataclass Tests
 # =============================================================================
+
 
 class TestAttempt:
     """Test the Attempt dataclass."""
@@ -198,6 +198,7 @@ class TestAttempt:
 # =============================================================================
 # AttemptStore Tests
 # =============================================================================
+
 
 class TestAttemptStore:
     """Test AttemptStore persistence."""

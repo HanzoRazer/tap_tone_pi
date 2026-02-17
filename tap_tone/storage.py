@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -12,6 +11,7 @@ from modes._shared.wav_io import write_wav_mono
 
 from .analysis import AnalysisResult, analysis_to_json_dict
 
+
 @dataclass(frozen=True)
 class PersistedCapture:
     capture_dir: Path
@@ -20,16 +20,20 @@ class PersistedCapture:
     spectrum_path: Path
     session_log_path: Path
 
+
 def _ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
 
+
 def _write_json(path: Path, obj: Any) -> None:
     path.write_text(json.dumps(obj, indent=2, sort_keys=True), encoding="utf-8")
+
 
 def _append_jsonl(path: Path, obj: Any) -> None:
     with path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(obj, sort_keys=True))
         f.write("\n")
+
 
 def persist_capture(
     *,
@@ -44,6 +48,7 @@ def persist_capture(
 
     # One capture per timestamp folder (safe for repeated runs)
     import datetime as _dt
+
     ts = _dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     cap_dir = root / f"capture_{ts}"
     _ensure_dir(cap_dir)
@@ -69,16 +74,21 @@ def persist_capture(
     spectrum_path.write_text("".join(lines), encoding="utf-8")
 
     # Append-only session log
-    _append_jsonl(session_log_path, {
-        "ts_utc": ts,
-        "label": label,
-        "capture_dir": str(cap_dir),
-        "dominant_hz": analysis.dominant_hz,
-        "peaks": [{"freq_hz": p.freq_hz, "magnitude": p.magnitude} for p in analysis.peaks],
-        "confidence": analysis.confidence,
-        "clipped": analysis.clipped,
-        "rms": analysis.rms,
-    })
+    _append_jsonl(
+        session_log_path,
+        {
+            "ts_utc": ts,
+            "label": label,
+            "capture_dir": str(cap_dir),
+            "dominant_hz": analysis.dominant_hz,
+            "peaks": [
+                {"freq_hz": p.freq_hz, "magnitude": p.magnitude} for p in analysis.peaks
+            ],
+            "confidence": analysis.confidence,
+            "clipped": analysis.clipped,
+            "rms": analysis.rms,
+        },
+    )
 
     return PersistedCapture(
         capture_dir=cap_dir,

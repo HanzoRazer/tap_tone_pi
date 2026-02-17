@@ -9,10 +9,10 @@ Provides polished, reusable components:
 - SessionBrowserDialog: Browse and manage past measurement sessions
 - PackDiffDialog: Compare two measurement sessions (before/after)
 """
+
 from __future__ import annotations
 
 import json
-import os
 import platform
 import subprocess
 import threading
@@ -21,19 +21,21 @@ import tkinter as tk
 from datetime import datetime
 from pathlib import Path
 from tkinter import ttk, messagebox
-from typing import Callable, Any
-from dataclasses import dataclass, field
+from typing import Callable
+from dataclasses import dataclass
 from enum import Enum
 
 # Optional audio imports
 try:
     import numpy as np
+
     HAS_NUMPY = True
 except ImportError:
     HAS_NUMPY = False
 
 try:
     from tap_tone_pi.capture import list_devices, record_audio
+
     HAS_CAPTURE = True
 except ImportError:
     HAS_CAPTURE = False
@@ -45,6 +47,7 @@ try:
         save_config,
         load_config,
     )
+
     HAS_CONFIG = True
 except ImportError:
     HAS_CONFIG = False
@@ -52,6 +55,7 @@ except ImportError:
 
 class StatusLevel(str, Enum):
     """Status bar message levels."""
+
     INFO = "info"
     SUCCESS = "success"
     WARNING = "warning"
@@ -62,6 +66,7 @@ class StatusLevel(str, Enum):
 @dataclass
 class StatusMessage:
     """Status bar message."""
+
     text: str
     level: StatusLevel = StatusLevel.INFO
     progress: float | None = None  # 0.0 - 1.0 for progress bar
@@ -158,11 +163,11 @@ class AudioLevelMeter(tk.Canvas):
 
     # Color thresholds (level, color)
     COLORS = [
-        (0.0, "#2ecc71"),   # Green
-        (0.6, "#2ecc71"),   # Green
+        (0.0, "#2ecc71"),  # Green
+        (0.6, "#2ecc71"),  # Green
         (0.75, "#f1c40f"),  # Yellow
-        (0.9, "#e74c3c"),   # Red
-        (1.0, "#e74c3c"),   # Red
+        (0.9, "#e74c3c"),  # Red
+        (1.0, "#e74c3c"),  # Red
     ]
 
     def __init__(
@@ -174,7 +179,14 @@ class AudioLevelMeter(tk.Canvas):
         peak_hold_ms: int = 1000,
         **kwargs,
     ):
-        super().__init__(parent, width=width, height=height, bg="#1a1a1a", highlightthickness=0, **kwargs)
+        super().__init__(
+            parent,
+            width=width,
+            height=height,
+            bg="#1a1a1a",
+            highlightthickness=0,
+            **kwargs,
+        )
 
         self._width = width
         self._height = height
@@ -221,7 +233,9 @@ class AudioLevelMeter(tk.Canvas):
             return
 
         # Background
-        self.create_rectangle(0, 0, self._width, self._height, fill="#1a1a1a", outline="")
+        self.create_rectangle(
+            0, 0, self._width, self._height, fill="#1a1a1a", outline=""
+        )
 
         # Draw segments
         segment_count = 20
@@ -238,10 +252,14 @@ class AudioLevelMeter(tk.Canvas):
             color = self._get_color(level_at_segment)
 
             if i < filled_segments:
-                self.create_rectangle(x1, 2, x2, self._height - 2, fill=color, outline="")
+                self.create_rectangle(
+                    x1, 2, x2, self._height - 2, fill=color, outline=""
+                )
             else:
                 # Dim version for unfilled
-                self.create_rectangle(x1, 2, x2, self._height - 2, fill="#333", outline="")
+                self.create_rectangle(
+                    x1, 2, x2, self._height - 2, fill="#333", outline=""
+                )
 
         # Peak indicator
         if self._show_peak and self._peak > 0:
@@ -279,7 +297,9 @@ class DeviceSelector(tk.Frame):
         self.combo.bind("<<ComboboxSelected>>", self._on_select)
 
         # Refresh button
-        self.refresh_btn = tk.Button(self, text="Refresh", command=self.refresh_devices, width=8)
+        self.refresh_btn = tk.Button(
+            self, text="Refresh", command=self.refresh_devices, width=8
+        )
         self.refresh_btn.pack(side=tk.LEFT, padx=2)
 
         # Test button
@@ -372,7 +392,7 @@ class DeviceSelector(tk.Frame):
                 f"Device: {device['name']}\n\n"
                 f"RMS: {rms:.0f}\n"
                 f"Peak: {peak:.0f}\n"
-                f"Level: {level}"
+                f"Level: {level}",
             )
         except Exception as e:
             messagebox.showerror("Test Failed", f"Could not record: {e}")
@@ -436,10 +456,14 @@ class SetupWizardDialog(tk.Toplevel):
         ).pack(pady=(0, 20))
 
         # Step 1: Device Selection
-        step1 = tk.LabelFrame(main, text="Step 1: Select Audio Input Device", padx=10, pady=10)
+        step1 = tk.LabelFrame(
+            main, text="Step 1: Select Audio Input Device", padx=10, pady=10
+        )
         step1.pack(fill=tk.X, pady=5)
 
-        self.device_selector = DeviceSelector(step1, on_device_changed=self._on_device_changed)
+        self.device_selector = DeviceSelector(
+            step1, on_device_changed=self._on_device_changed
+        )
         self.device_selector.pack(fill=tk.X)
 
         # Step 2: Sample Rate
@@ -595,7 +619,7 @@ class SetupWizardDialog(tk.Toplevel):
 
                 # Calculate RMS normalized to 0-1
                 audio_float = result.audio.astype(float)
-                rms = np.sqrt(np.mean(audio_float ** 2))
+                rms = np.sqrt(np.mean(audio_float**2))
                 normalized = min(1.0, rms / 20000)  # Normalize assuming ~20000 is loud
 
                 max_rms = max(max_rms, rms)
@@ -605,14 +629,22 @@ class SetupWizardDialog(tk.Toplevel):
                 # Update meter on main thread (check if still recording)
                 if self._recording:
                     try:
-                        self.after(0, lambda l=normalized: self.meter.set_level(l) if self._recording else None)
+                        self.after(
+                            0,
+                            lambda l=normalized: self.meter.set_level(l)
+                            if self._recording
+                            else None,
+                        )
                     except tk.TclError:
                         break  # Widget destroyed
 
-            except Exception as e:
-                self.after(0, lambda: self.test_status.configure(
-                    text=f"Error: {e}", fg="#f44336"
-                ))
+            except Exception:
+                self.after(
+                    0,
+                    lambda: self.test_status.configure(
+                        text=f"Error: {e}", fg="#f44336"
+                    ),
+                )
                 break
 
         # Evaluate test results
@@ -670,7 +702,7 @@ class SetupWizardDialog(tk.Toplevel):
                 "Configuration Saved",
                 f"Device: {device_config.name}\n"
                 f"Sample Rate: {device_config.sample_rate} Hz\n\n"
-                "Configuration saved successfully!"
+                "Configuration saved successfully!",
             )
 
             if self.on_complete:
@@ -785,6 +817,7 @@ class CaptureProgressDialog(tk.Toplevel):
 @dataclass
 class SessionInfo:
     """Information about a measurement session."""
+
     path: Path
     name: str
     modified: datetime
@@ -839,7 +872,13 @@ class SessionInfo:
                                     with open(qc_file) as f:
                                         qc = json.load(f)
                                         latest_verdict = qc.get("verdict", "unknown")
-                                except (ImportError, OSError, ValueError, KeyError, AttributeError):
+                                except (
+                                    ImportError,
+                                    OSError,
+                                    ValueError,
+                                    KeyError,
+                                    AttributeError,
+                                ):
                                     pass
             elif (path / "analysis").exists():
                 session_type = "bending"
@@ -953,7 +992,9 @@ class SessionBrowserDialog(tk.Toplevel):
 
         # Treeview for session list
         columns = ("type", "name", "modified", "points", "files", "size", "status")
-        self.tree = ttk.Treeview(list_frame, columns=columns, show="headings", selectmode="browse")
+        self.tree = ttk.Treeview(
+            list_frame, columns=columns, show="headings", selectmode="browse"
+        )
 
         # Configure columns
         self.tree.heading("type", text="")
@@ -973,7 +1014,9 @@ class SessionBrowserDialog(tk.Toplevel):
         self.tree.column("status", width=80, anchor=tk.CENTER)
 
         # Scrollbar
-        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.tree.yview)
+        scrollbar = ttk.Scrollbar(
+            list_frame, orient=tk.VERTICAL, command=self.tree.yview
+        )
         self.tree.configure(yscrollcommand=scrollbar.set)
 
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -984,7 +1027,9 @@ class SessionBrowserDialog(tk.Toplevel):
         self.tree.bind("<Double-1>", self._on_double_click)
 
         # Detail panel
-        self.detail_frame = tk.LabelFrame(main, text="Session Details", padx=10, pady=10)
+        self.detail_frame = tk.LabelFrame(
+            main, text="Session Details", padx=10, pady=10
+        )
         self.detail_frame.pack(fill=tk.X, pady=(10, 0))
 
         self.detail_label = tk.Label(
@@ -1037,7 +1082,9 @@ class SessionBrowserDialog(tk.Toplevel):
             return
 
         # Find all session directories
-        for item in sorted(self.output_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
+        for item in sorted(
+            self.output_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True
+        ):
             if item.is_dir() and not item.name.startswith("."):
                 try:
                     session = SessionInfo.from_path(item)
@@ -1251,7 +1298,9 @@ class PackDiffDialog(tk.Toplevel):
         self.status_label.pack(side=tk.LEFT, padx=15)
 
         # Results frame (with notebook for tabs)
-        self.results_frame = tk.LabelFrame(main, text="Comparison Results", padx=10, pady=10)
+        self.results_frame = tk.LabelFrame(
+            main, text="Comparison Results", padx=10, pady=10
+        )
         self.results_frame.pack(fill=tk.BOTH, expand=True)
 
         # Notebook for different views
@@ -1277,7 +1326,9 @@ class PackDiffDialog(tk.Toplevel):
 
         # Peaks treeview
         peaks_columns = ("label", "freq_a", "freq_b", "delta", "delta_pct", "status")
-        self.peaks_tree = ttk.Treeview(self.peaks_frame, columns=peaks_columns, show="headings")
+        self.peaks_tree = ttk.Treeview(
+            self.peaks_frame, columns=peaks_columns, show="headings"
+        )
 
         self.peaks_tree.heading("label", text="Peak")
         self.peaks_tree.heading("freq_a", text="Freq A (Hz)")
@@ -1293,7 +1344,9 @@ class PackDiffDialog(tk.Toplevel):
         self.peaks_tree.column("delta_pct", width=80, anchor=tk.E)
         self.peaks_tree.column("status", width=100)
 
-        peaks_scroll = ttk.Scrollbar(self.peaks_frame, orient=tk.VERTICAL, command=self.peaks_tree.yview)
+        peaks_scroll = ttk.Scrollbar(
+            self.peaks_frame, orient=tk.VERTICAL, command=self.peaks_tree.yview
+        )
         self.peaks_tree.configure(yscrollcommand=peaks_scroll.set)
 
         self.peaks_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -1305,7 +1358,9 @@ class PackDiffDialog(tk.Toplevel):
 
         # Metrics treeview
         metrics_columns = ("name", "value_a", "value_b", "delta", "delta_pct")
-        self.metrics_tree = ttk.Treeview(self.metrics_frame, columns=metrics_columns, show="headings")
+        self.metrics_tree = ttk.Treeview(
+            self.metrics_frame, columns=metrics_columns, show="headings"
+        )
 
         self.metrics_tree.heading("name", text="Metric")
         self.metrics_tree.heading("value_a", text="Before")
@@ -1319,7 +1374,9 @@ class PackDiffDialog(tk.Toplevel):
         self.metrics_tree.column("delta", width=100, anchor=tk.E)
         self.metrics_tree.column("delta_pct", width=80, anchor=tk.E)
 
-        metrics_scroll = ttk.Scrollbar(self.metrics_frame, orient=tk.VERTICAL, command=self.metrics_tree.yview)
+        metrics_scroll = ttk.Scrollbar(
+            self.metrics_frame, orient=tk.VERTICAL, command=self.metrics_tree.yview
+        )
         self.metrics_tree.configure(yscrollcommand=metrics_scroll.set)
 
         self.metrics_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -1348,7 +1405,9 @@ class PackDiffDialog(tk.Toplevel):
         if not self.output_dir.exists():
             return
 
-        for item in sorted(self.output_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
+        for item in sorted(
+            self.output_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True
+        ):
             if item.is_dir() and not item.name.startswith("."):
                 self._sessions.append(item.name)
 
@@ -1391,7 +1450,7 @@ class PackDiffDialog(tk.Toplevel):
         self.update()
 
         try:
-            from tap_tone_pi.core.session_diff import compare_sessions, format_diff_report
+            from tap_tone_pi.core.session_diff import compare_sessions
 
             path_a = self.output_dir / session_a
             path_b = self.output_dir / session_b
@@ -1403,7 +1462,7 @@ class PackDiffDialog(tk.Toplevel):
             if self._diff_result.errors:
                 self.status_label.configure(
                     text=f"Compared with {len(self._diff_result.errors)} warning(s)",
-                    fg="#ff9800"
+                    fg="#ff9800",
                 )
             else:
                 self.status_label.configure(text="Comparison complete", fg="#4CAF50")
@@ -1423,6 +1482,7 @@ class PackDiffDialog(tk.Toplevel):
         self.summary_text.delete("1.0", tk.END)
 
         from tap_tone_pi.core.session_diff import format_diff_report
+
         report = format_diff_report(diff)
         self.summary_text.insert("1.0", report)
         self.summary_text.configure(state=tk.DISABLED)
@@ -1446,9 +1506,9 @@ class PackDiffDialog(tk.Toplevel):
             }
             status = status_icons.get(p.status, p.status)
 
-            self.peaks_tree.insert("", tk.END, values=(
-                p.label, freq_a, freq_b, delta, delta_pct, status
-            ))
+            self.peaks_tree.insert(
+                "", tk.END, values=(p.label, freq_a, freq_b, delta, delta_pct, status)
+            )
 
         # Update metrics tree
         for item in self.metrics_tree.get_children():
@@ -1460,9 +1520,9 @@ class PackDiffDialog(tk.Toplevel):
             delta = f"{m.delta:+.4f}" if m.delta else "-"
             delta_pct = f"{m.delta_pct:+.1f}%" if m.delta_pct else "-"
 
-            self.metrics_tree.insert("", tk.END, values=(
-                m.name, value_a, value_b, delta, delta_pct
-            ))
+            self.metrics_tree.insert(
+                "", tk.END, values=(m.name, value_a, value_b, delta, delta_pct)
+            )
 
     def _export_report(self) -> None:
         """Export the diff report to a file."""
@@ -1493,7 +1553,6 @@ class PackDiffDialog(tk.Toplevel):
             messagebox.showinfo("Exported", f"Report saved to:\n{filepath}")
         except Exception as e:
             messagebox.showerror("Export Failed", f"Could not save report: {e}")
-
 
 
 class ToolTip:

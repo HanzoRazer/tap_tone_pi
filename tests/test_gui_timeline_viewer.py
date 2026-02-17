@@ -7,16 +7,15 @@ rather than instantiating Toplevel windows.
 
 Measurement-boundary compliant: no quality or interpretation language.
 """
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
 from typing import Any, Dict
 
-import pytest
 
 from tap_tone_pi.gui.timeline_viewer import (
-    TimelineViewerDialog,
     load_timeline,
     _fmt_bool,
 )
@@ -80,27 +79,33 @@ def _write_timeline(base: Path, data: Dict[str, Any] | None = None) -> Path:
 def _write_events_jsonl(session_dir: Path) -> None:
     """Write an events.jsonl file that export_session_timeline can read."""
     lines = [
-        json.dumps({
-            "event_type": "attention_requested",
-            "occurred_at": "2026-02-09T10:00:00Z",
-            "source": {"component": "wolf_detector"},
-            "payload": {"directive_id": "d1"},
-        }),
-        json.dumps({
-            "event_type": "attention_dismissed",
-            "occurred_at": "2026-02-09T10:02:00Z",
-            "source": {"component": "gui"},
-            "payload": {"directive_id": "d1"},
-        }),
+        json.dumps(
+            {
+                "event_type": "attention_requested",
+                "occurred_at": "2026-02-09T10:00:00Z",
+                "source": {"component": "wolf_detector"},
+                "payload": {"directive_id": "d1"},
+            }
+        ),
+        json.dumps(
+            {
+                "event_type": "attention_dismissed",
+                "occurred_at": "2026-02-09T10:02:00Z",
+                "source": {"component": "gui"},
+                "payload": {"directive_id": "d1"},
+            }
+        ),
     ]
     (session_dir / "events.jsonl").write_text(
-        "\n".join(lines), encoding="utf-8",
+        "\n".join(lines),
+        encoding="utf-8",
     )
 
 
 # ------------------------------------------------------------------
 # 1. load_timeline — pre-exported pack
 # ------------------------------------------------------------------
+
 
 def test_load_timeline_from_pack(tmp_path: Path) -> None:
     """load_timeline reads a pre-exported session_timeline_v1.json."""
@@ -121,6 +126,7 @@ def test_load_timeline_returns_none_when_missing(tmp_path: Path) -> None:
 # 2. load_timeline — live session (on-the-fly export)
 # ------------------------------------------------------------------
 
+
 def test_load_timeline_exports_on_the_fly(tmp_path: Path) -> None:
     """load_timeline calls export_session_timeline when file is absent."""
     sess = tmp_path / "live_session"
@@ -136,6 +142,7 @@ def test_load_timeline_exports_on_the_fly(tmp_path: Path) -> None:
 # ------------------------------------------------------------------
 # 3. Data rendering correctness (no Tk required)
 # ------------------------------------------------------------------
+
 
 def test_events_match_input(tmp_path: Path) -> None:
     """Loaded directive_events match what was written."""
@@ -203,6 +210,7 @@ def test_ui_state_booleans(tmp_path: Path) -> None:
 # 4. _fmt_bool helper
 # ------------------------------------------------------------------
 
+
 def test_fmt_bool_true():
     assert _fmt_bool(True) == "✓"
 
@@ -225,9 +233,21 @@ def test_fmt_bool_string():
 
 # Forbidden words from EVIDENCE_PACK_CONTRACT_v1 and MEASUREMENT_BOUNDARY
 _FORBIDDEN = {
-    "good", "bad", "optimal", "problem", "worst", "dominant",
-    "strongest", "fix", "thin", "stiffen", "remove", "wolf tone",
-    "dead spot", "recommendation", "should",
+    "good",
+    "bad",
+    "optimal",
+    "problem",
+    "worst",
+    "dominant",
+    "strongest",
+    "fix",
+    "thin",
+    "stiffen",
+    "remove",
+    "wolf tone",
+    "dead spot",
+    "recommendation",
+    "should",
 }
 
 
@@ -244,6 +264,7 @@ def test_no_quality_language_in_timeline_data(tmp_path: Path) -> None:
 # ------------------------------------------------------------------
 # 6. Corrupt / invalid file handling
 # ------------------------------------------------------------------
+
 
 def test_corrupt_json_returns_none(tmp_path: Path) -> None:
     """Corrupt JSON file → load_timeline returns None, no crash."""

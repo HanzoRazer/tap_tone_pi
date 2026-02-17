@@ -10,7 +10,7 @@ from analyzer.analysis.wood_properties import (
     WoodDimensions,
     WoodProperties,
     identify_wood_species,
-    TONEWOOD_REFERENCES
+    TONEWOOD_REFERENCES,
 )
 
 __all__ = [

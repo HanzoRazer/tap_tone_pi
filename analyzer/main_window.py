@@ -6,9 +6,16 @@ from pathlib import Path
 import numpy as np
 
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QSplitter, QMenuBar, QMenu, QToolBar, QStatusBar,
-    QFileDialog, QMessageBox, QTabWidget
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QSplitter,
+    QToolBar,
+    QStatusBar,
+    QFileDialog,
+    QMessageBox,
+    QTabWidget,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QKeySequence
@@ -24,7 +31,9 @@ from analyzer.loaders.transfer_function import parse_transfer_function
 from analyzer.loaders.wsi_curve import parse_wsi_curve
 from analyzer.analysis.coherence import analyze_coherence_quality
 from analyzer.analysis.wood_properties import (
-    estimate_wood_properties, WoodDimensions, identify_wood_species
+    estimate_wood_properties,
+    WoodDimensions,
+    identify_wood_species,
 )
 from analyzer.reports.html_report import generate_html_report
 from analyzer.reports.json_report import generate_json_report
@@ -75,11 +84,15 @@ class MainWindow(QMainWindow):
         sample_menu = file_menu.addMenu("Load &Sample")
 
         sample_sitka = QAction("Sitka Spruce Sample", self)
-        sample_sitka.triggered.connect(lambda: self._load_sample("sample_sitka_spruce.zip"))
+        sample_sitka.triggered.connect(
+            lambda: self._load_sample("sample_sitka_spruce.zip")
+        )
         sample_menu.addAction(sample_sitka)
 
         sample_cedar = QAction("Cedar Top Sample", self)
-        sample_cedar.triggered.connect(lambda: self._load_sample("sample_cedar_top.zip"))
+        sample_cedar.triggered.connect(
+            lambda: self._load_sample("sample_cedar_top.zip")
+        )
         sample_menu.addAction(sample_cedar)
 
         sample_menu.addSeparator()
@@ -280,25 +293,21 @@ class MainWindow(QMainWindow):
         """Create the status bar."""
         self.statusbar = QStatusBar()
         self.setStatusBar(self.statusbar)
-        self.statusbar.showMessage("Ready - Use File > Load Sample to try with test data")
+        self.statusbar.showMessage(
+            "Ready - Use File > Load Sample to try with test data"
+        )
 
     def _open_pack(self):
         """Open a viewer pack ZIP file."""
         file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Open Viewer Pack",
-            "",
-            "Viewer Packs (*.zip);;All Files (*)"
+            self, "Open Viewer Pack", "", "Viewer Packs (*.zip);;All Files (*)"
         )
         if file_path:
             self._load_pack(file_path)
 
     def _open_folder(self):
         """Open a folder containing viewer pack data."""
-        folder_path = QFileDialog.getExistingDirectory(
-            self,
-            "Open Folder"
-        )
+        folder_path = QFileDialog.getExistingDirectory(self, "Open Folder")
         if folder_path:
             self._load_folder(folder_path)
 
@@ -316,7 +325,7 @@ class MainWindow(QMainWindow):
                 "Sample Not Found",
                 f"Sample file not found: {sample_path}\n\n"
                 "Run the sample generator first:\n"
-                "python analyzer/sample_data/generate_sample_pack.py"
+                "python analyzer/sample_data/generate_sample_pack.py",
             )
 
     def _load_pack(self, path: str):
@@ -361,7 +370,7 @@ class MainWindow(QMainWindow):
                             frequencies=tf_data.frequencies,
                             magnitude_db=tf_data.magnitude_db,
                             phase=tf_data.phase,
-                            coherence=tf_data.coherence
+                            coherence=tf_data.coherence,
                         )
                     except (KeyError, TypeError, ValueError, AttributeError):
                         pass  # Not a valid transfer function format
@@ -392,7 +401,9 @@ class MainWindow(QMainWindow):
         if data:
             self.current_spectrum = data
             self.spectrum_chart.set_data(data)
-            self.statusbar.showMessage(f"Displaying: {file_info.get('name', 'spectrum')}")
+            self.statusbar.showMessage(
+                f"Displaying: {file_info.get('name', 'spectrum')}"
+            )
 
     def _display_peaks(self, file_info: dict):
         """Display peaks data in the table."""
@@ -440,7 +451,7 @@ class MainWindow(QMainWindow):
                 magnitude_db=tf_data.magnitude_db,
                 phase=tf_data.phase,
                 coherence=tf_data.coherence,
-                peaks=self.current_peaks
+                peaks=self.current_peaks,
             )
             self.chart_tabs.setCurrentWidget(self.bode_plot)
             self.statusbar.showMessage(f"Loaded transfer function: {name}")
@@ -461,14 +472,14 @@ class MainWindow(QMainWindow):
         filters = {
             "html": "HTML Files (*.html)",
             "json": "JSON Files (*.json)",
-            "pdf": "PDF Files (*.pdf)"
+            "pdf": "PDF Files (*.pdf)",
         }
 
         file_path, _ = QFileDialog.getSaveFileName(
             self,
             "Export Report",
             f"tap_tone_report.{format}",
-            filters.get(format, "All Files (*)")
+            filters.get(format, "All Files (*)"),
         )
 
         if not file_path:
@@ -488,7 +499,7 @@ class MainWindow(QMainWindow):
                     peaks=peaks,
                     wood_properties=wood_props,
                     coherence_stats=coherence_stats,
-                    output_path=file_path
+                    output_path=file_path,
                 )
             elif format == "json":
                 generate_json_report(
@@ -497,7 +508,7 @@ class MainWindow(QMainWindow):
                     peaks=peaks,
                     wood_properties=wood_props,
                     coherence_stats=coherence_stats,
-                    output_path=file_path
+                    output_path=file_path,
                 )
             elif format == "pdf":
                 # PDF falls back to HTML
@@ -508,13 +519,13 @@ class MainWindow(QMainWindow):
                     peaks=peaks,
                     wood_properties=wood_props,
                     coherence_stats=coherence_stats,
-                    output_path=html_path
+                    output_path=html_path,
                 )
                 QMessageBox.information(
                     self,
                     "PDF Export",
                     f"HTML report saved to:\n{html_path}\n\n"
-                    "Open in browser and print to PDF."
+                    "Open in browser and print to PDF.",
                 )
                 file_path = html_path
 
@@ -571,9 +582,7 @@ class MainWindow(QMainWindow):
         """Estimate wood properties from peaks and metadata."""
         if not self.current_peaks:
             QMessageBox.warning(
-                self,
-                "Warning",
-                "No peaks detected. Run 'Find Peaks' first."
+                self, "Warning", "No peaks detected. Run 'Find Peaks' first."
             )
             return
 
@@ -587,13 +596,15 @@ class MainWindow(QMainWindow):
             weight_g = session_meta.get("weight_g")
 
             # Get fundamental frequency
-            fundamental = self.current_peaks[0]["freq_hz"] if self.current_peaks else 180
+            fundamental = (
+                self.current_peaks[0]["freq_hz"] if self.current_peaks else 180
+            )
 
             # Build dimensions
             dims = WoodDimensions(
                 length=dimensions_mm.get("length", 500),
                 width=dimensions_mm.get("width", 150),
-                thickness=dimensions_mm.get("thickness", 3)
+                thickness=dimensions_mm.get("thickness", 3),
             )
 
             # Get coherence quality for confidence
@@ -612,7 +623,7 @@ class MainWindow(QMainWindow):
                 peaks=self.current_peaks,
                 freq_hz=freq_hz,
                 magnitude=magnitude,
-                coherence_quality=coherence_quality
+                coherence_quality=coherence_quality,
             )
 
             self.current_wood_props = props.to_dict()
@@ -633,7 +644,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(
                 self,
                 "Warning",
-                "No wood properties estimated. Run 'Estimate Wood Properties' first."
+                "No wood properties estimated. Run 'Estimate Wood Properties' first.",
             )
             return
 
@@ -643,13 +654,17 @@ class MainWindow(QMainWindow):
 
             props = WoodProperties(
                 density_kg_m3=self.current_wood_props.get("density_kg_m3", 400),
-                stiffness_along_gpa=self.current_wood_props.get("stiffness_along_gpa", 10),
+                stiffness_along_gpa=self.current_wood_props.get(
+                    "stiffness_along_gpa", 10
+                ),
                 stiffness_cross_gpa=None,
-                radiation_coefficient=self.current_wood_props.get("radiation_coefficient", 10),
+                radiation_coefficient=self.current_wood_props.get(
+                    "radiation_coefficient", 10
+                ),
                 damping_factor=self.current_wood_props.get("damping_factor"),
                 quality_grade=self.current_wood_props.get("quality_grade", "B"),
                 fundamental_hz=self.current_wood_props.get("fundamental_hz", 180),
-                confidence=self.current_wood_props.get("confidence", 0.7)
+                confidence=self.current_wood_props.get("confidence", 0.7),
             )
 
             matches = identify_wood_species(props)
@@ -710,5 +725,5 @@ class MainWindow(QMainWindow):
             "• Wood property estimation\n"
             "• Species identification\n"
             "• HTML/JSON report export\n\n"
-            "Part of the tap_tone_pi project."
+            "Part of the tap_tone_pi project.",
         )

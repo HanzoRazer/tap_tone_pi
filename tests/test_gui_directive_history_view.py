@@ -1,4 +1,5 @@
 """Tests for directive history formatting helper (PR #14 Seg 2)."""
+
 from tap_tone_pi.agentic.spine.directive_history import DirectiveEventRow
 from tap_tone_pi.gui.directive_history_view import format_directive_history
 

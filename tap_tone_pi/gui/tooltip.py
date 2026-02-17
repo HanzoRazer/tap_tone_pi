@@ -5,6 +5,7 @@ Usage::
     from tap_tone_pi.gui.tooltip import Tooltip
     Tooltip(some_button, "Helpful explanation text.")
 """
+
 from __future__ import annotations
 
 import tkinter as tk

@@ -1,8 +1,8 @@
 # Critical Design Review: tap_tone_pi
 
-**Date:** 2026-02-05  
-**Reviewer:** Claude (Opus 4.5), acting as critical design reviewer  
-**Artifact:** `tap_tone_pi-main` (snapshot from upload, ~17k Python LOC, 120+ files)  
+**Date:** 2026-02-05
+**Reviewer:** Claude (Opus 4.5), acting as critical design reviewer
+**Artifact:** `tap_tone_pi-main` (snapshot from upload, ~17k Python LOC, 120+ files)
 **Version declared:** `v0.1.0` (pyproject.toml) / `v2.0-instrumentation` (Build Readiness doc)
 
 ---

@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 
 from .grid import Grid
-from .dsp import nearest_bin, get_dsp_provenance
+from .dsp import get_dsp_provenance
 
 # Provenance constants for WSI/wolf metrics
 METRICS_ALGO_VERSION = "1.0.0"
@@ -160,7 +160,10 @@ def wsi_curve(
 
     freq = spectra[0].freq_hz
     for s in spectra[1:]:
-        if s.freq_hz.shape != freq.shape or float(np.max(np.abs(s.freq_hz - freq))) > 1e-6:
+        if (
+            s.freq_hz.shape != freq.shape
+            or float(np.max(np.abs(s.freq_hz - freq))) > 1e-6
+        ):
             raise ValueError("Point spectra do not share a common frequency axis")
 
     # band mask
@@ -203,12 +206,14 @@ def wsi_curve(
             coherence_threshold=coherence_threshold,
         )
         wsi_vals.append(w)
-        details.append({
-            "loc": float(loc),
-            "grad": float(grad),
-            "phase_disorder": float(phase_d),
-            "coh_mean": float(coh_mean),
-            "admissible": admissible,
-        })
+        details.append(
+            {
+                "loc": float(loc),
+                "grad": float(grad),
+                "phase_disorder": float(phase_d),
+                "coh_mean": float(coh_mean),
+                "admissible": admissible,
+            }
+        )
 
     return freq[idxs].astype(np.float32), np.array(wsi_vals, dtype=np.float32), details

@@ -6,10 +6,12 @@ import numpy as np
 from scipy.signal import butter, filtfilt, find_peaks
 from scipy.fft import rfft, rfftfreq
 
+
 @dataclass(frozen=True)
 class Peak:
     freq_hz: float
     magnitude: float
+
 
 @dataclass(frozen=True)
 class AnalysisResult:
@@ -21,6 +23,7 @@ class AnalysisResult:
     spectrum_freq_hz: np.ndarray
     spectrum_mag: np.ndarray
 
+
 def _highpass(x: np.ndarray, fs: int, hz: float) -> np.ndarray:
     if hz <= 0:
         return x
@@ -28,6 +31,7 @@ def _highpass(x: np.ndarray, fs: int, hz: float) -> np.ndarray:
     w = hz / nyq
     b, a = butter(2, w, btype="highpass")
     return filtfilt(b, a, x).astype(np.float32)
+
 
 def analyze_tap(
     audio: np.ndarray,
@@ -93,10 +97,14 @@ def analyze_tap(
     df = float(freqs_m[1] - freqs_m[0])
     min_dist_bins = max(1, int(round(peak_min_spacing_hz / df)))
 
-    peaks_idx, props = find_peaks(spec_m, prominence=peak_min_prominence, distance=min_dist_bins)
+    peaks_idx, props = find_peaks(
+        spec_m, prominence=peak_min_prominence, distance=min_dist_bins
+    )
 
     # Sort peaks by magnitude desc
-    peaks_sorted = sorted(peaks_idx.tolist(), key=lambda i: float(spec_m[i]), reverse=True)[:max_peaks]
+    peaks_sorted = sorted(
+        peaks_idx.tolist(), key=lambda i: float(spec_m[i]), reverse=True
+    )[:max_peaks]
 
     peaks_out: list[Peak] = [
         Peak(freq_hz=float(freqs_m[i]), magnitude=float(spec_m[i]))
@@ -122,6 +130,7 @@ def analyze_tap(
         spectrum_freq_hz=freqs,
         spectrum_mag=spec_n,
     )
+
 
 def analysis_to_json_dict(res: AnalysisResult) -> dict[str, Any]:
     return {

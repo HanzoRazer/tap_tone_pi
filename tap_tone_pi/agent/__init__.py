@@ -21,6 +21,7 @@ Two integration paths:
 1. Standalone (mock-friendly): Use types.py + message_spec.py + MeasurementAgent
 2. Integrated (real QC types): Use messages.py with build_agent_message(ctx, verdict)
 """
+
 # Standalone types (usable without importing quality_policy)
 from .types import (
     ActionId,

@@ -1,4 +1,5 @@
 """Negative schema test: verify chladni_run schema rejects invalid documents."""
+
 from __future__ import annotations
 
 import json

@@ -35,7 +35,9 @@ POLICY_IMPORT_PATH = "tap_tone_pi.agentic.spine.policy"
 
 
 def _import_decider():
-    mod = pytest.importorskip(POLICY_IMPORT_PATH, reason=f"{POLICY_IMPORT_PATH} not implemented yet")
+    mod = pytest.importorskip(
+        POLICY_IMPORT_PATH, reason=f"{POLICY_IMPORT_PATH} not implemented yet"
+    )
     decide = getattr(mod, "decide", None)
     assert callable(decide), "Expected a callable decide(...) in spine.policy"
     return decide
@@ -97,20 +99,35 @@ def cap_view_denied():
 
 def test_policy_first_signal_maps_to_inspect(uwsm_default, cap_view_allowed):
     decide = _import_decider()
-    out = decide(moment={"moment": "FIRST_SIGNAL"}, uwsm=uwsm_default, mode="M1", capability=cap_view_allowed)
+    out = decide(
+        moment={"moment": "FIRST_SIGNAL"},
+        uwsm=uwsm_default,
+        mode="M1",
+        capability=cap_view_allowed,
+    )
     assert out["attention_action"] == "INSPECT"
     assert out["emit_directive"] is True
 
 
 def test_policy_overload_maps_to_review(uwsm_default, cap_view_allowed):
     decide = _import_decider()
-    out = decide(moment={"moment": "OVERLOAD"}, uwsm=uwsm_default, mode="M1", capability=cap_view_allowed)
+    out = decide(
+        moment={"moment": "OVERLOAD"},
+        uwsm=uwsm_default,
+        mode="M1",
+        capability=cap_view_allowed,
+    )
     assert out["attention_action"] == "REVIEW"
 
 
 def test_gate_high_cognitive_load_limits_to_one(uwsm_high_load, cap_view_allowed):
     decide = _import_decider()
-    out = decide(moment={"moment": "FINDING"}, uwsm=uwsm_high_load, mode="M1", capability=cap_view_allowed)
+    out = decide(
+        moment={"moment": "FINDING"},
+        uwsm=uwsm_high_load,
+        mode="M1",
+        capability=cap_view_allowed,
+    )
     assert out.get("diagnostic", {}).get("max_directives", 1) == 1
     # If you return multiple directives, assert it's clamped to 1
     directives = out.get("directives", [])
@@ -120,7 +137,12 @@ def test_gate_high_cognitive_load_limits_to_one(uwsm_high_load, cap_view_allowed
 
 def test_gate_user_led_suppresses_proactive(uwsm_user_led, cap_view_allowed):
     decide = _import_decider()
-    out = decide(moment={"moment": "HESITATION"}, uwsm=uwsm_user_led, mode="M1", capability=cap_view_allowed)
+    out = decide(
+        moment={"moment": "HESITATION"},
+        uwsm=uwsm_user_led,
+        mode="M1",
+        capability=cap_view_allowed,
+    )
     # Policy allows either no directive or a very soft "Want a suggestion?" INSPECT
     assert out["attention_action"] in ("INSPECT", "NONE")
     if out["attention_action"] == "INSPECT":
@@ -129,24 +151,38 @@ def test_gate_user_led_suppresses_proactive(uwsm_user_led, cap_view_allowed):
 
 def test_gate_low_guidance_summary_only(uwsm_low_guidance, cap_view_allowed):
     decide = _import_decider()
-    out = decide(moment={"moment": "FIRST_SIGNAL"}, uwsm=uwsm_low_guidance, mode="M1", capability=cap_view_allowed)
+    out = decide(
+        moment={"moment": "FIRST_SIGNAL"},
+        uwsm=uwsm_low_guidance,
+        mode="M1",
+        capability=cap_view_allowed,
+    )
     directive = out.get("directive", {})
     # Implementation choice: omit detail or keep it minimal
-    detail = getattr(directive, "detail", "") if not isinstance(directive, dict) else directive.get("detail", "")
+    detail = (
+        getattr(directive, "detail", "")
+        if not isinstance(directive, dict)
+        else directive.get("detail", "")
+    )
     assert detail in ("", None) or len(detail) <= 140
 
 
 def test_m1_directive_has_summary_and_no_title(uwsm_default, cap_view_allowed):
     """Canonical 'summary' must be present; legacy 'title' must be absent."""
     decide = _import_decider()
-    out = decide(moment={"moment": "FINDING"}, uwsm=uwsm_default, mode="M1", capability=cap_view_allowed)
+    out = decide(
+        moment={"moment": "FINDING"},
+        uwsm=uwsm_default,
+        mode="M1",
+        capability=cap_view_allowed,
+    )
     directive = out.get("directive")
     assert directive is not None
 
     # PR #8: directive must be contract dataclass
-    assert isinstance(directive, AttentionDirectiveV1), (
-        f"Expected AttentionDirectiveV1, got {type(directive).__name__}"
-    )
+    assert isinstance(
+        directive, AttentionDirectiveV1
+    ), f"Expected AttentionDirectiveV1, got {type(directive).__name__}"
     assert isinstance(directive.summary, str)
     assert directive.summary.strip() != ""
 
@@ -165,7 +201,12 @@ def test_m1_directive_has_summary_and_no_title(uwsm_default, cap_view_allowed):
 
 def test_mode_m0_shadow_emits_diagnostic_only(uwsm_default, cap_view_allowed):
     decide = _import_decider()
-    out = decide(moment={"moment": "FINDING"}, uwsm=uwsm_default, mode="M0", capability=cap_view_allowed)
+    out = decide(
+        moment={"moment": "FINDING"},
+        uwsm=uwsm_default,
+        mode="M0",
+        capability=cap_view_allowed,
+    )
     assert out["emit_directive"] is False
     assert out.get("diagnostic", {}).get("would_have_emitted") is not None
 
@@ -177,7 +218,11 @@ def test_mode_m2_issues_commands_if_allowed(uwsm_default, cap_view_allowed):
         uwsm=uwsm_default,
         mode="M2",
         capability=cap_view_allowed,
-        context={"first_time_user": True, "primary_panel": "spectrum", "primary_trace": "main"},
+        context={
+            "first_time_user": True,
+            "primary_panel": "spectrum",
+            "primary_trace": "main",
+        },
     )
     assert out["emit_directive"] is True
     cmds = out.get("issue_commands", [])
@@ -192,7 +237,11 @@ def test_mode_m2_falls_back_if_denied(uwsm_default, cap_view_denied):
         uwsm=uwsm_default,
         mode="M2",
         capability=cap_view_denied,
-        context={"first_time_user": True, "primary_panel": "spectrum", "primary_trace": "main"},
+        context={
+            "first_time_user": True,
+            "primary_panel": "spectrum",
+            "primary_trace": "main",
+        },
     )
     assert out["emit_directive"] is True
     assert out.get("issue_commands", []) == []
@@ -202,7 +251,12 @@ def test_mode_m2_falls_back_if_denied(uwsm_default, cap_view_denied):
 def test_directive_is_frozen_and_policy_uses_replace(uwsm_default, cap_view_allowed):
     """PR #9: Contracts are frozen. Policy must not mutate directive in-place."""
     decide = _import_decider()
-    out = decide(moment={"moment": "FINDING"}, uwsm=uwsm_default, mode="M1", capability=cap_view_allowed)
+    out = decide(
+        moment={"moment": "FINDING"},
+        uwsm=uwsm_default,
+        mode="M1",
+        capability=cap_view_allowed,
+    )
     directive = out["directive"]
     assert isinstance(directive, AttentionDirectiveV1)
     with pytest.raises(AttributeError):
@@ -212,7 +266,12 @@ def test_directive_is_frozen_and_policy_uses_replace(uwsm_default, cap_view_allo
 def test_focus_target_is_frozen(uwsm_default, cap_view_allowed):
     """PR #9: Nested FocusTarget must also be frozen."""
     decide = _import_decider()
-    out = decide(moment={"moment": "FINDING"}, uwsm=uwsm_default, mode="M1", capability=cap_view_allowed)
+    out = decide(
+        moment={"moment": "FINDING"},
+        uwsm=uwsm_default,
+        mode="M1",
+        capability=cap_view_allowed,
+    )
     directive = out["directive"]
     assert directive is not None
     assert directive.focus is not None

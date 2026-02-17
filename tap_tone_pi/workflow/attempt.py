@@ -3,6 +3,7 @@
 Each capture attempt is tracked with its result and quality verdict.
 Multiple attempts per measurement point are expected and normal.
 """
+
 from __future__ import annotations
 
 import json
@@ -17,23 +18,30 @@ from tap_tone_pi.core.quality_policy import QualityVerdict, Verdict
 
 def _utc_now() -> str:
     """Get current UTC time as ISO string."""
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 class AttemptStatus(str, Enum):
     """Status of a measurement attempt."""
-    PENDING = "pending"      # Not yet captured
-    CAPTURED = "captured"    # Captured but not analyzed
-    ANALYZED = "analyzed"    # Analyzed but not gated
-    PASSED = "passed"        # Passed quality gate
-    WARNED = "warned"        # Passed with warnings
-    FAILED = "failed"        # Failed quality gate
+
+    PENDING = "pending"  # Not yet captured
+    CAPTURED = "captured"  # Captured but not analyzed
+    ANALYZED = "analyzed"  # Analyzed but not gated
+    PASSED = "passed"  # Passed quality gate
+    WARNED = "warned"  # Passed with warnings
+    FAILED = "failed"  # Failed quality gate
     OVERRIDDEN = "overridden"  # Failed but operator overrode
 
 
 @dataclass
 class Attempt:
     """A single measurement attempt."""
+
     attempt_id: str
     point_id: str
     attempt_number: int

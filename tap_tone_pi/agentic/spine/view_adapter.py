@@ -19,6 +19,7 @@ Safety rules (Appendix F of the spec):
   - Never escalate urgency without new evidence
   - Never act without capability confirmation
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
@@ -44,7 +45,9 @@ class ViewAdapter(Protocol):
         ...
 
     def highlight_delta(
-        self, from_state_id: str, to_state_id: str,
+        self,
+        from_state_id: str,
+        to_state_id: str,
     ) -> None:
         """Show visual diff between two analysis states."""
         ...
@@ -65,18 +68,29 @@ class NullViewAdapter:
         self.commands: List[Dict[str, Any]] = []
 
     def focus_trace(self, trace_id: str) -> None:
-        self.commands.append({"name": "focus_trace", "parameters": {"trace_id": trace_id}})
+        self.commands.append(
+            {"name": "focus_trace", "parameters": {"trace_id": trace_id}}
+        )
 
     def hide_all_except(self, panel_id: str) -> None:
-        self.commands.append({"name": "hide_all_except", "parameters": {"panel_id": panel_id}})
+        self.commands.append(
+            {"name": "hide_all_except", "parameters": {"panel_id": panel_id}}
+        )
 
     def highlight_delta(
-        self, from_state_id: str, to_state_id: str,
+        self,
+        from_state_id: str,
+        to_state_id: str,
     ) -> None:
-        self.commands.append({
-            "name": "highlight_delta",
-            "parameters": {"from_state_id": from_state_id, "to_state_id": to_state_id},
-        })
+        self.commands.append(
+            {
+                "name": "highlight_delta",
+                "parameters": {
+                    "from_state_id": from_state_id,
+                    "to_state_id": to_state_id,
+                },
+            }
+        )
 
     def reset_view(self) -> None:
         self.commands.append({"name": "reset_view", "parameters": {}})

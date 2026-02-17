@@ -24,6 +24,7 @@ Environment variables:
     TOOLBOX_URL: Default ToolBox URL (used if ingest_url not provided)
     TOOLBOX_API_TOKEN: Default API token (used if api_token not provided)
 """
+
 from __future__ import annotations
 
 import os

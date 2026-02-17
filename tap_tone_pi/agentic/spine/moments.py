@@ -13,7 +13,6 @@ For full specification, see: docs/EVENT_MOMENTS_CATALOG_V1.md
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 
@@ -73,7 +72,8 @@ def _detect_overload(evs: List[Any]) -> DetectorResult:
     undo_ids = [
         _eid(e)
         for e in evs
-        if _get(e, "event_type") == "user_action" and _payload(e).get("action") == "undo"
+        if _get(e, "event_type") == "user_action"
+        and _payload(e).get("action") == "undo"
     ]
     if len(undo_ids) >= 3:
         return ("OVERLOAD", 0.75, undo_ids[:3])
@@ -100,13 +100,18 @@ def _detect_decision_required(evs: List[Any]) -> DetectorResult:
 
 def _detect_finding(evs: List[Any]) -> DetectorResult:
     """Detect FINDING moment from attention + high-confidence artifacts."""
-    attention_e = next((e for e in evs if _get(e, "event_type") == "attention_requested"), None)
+    attention_e = next(
+        (e for e in evs if _get(e, "event_type") == "attention_requested"), None
+    )
 
     high_conf_artifact = None
     for e in evs:
         if _get(e, "event_type") == "artifact_created":
             p = _payload(e)
-            if p.get("schema") == "wolf_candidates_v1" and float(p.get("confidence_max", 0.0)) >= 0.6:
+            if (
+                p.get("schema") == "wolf_candidates_v1"
+                and float(p.get("confidence_max", 0.0)) >= 0.6
+            ):
                 high_conf_artifact = e
                 break
 
@@ -121,7 +126,8 @@ def _detect_hesitation(evs: List[Any]) -> DetectorResult:
     """Detect HESITATION moment from idle timeout or repeated hovers."""
     # Suppress hesitation if parameter change happened
     has_param_change = any(
-        _get(e, "event_type") == "user_action" and _payload(e).get("action") == "parameter_changed"
+        _get(e, "event_type") == "user_action"
+        and _payload(e).get("action") == "parameter_changed"
         for e in evs
     )
     if has_param_change:
@@ -134,8 +140,10 @@ def _detect_hesitation(evs: List[Any]) -> DetectorResult:
 
     # Path 2: Repeated hovers (2+)
     hover_events = [
-        e for e in evs
-        if _get(e, "event_type") == "user_action" and _payload(e).get("action") == "hover"
+        e
+        for e in evs
+        if _get(e, "event_type") == "user_action"
+        and _payload(e).get("action") == "hover"
     ]
     if len(hover_events) >= 2:
         return ("HESITATION", 0.65, [_eid(hover_events[0]), _eid(hover_events[1])])
@@ -147,21 +155,30 @@ def _detect_first_signal(evs: List[Any]) -> DetectorResult:
     """Detect FIRST_SIGNAL moment from view_rendered or analysis_completed."""
     # Prefer view_rendered
     view_e = next(
-        (e for e in evs if _get(e, "event_type") == "user_action" and _payload(e).get("action") == "view_rendered"),
+        (
+            e
+            for e in evs
+            if _get(e, "event_type") == "user_action"
+            and _payload(e).get("action") == "view_rendered"
+        ),
         None,
     )
     if view_e:
         return ("FIRST_SIGNAL", 0.75, [_eid(view_e)])
 
     # Fallback: analysis_completed
-    comp_e = next((e for e in evs if _get(e, "event_type") == "analysis_completed"), None)
+    comp_e = next(
+        (e for e in evs if _get(e, "event_type") == "analysis_completed"), None
+    )
     if comp_e:
         return ("FIRST_SIGNAL", 0.65, [_eid(comp_e)])
 
     return None
 
 
-def _collect_attention_stats(evs: List[Any]) -> Tuple[int, int, int, List[Any], List[Any]]:
+def _collect_attention_stats(
+    evs: List[Any],
+) -> Tuple[int, int, int, List[Any], List[Any]]:
     """Collect attention statistics: (shown, ack, dismiss, ack_events, dismiss_events)."""
     shown = [e for e in evs if _get(e, "event_type") == "attention_requested"]
     ack = [e for e in evs if _get(e, "event_type") == "attention_acknowledged"]
@@ -169,7 +186,9 @@ def _collect_attention_stats(evs: List[Any]) -> Tuple[int, int, int, List[Any], 
     return len(shown), len(ack), len(dismiss), ack, dismiss
 
 
-def _detect_confidence_climb(evs: List[Any], stats: Tuple[int, int, int, List[Any], List[Any]]) -> DetectorResult:
+def _detect_confidence_climb(
+    evs: List[Any], stats: Tuple[int, int, int, List[Any], List[Any]]
+) -> DetectorResult:
     """Detect CONFIDENCE_CLIMB from >=80% acknowledgment rate over >=5 outcomes."""
     total_shown, total_ack, total_dismiss, ack_events, _ = stats
     total_outcomes = total_ack + total_dismiss
@@ -182,7 +201,9 @@ def _detect_confidence_climb(evs: List[Any], stats: Tuple[int, int, int, List[An
     return None
 
 
-def _detect_trust_erosion(evs: List[Any], stats: Tuple[int, int, int, List[Any], List[Any]]) -> DetectorResult:
+def _detect_trust_erosion(
+    evs: List[Any], stats: Tuple[int, int, int, List[Any], List[Any]]
+) -> DetectorResult:
     """Detect TRUST_EROSION from >=60% dismissal rate or 3+ idle timeouts."""
     total_shown, total_ack, total_dismiss, _, dismiss_events = stats
     total_outcomes = total_ack + total_dismiss
@@ -238,7 +259,9 @@ def detect_moments(events: List[Any]) -> List[dict]:
         if result := _detect_finding(evs):
             detected.append(result)
 
-    if not any(m[0] in ("ERROR", "OVERLOAD", "DECISION_REQUIRED", "FINDING") for m in detected):
+    if not any(
+        m[0] in ("ERROR", "OVERLOAD", "DECISION_REQUIRED", "FINDING") for m in detected
+    ):
         if result := _detect_hesitation(evs):
             detected.append(result)
 
@@ -261,4 +284,6 @@ def detect_moments(events: List[Any]) -> List[dict]:
     # Apply priority suppression: keep only the single highest-priority moment
     detected.sort(key=lambda x: PRIORITY.get(x[0], 999))
     best = detected[0]
-    return [{"moment": best[0], "confidence": float(best[1]), "trigger_events": best[2]}]
+    return [
+        {"moment": best[0], "confidence": float(best[1]), "trigger_events": best[2]}
+    ]

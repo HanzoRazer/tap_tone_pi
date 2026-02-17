@@ -21,9 +21,10 @@ Usage:
     recommendations = advisor.get_recommendations()
     directive = generate_wolf_directive(advisor)
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional, Dict, Any
 import uuid
@@ -41,23 +42,24 @@ from .wolf_beat import (
 # Recommendation Types
 # -----------------------------------------------------------------------------
 
+
 class MitigationType(str, Enum):
     """Types of wolf mitigation strategies."""
 
-    ADD_MASS = "add_mass"                   # Wolf eliminator / damper mass
-    INCREASE_DAMPING = "increase_damping"   # Soundpost adjustment, dampers
-    SHIFT_BODY_MODE = "shift_body_mode"     # Plate thickness, bass bar
-    SHIFT_STRING_TUNING = "shift_string"    # Retune string (temporary)
-    NO_ACTION = "no_action"                 # Wolf is acceptable
-    FURTHER_MEASUREMENT = "measure_more"    # Insufficient data
+    ADD_MASS = "add_mass"  # Wolf eliminator / damper mass
+    INCREASE_DAMPING = "increase_damping"  # Soundpost adjustment, dampers
+    SHIFT_BODY_MODE = "shift_body_mode"  # Plate thickness, bass bar
+    SHIFT_STRING_TUNING = "shift_string"  # Retune string (temporary)
+    NO_ACTION = "no_action"  # Wolf is acceptable
+    FURTHER_MEASUREMENT = "measure_more"  # Insufficient data
 
 
 class ConfidenceLevel(str, Enum):
     """Confidence in recommendation based on physics model fit."""
 
-    HIGH = "high"           # Strong physics basis, clear measurement
-    MEDIUM = "medium"       # Reasonable model fit, some uncertainty
-    LOW = "low"             # Weak model fit, needs validation
+    HIGH = "high"  # Strong physics basis, clear measurement
+    MEDIUM = "medium"  # Reasonable model fit, some uncertainty
+    LOW = "low"  # Weak model fit, needs validation
     SPECULATIVE = "speculative"  # Physics suggests, but unclear measurement
 
 
@@ -67,24 +69,24 @@ class MitigationRecommendation:
 
     mitigation_type: MitigationType
     confidence: ConfidenceLevel
-    priority: int                   # 1 = highest priority
+    priority: int  # 1 = highest priority
 
     # Quantitative prediction
-    predicted_effect: str           # "Reduces beat to ~5 Hz (from 10 Hz)"
-    predicted_severity: str         # "moderate" -> "mild"
-    predicted_merge_ratio: float    # New merge ratio after intervention
+    predicted_effect: str  # "Reduces beat to ~5 Hz (from 10 Hz)"
+    predicted_severity: str  # "moderate" -> "mild"
+    predicted_merge_ratio: float  # New merge ratio after intervention
 
     # Action details
-    action_summary: str             # "Add 5g wolf eliminator at bridge"
-    action_details: List[str]       # Step-by-step guidance
+    action_summary: str  # "Add 5g wolf eliminator at bridge"
+    action_details: List[str]  # Step-by-step guidance
 
     # Physics rationale
-    physics_basis: str              # "Mass reduces coupling: Ω' = Ω/√(1+m'/m)"
-    assumptions: List[str]          # What must be true for this to work
+    physics_basis: str  # "Mass reduces coupling: Ω' = Ω/√(1+m'/m)"
+    assumptions: List[str]  # What must be true for this to work
 
     # Validation guidance
-    validation_steps: List[str]     # How to verify the intervention worked
-    rollback_guidance: str          # What to do if it doesn't work
+    validation_steps: List[str]  # How to verify the intervention worked
+    rollback_guidance: str  # What to do if it doesn't work
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize for JSON output."""
@@ -148,6 +150,7 @@ class WolfAdvisorResult:
 # -----------------------------------------------------------------------------
 # Wolf Advisor Engine
 # -----------------------------------------------------------------------------
+
 
 class WolfAdvisor:
     """
@@ -246,23 +249,25 @@ class WolfAdvisor:
 
         # No wolf detected
         if not self._worst_pair or self._worst_pair.wolf_severity == "none":
-            recommendations.append(MitigationRecommendation(
-                mitigation_type=MitigationType.NO_ACTION,
-                confidence=ConfidenceLevel.HIGH,
-                priority=1,
-                predicted_effect="No intervention needed",
-                predicted_severity="none",
-                predicted_merge_ratio=0.0,
-                action_summary="No wolf tone detected - instrument is acceptable",
-                action_details=[
-                    "Continue with normal setup procedures",
-                    "Consider archiving this measurement as baseline",
-                ],
-                physics_basis="Merge ratio < 0.5 indicates peaks are not resolvable",
-                assumptions=["Measurement is representative of playing conditions"],
-                validation_steps=["Play test in wolf-prone register"],
-                rollback_guidance="If wolf appears during play, re-measure",
-            ))
+            recommendations.append(
+                MitigationRecommendation(
+                    mitigation_type=MitigationType.NO_ACTION,
+                    confidence=ConfidenceLevel.HIGH,
+                    priority=1,
+                    predicted_effect="No intervention needed",
+                    predicted_severity="none",
+                    predicted_merge_ratio=0.0,
+                    action_summary="No wolf tone detected - instrument is acceptable",
+                    action_details=[
+                        "Continue with normal setup procedures",
+                        "Consider archiving this measurement as baseline",
+                    ],
+                    physics_basis="Merge ratio < 0.5 indicates peaks are not resolvable",
+                    assumptions=["Measurement is representative of playing conditions"],
+                    validation_steps=["Play test in wolf-prone register"],
+                    rollback_guidance="If wolf appears during play, re-measure",
+                )
+            )
             return recommendations
 
         # Generate intervention recommendations
@@ -285,9 +290,9 @@ class WolfAdvisor:
 
         # Test different mass additions
         mass_options = [
-            (1.25, "2-3g"),   # 25% mass increase
-            (1.5, "5g"),      # 50% mass increase
-            (2.0, "10g"),     # 100% mass increase
+            (1.25, "2-3g"),  # 25% mass increase
+            (1.5, "5g"),  # 50% mass increase
+            (2.0, "10g"),  # 100% mass increase
         ]
 
         for mass_factor, mass_desc in mass_options:
@@ -311,33 +316,35 @@ class WolfAdvisor:
                 priority = 3  # Partial reduction
                 confidence = ConfidenceLevel.LOW
 
-            recs.append(MitigationRecommendation(
-                mitigation_type=MitigationType.ADD_MASS,
-                confidence=confidence,
-                priority=priority,
-                predicted_effect=f"Reduces beat from {pair.delta_f_hz:.1f} Hz to ~{new_beat:.1f} Hz",
-                predicted_severity=new_severity,
-                predicted_merge_ratio=new_merge,
-                action_summary=f"Add {mass_desc} wolf eliminator at bridge",
-                action_details=[
-                    f"Attach {mass_desc} wolf eliminator between bridge and tailpiece",
-                    "Position 2-3cm from bridge on problematic string",
-                    "Fine-tune position by ear while bowing",
-                    "Secure with minimal clamping force",
-                ],
-                physics_basis=f"Mass reduces coupling: Ω' = Ω/√{mass_factor:.2f} = {new_model.coupling_omega:.4f}",
-                assumptions=[
-                    "Effective mass estimate is accurate (±50%)",
-                    "Wolf eliminator couples to string motion",
-                    "String frequency near resonance (ξ ≈ 1)",
-                ],
-                validation_steps=[
-                    "Re-measure tap tone response with eliminator attached",
-                    "Play test in wolf register - check for reduction",
-                    "Verify no new unwanted resonances introduced",
-                ],
-                rollback_guidance="Remove wolf eliminator and re-test",
-            ))
+            recs.append(
+                MitigationRecommendation(
+                    mitigation_type=MitigationType.ADD_MASS,
+                    confidence=confidence,
+                    priority=priority,
+                    predicted_effect=f"Reduces beat from {pair.delta_f_hz:.1f} Hz to ~{new_beat:.1f} Hz",
+                    predicted_severity=new_severity,
+                    predicted_merge_ratio=new_merge,
+                    action_summary=f"Add {mass_desc} wolf eliminator at bridge",
+                    action_details=[
+                        f"Attach {mass_desc} wolf eliminator between bridge and tailpiece",
+                        "Position 2-3cm from bridge on problematic string",
+                        "Fine-tune position by ear while bowing",
+                        "Secure with minimal clamping force",
+                    ],
+                    physics_basis=f"Mass reduces coupling: Ω' = Ω/√{mass_factor:.2f} = {new_model.coupling_omega:.4f}",
+                    assumptions=[
+                        "Effective mass estimate is accurate (±50%)",
+                        "Wolf eliminator couples to string motion",
+                        "String frequency near resonance (ξ ≈ 1)",
+                    ],
+                    validation_steps=[
+                        "Re-measure tap tone response with eliminator attached",
+                        "Play test in wolf register - check for reduction",
+                        "Verify no new unwanted resonances introduced",
+                    ],
+                    rollback_guidance="Remove wolf eliminator and re-test",
+                )
+            )
 
         return recs
 
@@ -357,31 +364,33 @@ class WolfAdvisor:
         new_severity = self._classify_predicted_severity(new_merge, pair.delta_f_hz)
 
         if new_severity != pair.wolf_severity:
-            recs.append(MitigationRecommendation(
-                mitigation_type=MitigationType.INCREASE_DAMPING,
-                confidence=ConfidenceLevel.MEDIUM,
-                priority=2,
-                predicted_effect=f"Increases linewidth from {pair.combined_linewidth_hz:.1f} to ~{new_linewidth:.1f} Hz",
-                predicted_severity=new_severity,
-                predicted_merge_ratio=new_merge,
-                action_summary="Increase body damping via soundpost or internal damper",
-                action_details=[
-                    "Option A: Adjust soundpost position (tighter fit = more damping)",
-                    "Option B: Add small internal damper on back plate",
-                    "Option C: Use different string type with higher internal damping",
-                ],
-                physics_basis="Increased damping widens peaks, promoting merger",
-                assumptions=[
-                    "Damping can be modified without changing resonant frequency",
-                    "50% damping increase is achievable",
-                    "Tonal quality remains acceptable",
-                ],
-                validation_steps=[
-                    "Re-measure tap tone - check increased linewidth",
-                    "Play test - verify wolf reduction and acceptable tone",
-                ],
-                rollback_guidance="Restore original soundpost position / remove damper",
-            ))
+            recs.append(
+                MitigationRecommendation(
+                    mitigation_type=MitigationType.INCREASE_DAMPING,
+                    confidence=ConfidenceLevel.MEDIUM,
+                    priority=2,
+                    predicted_effect=f"Increases linewidth from {pair.combined_linewidth_hz:.1f} to ~{new_linewidth:.1f} Hz",
+                    predicted_severity=new_severity,
+                    predicted_merge_ratio=new_merge,
+                    action_summary="Increase body damping via soundpost or internal damper",
+                    action_details=[
+                        "Option A: Adjust soundpost position (tighter fit = more damping)",
+                        "Option B: Add small internal damper on back plate",
+                        "Option C: Use different string type with higher internal damping",
+                    ],
+                    physics_basis="Increased damping widens peaks, promoting merger",
+                    assumptions=[
+                        "Damping can be modified without changing resonant frequency",
+                        "50% damping increase is achievable",
+                        "Tonal quality remains acceptable",
+                    ],
+                    validation_steps=[
+                        "Re-measure tap tone - check increased linewidth",
+                        "Play test - verify wolf reduction and acceptable tone",
+                    ],
+                    rollback_guidance="Restore original soundpost position / remove damper",
+                )
+            )
 
         return recs
 
@@ -395,31 +404,33 @@ class WolfAdvisor:
         # Only recommend if other methods insufficient
         recs = []
 
-        recs.append(MitigationRecommendation(
-            mitigation_type=MitigationType.SHIFT_BODY_MODE,
-            confidence=ConfidenceLevel.LOW,
-            priority=4,  # Last resort
-            predicted_effect=f"Shifts body mode away from {pair.center_freq_hz:.0f} Hz",
-            predicted_severity="none",  # If successful
-            predicted_merge_ratio=0.0,
-            action_summary="Modify body mode frequency via structural change",
-            action_details=[
-                "CAUTION: Irreversible modifications",
-                "Consult luthier before proceeding",
-                "Options: bass bar adjustment, plate graduation, brace modification",
-            ],
-            physics_basis="Moving ω_b away from string frequency eliminates coupling",
-            assumptions=[
-                "Target frequency shift is achievable (±10-20 Hz typical)",
-                "Structural change doesn't create new problems",
-                "Professional luthier available",
-            ],
-            validation_steps=[
-                "Full tap tone remeasurement after modification",
-                "Extended play testing across all registers",
-            ],
-            rollback_guidance="Structural changes are generally irreversible",
-        ))
+        recs.append(
+            MitigationRecommendation(
+                mitigation_type=MitigationType.SHIFT_BODY_MODE,
+                confidence=ConfidenceLevel.LOW,
+                priority=4,  # Last resort
+                predicted_effect=f"Shifts body mode away from {pair.center_freq_hz:.0f} Hz",
+                predicted_severity="none",  # If successful
+                predicted_merge_ratio=0.0,
+                action_summary="Modify body mode frequency via structural change",
+                action_details=[
+                    "CAUTION: Irreversible modifications",
+                    "Consult luthier before proceeding",
+                    "Options: bass bar adjustment, plate graduation, brace modification",
+                ],
+                physics_basis="Moving ω_b away from string frequency eliminates coupling",
+                assumptions=[
+                    "Target frequency shift is achievable (±10-20 Hz typical)",
+                    "Structural change doesn't create new problems",
+                    "Professional luthier available",
+                ],
+                validation_steps=[
+                    "Full tap tone remeasurement after modification",
+                    "Extended play testing across all registers",
+                ],
+                rollback_guidance="Structural changes are generally irreversible",
+            )
+        )
 
         return recs
 
@@ -445,7 +456,10 @@ class WolfAdvisor:
         # Generate decision summary
         if not self._worst_pair or self._worst_pair.wolf_severity == "none":
             summary = "No actionable wolf detected. Instrument is acceptable."
-        elif recommendations and recommendations[0].mitigation_type == MitigationType.ADD_MASS:
+        elif (
+            recommendations
+            and recommendations[0].mitigation_type == MitigationType.ADD_MASS
+        ):
             summary = (
                 f"Wolf detected at {self._worst_pair.center_freq_hz:.0f} Hz "
                 f"(beat: {self._worst_pair.delta_f_hz:.1f} Hz, "
@@ -464,8 +478,11 @@ class WolfAdvisor:
             curve_data = self.model.sweep_curve()
 
         return WolfAdvisorResult(
-            wolf_detected=self._worst_pair is not None and self._worst_pair.wolf_severity != "none",
-            worst_severity=self._worst_pair.wolf_severity if self._worst_pair else "none",
+            wolf_detected=self._worst_pair is not None
+            and self._worst_pair.wolf_severity != "none",
+            worst_severity=self._worst_pair.wolf_severity
+            if self._worst_pair
+            else "none",
             worst_freq_hz=self._worst_pair.center_freq_hz if self._worst_pair else None,
             worst_beat_hz=self._worst_pair.delta_f_hz if self._worst_pair else None,
             model=self.model,
@@ -480,6 +497,7 @@ class WolfAdvisor:
 # -----------------------------------------------------------------------------
 # Attention Directive Generation
 # -----------------------------------------------------------------------------
+
 
 @dataclass
 class WolfDirective:
@@ -527,7 +545,9 @@ class WolfDirective:
             "wolf_freq_hz": self.wolf_freq_hz,
             "wolf_beat_hz": self.wolf_beat_hz,
             "wolf_severity": self.wolf_severity,
-            "recommendation": self.recommendation.to_dict() if self.recommendation else None,
+            "recommendation": self.recommendation.to_dict()
+            if self.recommendation
+            else None,
             "alternative_count": self.alternative_count,
             "action_prompt": self.action_prompt,
             "urgency": self.urgency,
@@ -574,7 +594,9 @@ def generate_wolf_directive(
             f"Confidence: {top_rec.confidence.value}."
         )
     else:
-        action_prompt = "Wolf detected but no clear mitigation path. Further measurement needed."
+        action_prompt = (
+            "Wolf detected but no clear mitigation path. Further measurement needed."
+        )
 
     return WolfDirective(
         directive_id=f"wolf_{uuid.uuid4().hex[:12]}",
@@ -594,6 +616,7 @@ def generate_wolf_directive(
 # -----------------------------------------------------------------------------
 # Convenience Functions
 # -----------------------------------------------------------------------------
+
 
 def advise_on_wolf(
     wolf_result: WolfBeatResult,

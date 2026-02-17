@@ -18,7 +18,7 @@ Subpackages:
 Migration from tap_tone:
     # Old import
     from tap_tone.analysis import analyze_tap
-    
+
     # New import (v2.0.0+)
     from tap_tone_pi.core.analysis import analyze_tap
 """

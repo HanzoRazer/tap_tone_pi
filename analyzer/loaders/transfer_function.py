@@ -9,7 +9,7 @@ import json
 import math
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Tuple
 
 
 @dataclass
@@ -19,11 +19,12 @@ class TransferFunctionData:
 
     All formats are converted to this common representation.
     """
+
     frequencies: List[float] = field(default_factory=list)  # Hz
-    magnitude: List[float] = field(default_factory=list)    # Linear scale
-    magnitude_db: List[float] = field(default_factory=list) # dB scale
-    phase: List[float] = field(default_factory=list)        # Degrees
-    coherence: List[float] = field(default_factory=list)    # Optional
+    magnitude: List[float] = field(default_factory=list)  # Linear scale
+    magnitude_db: List[float] = field(default_factory=list)  # dB scale
+    phase: List[float] = field(default_factory=list)  # Degrees
+    coherence: List[float] = field(default_factory=list)  # Optional
     point_count: int = 0
     freq_range: Tuple[float, float] = (0.0, 0.0)
     source_format: str = "unknown"
@@ -64,7 +65,7 @@ def db_to_linear(db: float, ref: float = 1.0) -> float:
 
 
 def parse_transfer_function(
-    source: str | Path | Dict[str, Any]
+    source: str | Path | Dict[str, Any],
 ) -> TransferFunctionData:
     """
     Parse transfer function data from file or dictionary.
@@ -94,7 +95,7 @@ def parse_transfer_function(
         path = Path(source)
         if not path.exists():
             raise FileNotFoundError(f"File not found: {path}")
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
     else:
         data = source
@@ -115,9 +116,8 @@ def parse_transfer_function(
 
 def _is_format_parallel_arrays(data: Dict[str, Any]) -> bool:
     """Check if data is Format 1: parallel arrays."""
-    return (
-        isinstance(data.get("frequencies"), list) and
-        isinstance(data.get("magnitude"), list)
+    return isinstance(data.get("frequencies"), list) and isinstance(
+        data.get("magnitude"), list
     )
 
 
@@ -145,9 +145,9 @@ def _is_format_frf_complex(data: Dict[str, Any]) -> bool:
     if not isinstance(frf, dict):
         return False
     return (
-        isinstance(frf.get("real"), list) and
-        isinstance(frf.get("imag"), list) and
-        isinstance(frf.get("freq"), list)
+        isinstance(frf.get("real"), list)
+        and isinstance(frf.get("imag"), list)
+        and isinstance(frf.get("freq"), list)
     )
 
 
@@ -176,7 +176,7 @@ def _parse_parallel_arrays(data: Dict[str, Any]) -> TransferFunctionData:
         coherence=coherence,
         point_count=n,
         freq_range=(min(frequencies), max(frequencies)) if frequencies else (0, 0),
-        source_format="parallel_arrays"
+        source_format="parallel_arrays",
     )
 
 
@@ -196,7 +196,12 @@ def _parse_object_array(data: Dict[str, Any]) -> TransferFunctionData:
             frequencies.append(float(freq))
 
             # Magnitude
-            mag = obj.get("mag") or obj.get("magnitude") or obj.get("amp") or obj.get("amplitude")
+            mag = (
+                obj.get("mag")
+                or obj.get("magnitude")
+                or obj.get("amp")
+                or obj.get("amplitude")
+            )
             magnitude.append(float(mag) if mag is not None else 0.0)
 
             # Phase
@@ -218,7 +223,7 @@ def _parse_object_array(data: Dict[str, Any]) -> TransferFunctionData:
         coherence=coherence,
         point_count=len(frequencies),
         freq_range=(min(frequencies), max(frequencies)) if frequencies else (0, 0),
-        source_format="object_array"
+        source_format="object_array",
     )
 
 
@@ -251,7 +256,7 @@ def _parse_ods_modes(data: Dict[str, Any]) -> TransferFunctionData:
         coherence=[],
         point_count=len(frequencies),
         freq_range=(min(frequencies), max(frequencies)) if frequencies else (0, 0),
-        source_format="ods_modes"
+        source_format="ods_modes",
     )
 
 
@@ -283,7 +288,7 @@ def _parse_frf_complex(data: Dict[str, Any]) -> TransferFunctionData:
         coherence=[],
         point_count=len(frequencies),
         freq_range=(min(frequencies), max(frequencies)) if frequencies else (0, 0),
-        source_format="frf_complex"
+        source_format="frf_complex",
     )
 
 
@@ -301,7 +306,9 @@ def _parse_generic(data: Dict[str, Any]) -> TransferFunctionData:
             break
 
     if not frequencies:
-        raise ValueError("Cannot detect transfer function format: no frequency data found")
+        raise ValueError(
+            "Cannot detect transfer function format: no frequency data found"
+        )
 
     # Try to find magnitude array
     for key in ["magnitude", "mag", "amplitude", "amp", "H_mag", "h_mag"]:
@@ -344,5 +351,5 @@ def _parse_generic(data: Dict[str, Any]) -> TransferFunctionData:
         coherence=coherence,
         point_count=n,
         freq_range=(min(frequencies), max(frequencies)) if frequencies else (0, 0),
-        source_format="generic"
+        source_format="generic",
     )

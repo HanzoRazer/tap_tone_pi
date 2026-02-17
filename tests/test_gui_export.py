@@ -1,11 +1,10 @@
 """Tests for GUI session viewer pack export (Phase 11)."""
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
 from zipfile import ZipFile
-
-import pytest
 
 
 class TestExportResult:
@@ -149,6 +148,7 @@ class TestExportGuiSession:
 
         # Create a minimal WAV file (44 bytes header + some silence)
         import struct
+
         wav_data = b"RIFF" + struct.pack("<I", 36) + b"WAVE"
         wav_data += b"fmt " + struct.pack("<IHHIIHH", 16, 1, 1, 48000, 96000, 2, 16)
         wav_data += b"data" + struct.pack("<I", 0)
@@ -193,6 +193,7 @@ class TestExportGuiSession:
 
         # Minimal WAV
         import struct
+
         wav_data = b"RIFF" + struct.pack("<I", 36) + b"WAVE"
         wav_data += b"fmt " + struct.pack("<IHHIIHH", 16, 1, 1, 48000, 96000, 2, 16)
         wav_data += b"data" + struct.pack("<I", 0)
@@ -219,6 +220,7 @@ class TestExportGuiSession:
 
         # Minimal WAV
         import struct
+
         wav_data = b"RIFF" + struct.pack("<I", 36) + b"WAVE"
         wav_data += b"fmt " + struct.pack("<IHHIIHH", 16, 1, 1, 48000, 96000, 2, 16)
         wav_data += b"data" + struct.pack("<I", 0)

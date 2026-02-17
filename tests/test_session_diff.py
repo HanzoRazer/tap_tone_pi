@@ -1,10 +1,9 @@
 """
 Tests for tap_tone_pi.core.session_diff module.
 """
+
 import pytest
 import json
-import tempfile
-from pathlib import Path
 
 
 class TestPeakDiff:
@@ -90,8 +89,8 @@ class TestSessionDiff:
             session_b="after",
             peaks=[
                 PeakDiff(label="P1", freq_a=440.0, freq_b=445.0),  # changed
-                PeakDiff(label="P2", freq_a=880.0, freq_b=None),   # removed
-                PeakDiff(label="P3", freq_a=None, freq_b=660.0),   # added
+                PeakDiff(label="P2", freq_a=880.0, freq_b=None),  # removed
+                PeakDiff(label="P3", freq_a=None, freq_b=660.0),  # added
             ],
         )
 
@@ -130,23 +129,29 @@ class TestCompareSessionsIntegration:
         session_a = tmp_path / "session_a"
         session_a.mkdir()
         with open(session_a / "analysis.json", "w") as f:
-            json.dump({
-                "peaks": {
-                    "A4": {"freq_hz": 440.0, "amp": 1000},
-                    "A5": {"freq_hz": 880.0, "amp": 500},
-                }
-            }, f)
+            json.dump(
+                {
+                    "peaks": {
+                        "A4": {"freq_hz": 440.0, "amp": 1000},
+                        "A5": {"freq_hz": 880.0, "amp": 500},
+                    }
+                },
+                f,
+            )
 
         # Create session B
         session_b = tmp_path / "session_b"
         session_b.mkdir()
         with open(session_b / "analysis.json", "w") as f:
-            json.dump({
-                "peaks": {
-                    "A4": {"freq_hz": 445.0, "amp": 1100},  # Changed
-                    "E5": {"freq_hz": 660.0, "amp": 600},   # New peak
-                }
-            }, f)
+            json.dump(
+                {
+                    "peaks": {
+                        "A4": {"freq_hz": 445.0, "amp": 1100},  # Changed
+                        "E5": {"freq_hz": 660.0, "amp": 600},  # New peak
+                    }
+                },
+                f,
+            )
 
         diff = compare_sessions(session_a, session_b)
 
@@ -163,26 +168,32 @@ class TestCompareSessionsIntegration:
         session_a = tmp_path / "session_a"
         session_a.mkdir()
         with open(session_a / "analysis.json", "w") as f:
-            json.dump({
-                "dominant_hz": 440.0,
-                "rms": 0.5,
-                "peaks": [
-                    {"freq_hz": 440.0, "magnitude": 0.8},
-                    {"freq_hz": 880.0, "magnitude": 0.4},
-                ]
-            }, f)
+            json.dump(
+                {
+                    "dominant_hz": 440.0,
+                    "rms": 0.5,
+                    "peaks": [
+                        {"freq_hz": 440.0, "magnitude": 0.8},
+                        {"freq_hz": 880.0, "magnitude": 0.4},
+                    ],
+                },
+                f,
+            )
 
         # Create session B
         session_b = tmp_path / "session_b"
         session_b.mkdir()
         with open(session_b / "analysis.json", "w") as f:
-            json.dump({
-                "dominant_hz": 445.0,
-                "rms": 0.6,
-                "peaks": [
-                    {"freq_hz": 445.0, "magnitude": 0.9},
-                ]
-            }, f)
+            json.dump(
+                {
+                    "dominant_hz": 445.0,
+                    "rms": 0.6,
+                    "peaks": [
+                        {"freq_hz": 445.0, "magnitude": 0.9},
+                    ],
+                },
+                f,
+            )
 
         diff = compare_sessions(session_a, session_b)
 
@@ -211,7 +222,11 @@ class TestFormatDiffReport:
 
     def test_format_report(self):
         """Test text report formatting."""
-        from tap_tone_pi.core.session_diff import SessionDiff, PeakDiff, format_diff_report
+        from tap_tone_pi.core.session_diff import (
+            SessionDiff,
+            PeakDiff,
+            format_diff_report,
+        )
 
         diff = SessionDiff(
             session_a="before",

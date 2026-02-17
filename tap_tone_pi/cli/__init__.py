@@ -21,6 +21,7 @@ Example:
     ttp record --out ./out --label A0
     ttp gui
 """
+
 from .main import main, build_parser
 
 __all__ = ["main", "build_parser"]

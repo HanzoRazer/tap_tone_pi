@@ -35,7 +35,9 @@ class BoundarySpec:
         self.allowed_roots = allowed_roots
         self.forbidden_import_prefixes = forbidden_import_prefixes
 
-    def scan_path(self, root: Path, excludes: Optional[set[str]] = None) -> List[Violation]:
+    def scan_path(
+        self, root: Path, excludes: Optional[set[str]] = None
+    ) -> List[Violation]:
         excludes = excludes or set()
         violations: List[Violation] = []
 
@@ -139,7 +141,9 @@ class BoundarySpec:
 
         return out
 
-    def _check_import(self, module: str, path: Path, lineno: int, col: int) -> Optional[Violation]:
+    def _check_import(
+        self, module: str, path: Path, lineno: int, col: int
+    ) -> Optional[Violation]:
         module = module.strip()
         for forbidden in self.forbidden_import_prefixes:
             if module == forbidden or module.startswith(forbidden + "."):
@@ -169,4 +173,3 @@ def format_violations(violations: Iterable[Violation]) -> str:
     for v in violations:
         lines.append(f"{v.file}:{v.lineno}:{v.col}  import='{v.imported}'  {v.message}")
     return "\n".join(lines) + "\n"
-

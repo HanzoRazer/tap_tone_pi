@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class CaptureConfig:
     device: int | None = None
     sample_rate: int = 48000
     channels: int = 1
     seconds: float = 2.5
+
 
 @dataclass(frozen=True)
 class AnalysisConfig:

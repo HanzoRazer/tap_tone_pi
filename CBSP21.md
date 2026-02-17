@@ -1,10 +1,10 @@
 # CBSP21 — Complete Boundary-Safe Processing Protocol
 
-**Policy Classification:** Repository Quality Control / Input Processing Governance  
-**Version:** 2.0  
-**Effective Date:** 2026-01-20  
-**Owner:** tap_tone_pi Governance  
-**Review Cycle:** Quarterly or upon major release  
+**Policy Classification:** Repository Quality Control / Input Processing Governance
+**Version:** 2.0
+**Effective Date:** 2026-01-20
+**Owner:** tap_tone_pi Governance
+**Review Cycle:** Quarterly or upon major release
 **Applies To:** AI agents AND human contributors
 
 ---
@@ -25,7 +25,7 @@ This protocol applies **equally to AI coding agents and human developers** as a 
 
 ## 2. Core Principle
 
-> **Do not reason from partial inputs.**  
+> **Do not reason from partial inputs.**
 > **Do not summarize, transform, or implement code until ≥95% of the source has been fully scanned and verified.**
 
 This principle is **non-negotiable** for both AI and human actors operating in this repository.
@@ -585,6 +585,6 @@ cbsp21-audit:
 
 ---
 
-*Adopted: 2026-01-01*  
-*Last Updated: 2026-01-20*  
+*Adopted: 2026-01-01*
+*Last Updated: 2026-01-20*
 *Owner: tap_tone_pi Governance*

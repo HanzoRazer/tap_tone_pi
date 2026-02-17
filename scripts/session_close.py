@@ -6,6 +6,7 @@ Usage:
     python scripts/session_close.py --session-dir ./out/session_S_20251228_A --operator "Ross"
     python scripts/session_close.py --session-dir ./out/session_S_20251228_A --operator "Ross" --zip
 """
+
 from __future__ import annotations
 
 import argparse
@@ -19,7 +20,13 @@ from zipfile import ZipFile, ZIP_DEFLATED
 
 def utc_now_iso() -> str:
     import datetime as _dt
-    return _dt.datetime.now(_dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+    return (
+        _dt.datetime.now(_dt.timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def sha256_file(path: Path) -> str:
@@ -77,7 +84,9 @@ def scan_jsonl_lines(path: Path) -> Tuple[List[str], int, int, Optional[int]]:
     return lines, nonblank, ok, last_bad_idx
 
 
-def get_jsonl_context(lines: list[str], bad_idx: int, n_prev: int) -> list[dict[str, Any]]:
+def get_jsonl_context(
+    lines: list[str], bad_idx: int, n_prev: int
+) -> list[dict[str, Any]]:
     """
     Returns up to n_prev preceding NON-BLANK lines before bad_idx, with their original indexes.
     Ordered from oldest->newest.
@@ -160,10 +169,15 @@ def suggest_action_for_tag(tag: str) -> str:
         "BLANK/WHITESPACE": "Blank line is usually harmless → ignore unless your tooling forbids it; keep parseability threshold based on non-blank lines.",
     }
 
-    return suggestions.get(tag, "Inspect the malformed line and nearby context; decide whether repair is safe or restore from backup.")
+    return suggestions.get(
+        tag,
+        "Inspect the malformed line and nearby context; decide whether repair is safe or restore from backup.",
+    )
 
 
-def scan_all_malformed_jsonl_indexes(path: Path, sample_k: int = 0, keep_full: bool = False) -> Dict[str, Any]:
+def scan_all_malformed_jsonl_indexes(
+    path: Path, sample_k: int = 0, keep_full: bool = False
+) -> Dict[str, Any]:
     """
     Returns summary + list of malformed line indexes (0-based file line index).
     If sample_k > 0, includes a sample prefix for each malformed line.
@@ -208,7 +222,9 @@ def scan_all_malformed_jsonl_indexes(path: Path, sample_k: int = 0, keep_full: b
     }
 
 
-def repair_ledger_truncate_last_bad_line(path: Path, backup_suffix: str = ".bak") -> Dict[str, Any]:
+def repair_ledger_truncate_last_bad_line(
+    path: Path, backup_suffix: str = ".bak"
+) -> Dict[str, Any]:
     """
     Repairs by truncating the last malformed non-blank line if (and only if) it is the LAST non-blank line.
     Creates a backup first. Returns a dict describing what happened.
@@ -241,13 +257,19 @@ def repair_ledger_truncate_last_bad_line(path: Path, backup_suffix: str = ".bak"
         }
 
     # Backup
-    backup_path = path.with_suffix(path.suffix + backup_suffix) if path.suffix else path.with_name(path.name + backup_suffix)
+    backup_path = (
+        path.with_suffix(path.suffix + backup_suffix)
+        if path.suffix
+        else path.with_name(path.name + backup_suffix)
+    )
     backup_path.write_bytes(path.read_bytes())
 
     # Truncate: remove that last malformed line, preserve earlier lines exactly.
     repaired_lines = lines[:last_bad_idx]  # drop the bad line
     # Preserve trailing newline in the output for cleanliness
-    repaired_text = "\n".join(repaired_lines).rstrip("\n") + "\n" if repaired_lines else ""
+    repaired_text = (
+        "\n".join(repaired_lines).rstrip("\n") + "\n" if repaired_lines else ""
+    )
     path.write_text(repaired_text, encoding="utf-8")
 
     # Re-scan post repair
@@ -259,7 +281,11 @@ def repair_ledger_truncate_last_bad_line(path: Path, backup_suffix: str = ".bak"
         "backup_path": backup_path.as_posix(),
         "dropped_line_index": last_bad_idx,
         "before": {"nonblank_lines": nonblank, "parseable_lines": ok},
-        "after": {"nonblank_lines": nonblank2, "parseable_lines": ok2, "last_bad_idx": last_bad2},
+        "after": {
+            "nonblank_lines": nonblank2,
+            "parseable_lines": ok2,
+            "last_bad_idx": last_bad2,
+        },
     }
 
 
@@ -269,8 +295,9 @@ def ledger_has_blank_lines(path: Path) -> bool:
     return any((ln == "" or ln.strip() == "") for ln in lines)
 
 
-
-def _gather_malformed_lines(lines: list[str], nonblank_indexes: list[int]) -> list[dict]:
+def _gather_malformed_lines(
+    lines: list[str], nonblank_indexes: list[int]
+) -> list[dict]:
     """Gather malformed lines with their indexes and tags."""
     malformed: list[dict[str, Any]] = []
     for i in nonblank_indexes:
@@ -421,7 +448,11 @@ def auto_repair_ledger_if_tag(
         return err
 
     return _perform_ledger_repair(
-        ledger_path, lines, trailing_malformed_idxs, backup_suffix, req,
+        ledger_path,
+        lines,
+        trailing_malformed_idxs,
+        backup_suffix,
+        req,
     )
 
 
@@ -571,7 +602,9 @@ def _handle_scan_all_malformed(args: argparse.Namespace, ledger_path: Path) -> i
 
     if k > 0 or want_classify:
         if k > 0:
-            print(f"Malformed lines (0-based), showing up to {max_n} with first {k} chars:")
+            print(
+                f"Malformed lines (0-based), showing up to {max_n} with first {k} chars:"
+            )
         else:
             print(f"Malformed lines (0-based), showing up to {max_n}:")
         shown = samples[:max_n]
@@ -604,13 +637,17 @@ def _handle_scan_all_malformed(args: argparse.Namespace, ledger_path: Path) -> i
 
 def _handle_repair_dry_run(args: argparse.Namespace, ledger_path: Path) -> int:
     """Dry-run preview (no modifications, early exit)."""
-    preview = get_last_malformed_line_preview(ledger_path, context_n=max(0, args.show_bad_line_context))
+    preview = get_last_malformed_line_preview(
+        ledger_path, context_n=max(0, args.show_bad_line_context)
+    )
 
     print("Ledger repair dry-run preview")
     print(f"Ledger: {ledger_path}")
     print(f"Result: {preview.get('reason')}")
     if "last_bad_idx" in preview:
-        print(f"last_bad_idx: {preview.get('last_bad_idx')}  last_nonblank_idx: {preview.get('last_nonblank_idx')}")
+        print(
+            f"last_bad_idx: {preview.get('last_bad_idx')}  last_nonblank_idx: {preview.get('last_nonblank_idx')}"
+        )
 
     ctx = preview.get("context_prev") or []
     if ctx:
@@ -629,7 +666,9 @@ def _handle_repair_dry_run(args: argparse.Namespace, ledger_path: Path) -> int:
     return 0
 
 
-def _do_ledger_repair(args: argparse.Namespace, ledger_path: Path) -> Optional[Dict[str, Any]]:
+def _do_ledger_repair(
+    args: argparse.Namespace, ledger_path: Path
+) -> Optional[Dict[str, Any]]:
     """Attempt ledger repair if requested."""
     if args.auto_repair_if:
         return auto_repair_ledger_if_tag(
@@ -640,7 +679,9 @@ def _do_ledger_repair(args: argparse.Namespace, ledger_path: Path) -> Optional[D
             require_no_blank_lines=bool(args.auto_repair_if_only),
         )
     elif args.repair_ledger:
-        return repair_ledger_truncate_last_bad_line(ledger_path, backup_suffix=args.repair_backup_suffix)
+        return repair_ledger_truncate_last_bad_line(
+            ledger_path, backup_suffix=args.repair_backup_suffix
+        )
     return None
 
 
@@ -681,7 +722,9 @@ def _build_close_obj(
             },
             "calibration": {
                 "present": calibration_path.exists(),
-                "relpath": calibration_path.relative_to(session_dir).as_posix() if calibration_path.exists() else None,
+                "relpath": calibration_path.relative_to(session_dir).as_posix()
+                if calibration_path.exists()
+                else None,
                 "sha256": calibration_sha,
             },
         },
@@ -731,17 +774,49 @@ def build_parser() -> argparse.ArgumentParser:
         prog="session_close",
         description="Close a measurement session: hash the JSONL ledger, write session_close.json, optionally zip.",
     )
-    ap.add_argument("--session-dir", required=True, help="Path to session_<id>/ directory.")
-    ap.add_argument("--session-id", default=None, help="Session id (if omitted, derived from folder name).")
-    ap.add_argument("--operator", default=os.getenv("USER") or os.getenv("USERNAME") or None, help="Signer/operator name.")
-    ap.add_argument("--signer", default=None, help="Optional distinct signer name (defaults to operator).")
+    ap.add_argument(
+        "--session-dir", required=True, help="Path to session_<id>/ directory."
+    )
+    ap.add_argument(
+        "--session-id",
+        default=None,
+        help="Session id (if omitted, derived from folder name).",
+    )
+    ap.add_argument(
+        "--operator",
+        default=os.getenv("USER") or os.getenv("USERNAME") or None,
+        help="Signer/operator name.",
+    )
+    ap.add_argument(
+        "--signer",
+        default=None,
+        help="Optional distinct signer name (defaults to operator).",
+    )
 
-    ap.add_argument("--ledger", default="session_manifest.jsonl", help="Ledger filename within session dir.")
-    ap.add_argument("--calibration", default="session_calibration.json", help="Calibration filename within session dir.")
-    ap.add_argument("--close-out", default="session_close.json", help="Close file name to write within session dir.")
+    ap.add_argument(
+        "--ledger",
+        default="session_manifest.jsonl",
+        help="Ledger filename within session dir.",
+    )
+    ap.add_argument(
+        "--calibration",
+        default="session_calibration.json",
+        help="Calibration filename within session dir.",
+    )
+    ap.add_argument(
+        "--close-out",
+        default="session_close.json",
+        help="Close file name to write within session dir.",
+    )
 
-    ap.add_argument("--zip", action="store_true", help="If set, produce a session_<id>.zip archive.")
-    ap.add_argument("--zip-out", default=None, help="Optional output path for zip. Default: <session_dir>/../session_<id>.zip")
+    ap.add_argument(
+        "--zip", action="store_true", help="If set, produce a session_<id>.zip archive."
+    )
+    ap.add_argument(
+        "--zip-out",
+        default=None,
+        help="Optional output path for zip. Default: <session_dir>/../session_<id>.zip",
+    )
 
     # Safety knobs
     ap.add_argument(
@@ -850,7 +925,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     close_path = session_dir / args.close_out
 
     # Scan ledger (and optionally repair)
-    repair_info = _do_ledger_repair(args, ledger_path) if not args.repair_dry_run else None
+    repair_info = (
+        _do_ledger_repair(args, ledger_path) if not args.repair_dry_run else None
+    )
     _, ledger_lines, ledger_parseable, _ = scan_jsonl_lines(ledger_path)
 
     # Hash after potential repair
@@ -861,7 +938,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         required_pct = parse_percent(args.require_ledger_parseable)
 
         # If there are zero non-blank lines, treat as 0% parseable (explicit)
-        actual_pct = (ledger_parseable / ledger_lines * 100.0) if ledger_lines > 0 else 0.0
+        actual_pct = (
+            (ledger_parseable / ledger_lines * 100.0) if ledger_lines > 0 else 0.0
+        )
 
         if actual_pct + 1e-9 < required_pct:
             raise SystemExit(
@@ -871,12 +950,22 @@ def main(argv: Optional[List[str]] = None) -> int:
                 f"Ledger: {ledger_path}"
             )
 
-    calibration_sha = sha256_file(calibration_path) if calibration_path.exists() else None
+    calibration_sha = (
+        sha256_file(calibration_path) if calibration_path.exists() else None
+    )
 
     close_obj = _build_close_obj(
-        session_id, session_dir, operator, signer,
-        ledger_path, ledger_sha, ledger_lines, ledger_parseable,
-        calibration_path, calibration_sha, repair_info,
+        session_id,
+        session_dir,
+        operator,
+        signer,
+        ledger_path,
+        ledger_sha,
+        ledger_lines,
+        ledger_parseable,
+        calibration_path,
+        calibration_sha,
+        repair_info,
     )
 
     # Write session_close.json (atomic-ish)

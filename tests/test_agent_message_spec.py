@@ -1,8 +1,7 @@
 """Tests for agent message specification."""
-import pytest
+
 from tap_tone_pi.agent.message_spec import (
     RULE_SPECS,
-    VERDICT_TEMPLATES,
     get_rule_spec,
     get_verdict_template,
 )
@@ -42,8 +41,9 @@ class TestRuleSpecs:
         """All actions in rule specs must be valid ActionIds."""
         for rule_id, spec in RULE_SPECS.items():
             for action in spec.agent_actions:
-                assert isinstance(action.action_id, ActionId), \
-                    f"Invalid action_id in {rule_id}: {action.action_id}"
+                assert isinstance(
+                    action.action_id, ActionId
+                ), f"Invalid action_id in {rule_id}: {action.action_id}"
                 assert len(action.label) > 0
                 assert len(action.rationale) > 0
 
@@ -57,10 +57,14 @@ class TestRuleExplanations:
     def test_q001_clipping(self):
         spec = get_rule_spec("Q001")
         assert "clipped" in spec.operator_explanation.lower()
-        assert "spectrum" in spec.why_it_matters.lower() or "false" in spec.why_it_matters.lower()
+        assert (
+            "spectrum" in spec.why_it_matters.lower()
+            or "false" in spec.why_it_matters.lower()
+        )
         # First action should be gain-related
         assert spec.agent_actions[0].action_id in (
-            ActionId.ADJUST_GAIN_DOWN, ActionId.RETRY
+            ActionId.ADJUST_GAIN_DOWN,
+            ActionId.RETRY,
         )
 
     def test_q002_silent(self):
@@ -127,25 +131,43 @@ class TestRuleLanguageGovernance:
     """Ensure rule explanations follow governance rules."""
 
     FORBIDDEN_WORDS = [
-        "wolf", "dead spot", "problem frequency",
-        "good", "bad", "optimal",
-        "fix", "thin", "stiffen", "remove",
-        "strongest", "dominant", "worst", "primary",
+        "wolf",
+        "dead spot",
+        "problem frequency",
+        "good",
+        "bad",
+        "optimal",
+        "fix",
+        "thin",
+        "stiffen",
+        "remove",
+        "strongest",
+        "dominant",
+        "worst",
+        "primary",
     ]
 
     def test_no_forbidden_words_in_explanations(self):
         """Rule explanations must not contain forbidden words."""
         for rule_id, spec in RULE_SPECS.items():
-            text = " ".join([
-                spec.operator_explanation,
-                spec.why_it_matters,
-                # Note: first_fix and fallback_fix may say "fix" as a verb
-            ]).lower()
-            
-            for word in ["wolf", "dead spot", "problem frequency",
-                         "optimal", "strongest", "dominant", "worst"]:
-                assert word not in text, \
-                    f"Forbidden word '{word}' in {rule_id}"
+            text = " ".join(
+                [
+                    spec.operator_explanation,
+                    spec.why_it_matters,
+                    # Note: first_fix and fallback_fix may say "fix" as a verb
+                ]
+            ).lower()
+
+            for word in [
+                "wolf",
+                "dead spot",
+                "problem frequency",
+                "optimal",
+                "strongest",
+                "dominant",
+                "worst",
+            ]:
+                assert word not in text, f"Forbidden word '{word}' in {rule_id}"
 
     def test_explanations_are_factual(self):
         """Explanations should describe conditions, not judgments."""

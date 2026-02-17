@@ -5,7 +5,6 @@ import pytest
 
 from tap_tone.wolf_beat import (
     PeakInfo,
-    PeakPair,
     WolfBeatResult,
     find_peaks_in_frf,
     extract_linewidth,
@@ -21,6 +20,7 @@ from tap_tone.wolf_beat import (
 # -----------------------------------------------------------------------------
 # Fixtures
 # -----------------------------------------------------------------------------
+
 
 @pytest.fixture
 def simple_frf():
@@ -64,6 +64,7 @@ def merged_doublet_frf():
 # -----------------------------------------------------------------------------
 # Peak Detection Tests
 # -----------------------------------------------------------------------------
+
 
 class TestPeakDetection:
     """Tests for find_peaks_in_frf."""
@@ -133,6 +134,7 @@ class TestLinewidthExtraction:
 # Peak Pair Detection Tests
 # -----------------------------------------------------------------------------
 
+
 class TestPeakPairs:
     """Tests for wolf pair detection."""
 
@@ -145,14 +147,16 @@ class TestPeakPairs:
         peaks = []
         for idx in peak_indices:
             gamma, Q, _, _ = extract_linewidth(freqs, mag, idx)
-            peaks.append(PeakInfo(
-                freq_hz=freqs[idx],
-                amplitude=mag[idx],
-                phase_deg=0.0,
-                gamma_hz=gamma,
-                Q=Q,
-                idx=idx,
-            ))
+            peaks.append(
+                PeakInfo(
+                    freq_hz=freqs[idx],
+                    amplitude=mag[idx],
+                    phase_deg=0.0,
+                    gamma_hz=gamma,
+                    Q=Q,
+                    idx=idx,
+                )
+            )
 
         pairs = find_peak_pairs(peaks, max_separation_hz=50.0)
 
@@ -210,6 +214,7 @@ class TestWolfSeverity:
 # Full Analysis Tests
 # -----------------------------------------------------------------------------
 
+
 class TestWolfBeatAnalysis:
     """Tests for complete analysis pipeline."""
 
@@ -226,7 +231,8 @@ class TestWolfBeatAnalysis:
         """Split doublet should be detected."""
         freqs, mag = split_doublet_frf
         result = analyze_wolf_beat(
-            freqs, mag,
+            freqs,
+            mag,
             min_freq_hz=100,
             max_freq_hz=300,
             peak_prominence=0.05,
@@ -254,6 +260,7 @@ class TestWolfBeatAnalysis:
 # -----------------------------------------------------------------------------
 # Utility Function Tests
 # -----------------------------------------------------------------------------
+
 
 class TestUtilityFunctions:
     """Tests for helper functions."""
@@ -293,6 +300,7 @@ class TestUtilityFunctions:
 # -----------------------------------------------------------------------------
 # Edge Cases
 # -----------------------------------------------------------------------------
+
 
 class TestEdgeCases:
     """Edge case tests."""

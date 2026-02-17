@@ -15,6 +15,7 @@ Implements analytical solutions for vibrating plate eigenmodes:
 Usage:
     python -m modes.chladni.eigenfunctions --mode 2,3 --size 512 --out mode_2_3.png
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,6 +31,7 @@ import numpy as np
 try:
     import matplotlib.pyplot as plt
     from matplotlib.colors import LinearSegmentedColormap
+
     HAS_MATPLOTLIB = True
 except ImportError:
     HAS_MATPLOTLIB = False
@@ -38,11 +40,12 @@ except ImportError:
 @dataclass
 class PlateParams:
     """Physical parameters for plate eigenfrequency calculation."""
-    length_m: float = 0.3          # Plate side length (square)
-    thickness_m: float = 0.003     # Plate thickness
+
+    length_m: float = 0.3  # Plate side length (square)
+    thickness_m: float = 0.003  # Plate thickness
     density_kg_m3: float = 2700.0  # Material density (aluminum default)
     youngs_modulus_pa: float = 70e9  # Young's modulus
-    poissons_ratio: float = 0.33   # Poisson's ratio
+    poissons_ratio: float = 0.33  # Poisson's ratio
 
     @property
     def flexural_rigidity(self) -> float:
@@ -68,10 +71,7 @@ class PlateParams:
 
 
 def compute_simply_supported_mode(
-    m: int,
-    n: int,
-    grid_size: int = 256,
-    normalize: bool = True
+    m: int, n: int, grid_size: int = 256, normalize: bool = True
 ) -> np.ndarray:
     """
     Compute eigenfunction for simply supported square plate.
@@ -105,9 +105,7 @@ def compute_simply_supported_mode(
 
 
 def compute_center_constrained_nodal(
-    m: int,
-    n: int,
-    grid_size: int = 256
+    m: int, n: int, grid_size: int = 256
 ) -> np.ndarray:
     """
     Compute nodal pattern for center-constrained plate.
@@ -141,8 +139,7 @@ def compute_center_constrained_nodal(
 
 
 def extract_nodal_contour(
-    displacement: np.ndarray,
-    threshold: float = 0.01
+    displacement: np.ndarray, threshold: float = 0.01
 ) -> np.ndarray:
     """
     Extract binary nodal line mask from displacement field.
@@ -164,7 +161,7 @@ def render_chladni_pattern(
     title: str | None = None,
     colormap: str = "seismic",
     show_nodal: bool = True,
-    dpi: int = 150
+    dpi: int = 150,
 ) -> np.ndarray | None:
     """
     Render Chladni pattern visualization.
@@ -191,33 +188,24 @@ def render_chladni_pattern(
 
     # Main displacement heatmap
     im = ax.imshow(
-        normalized,
-        cmap=colormap,
-        vmin=-1,
-        vmax=1,
-        origin='lower',
-        extent=[0, 1, 0, 1]
+        normalized, cmap=colormap, vmin=-1, vmax=1, origin="lower", extent=[0, 1, 0, 1]
     )
 
     if show_nodal:
         # Overlay nodal contour at zero
         ax.contour(
-            normalized,
-            levels=[0],
-            colors='black',
-            linewidths=1.5,
-            extent=[0, 1, 0, 1]
+            normalized, levels=[0], colors="black", linewidths=1.5, extent=[0, 1, 0, 1]
         )
 
-    ax.set_xlabel('x / L')
-    ax.set_ylabel('y / L')
+    ax.set_xlabel("x / L")
+    ax.set_ylabel("y / L")
     if title:
         ax.set_title(title)
 
-    plt.colorbar(im, ax=ax, label='Displacement (normalized)')
+    plt.colorbar(im, ax=ax, label="Displacement (normalized)")
 
     if output_path:
-        fig.savefig(output_path, bbox_inches='tight', dpi=dpi)
+        fig.savefig(output_path, bbox_inches="tight", dpi=dpi)
         plt.close(fig)
         return None
     else:
@@ -232,7 +220,7 @@ def render_sand_pattern(
     displacement: np.ndarray,
     output_path: Path | None = None,
     title: str | None = None,
-    dpi: int = 150
+    dpi: int = 150,
 ) -> np.ndarray | None:
     """
     Render realistic sand Chladni pattern (sand accumulates at nodal lines).
@@ -263,25 +251,20 @@ def render_sand_pattern(
     sand_density = 1 - normalized
 
     # Apply slight nonlinearity to emphasize nodal lines
-    sand_density = sand_density ** 0.7
+    sand_density = sand_density**0.7
 
     ax.imshow(
-        sand_density,
-        cmap='gray',
-        vmin=0,
-        vmax=1,
-        origin='lower',
-        extent=[0, 1, 0, 1]
+        sand_density, cmap="gray", vmin=0, vmax=1, origin="lower", extent=[0, 1, 0, 1]
     )
 
-    ax.set_xlabel('x / L')
-    ax.set_ylabel('y / L')
+    ax.set_xlabel("x / L")
+    ax.set_ylabel("y / L")
     if title:
         ax.set_title(title)
-    ax.set_aspect('equal')
+    ax.set_aspect("equal")
 
     if output_path:
-        fig.savefig(output_path, bbox_inches='tight', dpi=dpi)
+        fig.savefig(output_path, bbox_inches="tight", dpi=dpi)
         plt.close(fig)
         return None
     else:
@@ -294,6 +277,7 @@ def render_sand_pattern(
 @dataclass
 class ChladniModeResult:
     """Result container for computed Chladni mode."""
+
     m: int
     n: int
     boundary_condition: Literal["simply_supported", "center_constrained"]
@@ -304,8 +288,8 @@ class ChladniModeResult:
     def to_json_dict(self) -> dict:
         """Return JSON-serializable dict (excludes displacement array)."""
         d = asdict(self)
-        d.pop('displacement')
-        d['shape'] = list(self.displacement.shape)
+        d.pop("displacement")
+        d["shape"] = list(self.displacement.shape)
         return d
 
 
@@ -314,7 +298,7 @@ def compute_mode(
     n: int,
     boundary: Literal["simply_supported", "center_constrained"] = "simply_supported",
     grid_size: int = 256,
-    plate_params: PlateParams | None = None
+    plate_params: PlateParams | None = None,
 ) -> ChladniModeResult:
     """
     Compute Chladni mode for given parameters.
@@ -346,7 +330,7 @@ def compute_mode(
         boundary_condition=boundary,
         frequency_hz=freq_hz,
         grid_size=grid_size,
-        displacement=displacement
+        displacement=displacement,
     )
 
 
@@ -356,46 +340,38 @@ def main() -> None:
         description="Compute and visualize Chladni plate eigenmodes"
     )
     parser.add_argument(
-        "--mode", "-m",
-        required=True,
-        help="Mode numbers as 'm,n' (e.g., '2,3')"
+        "--mode", "-m", required=True, help="Mode numbers as 'm,n' (e.g., '2,3')"
     )
     parser.add_argument(
-        "--boundary", "-b",
+        "--boundary",
+        "-b",
         choices=["simply_supported", "center_constrained"],
         default="simply_supported",
-        help="Boundary condition type"
+        help="Boundary condition type",
     )
     parser.add_argument(
-        "--size", "-s",
-        type=int,
-        default=256,
-        help="Grid resolution (default: 256)"
+        "--size", "-s", type=int, default=256, help="Grid resolution (default: 256)"
     )
     parser.add_argument(
-        "--out", "-o",
-        help="Output PNG path (omit for terminal summary only)"
+        "--out", "-o", help="Output PNG path (omit for terminal summary only)"
     )
     parser.add_argument(
         "--sand",
         action="store_true",
-        help="Render realistic sand pattern instead of displacement field"
+        help="Render realistic sand pattern instead of displacement field",
     )
-    parser.add_argument(
-        "--json",
-        help="Output metadata to JSON file"
-    )
+    parser.add_argument("--json", help="Output metadata to JSON file")
     parser.add_argument(
         "--plate-length",
         type=float,
         default=0.3,
-        help="Plate side length in meters (default: 0.3)"
+        help="Plate side length in meters (default: 0.3)",
     )
     parser.add_argument(
         "--plate-thickness",
         type=float,
         default=0.003,
-        help="Plate thickness in meters (default: 0.003)"
+        help="Plate thickness in meters (default: 0.003)",
     )
 
     args = parser.parse_args()
@@ -410,17 +386,12 @@ def main() -> None:
 
     # Build plate parameters
     plate_params = PlateParams(
-        length_m=args.plate_length,
-        thickness_m=args.plate_thickness
+        length_m=args.plate_length, thickness_m=args.plate_thickness
     )
 
     # Compute mode
     result = compute_mode(
-        m=m,
-        n=n,
-        boundary=args.boundary,
-        grid_size=args.size,
-        plate_params=plate_params
+        m=m, n=n, boundary=args.boundary, grid_size=args.size, plate_params=plate_params
     )
 
     # Output summary
@@ -450,7 +421,7 @@ def main() -> None:
     if args.json:
         json_path = Path(args.json)
         meta = result.to_json_dict()
-        meta['plate_params'] = asdict(plate_params)
+        meta["plate_params"] = asdict(plate_params)
         json_path.write_text(json.dumps(meta, indent=2))
         print(f"Metadata: {json_path}")
 

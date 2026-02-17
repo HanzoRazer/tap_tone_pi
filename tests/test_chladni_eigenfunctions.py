@@ -1,4 +1,5 @@
 """Tests for Chladni eigenfunction computation."""
+
 import numpy as np
 import pytest
 
@@ -17,9 +18,7 @@ class TestPlateParams:
     def test_flexural_rigidity_aluminum(self):
         """Verify flexural rigidity formula for aluminum plate."""
         params = PlateParams(
-            thickness_m=0.003,
-            youngs_modulus_pa=70e9,
-            poissons_ratio=0.33
+            thickness_m=0.003, youngs_modulus_pa=70e9, poissons_ratio=0.33
         )
         D = params.flexural_rigidity
         # D = Eh³/12(1-ν²) = 70e9 * 0.003³ / 12(1-0.33²)
@@ -145,29 +144,21 @@ class TestComputeMode:
     def test_frequency_computed_with_params(self):
         """Frequency should be computed when params provided."""
         params = PlateParams()
-        result = compute_mode(
-            2, 3,
-            boundary="simply_supported",
-            plate_params=params
-        )
+        result = compute_mode(2, 3, boundary="simply_supported", plate_params=params)
         assert result.frequency_hz is not None
         assert result.frequency_hz > 0
 
     def test_center_constrained_no_frequency(self):
         """Center constrained doesn't compute eigenfrequency."""
         params = PlateParams()
-        result = compute_mode(
-            2, 3,
-            boundary="center_constrained",
-            plate_params=params
-        )
+        result = compute_mode(2, 3, boundary="center_constrained", plate_params=params)
         assert result.frequency_hz is None
 
     def test_to_json_dict(self):
         """JSON dict should exclude displacement array."""
         result = compute_mode(1, 2, grid_size=32)
         d = result.to_json_dict()
-        assert 'displacement' not in d
-        assert d['m'] == 1
-        assert d['n'] == 2
-        assert d['shape'] == [32, 32]
+        assert "displacement" not in d
+        assert d["m"] == 1
+        assert d["n"] == 2
+        assert d["shape"] == [32, 32]

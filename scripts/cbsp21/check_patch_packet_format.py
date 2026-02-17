@@ -62,7 +62,9 @@ def main() -> int:
             failed = True
 
         if args.disallow_ellipsis_in_code and has_ellipsis_inside_code_fence(txt):
-            print(f"CBSP21 PATCH FAIL: Found '...' placeholder inside code fence in {path}")
+            print(
+                f"CBSP21 PATCH FAIL: Found '...' placeholder inside code fence in {path}"
+            )
             failed = True
 
     if failed:

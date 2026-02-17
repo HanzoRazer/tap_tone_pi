@@ -15,11 +15,15 @@ import pytest
 
 
 def test_replay_smoke_runs_and_returns_summary():
-    replay = pytest.importorskip("tap_tone_pi.agentic.spine.replay", reason="replay harness not implemented")
+    replay = pytest.importorskip(
+        "tap_tone_pi.agentic.spine.replay", reason="replay harness not implemented"
+    )
     fixture = Path(__file__).parent / "fixtures" / "smoke_session.jsonl"
 
     events = replay.load_events(fixture)
-    report = replay.run_shadow_replay(events, replay.ReplayConfig(mode="M0", verbose=False))
+    report = replay.run_shadow_replay(
+        events, replay.ReplayConfig(mode="M0", verbose=False)
+    )
 
     assert report["mode"] == "M0"
     assert report["summary"]["total_sessions"] >= 1

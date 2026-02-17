@@ -6,14 +6,15 @@ Implements the deterministic measurement workflow:
 The loop enforces quality gates and prevents silent advancement
 past failed measurements.
 """
+
 from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Any, Optional
+from typing import Callable, Any
 
 import numpy as np
 from tap_tone_pi.io.wav import write_wav_int16
@@ -27,7 +28,7 @@ from tap_tone_pi.capture import (
     TriggerResult,
 )
 from tap_tone_pi.core.analysis import analyze_tap, AnalysisResult
-from tap_tone_pi.core.quality_gate import check_quality, format_verdict_summary
+from tap_tone_pi.core.quality_gate import check_quality
 from tap_tone_pi.core.quality_policy import QualityVerdict, Verdict
 from tap_tone_pi.agentic.events import (
     JsonlEventWriter,
@@ -43,22 +44,24 @@ from tap_tone_pi.workflow.attempt import Attempt, AttemptStore, AttemptStatus
 
 class LoopState(str, Enum):
     """States in the operator loop."""
-    IDLE = "idle"              # No active measurement
-    PREFLIGHT = "preflight"    # Checking device/environment
-    READY = "ready"            # Ready for capture
-    LISTENING = "listening"    # Waiting for auto-trigger (Phase 10)
-    CAPTURING = "capturing"    # Recording audio
-    ANALYZING = "analyzing"    # Running DSP analysis
-    GATING = "gating"          # Checking quality
-    PASSED = "passed"          # Quality gate passed
-    WARNED = "warned"          # Quality gate warned (can proceed)
-    FAILED = "failed"          # Quality gate failed (must retry)
-    COMPLETED = "completed"    # Point complete, moving on
+
+    IDLE = "idle"  # No active measurement
+    PREFLIGHT = "preflight"  # Checking device/environment
+    READY = "ready"  # Ready for capture
+    LISTENING = "listening"  # Waiting for auto-trigger (Phase 10)
+    CAPTURING = "capturing"  # Recording audio
+    ANALYZING = "analyzing"  # Running DSP analysis
+    GATING = "gating"  # Checking quality
+    PASSED = "passed"  # Quality gate passed
+    WARNED = "warned"  # Quality gate warned (can proceed)
+    FAILED = "failed"  # Quality gate failed (must retry)
+    COMPLETED = "completed"  # Point complete, moving on
 
 
 @dataclass
 class LoopResult:
     """Result of a complete loop iteration."""
+
     attempt: Attempt
     audio: np.ndarray | None = None
     analysis: AnalysisResult | None = None
@@ -120,9 +123,7 @@ class OperatorLoop:
         self.callback = callback
         self.state = LoopState.IDLE
         self._current_attempt: Attempt | None = None
-        self._event_writer = JsonlEventWriter(
-            self.session_dir / "events.jsonl"
-        )
+        self._event_writer = JsonlEventWriter(self.session_dir / "events.jsonl")
         # View adapter for M2 actuation (PR #20)
         self._view_adapter = view_adapter
         # Spine mode: M0/M1/M2.  M2 without adapter silently falls back to M1.
@@ -156,9 +157,14 @@ class OperatorLoop:
         """
         Load UWSM state once per OperatorLoop instance (fail-closed).
         """
-        if self._uwsm_cached is not None and self._uwsm_conf_cached is not None and self._uwsm_updated_at_cached is not None:
+        if (
+            self._uwsm_cached is not None
+            and self._uwsm_conf_cached is not None
+            and self._uwsm_updated_at_cached is not None
+        ):
             return
         from tap_tone_pi.agentic.spine.uwsm_store import load_uwsm_state
+
         uwsm, conf, ts = load_uwsm_state(now=self._utc_now())
         self._uwsm_cached = uwsm
         self._uwsm_conf_cached = conf
@@ -171,6 +177,7 @@ class OperatorLoop:
         if self._uwsm_cached is None or self._uwsm_conf_cached is None:
             return
         from tap_tone_pi.agentic.spine.uwsm_store import save_uwsm_state
+
         save_uwsm_state(self._uwsm_cached, self._uwsm_conf_cached, now=self._utc_now())
 
     def _append_uwsm_audit(self, attempt: Attempt, audits: list[dict]) -> None:
@@ -182,7 +189,9 @@ class OperatorLoop:
         try:
             p = Path(self.session_dir) / "uwsm_audit.jsonl"
             rec = {
-                "timestamp": self._utc_now().isoformat(timespec="milliseconds").replace("+00:00", "Z"),
+                "timestamp": self._utc_now()
+                .isoformat(timespec="milliseconds")
+                .replace("+00:00", "Z"),
                 "session_dir": str(self.session_dir),
                 "run_id": getattr(attempt, "attempt_id", ""),
                 "point_id": getattr(attempt, "point_id", ""),
@@ -273,7 +282,9 @@ class OperatorLoop:
             return LoopResult(attempt=attempt, error=msg)
 
         # --- READY ---
-        self._emit(LoopState.READY, {"point_id": point_id, "attempt": attempt.attempt_number})
+        self._emit(
+            LoopState.READY, {"point_id": point_id, "attempt": attempt.attempt_number}
+        )
 
         # --- CAPTURING ---
         if auto_trigger:
@@ -290,12 +301,18 @@ class OperatorLoop:
                     if trigger_result.state == TriggerState.TIMEOUT:
                         attempt.status = AttemptStatus.FAILED
                         self.store.save_attempt(attempt)
-                        return LoopResult(attempt=attempt, error="Auto-trigger timeout - no tap detected")
+                        return LoopResult(
+                            attempt=attempt,
+                            error="Auto-trigger timeout - no tap detected",
+                        )
                     else:
                         attempt.status = AttemptStatus.FAILED
                         self.store.save_attempt(attempt)
-                        return LoopResult(attempt=attempt, error=f"Auto-trigger failed: {trigger_result.error}")
-                
+                        return LoopResult(
+                            attempt=attempt,
+                            error=f"Auto-trigger failed: {trigger_result.error}",
+                        )
+
                 # Convert to CaptureResult for downstream compatibility
                 cap_result = CaptureResult(
                     sample_rate=trigger_result.sample_rate,
@@ -305,7 +322,9 @@ class OperatorLoop:
             except Exception as e:
                 attempt.status = AttemptStatus.FAILED
                 self.store.save_attempt(attempt)
-                return LoopResult(attempt=attempt, error=f"Auto-trigger capture failed: {e}")
+                return LoopResult(
+                    attempt=attempt, error=f"Auto-trigger capture failed: {e}"
+                )
         else:
             # Fixed-duration mode
             self._emit(LoopState.CAPTURING)
@@ -395,17 +414,21 @@ class OperatorLoop:
         # Save analysis
         analysis_path = attempt_dir / "analysis.json"
         with open(analysis_path, "w", encoding="utf-8") as f:
-            json.dump({
-                "dominant_hz": analysis.dominant_hz,
-                "rms": float(analysis.rms),
-                "confidence": float(analysis.confidence),
-                "clipped": analysis.clipped,
-                "peak_count": len(analysis.peaks) if analysis.peaks else 0,
-                "peaks": [
-                    {"freq_hz": p.freq_hz, "magnitude": float(p.magnitude)}
-                    for p in (analysis.peaks or [])[:20]
-                ],
-            }, f, indent=2)
+            json.dump(
+                {
+                    "dominant_hz": analysis.dominant_hz,
+                    "rms": float(analysis.rms),
+                    "confidence": float(analysis.confidence),
+                    "clipped": analysis.clipped,
+                    "peak_count": len(analysis.peaks) if analysis.peaks else 0,
+                    "peaks": [
+                        {"freq_hz": p.freq_hz, "magnitude": float(p.magnitude)}
+                        for p in (analysis.peaks or [])[:20]
+                    ],
+                },
+                f,
+                indent=2,
+            )
         attempt.analysis_path = "analysis.json"
 
         # Event: analysis artifact created
@@ -464,7 +487,11 @@ class OperatorLoop:
 
         # Event: decision required (FAIL/WARN only)
         if verdict.verdict in (Verdict.FAIL, Verdict.WARN):
-            options = ["retry", "override", "abort"] if verdict.verdict == Verdict.FAIL else ["accept", "retry"]
+            options = (
+                ["retry", "override", "abort"]
+                if verdict.verdict == Verdict.FAIL
+                else ["accept", "retry"]
+            )
             evt = emit_decision_required(
                 component="operator_loop",
                 run_id=attempt.attempt_id,
@@ -558,13 +585,19 @@ class OperatorLoop:
 
         # Load + decay persisted UWSM
         self._ensure_uwsm_loaded()
-        assert self._uwsm_cached is not None and self._uwsm_conf_cached is not None and self._uwsm_updated_at_cached is not None
+        assert (
+            self._uwsm_cached is not None
+            and self._uwsm_conf_cached is not None
+            and self._uwsm_updated_at_cached is not None
+        )
         self._uwsm_cached, self._uwsm_conf_cached = apply_uwsm_decay(
             self._uwsm_cached, self._uwsm_conf_cached, self._uwsm_updated_at_cached, now
         )
 
         # Apply updates (mutates UWSM); persist audit
-        self._uwsm_cached, audits = apply_uwsm_updates(events=events, uwsm=self._uwsm_cached)
+        self._uwsm_cached, audits = apply_uwsm_updates(
+            events=events, uwsm=self._uwsm_cached
+        )
         self._append_uwsm_audit(attempt, audits)
 
         # Update cached timestamp + save to disk
@@ -617,8 +650,10 @@ class OperatorLoop:
         if issue_commands and self._view_adapter is not None:
             try:
                 from tap_tone_pi.agentic.spine.view_adapter import dispatch_commands
+
                 commands_dispatched = dispatch_commands(
-                    self._view_adapter, issue_commands,
+                    self._view_adapter,
+                    issue_commands,
                 )
             except (ImportError, OSError, ValueError, KeyError, AttributeError):
                 pass  # fail-closed
@@ -635,8 +670,11 @@ class OperatorLoop:
             # AttentionAction enum values are lowercase; shadow_record
             # validator expects uppercase canonical names.
             advisory_action = (
-                raw_action.name if hasattr(raw_action, "name") else
-                str(raw_action).upper() if raw_action else None
+                raw_action.name
+                if hasattr(raw_action, "name")
+                else str(raw_action).upper()
+                if raw_action
+                else None
             )
             advisory_summary = self._directive_field(directive, "summary")
             advisory_conf = self._directive_field(directive, "confidence")
@@ -645,7 +683,9 @@ class OperatorLoop:
                 advisory_focus = {
                     "target_type": self._directive_field(focus, "target_type"),
                     "target_id": self._directive_field(focus, "target_id"),
-                    "highlight_region": self._directive_field(focus, "highlight_region"),
+                    "highlight_region": self._directive_field(
+                        focus, "highlight_region"
+                    ),
                 }
 
         # Persist advisory record
@@ -660,7 +700,9 @@ class OperatorLoop:
             advisory_action=advisory_action,
             advisory_summary=advisory_summary,
             advisory_focus=advisory_focus,
-            advisory_confidence=float(advisory_conf) if isinstance(advisory_conf, (int, float)) else None,
+            advisory_confidence=float(advisory_conf)
+            if isinstance(advisory_conf, (int, float))
+            else None,
             commands_count=commands_dispatched,
             error=None,
             policy_trace=(decision or {}).get("diagnostic"),

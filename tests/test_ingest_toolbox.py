@@ -3,12 +3,11 @@
 Tests mock HTTP only — no hardware or network dependency.
 Requires ``requests`` (optional external dep); auto-skipped when missing.
 """
+
 from __future__ import annotations
 
 import json
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-import tempfile
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -71,11 +70,13 @@ class TestIngestZipMissingRequests:
 
         with patch.dict("sys.modules", {"requests": None}):
             # Force reimport to trigger ImportError
-            import importlib
-            import tap_tone.ingest.toolbox as toolbox_module
 
             # Mock the import to raise ImportError
-            original_import = __builtins__.__import__ if hasattr(__builtins__, '__import__') else __import__
+            original_import = (
+                __builtins__.__import__
+                if hasattr(__builtins__, "__import__")
+                else __import__
+            )
 
             def mock_import(name, *args, **kwargs):
                 if name == "requests":
@@ -102,7 +103,9 @@ class TestIngestZipNetworkErrors:
         """Test graceful handling of connection failure."""
         import requests.exceptions
 
-        mock_post = Mock(side_effect=requests.exceptions.ConnectionError("Connection refused"))
+        mock_post = Mock(
+            side_effect=requests.exceptions.ConnectionError("Connection refused")
+        )
 
         with patch("requests.post", mock_post):
             result = ingest_zip(dummy_zip, ingest_url="http://localhost:9999")
@@ -118,7 +121,9 @@ class TestIngestZipNetworkErrors:
         mock_post = Mock(side_effect=requests.exceptions.Timeout("Request timed out"))
 
         with patch("requests.post", mock_post):
-            result = ingest_zip(dummy_zip, ingest_url="http://localhost:8000", timeout_s=1.0)
+            result = ingest_zip(
+                dummy_zip, ingest_url="http://localhost:8000", timeout_s=1.0
+            )
 
         assert result.ok is False
         assert result.http_status is None

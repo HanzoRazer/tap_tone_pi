@@ -1,5 +1,5 @@
 """Smoke test for gold-run --dry-run mode."""
-import sys
+
 import json
 from pathlib import Path
 
@@ -15,12 +15,17 @@ def test_gold_run_dry_run_exits_zero(tmp_out):
     """gold-run --dry-run should exit 0 without capturing."""
     from tap_tone.cli.gold_run import main as gold_run_main
 
-    rc = gold_run_main([
-        "--specimen-id", "test_plate",
-        "--device", "0",
-        "--out-dir", str(tmp_out),
-        "--dry-run",
-    ])
+    rc = gold_run_main(
+        [
+            "--specimen-id",
+            "test_plate",
+            "--device",
+            "0",
+            "--out-dir",
+            str(tmp_out),
+            "--dry-run",
+        ]
+    )
 
     assert rc == 0
 
@@ -29,13 +34,18 @@ def test_gold_run_dry_run_json_output(tmp_out, capsys):
     """gold-run --dry-run --json should emit valid JSON."""
     from tap_tone.cli.gold_run import main as gold_run_main
 
-    rc = gold_run_main([
-        "--specimen-id", "test_plate",
-        "--device", "0",
-        "--out-dir", str(tmp_out),
-        "--dry-run",
-        "--json",
-    ])
+    rc = gold_run_main(
+        [
+            "--specimen-id",
+            "test_plate",
+            "--device",
+            "0",
+            "--out-dir",
+            str(tmp_out),
+            "--dry-run",
+            "--json",
+        ]
+    )
 
     assert rc == 0
     captured = capsys.readouterr()
@@ -49,14 +59,20 @@ def test_gold_run_custom_points(tmp_out, capsys):
     """gold-run --points 5 should generate 5 point labels."""
     from tap_tone.cli.gold_run import main as gold_run_main
 
-    rc = gold_run_main([
-        "--specimen-id", "5pt_test",
-        "--device", "0",
-        "--out-dir", str(tmp_out),
-        "--points", "5",
-        "--dry-run",
-        "--json",
-    ])
+    rc = gold_run_main(
+        [
+            "--specimen-id",
+            "5pt_test",
+            "--device",
+            "0",
+            "--out-dir",
+            str(tmp_out),
+            "--points",
+            "5",
+            "--dry-run",
+            "--json",
+        ]
+    )
 
     assert rc == 0
     captured = capsys.readouterr()

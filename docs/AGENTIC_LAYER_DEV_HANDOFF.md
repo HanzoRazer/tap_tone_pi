@@ -1,7 +1,7 @@
 # Agentic Layer — Developer Handoff
 
-**Date:** 2026-02-08  
-**Audience:** Incoming engineer(s) taking over agentic layer development  
+**Date:** 2026-02-08
+**Audience:** Incoming engineer(s) taking over agentic layer development
 **Scope:** Everything under `tap_tone_pi/agentic/`, `tap_tone_pi/agent/`, `tap_tone_pi/workflow/`, and associated governance docs + tests
 
 ---
@@ -38,8 +38,8 @@ The contracts mirror identical types in the **luthiers-toolbox** repo (`services
 
 ## 1. Contracts — The Cross-Repo Thin Waist
 
-**Location:** `tap_tone_pi/agentic/contracts/`  
-**Mirror:** `luthiers-toolbox/services/api/app/agentic/contracts/`  
+**Location:** `tap_tone_pi/agentic/contracts/`
+**Mirror:** `luthiers-toolbox/services/api/app/agentic/contracts/`
 **Governance doc:** [AGENTIC_CONTRACTS_ENGINEER_HANDOFF.md](AGENTIC_CONTRACTS_ENGINEER_HANDOFF.md)
 
 ### 1.1 Three Core Contracts
@@ -169,7 +169,7 @@ Available convenience emitters: `emit_analysis_started()`, `emit_analysis_comple
 
 ## 2. Spine — The Orchestration Engine
 
-**Location:** `tap_tone_pi/agentic/spine/`  
+**Location:** `tap_tone_pi/agentic/spine/`
 **Governance docs:** [AGENT_DECISION_POLICY_V1.md](AGENT_DECISION_POLICY_V1.md), [EVENT_MOMENTS_CATALOG_V1.md](EVENT_MOMENTS_CATALOG_V1.md), [UWSM_UPDATE_RULES_V1.md](UWSM_UPDATE_RULES_V1.md), [AGENTIC_SPINE_ARCHITECTURE_ONEPAGER.md](AGENTIC_SPINE_ARCHITECTURE_ONEPAGER.md)
 
 The spine is a deterministic 5-step pipeline:
@@ -180,7 +180,7 @@ Ingest & Normalize → Detect Moments → Choose Intervention → Apply UWSM Gat
 
 ### 2.1 Moment Detection Engine
 
-**File:** `tap_tone_pi/agentic/spine/moments.py` (~170 lines)  
+**File:** `tap_tone_pi/agentic/spine/moments.py` (~170 lines)
 **Catalog:** [EVENT_MOMENTS_CATALOG_V1.md](EVENT_MOMENTS_CATALOG_V1.md)
 
 Moments are named patterns detected from event streams. The engine returns the **single highest-priority** moment (not a list).
@@ -222,7 +222,7 @@ The full catalog (in the governance doc) defines 7 moment types, including `CONF
 
 ### 2.2 Policy Engine (Decision Pipeline)
 
-**File:** `tap_tone_pi/agentic/spine/policy.py` (~170 lines)  
+**File:** `tap_tone_pi/agentic/spine/policy.py` (~170 lines)
 **Governance doc:** [AGENT_DECISION_POLICY_V1.md](AGENT_DECISION_POLICY_V1.md)
 
 The policy engine maps moments to attention actions, gated by **three operating modes**:
@@ -276,7 +276,7 @@ result = decide(
 
 ### 2.3 UWSM Update Engine
 
-**File:** `tap_tone_pi/agentic/spine/uwsm_update.py` (388 lines)  
+**File:** `tap_tone_pi/agentic/spine/uwsm_update.py` (388 lines)
 **Governance doc:** [UWSM_UPDATE_RULES_V1.md](UWSM_UPDATE_RULES_V1.md)
 
 The User Working Style Model (UWSM) tracks 7 preference dimensions:
@@ -479,7 +479,7 @@ class RuleSpec:
 | Q012 | Marginal confidence |
 | Q013 | Few peaks detected |
 
-Registry lookup: `get_rule_spec("Q001")` → `RuleSpec | None`.  
+Registry lookup: `get_rule_spec("Q001")` → `RuleSpec | None`.
 Verdict templates: `get_verdict_template("fail")` → `VerdictTemplate`.
 
 ### 3.5 Selector — Rule Ordering & Fatigue Suppression (PR6)
@@ -990,4 +990,3 @@ PR-S6 (GUI Directive Toast + Dismissal)
 - GUI shows agent messages and directive toasts with dismissal tracking
 - Dismissal events feed back into UWSM for `initiative_tolerance` adaptation
 - Measurement truth is completely untouched throughout
-

@@ -11,6 +11,7 @@ Usage (new):
 Usage (legacy, still works):
     python modes/bending_rig/merge_and_moe.py --help
 """
+
 import warnings
 
 warnings.warn(

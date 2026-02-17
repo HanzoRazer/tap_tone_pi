@@ -27,6 +27,7 @@ Usage:
         --config config/devices/loadcell_example.json \
         --out out/run/load_series.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -84,9 +85,7 @@ def main() -> None:
     ap.add_argument(
         "--config", required=True, help="JSON config file for the load cell"
     )
-    ap.add_argument(
-        "--out", required=True, help="Output JSON path (load_series.json)"
-    )
+    ap.add_argument("--out", required=True, help="Output JSON path (load_series.json)")
     args = ap.parse_args()
 
     # Load config

@@ -11,7 +11,6 @@ Requirements:
     pip install pyinstaller
 """
 
-import os
 import sys
 import subprocess
 import shutil
@@ -43,8 +42,11 @@ def build_analyzer(onefile: bool = False, debug: bool = False):
 
     # Base PyInstaller command
     cmd = [
-        sys.executable, "-m", "PyInstaller",
-        "--name", "TapToneAnalyzer",
+        sys.executable,
+        "-m",
+        "PyInstaller",
+        "--name",
+        "TapToneAnalyzer",
         "--windowed",  # No console window
         "--noconfirm",  # Overwrite without asking
     ]
@@ -63,9 +65,7 @@ def build_analyzer(onefile: bool = False, debug: bool = False):
         icon_path = project_root / "assets" / "icon.icns"
         if icon_path.exists():
             cmd.extend(["--icon", str(icon_path)])
-        cmd.extend([
-            "--osx-bundle-identifier", "com.taptonepi.analyzer"
-        ])
+        cmd.extend(["--osx-bundle-identifier", "com.taptonepi.analyzer"])
 
     # Single file or directory
     if onefile:
@@ -103,7 +103,7 @@ def build_analyzer(onefile: bool = False, debug: bool = False):
     result = subprocess.run(cmd, cwd=str(project_root))
 
     if result.returncode == 0:
-        print(f"\n✓ Build successful!")
+        print("\n✓ Build successful!")
         print(f"  Output: {dist_dir}")
 
         if platform == "windows":
@@ -131,10 +131,12 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Build Tap Tone Analyzer")
-    parser.add_argument("--onefile", action="store_true",
-                        help="Build as single executable")
-    parser.add_argument("--debug", action="store_true",
-                        help="Build with console for debugging")
+    parser.add_argument(
+        "--onefile", action="store_true", help="Build as single executable"
+    )
+    parser.add_argument(
+        "--debug", action="store_true", help="Build with console for debugging"
+    )
 
     args = parser.parse_args()
 

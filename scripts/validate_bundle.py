@@ -83,9 +83,13 @@ def main() -> None:
     sr_decl = int(analysis["sample_rate"])
 
     if ch_wav != ch_decl:
-        raise SystemExit(f"[FAIL] WAV channels={ch_wav} but analysis.json channels={ch_decl}")
+        raise SystemExit(
+            f"[FAIL] WAV channels={ch_wav} but analysis.json channels={ch_decl}"
+        )
     if sr_wav != sr_decl:
-        raise SystemExit(f"[FAIL] WAV sample_rate={sr_wav} but analysis.json sample_rate={sr_decl}")
+        raise SystemExit(
+            f"[FAIL] WAV sample_rate={sr_wav} but analysis.json sample_rate={sr_decl}"
+        )
     if frames <= 0:
         raise SystemExit("[FAIL] WAV has no frames")
 

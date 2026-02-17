@@ -4,7 +4,6 @@ Tests for tap_tone_pi.gui.widgets module (Phase 8 UI Polish).
 These tests verify that the widget classes are properly defined
 and can be instantiated without a display (where possible).
 """
-import pytest
 
 
 class TestWidgetsImport:
@@ -13,6 +12,7 @@ class TestWidgetsImport:
     def test_import_status_level(self):
         """StatusLevel enum should be importable."""
         from tap_tone_pi.gui.widgets import StatusLevel
+
         assert StatusLevel.INFO.value == "info"
         assert StatusLevel.SUCCESS.value == "success"
         assert StatusLevel.WARNING.value == "warning"
@@ -29,17 +29,13 @@ class TestWidgetsImport:
         assert msg.progress is None
 
         msg_with_progress = StatusMessage(
-            text="Loading...",
-            level=StatusLevel.PROGRESS,
-            progress=0.5
+            text="Loading...", level=StatusLevel.PROGRESS, progress=0.5
         )
         assert msg_with_progress.progress == 0.5
 
     def test_import_all_exports(self):
         """All __all__ exports should be importable."""
         from tap_tone_pi.gui.widgets import (
-            StatusLevel,
-            StatusMessage,
             StatusBar,
             AudioLevelMeter,
             DeviceSelector,
@@ -121,6 +117,7 @@ class TestSessionInfo:
     def test_import(self):
         """SessionInfo should be importable."""
         from tap_tone_pi.gui.widgets import SessionInfo
+
         assert hasattr(SessionInfo, "from_path")
 
     def test_size_display_bytes(self):
@@ -194,6 +191,7 @@ class TestSessionBrowserDialog:
     def test_import(self):
         """SessionBrowserDialog should be importable."""
         from tap_tone_pi.gui.widgets import SessionBrowserDialog
+
         assert hasattr(SessionBrowserDialog, "__init__")
 
 
@@ -203,4 +201,5 @@ class TestPackDiffDialog:
     def test_import(self):
         """PackDiffDialog should be importable."""
         from tap_tone_pi.gui.widgets import PackDiffDialog
+
         assert hasattr(PackDiffDialog, "__init__")

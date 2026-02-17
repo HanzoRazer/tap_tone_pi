@@ -3,6 +3,7 @@
 Force vs Displacement plot with linear fit overlay.
 Measurement visualization only — no interpretation.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -14,14 +15,18 @@ import numpy as np
 
 try:
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+
     HAS_MPL = True
 except ImportError:
     HAS_MPL = False
 
 
-def linear_fit(forces: np.ndarray, displacements: np.ndarray) -> Tuple[float, float, float]:
+def linear_fit(
+    forces: np.ndarray, displacements: np.ndarray
+) -> Tuple[float, float, float]:
     """Returns (slope, intercept, r_squared)."""
     if len(forces) < 2:
         return 0.0, 0.0, 0.0
@@ -63,8 +68,13 @@ def plot_f_vs_d(
     if len(d_arr) >= 2:
         d_fit = np.linspace(d_arr.min(), d_arr.max(), 50)
         f_fit = slope * d_fit + intercept
-        ax.plot(d_fit, f_fit, "r--", linewidth=1.5,
-                label=f"Fit: slope={slope:.3f} {units_force}/{units_disp}")
+        ax.plot(
+            d_fit,
+            f_fit,
+            "r--",
+            linewidth=1.5,
+            label=f"Fit: slope={slope:.3f} {units_force}/{units_disp}",
+        )
 
     ax.set_xlabel(f"Displacement ({units_disp})")
     ax.set_ylabel(f"Force ({units_force})")
@@ -93,13 +103,22 @@ def plot_f_vs_d(
 def main() -> None:
     ap = argparse.ArgumentParser(description="Plot Force vs Displacement with fit")
     ap.add_argument("--forces", type=float, nargs="+", help="Force values")
-    ap.add_argument("--displacements", type=float, nargs="+", help="Displacement values")
-    ap.add_argument("--pair", action="append", metavar="F,D",
-                    help="Force,Displacement pair (repeatable)")
-    ap.add_argument("--json-in", type=str,
-                    help="JSON file with 'forces' and 'displacements' arrays")
+    ap.add_argument(
+        "--displacements", type=float, nargs="+", help="Displacement values"
+    )
+    ap.add_argument(
+        "--pair",
+        action="append",
+        metavar="F,D",
+        help="Force,Displacement pair (repeatable)",
+    )
+    ap.add_argument(
+        "--json-in", type=str, help="JSON file with 'forces' and 'displacements' arrays"
+    )
     ap.add_argument("--out", type=str, default="f_vs_d.png", help="Output PNG path")
-    ap.add_argument("--meta-out", type=str, help="Optional JSON output for fit metadata")
+    ap.add_argument(
+        "--meta-out", type=str, help="Optional JSON output for fit metadata"
+    )
     ap.add_argument("--title", type=str, default="Force vs Displacement")
     ap.add_argument("--units-force", type=str, default="N")
     ap.add_argument("--units-disp", type=str, default="mm")
@@ -127,10 +146,14 @@ def main() -> None:
             displacements.append(float(d))
 
     if len(forces) != len(displacements) or len(forces) == 0:
-        raise ValueError("Must provide equal-length forces and displacements (at least 1 point)")
+        raise ValueError(
+            "Must provide equal-length forces and displacements (at least 1 point)"
+        )
 
     meta = plot_f_vs_d(
-        forces, displacements, args.out,
+        forces,
+        displacements,
+        args.out,
         title=args.title,
         units_force=args.units_force,
         units_disp=args.units_disp,

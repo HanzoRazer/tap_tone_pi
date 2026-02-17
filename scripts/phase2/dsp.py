@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Literal, Tuple
+from typing import Dict, Literal
 
 import numpy as np
 import scipy
-from scipy.signal import get_window, csd, welch
+from scipy.signal import csd, welch
 
 # Provenance constants for reproducibility audit trail
 DSP_ALGO_VERSION = "1.0.0"
@@ -27,12 +27,12 @@ def get_dsp_provenance() -> Dict[str, str]:
 @dataclass(frozen=True)
 class TFResult:
     freq_hz: np.ndarray
-    H: np.ndarray           # complex transfer function roving/reference
-    H_mag: np.ndarray       # |H|
-    H_phase_deg: np.ndarray # angle(H) in degrees
-    coherence: np.ndarray   # gamma^2
-    pxx: np.ndarray         # ref PSD
-    pyy: np.ndarray         # rov PSD
+    H: np.ndarray  # complex transfer function roving/reference
+    H_mag: np.ndarray  # |H|
+    H_phase_deg: np.ndarray  # angle(H) in degrees
+    coherence: np.ndarray  # gamma^2
+    pxx: np.ndarray  # ref PSD
+    pyy: np.ndarray  # rov PSD
 
 
 def compute_transfer_and_coherence(
@@ -56,9 +56,31 @@ def compute_transfer_and_coherence(
         noverlap = nperseg // 2
 
     # Cross-spectrum and autospectra
-    f, Pxy = csd(x_rov, x_ref, fs=fs, window=window, nperseg=nperseg, noverlap=noverlap, scaling="density")
-    _, Pxx = welch(x_ref, fs=fs, window=window, nperseg=nperseg, noverlap=noverlap, scaling="density")
-    _, Pyy = welch(x_rov, fs=fs, window=window, nperseg=nperseg, noverlap=noverlap, scaling="density")
+    f, Pxy = csd(
+        x_rov,
+        x_ref,
+        fs=fs,
+        window=window,
+        nperseg=nperseg,
+        noverlap=noverlap,
+        scaling="density",
+    )
+    _, Pxx = welch(
+        x_ref,
+        fs=fs,
+        window=window,
+        nperseg=nperseg,
+        noverlap=noverlap,
+        scaling="density",
+    )
+    _, Pyy = welch(
+        x_rov,
+        fs=fs,
+        window=window,
+        nperseg=nperseg,
+        noverlap=noverlap,
+        scaling="density",
+    )
 
     # Transfer function (roving/reference)
     eps = 1e-18

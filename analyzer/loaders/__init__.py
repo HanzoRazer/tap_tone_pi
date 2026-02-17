@@ -2,7 +2,12 @@
 Data loaders for viewer packs and raw data files.
 """
 
-from analyzer.loaders.viewer_pack import ViewerPackLoader, ViewerPack, EvidenceFile, PackSchema
+from analyzer.loaders.viewer_pack import (
+    ViewerPackLoader,
+    ViewerPack,
+    EvidenceFile,
+    PackSchema,
+)
 from analyzer.loaders.csv_parser import SpectrumCSVParser, parse_spectrum_csv
 from analyzer.loaders.evidence_types import (
     EvidenceFileKind,

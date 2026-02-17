@@ -2,9 +2,9 @@
 
 Tests the pure function directly, no CLI or mocking needed.
 """
+
 from __future__ import annotations
 
-import pytest
 
 from tap_tone.cli.gold_run import pick_open_url
 
@@ -20,7 +20,9 @@ class TestPickOpenUrl:
             open_browser=True,
             open_viewer=True,
         )
-        assert url == "http://localhost:8000/tools/audio-analyzer?sha256=fd5bbaa3a6c10f83"
+        assert (
+            url == "http://localhost:8000/tools/audio-analyzer?sha256=fd5bbaa3a6c10f83"
+        )
 
     def test_open_library_when_bundle_sha_missing(self):
         """--open-viewer without bundle_sha256 → Library URL (fallback)."""

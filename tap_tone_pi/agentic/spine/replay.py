@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from .moments import detect_moments
 from .policy import decide
@@ -101,8 +101,14 @@ def run_shadow_replay(
       - quick debugging
     """
     config = config or ReplayConfig()
-    capability = config.capability or {"automation_limits": {"agent_can_adjust_view": False}}
-    context = config.context or {"first_time_user": True, "primary_panel": "spectrum", "primary_trace": "main"}
+    capability = config.capability or {
+        "automation_limits": {"agent_can_adjust_view": False}
+    }
+    context = config.context or {
+        "first_time_user": True,
+        "primary_panel": "spectrum",
+        "primary_trace": "main",
+    }
 
     sessions = group_by_session(events)
     report: Dict[str, Any] = {"mode": config.mode, "sessions": {}, "summary": {}}
@@ -120,10 +126,20 @@ def run_shadow_replay(
 
         # Moment detection (highest priority only)
         moments = detect_moments(evs)
-        moment = moments[0] if moments else {"moment": "NONE", "confidence": 0.0, "trigger_events": []}
+        moment = (
+            moments[0]
+            if moments
+            else {"moment": "NONE", "confidence": 0.0, "trigger_events": []}
+        )
 
         # Policy decision in chosen mode (default: shadow)
-        decision = decide(moment=moment, uwsm=uwsm1, mode=config.mode, capability=capability, context=context)
+        decision = decide(
+            moment=moment,
+            uwsm=uwsm1,
+            mode=config.mode,
+            capability=capability,
+            context=context,
+        )
 
         mname = moment.get("moment", "NONE")
         aname = decision.get("attention_action", "NONE")
@@ -135,7 +151,9 @@ def run_shadow_replay(
             "moment": moment,
             "decision": decision,
             "uwsm": _strip_internal_state(uwsm1),
-            "audits": audits if config.verbose else audits[-5:],  # keep last few by default
+            "audits": audits
+            if config.verbose
+            else audits[-5:],  # keep last few by default
             "event_count": len(evs),
         }
 
@@ -165,7 +183,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     ap = argparse.ArgumentParser(description="Shadow replay harness for agentic spine")
     ap.add_argument("path", help="Path to events JSON or JSONL")
-    ap.add_argument("--mode", default="M0", choices=["M0", "M1", "M2"], help="Replay mode")
+    ap.add_argument(
+        "--mode", default="M0", choices=["M0", "M1", "M2"], help="Replay mode"
+    )
     ap.add_argument("--verbose", action="store_true", help="Include full audit logs")
     args = ap.parse_args(argv)
 

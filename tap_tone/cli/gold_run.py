@@ -18,6 +18,7 @@ Exit codes:
     4 = Device configuration error
     5 = Unexpected exception
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,8 +31,6 @@ from typing import Any, List, Optional, TYPE_CHECKING
 
 # Defer hardware-dependent imports to runtime
 if TYPE_CHECKING:
-    from tap_tone.capture import list_devices, record_audio
-    from tap_tone.analysis import analyze_tap
     from tap_tone.config import AnalysisConfig
 
 
@@ -55,7 +54,9 @@ class GoldRunConfig:
     export_zip: bool = True
     ingest: bool = True  # ON by default; opt-out via --no-ingest
     ingest_url: str = "http://localhost:8000"
-    api_token: Optional[str] = None  # Auth token for remote ToolBox (env: TOOLBOX_API_TOKEN)
+    api_token: Optional[str] = (
+        None  # Auth token for remote ToolBox (env: TOOLBOX_API_TOKEN)
+    )
     open_browser: bool = True  # ON by default; opt-out via --no-open
     open_viewer: bool = False  # OFF by default; opt-in via --open-viewer
     dry_run: bool = False
@@ -227,7 +228,9 @@ def _capture_point_auto_trigger(
         prefix = f"[{point_idx+1}/{total_points}] {label}"
         print(f"    {msg}")
 
-    print(f"\n[{point_idx+1}/{total_points}] {label}: Armed. Tap now (timeout {cfg.tap_timeout_s}s)...")
+    print(
+        f"\n[{point_idx+1}/{total_points}] {label}: Armed. Tap now (timeout {cfg.tap_timeout_s}s)..."
+    )
 
     try:
         result = capture_one_impulse(
@@ -350,8 +353,10 @@ def _capture_single_point_auto(
         audio=cap_audio,
         analysis=analysis,
     )
-    print(f"    ✓ Captured: dominant={analysis.dominant_hz:.1f}Hz, "
-          f"confidence={analysis.confidence:.2f}")
+    print(
+        f"    ✓ Captured: dominant={analysis.dominant_hz:.1f}Hz, "
+        f"confidence={analysis.confidence:.2f}"
+    )
     return None
 
 
@@ -384,8 +389,10 @@ def _capture_single_point_manual(
                     audio=cap.audio,
                     analysis=analysis,
                 )
-                print(f"    ✓ Captured: dominant={analysis.dominant_hz:.1f}Hz, "
-                      f"confidence={analysis.confidence:.2f}")
+                print(
+                    f"    ✓ Captured: dominant={analysis.dominant_hz:.1f}Hz, "
+                    f"confidence={analysis.confidence:.2f}"
+                )
                 return None
             else:
                 reason = "clipped" if analysis.clipped else "low signal"
@@ -430,7 +437,9 @@ def _write_session_files(
         "gold_run": True,
         "batch_label": cfg.batch_label,
     }
-    (session_dir / "metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+    (session_dir / "metadata.json").write_text(
+        json.dumps(metadata, indent=2), encoding="utf-8"
+    )
     print(f"\n[gold-run] All points captured to: {session_dir}")
 
 
@@ -441,7 +450,9 @@ def _do_export(
 ) -> Optional[str]:
     """Export viewer pack ZIP. Returns error_message or None on success."""
     try:
-        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "phase2"))
+        sys.path.insert(
+            0, str(Path(__file__).resolve().parents[2] / "scripts" / "phase2")
+        )
         from export_viewer_pack_v1 import export_viewer_pack
 
         cfg.out_dir.mkdir(parents=True, exist_ok=True)
@@ -458,7 +469,9 @@ def _do_export(
         result.validation_passed = True
         result.validation_errors = 0
         result.validation_warnings = 0
-        result.validation_report_path = str(session_dir / "viewer_pack_v1" / "validation_report.json")
+        result.validation_report_path = str(
+            session_dir / "viewer_pack_v1" / "validation_report.json"
+        )
         print(f"[gold-run] ✓ Exported: {zip_path}")
         return None
 
@@ -491,6 +504,7 @@ def _do_ingest(cfg: GoldRunConfig, result: GoldRunResult) -> None:
     print(f"[gold-run] Ingesting to {cfg.ingest_url}...")
 
     from tap_tone.ingest import ingest_zip
+
     ingest_result = ingest_zip(
         zip_path=result.zip_path,
         ingest_url=cfg.ingest_url,
@@ -505,13 +519,17 @@ def _do_ingest(cfg: GoldRunConfig, result: GoldRunResult) -> None:
     result.ingest_error = ingest_result.error
 
     if not ingest_result.ok:
-        status_str = f"({ingest_result.http_status})" if ingest_result.http_status else ""
+        status_str = (
+            f"({ingest_result.http_status})" if ingest_result.http_status else ""
+        )
         print(f"[gold-run] ✗ Ingest failed {status_str}: {ingest_result.error}")
         print(f"    ZIP preserved at: {result.zip_path}")
         return
 
     print(f"[gold-run] ✓ Ingested: run_id={ingest_result.run_id}")
-    bundle_sha = ingest_result.payload.get("bundle_sha256") if ingest_result.payload else None
+    bundle_sha = (
+        ingest_result.payload.get("bundle_sha256") if ingest_result.payload else None
+    )
     if bundle_sha:
         print(f"    Viewer pack hash: {bundle_sha[:16]}...")
 
@@ -527,7 +545,12 @@ def _handle_ingest_browser(
     library_url = f"{cfg.ingest_url.rstrip('/')}/tools/audio-analyzer/library"
     print(f"    Library: {library_url}")
 
-    url = pick_open_url(cfg.ingest_url, payload, open_browser=cfg.open_browser, open_viewer=cfg.open_viewer)
+    url = pick_open_url(
+        cfg.ingest_url,
+        payload,
+        open_browser=cfg.open_browser,
+        open_viewer=cfg.open_viewer,
+    )
     if not url:
         print("    Browser: skipped (--no-open)")
         return
@@ -535,7 +558,9 @@ def _handle_ingest_browser(
     from tap_tone.util import try_open_url
 
     if cfg.open_viewer and not bundle_sha:
-        print("    ℹ Viewer deep-link unavailable (no bundle_sha256). Opening Library instead.")
+        print(
+            "    ℹ Viewer deep-link unavailable (no bundle_sha256). Opening Library instead."
+        )
 
     print(f"    URL: {url}")
     if bundle_sha:
@@ -579,6 +604,7 @@ def run_gold_run(cfg: GoldRunConfig) -> GoldRunResult:
 
     # Analysis config (lazy import)
     from tap_tone.config import AnalysisConfig
+
     an_cfg = AnalysisConfig(peak_min_hz=cfg.min_peak_hz, peak_max_hz=cfg.max_peak_hz)
 
     # Capture all points
@@ -586,12 +612,24 @@ def run_gold_run(cfg: GoldRunConfig) -> GoldRunResult:
     for i, label in enumerate(point_labels):
         if cfg.auto_trigger:
             err = _capture_single_point_auto(
-                cfg, device_idx, an_cfg, session_dir, label, i, len(point_labels),
+                cfg,
+                device_idx,
+                an_cfg,
+                session_dir,
+                label,
+                i,
+                len(point_labels),
                 auto_trigger_provenance,
             )
         else:
             err = _capture_single_point_manual(
-                cfg, device_idx, an_cfg, session_dir, label, i, len(point_labels),
+                cfg,
+                device_idx,
+                an_cfg,
+                session_dir,
+                label,
+                i,
+                len(point_labels),
             )
         if err:
             result.error_message = err
@@ -614,7 +652,6 @@ def run_gold_run(cfg: GoldRunConfig) -> GoldRunResult:
     return result
 
 
-
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="tap_tone gold-run",
@@ -624,65 +661,151 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     # Required
-    p.add_argument("--specimen-id", required=True, help="Specimen identifier for naming")
-    p.add_argument("--device", required=True, help="Audio device (index or name substring)")
-    p.add_argument("--out-dir", required=True, type=Path, help="Output directory for ZIP")
+    p.add_argument(
+        "--specimen-id", required=True, help="Specimen identifier for naming"
+    )
+    p.add_argument(
+        "--device", required=True, help="Audio device (index or name substring)"
+    )
+    p.add_argument(
+        "--out-dir", required=True, type=Path, help="Output directory for ZIP"
+    )
 
     # Capture options
-    p.add_argument("--points", type=int, default=3, help="Number of points to capture (default: 3)")
-    p.add_argument("--tap-timeout-s", type=float, default=8.0, help="Timeout per tap (default: 8)")
-    p.add_argument("--max-retries", type=int, default=3, help="Max retries per point (default: 3)")
-    p.add_argument("--sample-rate", type=int, default=48000, help="Sample rate (default: 48000)")
-    p.add_argument("--capture-seconds", type=float, default=2.5, help="Capture window (default: 2.5)")
+    p.add_argument(
+        "--points", type=int, default=3, help="Number of points to capture (default: 3)"
+    )
+    p.add_argument(
+        "--tap-timeout-s", type=float, default=8.0, help="Timeout per tap (default: 8)"
+    )
+    p.add_argument(
+        "--max-retries", type=int, default=3, help="Max retries per point (default: 3)"
+    )
+    p.add_argument(
+        "--sample-rate", type=int, default=48000, help="Sample rate (default: 48000)"
+    )
+    p.add_argument(
+        "--capture-seconds",
+        type=float,
+        default=2.5,
+        help="Capture window (default: 2.5)",
+    )
 
     # Analysis options
-    p.add_argument("--min-peak-hz", type=float, default=50.0, help="Min peak frequency (default: 50)")
-    p.add_argument("--max-peak-hz", type=float, default=3000.0, help="Max peak frequency (default: 3000)")
+    p.add_argument(
+        "--min-peak-hz",
+        type=float,
+        default=50.0,
+        help="Min peak frequency (default: 50)",
+    )
+    p.add_argument(
+        "--max-peak-hz",
+        type=float,
+        default=3000.0,
+        help="Max peak frequency (default: 3000)",
+    )
 
     # Auto-trigger options
     auto_grp = p.add_argument_group("auto-trigger", "Hands-free impulse detection")
-    auto_grp.add_argument("--auto-trigger", action="store_true",
-                          help="Enable auto-trigger mode (detect impulse automatically)")
-    auto_grp.add_argument("--warmup-s", type=float, default=0.5,
-                          help="Noise floor warmup period (default: 0.5)")
-    auto_grp.add_argument("--peak-mult", type=float, default=10.0,
-                          help="Peak must exceed noise * this (default: 10)")
-    auto_grp.add_argument("--rms-mult", type=float, default=3.0,
-                          help="RMS must exceed noise * this (default: 3)")
-    auto_grp.add_argument("--debounce-frames", type=int, default=2,
-                          help="Consecutive trigger frames required (default: 2)")
-    auto_grp.add_argument("--pre-ms", type=float, default=50.0,
-                          help="Pre-roll before trigger in ms (default: 50)")
-    auto_grp.add_argument("--post-ms", type=float, default=1500.0,
-                          help="Post-roll after trigger in ms (default: 1500)")
-    auto_grp.add_argument("--reject-clipping", action="store_true", default=True,
-                          help="Reject and retry clipped captures (default: True)")
-    auto_grp.add_argument("--no-reject-clipping", action="store_false", dest="reject_clipping",
-                          help="Accept clipped captures with warning")
-    auto_grp.add_argument("--min-impulse-ms", type=float, default=2.0,
-                          help="Ignore ultra-short glitches (default: 2)")
+    auto_grp.add_argument(
+        "--auto-trigger",
+        action="store_true",
+        help="Enable auto-trigger mode (detect impulse automatically)",
+    )
+    auto_grp.add_argument(
+        "--warmup-s",
+        type=float,
+        default=0.5,
+        help="Noise floor warmup period (default: 0.5)",
+    )
+    auto_grp.add_argument(
+        "--peak-mult",
+        type=float,
+        default=10.0,
+        help="Peak must exceed noise * this (default: 10)",
+    )
+    auto_grp.add_argument(
+        "--rms-mult",
+        type=float,
+        default=3.0,
+        help="RMS must exceed noise * this (default: 3)",
+    )
+    auto_grp.add_argument(
+        "--debounce-frames",
+        type=int,
+        default=2,
+        help="Consecutive trigger frames required (default: 2)",
+    )
+    auto_grp.add_argument(
+        "--pre-ms",
+        type=float,
+        default=50.0,
+        help="Pre-roll before trigger in ms (default: 50)",
+    )
+    auto_grp.add_argument(
+        "--post-ms",
+        type=float,
+        default=1500.0,
+        help="Post-roll after trigger in ms (default: 1500)",
+    )
+    auto_grp.add_argument(
+        "--reject-clipping",
+        action="store_true",
+        default=True,
+        help="Reject and retry clipped captures (default: True)",
+    )
+    auto_grp.add_argument(
+        "--no-reject-clipping",
+        action="store_false",
+        dest="reject_clipping",
+        help="Accept clipped captures with warning",
+    )
+    auto_grp.add_argument(
+        "--min-impulse-ms",
+        type=float,
+        default=2.0,
+        help="Ignore ultra-short glitches (default: 2)",
+    )
 
     # Export options
     p.add_argument("--session-id", help="Custom session ID")
     p.add_argument("--batch-label", help="Batch label for grouping")
-    p.add_argument("--audio-required", action="store_true", help="Treat missing audio as error")
+    p.add_argument(
+        "--audio-required", action="store_true", help="Treat missing audio as error"
+    )
     p.add_argument("--no-zip", action="store_true", help="Skip ZIP export (stage only)")
 
     # Ingest options (ON by default)
-    p.add_argument("--no-ingest", action="store_true",
-                   help="Skip auto-ingest to ToolBox")
-    p.add_argument("--ingest-url", default="http://localhost:8000",
-                   help="ToolBox API URL (default: http://localhost:8000)")
-    p.add_argument("--api-token",
-                   help="API token for remote ToolBox auth (or set TOOLBOX_API_TOKEN env)")
-    p.add_argument("--no-open", action="store_true",
-                   help="Skip opening ToolBox library in browser after ingest")
-    p.add_argument("--open-viewer", action="store_true",
-                   help="Open Viewer deep-link (if sha256 available) instead of Library")
+    p.add_argument(
+        "--no-ingest", action="store_true", help="Skip auto-ingest to ToolBox"
+    )
+    p.add_argument(
+        "--ingest-url",
+        default="http://localhost:8000",
+        help="ToolBox API URL (default: http://localhost:8000)",
+    )
+    p.add_argument(
+        "--api-token",
+        help="API token for remote ToolBox auth (or set TOOLBOX_API_TOKEN env)",
+    )
+    p.add_argument(
+        "--no-open",
+        action="store_true",
+        help="Skip opening ToolBox library in browser after ingest",
+    )
+    p.add_argument(
+        "--open-viewer",
+        action="store_true",
+        help="Open Viewer deep-link (if sha256 available) instead of Library",
+    )
 
     # Diagnostics
-    p.add_argument("--dry-run", action="store_true", help="Show what would happen, don't capture")
-    p.add_argument("--json", action="store_true", help="Output machine-readable JSON summary")
+    p.add_argument(
+        "--dry-run", action="store_true", help="Show what would happen, don't capture"
+    )
+    p.add_argument(
+        "--json", action="store_true", help="Output machine-readable JSON summary"
+    )
 
     return p
 
@@ -740,28 +863,31 @@ def main(argv: list[str] | None = None) -> int:
         if result.error_message:
             print(f"\n[gold-run] ✗ Failed: {result.error_message}")
         elif args.dry_run:
-            print(f"\n[gold-run] ✓ Dry run complete (no capture)")
+            print("\n[gold-run] ✓ Dry run complete (no capture)")
         elif result.validation_passed:
-            print(f"\n[gold-run] ✓ Gold run completed")
-            print(f"✓ Validation passed")
+            print("\n[gold-run] ✓ Gold run completed")
+            print("✓ Validation passed")
             if result.ingest_ok:
-                print(f"✓ Ingested into ToolBox")
-                print(f"")
+                print("✓ Ingested into ToolBox")
+                print("")
                 print(f"Run ID: {result.ingest_run_id}")
                 print(f"Library: {cfg.ingest_url}/tools/audio-analyzer/library")
             elif result.ingest_attempted and not result.ingest_ok:
-                print(f"✗ Ingest failed (see above)")
-            print(f"")
-            print(f"ZIP saved at:")
+                print("✗ Ingest failed (see above)")
+            print("")
+            print("ZIP saved at:")
             print(f"  {result.zip_path}")
         else:
-            print(f"\n[gold-run] Validation pending or incomplete")
+            print("\n[gold-run] Validation pending or incomplete")
 
     # Exit codes
     if result.error_message:
         if "device" in result.error_message.lower():
             return 4
-        elif "capture" in result.error_message.lower() or "attempts" in result.error_message.lower():
+        elif (
+            "capture" in result.error_message.lower()
+            or "attempts" in result.error_message.lower()
+        ):
             return 3
         elif "validation" in result.error_message.lower():
             return 2

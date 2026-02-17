@@ -7,6 +7,7 @@ Validates that:
   - the exported payload validates against the registry schema
   - timeline export failure does not prevent pack operations (fail-closed)
 """
+
 from __future__ import annotations
 
 import json
@@ -25,38 +26,43 @@ except ImportError:
     jsonschema = None  # type: ignore
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCHEMA_PATH = (
-    REPO_ROOT / "contracts" / "schemas" / "session_timeline_v1.schema.json"
-)
+SCHEMA_PATH = REPO_ROOT / "contracts" / "schemas" / "session_timeline_v1.schema.json"
 
 
 # ------------------------------------------------------------------
 # helpers
 # ------------------------------------------------------------------
 
+
 def _write_events(session_dir: Path) -> None:
     lines = [
-        json.dumps({
-            "event_type": "attention_requested",
-            "occurred_at": "2026-02-09T10:00:00Z",
-            "source": {"component": "wolf_detector"},
-            "payload": {"directive_id": "d1"},
-        }),
-        json.dumps({
-            "event_type": "attention_acknowledged",
-            "occurred_at": "2026-02-09T10:01:00Z",
-            "source": {"component": "gui"},
-            "payload": {"directive_id": "d1"},
-        }),
+        json.dumps(
+            {
+                "event_type": "attention_requested",
+                "occurred_at": "2026-02-09T10:00:00Z",
+                "source": {"component": "wolf_detector"},
+                "payload": {"directive_id": "d1"},
+            }
+        ),
+        json.dumps(
+            {
+                "event_type": "attention_acknowledged",
+                "occurred_at": "2026-02-09T10:01:00Z",
+                "source": {"component": "gui"},
+                "payload": {"directive_id": "d1"},
+            }
+        ),
     ]
     (session_dir / "events.jsonl").write_text(
-        "\n".join(lines), encoding="utf-8",
+        "\n".join(lines),
+        encoding="utf-8",
     )
 
 
 # ------------------------------------------------------------------
 # 1. Timeline lands at the canonical meta/ path
 # ------------------------------------------------------------------
+
 
 def test_timeline_writes_to_meta_dir(tmp_path: Path) -> None:
     """export_session_timeline must create meta/session_timeline_v1.json."""
@@ -89,10 +95,12 @@ def test_timeline_includes_events_in_payload(tmp_path: Path) -> None:
 # 2. Kind detection classifies timeline as session_meta
 # ------------------------------------------------------------------
 
+
 def test_phase2_kind_detects_timeline_as_session_meta() -> None:
     """meta/session_timeline_v1.json must map to 'session_meta' kind."""
     # Import the phase2 exporter kind detection
     import sys
+
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
     from phase2.export_viewer_pack_v1 import detect_kind
 
@@ -103,6 +111,7 @@ def test_phase2_kind_detects_timeline_as_session_meta() -> None:
 def test_export_kind_detects_timeline_as_session_meta() -> None:
     """meta/session_timeline_v1.json must map to 'session_meta' in export exporter."""
     import sys
+
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
     from export.viewer_pack_v1_export import _get_kind
 
@@ -113,6 +122,7 @@ def test_export_kind_detects_timeline_as_session_meta() -> None:
 # ------------------------------------------------------------------
 # 3. Schema validation of included timeline
 # ------------------------------------------------------------------
+
 
 @pytest.mark.skipif(not HAS_JSONSCHEMA, reason="jsonschema not installed")
 def test_included_timeline_validates_against_schema(tmp_path: Path) -> None:
@@ -130,7 +140,8 @@ def test_included_timeline_validates_against_schema(tmp_path: Path) -> None:
         },
     }
     (sess / "spine_shadow_latest.json").write_text(
-        json.dumps(shadow), encoding="utf-8",
+        json.dumps(shadow),
+        encoding="utf-8",
     )
 
     out = export_session_timeline(sess)
@@ -147,6 +158,7 @@ def test_included_timeline_validates_against_schema(tmp_path: Path) -> None:
 # ------------------------------------------------------------------
 # 4. Fail-closed: timeline failure must not crash pack export
 # ------------------------------------------------------------------
+
 
 def test_timeline_export_returns_none_for_missing_dir(tmp_path: Path) -> None:
     """export_session_timeline must return None for non-existent dir."""

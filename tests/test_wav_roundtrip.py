@@ -1,4 +1,5 @@
 """WAV round-trip test: write → read → verify energy and correlation."""
+
 from __future__ import annotations
 
 from pathlib import Path

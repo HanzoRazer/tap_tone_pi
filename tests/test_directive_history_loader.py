@@ -1,4 +1,5 @@
 """Tests for directive history JSONL loader (PR #14 Seg 1)."""
+
 import json
 from pathlib import Path
 

@@ -4,6 +4,7 @@ Validates that export_session_timeline() output conforms to the
 contracts/schemas/session_timeline_v1.schema.json contract, and that
 the schema itself is well-formed and registered.
 """
+
 from __future__ import annotations
 
 import json
@@ -15,6 +16,7 @@ from tap_tone_pi.core.session_timeline import export_session_timeline
 
 try:
     import jsonschema
+
     HAS_JSONSCHEMA = True
 except ImportError:
     HAS_JSONSCHEMA = False
@@ -28,6 +30,7 @@ REGISTRY_PATH = REPO_ROOT / "contracts" / "schema_registry.json"
 # ------------------------------------------------------------------
 # 1. Schema file existence & parse
 # ------------------------------------------------------------------
+
 
 def test_schema_file_exists() -> None:
     """session_timeline_v1.schema.json must exist in contracts/schemas/."""
@@ -46,13 +49,14 @@ def test_schema_is_valid_json() -> None:
 # 2. Schema is registered in the registry
 # ------------------------------------------------------------------
 
+
 def test_schema_registered_in_registry() -> None:
     """session_timeline must appear in schema_registry.json."""
     reg = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
     schemas = reg.get("schemas", {})
-    assert "session_timeline" in schemas, (
-        f"session_timeline not found in registry keys: {list(schemas.keys())}"
-    )
+    assert (
+        "session_timeline" in schemas
+    ), f"session_timeline not found in registry keys: {list(schemas.keys())}"
     entry = schemas["session_timeline"]
     assert entry["path"] == "contracts/schemas/session_timeline_v1.schema.json"
     assert entry["schema_version_const"] == "session_timeline_v1"
@@ -61,6 +65,7 @@ def test_schema_registered_in_registry() -> None:
 # ------------------------------------------------------------------
 # 3. Exported timeline validates against schema
 # ------------------------------------------------------------------
+
 
 @pytest.mark.skipif(not HAS_JSONSCHEMA, reason="jsonschema not installed")
 def test_empty_session_validates(tmp_path: Path) -> None:
@@ -84,18 +89,22 @@ def test_session_with_events_validates(tmp_path: Path) -> None:
 
     # Write a few directive events
     lines = [
-        json.dumps({
-            "event_type": "attention_requested",
-            "occurred_at": "2026-02-08T10:00:00Z",
-            "source": {"component": "wolf_detector"},
-            "payload": {"directive_id": "d1"},
-        }),
-        json.dumps({
-            "event_type": "attention_acknowledged",
-            "occurred_at": "2026-02-08T10:01:00Z",
-            "source": {"component": "gui"},
-            "payload": {"directive_id": "d1"},
-        }),
+        json.dumps(
+            {
+                "event_type": "attention_requested",
+                "occurred_at": "2026-02-08T10:00:00Z",
+                "source": {"component": "wolf_detector"},
+                "payload": {"directive_id": "d1"},
+            }
+        ),
+        json.dumps(
+            {
+                "event_type": "attention_acknowledged",
+                "occurred_at": "2026-02-08T10:01:00Z",
+                "source": {"component": "gui"},
+                "payload": {"directive_id": "d1"},
+            }
+        ),
     ]
     (sess / "events.jsonl").write_text("\n".join(lines), encoding="utf-8")
 
@@ -127,7 +136,8 @@ def test_session_with_shadow_validates(tmp_path: Path) -> None:
         "advisory": {"action": "REVIEW", "summary": "Test"},
     }
     (sess / "spine_shadow_latest.json").write_text(
-        json.dumps(shadow), encoding="utf-8",
+        json.dumps(shadow),
+        encoding="utf-8",
     )
 
     out = export_session_timeline(sess)
@@ -144,6 +154,7 @@ def test_session_with_shadow_validates(tmp_path: Path) -> None:
 # ------------------------------------------------------------------
 # 4. Required fields & types
 # ------------------------------------------------------------------
+
 
 @pytest.mark.skipif(not HAS_JSONSCHEMA, reason="jsonschema not installed")
 def test_missing_required_field_fails_validation() -> None:
@@ -219,6 +230,7 @@ def test_exported_paths_field_present(tmp_path: Path) -> None:
 # 5. Registry ↔ payload alignment
 # ------------------------------------------------------------------
 
+
 def test_registry_schema_version_const_matches_payload_schema_id(
     tmp_path: Path,
 ) -> None:
@@ -261,6 +273,7 @@ def test_registry_driven_validation(tmp_path: Path) -> None:
 # ------------------------------------------------------------------
 # 6. Future-proofing: extensible sub-objects
 # ------------------------------------------------------------------
+
 
 @pytest.mark.skipif(not HAS_JSONSCHEMA, reason="jsonschema not installed")
 def test_directive_event_with_extra_field_validates() -> None:

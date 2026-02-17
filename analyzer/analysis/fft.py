@@ -9,9 +9,7 @@ from scipy.signal import welch, csd
 
 
 def compute_fft(
-    signal: np.ndarray,
-    sample_rate: float,
-    window: str = "hann"
+    signal: np.ndarray, sample_rate: float, window: str = "hann"
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Compute FFT of a signal.
@@ -52,7 +50,7 @@ def compute_transfer_function(
     output_signal: np.ndarray,
     sample_rate: float,
     nperseg: int = 2048,
-    noverlap: Optional[int] = None
+    noverlap: Optional[int] = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Compute transfer function H(f) = Y(f) / X(f) using Welch's method.
@@ -80,7 +78,9 @@ def compute_transfer_function(
     _, Pyy = welch(output_signal, fs=sample_rate, nperseg=nperseg, noverlap=noverlap)
 
     # Compute cross-spectral density
-    _, Pxy = csd(input_signal, output_signal, fs=sample_rate, nperseg=nperseg, noverlap=noverlap)
+    _, Pxy = csd(
+        input_signal, output_signal, fs=sample_rate, nperseg=nperseg, noverlap=noverlap
+    )
 
     # Transfer function H(f) = Pxy / Pxx
     H = Pxy / (Pxx + 1e-10)  # Add small value to avoid division by zero
@@ -95,9 +95,7 @@ def compute_transfer_function(
 
 
 def compute_power_spectrum(
-    signal: np.ndarray,
-    sample_rate: float,
-    nperseg: int = 2048
+    signal: np.ndarray, sample_rate: float, nperseg: int = 2048
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Compute power spectral density using Welch's method.
@@ -114,9 +112,7 @@ def compute_power_spectrum(
 
 
 def frequency_response_smoothing(
-    frequencies: np.ndarray,
-    magnitudes: np.ndarray,
-    octave_fraction: float = 1/3
+    frequencies: np.ndarray, magnitudes: np.ndarray, octave_fraction: float = 1 / 3
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Smooth frequency response using fractional-octave averaging.
@@ -161,7 +157,7 @@ def frequency_response_smoothing(
 def find_resonance_frequency(
     frequencies: np.ndarray,
     magnitudes: np.ndarray,
-    freq_range: Tuple[float, float] = (50, 500)
+    freq_range: Tuple[float, float] = (50, 500),
 ) -> float:
     """
     Find the dominant resonance frequency in a range.

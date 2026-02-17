@@ -19,7 +19,7 @@ def generate_html_report(
     peaks: List[Dict[str, float]],
     wood_properties: Optional[Dict[str, Any]] = None,
     coherence_stats: Optional[Dict[str, Any]] = None,
-    output_path: Optional[str] = None
+    output_path: Optional[str] = None,
 ) -> str:
     """
     Generate an HTML report for tap tone analysis.
@@ -94,7 +94,7 @@ def generate_html_report(
 """
 
     if output_path:
-        Path(output_path).write_text(html, encoding='utf-8')
+        Path(output_path).write_text(html, encoding="utf-8")
 
     return html
 
@@ -321,7 +321,7 @@ def _render_specimen_info(meta: Dict[str, Any]) -> str:
                 <span>{value}</span>
             </div>
         """
-    html += '</div>'
+    html += "</div>"
 
     return html
 
@@ -376,7 +376,7 @@ def _render_peaks_table(peaks: List[Dict[str, float]]) -> str:
     """
 
     for i, peak in enumerate(peaks):
-        coh = peak.get('coherence')
+        coh = peak.get("coherence")
         coh_str = f"{coh:.3f}" if coh else "-"
 
         html += f"""
@@ -438,61 +438,63 @@ def _render_wood_properties(props: Dict[str, Any]) -> str:
 def _generate_spectrum_chart_base64(spectrum_data: Dict[str, Any]) -> str:
     """Generate spectrum chart and return as base64."""
     fig = Figure(figsize=(10, 4), dpi=100)
-    fig.patch.set_facecolor('#252526')
+    fig.patch.set_facecolor("#252526")
     ax = fig.add_subplot(111)
-    ax.set_facecolor('#1e1e1e')
+    ax.set_facecolor("#1e1e1e")
 
     freq = np.array(spectrum_data.get("freq_hz", []))
     mag = np.array(spectrum_data.get("H_mag", []))
 
     if len(freq) > 0 and len(mag) > 0:
-        ax.semilogy(freq, mag, color='#007acc', linewidth=0.8)
-        ax.set_xlabel("Frequency (Hz)", color='#cccccc')
-        ax.set_ylabel("Magnitude", color='#cccccc')
-        ax.set_title("Transfer Function", color='#cccccc')
-        ax.tick_params(colors='#cccccc')
-        ax.grid(True, alpha=0.3, color='#3d3d3d')
+        ax.semilogy(freq, mag, color="#007acc", linewidth=0.8)
+        ax.set_xlabel("Frequency (Hz)", color="#cccccc")
+        ax.set_ylabel("Magnitude", color="#cccccc")
+        ax.set_title("Transfer Function", color="#cccccc")
+        ax.tick_params(colors="#cccccc")
+        ax.grid(True, alpha=0.3, color="#3d3d3d")
         for spine in ax.spines.values():
-            spine.set_color('#3d3d3d')
+            spine.set_color("#3d3d3d")
 
     fig.tight_layout()
 
     buf = io.BytesIO()
-    fig.savefig(buf, format='png', facecolor='#252526', edgecolor='none')
+    fig.savefig(buf, format="png", facecolor="#252526", edgecolor="none")
     buf.seek(0)
     plt.close(fig)
 
-    return base64.b64encode(buf.read()).decode('utf-8')
+    return base64.b64encode(buf.read()).decode("utf-8")
 
 
 def _generate_coherence_chart_base64(spectrum_data: Dict[str, Any]) -> str:
     """Generate coherence chart and return as base64."""
     fig = Figure(figsize=(10, 3), dpi=100)
-    fig.patch.set_facecolor('#252526')
+    fig.patch.set_facecolor("#252526")
     ax = fig.add_subplot(111)
-    ax.set_facecolor('#1e1e1e')
+    ax.set_facecolor("#1e1e1e")
 
     freq = np.array(spectrum_data.get("freq_hz", []))
     coh = np.array(spectrum_data.get("coherence", []))
 
     if len(freq) > 0 and len(coh) > 0:
-        ax.plot(freq, coh, color='#4ec9b0', linewidth=0.8)
-        ax.axhline(y=0.9, color='#ce9178', linestyle='--', alpha=0.7, label='0.9 threshold')
+        ax.plot(freq, coh, color="#4ec9b0", linewidth=0.8)
+        ax.axhline(
+            y=0.9, color="#ce9178", linestyle="--", alpha=0.7, label="0.9 threshold"
+        )
         ax.set_ylim(0, 1.1)
-        ax.set_xlabel("Frequency (Hz)", color='#cccccc')
-        ax.set_ylabel("Coherence", color='#cccccc')
-        ax.set_title("Measurement Coherence", color='#cccccc')
-        ax.tick_params(colors='#cccccc')
-        ax.grid(True, alpha=0.3, color='#3d3d3d')
-        ax.legend(loc='lower right')
+        ax.set_xlabel("Frequency (Hz)", color="#cccccc")
+        ax.set_ylabel("Coherence", color="#cccccc")
+        ax.set_title("Measurement Coherence", color="#cccccc")
+        ax.tick_params(colors="#cccccc")
+        ax.grid(True, alpha=0.3, color="#3d3d3d")
+        ax.legend(loc="lower right")
         for spine in ax.spines.values():
-            spine.set_color('#3d3d3d')
+            spine.set_color("#3d3d3d")
 
     fig.tight_layout()
 
     buf = io.BytesIO()
-    fig.savefig(buf, format='png', facecolor='#252526', edgecolor='none')
+    fig.savefig(buf, format="png", facecolor="#252526", edgecolor="none")
     buf.seek(0)
     plt.close(fig)
 
-    return base64.b64encode(buf.read()).decode('utf-8')
+    return base64.b64encode(buf.read()).decode("utf-8")

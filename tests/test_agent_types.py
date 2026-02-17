@@ -1,5 +1,5 @@
 """Tests for agent types and context."""
-import pytest
+
 from tap_tone_pi.agent import (
     ActionId,
     StandaloneAgentContext as AgentContext,
@@ -118,7 +118,7 @@ class TestAgentContext:
         ctx.record_rules(["Q001"])
         ctx.record_rules(["Q001"])
         assert ctx.consecutive_rule_hits["Q001"] == 2
-        
+
         # Different rule triggered
         ctx.record_rules(["Q011"])
         assert ctx.consecutive_rule_hits["Q001"] == 0

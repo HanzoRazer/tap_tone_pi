@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """
 Tiny tone generator for tests (float32 in [-1, 1]).
 """
@@ -6,7 +7,9 @@ import math
 import numpy as np
 
 
-def sine_tone(fs: int, dur_s: float, freq_hz: float, amp: float = 0.25, phase: float = 0.0) -> np.ndarray:
+def sine_tone(
+    fs: int, dur_s: float, freq_hz: float, amp: float = 0.25, phase: float = 0.0
+) -> np.ndarray:
     """
     Generate a single-channel sine tone.
     - fs: sample rate (Hz)

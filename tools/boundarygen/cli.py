@@ -39,15 +39,18 @@ def _apply_preset(args: argparse.Namespace) -> None:
             args.scan_root = ["."]
 
         # Forbid ToolBox-ish import roots (tighten later to exact roots if desired)
-        add_unique(args.forbid, [
-            "app.",
-            "services.",
-            "rmos.",
-            "cam.",
-            "compare.",
-            "art_studio.",
-            "workflow.",
-        ])
+        add_unique(
+            args.forbid,
+            [
+                "app.",
+                "services.",
+                "rmos.",
+                "cam.",
+                "compare.",
+                "art_studio.",
+                "workflow.",
+            ],
+        )
 
         # Default integration channels for Analyzer → ToolBox
         if not args.channel:
@@ -65,11 +68,14 @@ def _apply_preset(args: argparse.Namespace) -> None:
             args.scan_root = ["services/api"]
 
         # Forbid Analyzer module roots
-        add_unique(args.forbid, [
-            "tap_tone.",
-            "modes.",
-            "schemas.",
-        ])
+        add_unique(
+            args.forbid,
+            [
+                "tap_tone.",
+                "modes.",
+                "schemas.",
+            ],
+        )
 
         # Default integration channels for ToolBox ↔ Analyzer
         if not args.channel:
@@ -80,7 +86,9 @@ def _apply_preset(args: argparse.Namespace) -> None:
             ]
 
     else:
-        raise SystemExit(f"Unknown preset: {args.preset!r} (expected: analyzer|toolbox)")
+        raise SystemExit(
+            f"Unknown preset: {args.preset!r} (expected: analyzer|toolbox)"
+        )
 
 
 def _write(path: pathlib.Path, content: str, *, overwrite: bool) -> None:
@@ -113,14 +121,46 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     ap.add_argument("--repo-root", default=".", help="Path to repo root (default: .)")
-    ap.add_argument("--repo-name", required=True, help="Name of this repo (e.g., tap_tone_pi)")
-    ap.add_argument("--counterpart", required=True, help="Other system name (e.g., luthiers-toolbox)")
-    ap.add_argument("--preset", choices=["analyzer", "toolbox"], help="Convenience defaults for common repo types")
-    ap.add_argument("--scan-root", action="append", default=[], help="Root(s) to scan for .py files (repeatable)")
-    ap.add_argument("--forbid", action="append", default=[], help="Forbidden import prefix (repeatable)")
-    ap.add_argument("--allowed-root", action="append", default=[], help="Allowed top-level module root (repeatable)")
-    ap.add_argument("--channel", action="append", default=[], help="Allowed integration channel bullet (repeatable)")
-    ap.add_argument("--overwrite", action="store_true", help="Overwrite existing generated files")
+    ap.add_argument(
+        "--repo-name", required=True, help="Name of this repo (e.g., tap_tone_pi)"
+    )
+    ap.add_argument(
+        "--counterpart",
+        required=True,
+        help="Other system name (e.g., luthiers-toolbox)",
+    )
+    ap.add_argument(
+        "--preset",
+        choices=["analyzer", "toolbox"],
+        help="Convenience defaults for common repo types",
+    )
+    ap.add_argument(
+        "--scan-root",
+        action="append",
+        default=[],
+        help="Root(s) to scan for .py files (repeatable)",
+    )
+    ap.add_argument(
+        "--forbid",
+        action="append",
+        default=[],
+        help="Forbidden import prefix (repeatable)",
+    )
+    ap.add_argument(
+        "--allowed-root",
+        action="append",
+        default=[],
+        help="Allowed top-level module root (repeatable)",
+    )
+    ap.add_argument(
+        "--channel",
+        action="append",
+        default=[],
+        help="Allowed integration channel bullet (repeatable)",
+    )
+    ap.add_argument(
+        "--overwrite", action="store_true", help="Overwrite existing generated files"
+    )
 
     args = ap.parse_args(argv)
     _apply_preset(args)

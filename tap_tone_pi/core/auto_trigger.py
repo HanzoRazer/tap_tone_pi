@@ -12,12 +12,13 @@ Usage:
         # result.audio contains the captured audio
         pass
 """
+
 from __future__ import annotations
 
 import threading
 import time
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Callable
 
@@ -25,6 +26,7 @@ import numpy as np
 
 try:
     import sounddevice as sd
+
     HAS_SOUNDDEVICE = True
 except ImportError:
     HAS_SOUNDDEVICE = False
@@ -32,31 +34,35 @@ except ImportError:
 
 class TriggerState(str, Enum):
     """States of the auto-trigger detector."""
-    IDLE = "idle"                # Not started
-    LISTENING = "listening"      # Monitoring for trigger
-    TRIGGERED = "triggered"      # Onset detected, recording
-    COMPLETED = "completed"      # Recording complete
-    TIMEOUT = "timeout"          # No trigger within timeout
-    ERROR = "error"              # Error occurred
+
+    IDLE = "idle"  # Not started
+    LISTENING = "listening"  # Monitoring for trigger
+    TRIGGERED = "triggered"  # Onset detected, recording
+    COMPLETED = "completed"  # Recording complete
+    TIMEOUT = "timeout"  # No trigger within timeout
+    ERROR = "error"  # Error occurred
 
 
 @dataclass
 class TriggerConfig:
     """Configuration for auto-trigger detection."""
+
     # Energy detection
-    threshold_rms: float = 0.01          # RMS threshold for trigger (0.0-1.0)
-    threshold_multiplier: float = 3.0    # Trigger when current RMS > baseline * multiplier
-    use_adaptive: bool = True            # Use adaptive threshold (baseline * multiplier)
+    threshold_rms: float = 0.01  # RMS threshold for trigger (0.0-1.0)
+    threshold_multiplier: float = (
+        3.0  # Trigger when current RMS > baseline * multiplier
+    )
+    use_adaptive: bool = True  # Use adaptive threshold (baseline * multiplier)
 
     # Timing
-    chunk_ms: int = 20                   # Chunk size for monitoring (milliseconds)
-    pre_trigger_ms: int = 100            # Pre-trigger buffer (milliseconds)
-    post_trigger_seconds: float = 2.5    # Recording duration after trigger
-    timeout_seconds: float = 30.0        # Maximum wait time for trigger
+    chunk_ms: int = 20  # Chunk size for monitoring (milliseconds)
+    pre_trigger_ms: int = 100  # Pre-trigger buffer (milliseconds)
+    post_trigger_seconds: float = 2.5  # Recording duration after trigger
+    timeout_seconds: float = 30.0  # Maximum wait time for trigger
 
     # Settling
-    baseline_samples: int = 10           # Number of chunks to establish baseline
-    settle_ms: int = 200                 # Settling time after start before arming
+    baseline_samples: int = 10  # Number of chunks to establish baseline
+    settle_ms: int = 200  # Settling time after start before arming
 
     def __post_init__(self):
         """Validate configuration."""
@@ -73,13 +79,14 @@ class TriggerConfig:
 @dataclass
 class TriggerResult:
     """Result from auto-trigger capture."""
+
     state: TriggerState
     audio: np.ndarray | None = None
     sample_rate: int = 0
     triggered: bool = False
-    trigger_time_ms: float = 0.0         # Time from start to trigger
-    baseline_rms: float = 0.0            # Measured baseline RMS
-    trigger_rms: float = 0.0             # RMS at trigger moment
+    trigger_time_ms: float = 0.0  # Time from start to trigger
+    baseline_rms: float = 0.0  # Measured baseline RMS
+    trigger_rms: float = 0.0  # RMS at trigger moment
     error: str | None = None
 
     @property
@@ -131,7 +138,9 @@ class AutoTriggerDetector:
 
         # Derived values
         self._chunk_samples = int(sample_rate * self.config.chunk_ms / 1000)
-        self._pre_trigger_chunks = max(1, self.config.pre_trigger_ms // self.config.chunk_ms)
+        self._pre_trigger_chunks = max(
+            1, self.config.pre_trigger_ms // self.config.chunk_ms
+        )
         self._post_trigger_samples = int(sample_rate * self.config.post_trigger_seconds)
         self._settle_chunks = max(1, self.config.settle_ms // self.config.chunk_ms)
 
@@ -170,7 +179,7 @@ class AutoTriggerDetector:
 
     def _compute_rms(self, audio: np.ndarray) -> float:
         """Compute RMS of audio chunk."""
-        return float(np.sqrt(np.mean(audio ** 2)))
+        return float(np.sqrt(np.mean(audio**2)))
 
     def _is_trigger(self, current_rms: float) -> bool:
         """Check if current RMS indicates a trigger event."""
@@ -184,7 +193,9 @@ class AutoTriggerDetector:
             # Fixed threshold
             return current_rms > self.config.threshold_rms
 
-    def _audio_callback(self, indata: np.ndarray, frames: int, time_info, status) -> None:
+    def _audio_callback(
+        self, indata: np.ndarray, frames: int, time_info, status
+    ) -> None:
         """Callback for audio stream processing."""
         if status:
             # Audio underflow/overflow - log but continue
@@ -276,7 +287,7 @@ class AutoTriggerDetector:
                 channels=1,
                 samplerate=self.sample_rate,
                 blocksize=self._chunk_samples,
-                dtype='float32',
+                dtype="float32",
                 callback=self._audio_callback,
             ):
                 # Wait for trigger or timeout

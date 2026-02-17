@@ -10,6 +10,7 @@ Rule ID Reference:
     W-001  WSI curve missing required columns
     W-003  WSI frequency grid mismatch vs spectrum
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -35,36 +36,50 @@ def _error_rules(report) -> set[str]:
 
 
 def test_good_minimal_passes():
-    report = validate_pack(_fixture("good_minimal"), peak_tolerance_hz=0.0, audio_required=False)
+    report = validate_pack(
+        _fixture("good_minimal"), peak_tolerance_hz=0.0, audio_required=False
+    )
     assert report.passed is True
     assert len(report.errors) == 0
 
 
 def test_missing_manifest_fails():
-    report = validate_pack(_fixture("bad_missing_manifest"), peak_tolerance_hz=0.0, audio_required=False)
+    report = validate_pack(
+        _fixture("bad_missing_manifest"), peak_tolerance_hz=0.0, audio_required=False
+    )
     assert report.passed is False
     assert "M-001" in _error_rules(report)
 
 
 def test_freq_grid_mismatch_fails():
-    report = validate_pack(_fixture("bad_freq_grid_mismatch"), peak_tolerance_hz=0.0, audio_required=False)
+    report = validate_pack(
+        _fixture("bad_freq_grid_mismatch"), peak_tolerance_hz=0.0, audio_required=False
+    )
     assert report.passed is False
     assert "S-006" in _error_rules(report)
 
 
 def test_peak_off_grid_fails():
-    report = validate_pack(_fixture("bad_peak_off_grid"), peak_tolerance_hz=0.0, audio_required=False)
+    report = validate_pack(
+        _fixture("bad_peak_off_grid"), peak_tolerance_hz=0.0, audio_required=False
+    )
     assert report.passed is False
     assert "P-003" in _error_rules(report)
 
 
 def test_bad_wsi_header_fails():
-    report = validate_pack(_fixture("bad_wsi_header"), peak_tolerance_hz=0.0, audio_required=False)
+    report = validate_pack(
+        _fixture("bad_wsi_header"), peak_tolerance_hz=0.0, audio_required=False
+    )
     assert report.passed is False
     assert "W-001" in _error_rules(report)
 
 
 def test_wsi_freq_grid_mismatch_fails():
-    report = validate_pack(_fixture("bad_wsi_freq_grid_mismatch"), peak_tolerance_hz=0.0, audio_required=False)
+    report = validate_pack(
+        _fixture("bad_wsi_freq_grid_mismatch"),
+        peak_tolerance_hz=0.0,
+        audio_required=False,
+    )
     assert report.passed is False
     assert "W-003" in _error_rules(report)

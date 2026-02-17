@@ -12,6 +12,7 @@ Usage:
     ttp setup --reset      # Clear saved config and re-run
     ttp setup --show       # Show current saved config
 """
+
 from __future__ import annotations
 
 import argparse
@@ -36,7 +37,7 @@ def _check_existing_config(args: argparse.Namespace) -> bool | None:
     if not existing or not existing.audio_device or getattr(args, "reset", False):
         return None
 
-    print(f"Existing configuration found:")
+    print("Existing configuration found:")
     print(f"  Device: [{existing.audio_device.index}] {existing.audio_device.name}")
     print(f"  Sample rate: {existing.audio_device.sample_rate} Hz")
     print(f"  Validated: {existing.audio_device.validated_at}")
@@ -104,7 +105,9 @@ def _select_device(input_devices: list[dict]) -> dict:
             selected_idx = int(response)
             if any(d["index"] == selected_idx for d in input_devices):
                 break
-            print(f"Invalid device number. Choose from: {[d['index'] for d in input_devices]}")
+            print(
+                f"Invalid device number. Choose from: {[d['index'] for d in input_devices]}"
+            )
         except ValueError:
             print("Please enter a number.")
 
@@ -119,7 +122,11 @@ def _select_sample_rate(selected_device: dict) -> int:
     print("Step 3: Sample rate")
     print("-" * 40)
 
-    default_rate = int(selected_device["default_samplerate"]) if selected_device["default_samplerate"] else 48000
+    default_rate = (
+        int(selected_device["default_samplerate"])
+        if selected_device["default_samplerate"]
+        else 48000
+    )
     common_rates = [44100, 48000, 96000]
 
     print(f"Common rates: {common_rates}")
@@ -194,7 +201,9 @@ def _validate_audio(result) -> str:
     print()
 
     # Verdict
-    status = _assess_levels(peak_level, analysis.rms, analysis.clipped, analysis.confidence)
+    status = _assess_levels(
+        peak_level, analysis.rms, analysis.clipped, analysis.confidence
+    )
     _print_status_verdict(status)
 
     # Show peaks if found
@@ -335,7 +344,6 @@ def run_wizard(args: argparse.Namespace) -> int:
 
     # Step 6: Save configuration
     return _save_wizard_config(selected_device, sample_rate, status)
-
 
 
 def _show_config() -> int:

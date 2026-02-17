@@ -9,6 +9,7 @@ Ensures repeated rules/hints are suppressed appropriately based on:
 - workflow sensitivity (PR6 Rule 5)
 - three-tier explanation mode (PR6 Rule 2)
 """
+
 import pytest
 from tap_tone_pi.core.quality_policy import (
     QualityRule,
@@ -33,6 +34,7 @@ from tap_tone_pi.agent.messages import (
 # =============================================================================
 # Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def rule_q001():
@@ -75,6 +77,7 @@ def warn_verdict_q011(rule_q011):
 # =============================================================================
 # Learning Hint Suppression Tests
 # =============================================================================
+
 
 class TestLearningHintSuppression:
     """Learning hints are shown only on first exposure."""
@@ -129,6 +132,7 @@ class TestLearningHintSuppression:
 # =============================================================================
 # Explanation Suppression Tests
 # =============================================================================
+
 
 class TestExplanationSuppression:
     """Full explanations are suppressed after first exposure."""
@@ -208,6 +212,7 @@ class TestExplanationSuppression:
 # Policy Function Unit Tests
 # =============================================================================
 
+
 class TestFatiguePolicyFunctions:
     """Direct tests for should_show_* functions."""
 
@@ -285,6 +290,7 @@ class TestFatiguePolicyFunctions:
 # Escalation Tests (consecutive hits)
 # =============================================================================
 
+
 class TestEscalation:
     """Escalation actions promoted after consecutive hits."""
 
@@ -319,6 +325,7 @@ class TestEscalation:
 # =============================================================================
 # PR6: Three-Tier Explanation Mode Tests
 # =============================================================================
+
 
 class TestExplanationMode:
     """PR6 Rule 2: FULL → SHORT → COMPACT degradation."""
@@ -384,6 +391,7 @@ class TestExplanationMode:
 # PR6: Verdict Streak Suppression Tests
 # =============================================================================
 
+
 class TestVerdictStreakSuppression:
     """PR6 Rule 4: 3+ identical verdicts → suppress explanations."""
 
@@ -426,6 +434,7 @@ class TestVerdictStreakSuppression:
 # =============================================================================
 # PR6: Workflow Sensitivity Tests
 # =============================================================================
+
 
 class TestWorkflowSensitivity:
     """PR6 Rule 5: Different workflows → different verbosity."""
@@ -489,6 +498,7 @@ class TestWorkflowSensitivity:
 # =============================================================================
 # PR6: Expanded Escalation Tests
 # =============================================================================
+
 
 class TestExpandedEscalation:
     """PR6 Rule 3: Q010 and Q003 escalation mappings."""

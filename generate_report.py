@@ -37,12 +37,20 @@ from reportlab.lib.units import inch
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image, KeepTogether
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
+    PageBreak,
+    Image,
+    KeepTogether,
 )
 
 # ----------------------------
 # Helpers
 # ----------------------------
+
 
 def _read_json(path: Path) -> Optional[dict[str, Any]]:
     try:
@@ -52,8 +60,10 @@ def _read_json(path: Path) -> Optional[dict[str, Any]]:
         return None
     return None
 
+
 def _fmt_dt(dt: _dt.datetime) -> str:
     return dt.strftime("%Y-%m-%d %H:%M:%S")
+
 
 def _safe(v: Any, default: str = "n/a") -> str:
     if v is None:
@@ -64,6 +74,7 @@ def _safe(v: Any, default: str = "n/a") -> str:
         return default
     return str(v)
 
+
 def _h1(styles) -> ParagraphStyle:
     return ParagraphStyle(
         "H1",
@@ -71,6 +82,7 @@ def _h1(styles) -> ParagraphStyle:
         spaceBefore=14,
         spaceAfter=10,
     )
+
 
 def _h2(styles) -> ParagraphStyle:
     return ParagraphStyle(
@@ -80,6 +92,7 @@ def _h2(styles) -> ParagraphStyle:
         spaceAfter=6,
     )
 
+
 def _body(styles) -> ParagraphStyle:
     return ParagraphStyle(
         "Body",
@@ -87,6 +100,7 @@ def _body(styles) -> ParagraphStyle:
         leading=13,
         spaceAfter=6,
     )
+
 
 def _mono(styles) -> ParagraphStyle:
     return ParagraphStyle(
@@ -98,40 +112,55 @@ def _mono(styles) -> ParagraphStyle:
         spaceAfter=6,
     )
 
-def _kv_table(kv: Sequence[tuple[str, str]], col_widths=(2.1*inch, 4.9*inch)) -> Table:
+
+def _kv_table(
+    kv: Sequence[tuple[str, str]], col_widths=(2.1 * inch, 4.9 * inch)
+) -> Table:
     data = [[k, v] for k, v in kv]
     t = Table(data, colWidths=list(col_widths))
-    t.setStyle(TableStyle([
-        ("FONTNAME", (0,0), (-1,-1), "Helvetica"),
-        ("FONTSIZE", (0,0), (-1,-1), 9),
-        ("VALIGN", (0,0), (-1,-1), "TOP"),
-        ("LINEBELOW", (0,0), (-1,-1), 0.25, colors.lightgrey),
-        ("ROWBACKGROUNDS", (0,0), (-1,-1), [colors.whitesmoke, colors.white]),
-        ("LEFTPADDING", (0,0), (-1,-1), 6),
-        ("RIGHTPADDING", (0,0), (-1,-1), 6),
-        ("TOPPADDING", (0,0), (-1,-1), 4),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
-    ]))
+    t.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LINEBELOW", (0, 0), (-1, -1), 0.25, colors.lightgrey),
+                ("ROWBACKGROUNDS", (0, 0), (-1, -1), [colors.whitesmoke, colors.white]),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
     return t
 
-def _simple_table(headers: list[str], rows: list[list[str]], col_widths: list[float]) -> Table:
+
+def _simple_table(
+    headers: list[str], rows: list[list[str]], col_widths: list[float]
+) -> Table:
     data = [headers] + rows
     t = Table(data, colWidths=col_widths, repeatRows=1)
-    t.setStyle(TableStyle([
-        ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#1f2937")),
-        ("TEXTCOLOR", (0,0), (-1,0), colors.white),
-        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
-        ("FONTSIZE", (0,0), (-1,0), 9),
-        ("FONTNAME", (0,1), (-1,-1), "Helvetica"),
-        ("FONTSIZE", (0,1), (-1,-1), 8.5),
-        ("GRID", (0,0), (-1,-1), 0.25, colors.lightgrey),
-        ("VALIGN", (0,0), (-1,-1), "TOP"),
-        ("LEFTPADDING", (0,0), (-1,-1), 5),
-        ("RIGHTPADDING", (0,0), (-1,-1), 5),
-        ("TOPPADDING", (0,0), (-1,-1), 3),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
-    ]))
+    t.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1f2937")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 9),
+                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 1), (-1, -1), 8.5),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.lightgrey),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ]
+        )
+    )
     return t
+
 
 def _find_plot_images(bundle: Path, max_images: int = 8) -> list[Path]:
     plots_dir = bundle / "plots"
@@ -140,31 +169,50 @@ def _find_plot_images(bundle: Path, max_images: int = 8) -> list[Path]:
     imgs = sorted([p for p in plots_dir.glob("*.png") if p.is_file()])
     return imgs[:max_images]
 
+
 def _add_header_footer(canvas, doc):
     canvas.saveState()
     canvas.setFont("Helvetica", 9)
     canvas.setFillColor(colors.grey)
     # Header
-    canvas.drawString(doc.leftMargin, doc.pagesize[1] - 0.55*inch, doc.title or "Lab Report")
+    canvas.drawString(
+        doc.leftMargin, doc.pagesize[1] - 0.55 * inch, doc.title or "Lab Report"
+    )
     # Footer
     page = canvas.getPageNumber()
-    canvas.drawRightString(doc.pagesize[0] - doc.rightMargin, 0.5*inch, f"Page {page}")
+    canvas.drawRightString(
+        doc.pagesize[0] - doc.rightMargin, 0.5 * inch, f"Page {page}"
+    )
     canvas.restoreState()
+
 
 # ----------------------------
 # Section builders
 # ----------------------------
 
-def _build_cover_section(story, styles, title, bundle_dir, metadata, manifest, units, H2, BODY):
+
+def _build_cover_section(
+    story, styles, title, bundle_dir, metadata, manifest, units, H2, BODY
+):
     """Build cover page with title, metadata, and abstract."""
     now = _dt.datetime.now()
-    experiment_id = metadata.get("experiment_id") or manifest.get("experiment_id") or metadata.get("run_id") or "n/a"
+    experiment_id = (
+        metadata.get("experiment_id")
+        or manifest.get("experiment_id")
+        or metadata.get("run_id")
+        or "n/a"
+    )
     instrument_id = metadata.get("instrument_id") or "n/a"
     build_stage = metadata.get("build_stage") or "n/a"
 
     story.append(Paragraph(title, styles["Title"]))
     story.append(Spacer(1, 8))
-    story.append(Paragraph("Operational Acoustic-Structural Mapping (Speaker Drive, Roving Measurement)", BODY))
+    story.append(
+        Paragraph(
+            "Operational Acoustic-Structural Mapping (Speaker Drive, Roving Measurement)",
+            BODY,
+        )
+    )
     story.append(Spacer(1, 16))
 
     cover_kv = [
@@ -216,31 +264,62 @@ def _build_system_section(story, metadata, geometry, grid, units, H1, H2, BODY, 
     if grid:
         story.append(Paragraph("2.2 Measurement Grid", H2))
         pts = grid.get("points") or []
-        story.append(Paragraph(f"Grid points: {_safe(len(pts))}. Units: {_safe(units)}.", BODY))
+        story.append(
+            Paragraph(f"Grid points: {_safe(len(pts))}. Units: {_safe(units)}.", BODY)
+        )
         if pts:
             rows = []
             for p in pts[:24]:
-                rows.append([_safe(p.get("label")), _safe(p.get("x_mm", p.get("x"))), _safe(p.get("y_mm", p.get("y")))])
-            story.append(_simple_table(
-                ["Label", "x (mm)", "y (mm)"],
-                rows,
-                col_widths=[1.6*inch, 2.6*inch, 2.6*inch],
-            ))
+                rows.append(
+                    [
+                        _safe(p.get("label")),
+                        _safe(p.get("x_mm", p.get("x"))),
+                        _safe(p.get("y_mm", p.get("y"))),
+                    ]
+                )
+            story.append(
+                _simple_table(
+                    ["Label", "x (mm)", "y (mm)"],
+                    rows,
+                    col_widths=[1.6 * inch, 2.6 * inch, 2.6 * inch],
+                )
+            )
             if len(pts) > 24:
-                story.append(Paragraph(f"(Showing first 24 of {len(pts)} points.)", BODY))
+                story.append(
+                    Paragraph(f"(Showing first 24 of {len(pts)} points.)", BODY)
+                )
 
 
 def _build_apparatus_section(story, metadata, excitation, H1, BODY):
     """Build experimental apparatus section."""
     story.append(Paragraph("3. Experimental Apparatus", H1))
     app_kv = [
-        ("Excitation", _safe(excitation.get("type") or metadata.get("excitation_type") or "speaker-air drive")),
-        ("Signal", _safe(excitation.get("signal") or metadata.get("excitation_signal"))),
-        ("Drive Range (Hz)", _safe(excitation.get("freq_range_hz") or metadata.get("freq_range_hz"))),
+        (
+            "Excitation",
+            _safe(
+                excitation.get("type")
+                or metadata.get("excitation_type")
+                or "speaker-air drive"
+            ),
+        ),
+        (
+            "Signal",
+            _safe(excitation.get("signal") or metadata.get("excitation_signal")),
+        ),
+        (
+            "Drive Range (Hz)",
+            _safe(excitation.get("freq_range_hz") or metadata.get("freq_range_hz")),
+        ),
         ("Reference Mic", _safe(metadata.get("reference_mic_model"))),
         ("Roving Mic", _safe(metadata.get("roving_mic_model"))),
-        ("Sample Rate (Hz)", _safe(metadata.get("sample_rate") or excitation.get("sample_rate"))),
-        ("Duration (s)", _safe(metadata.get("duration_s") or excitation.get("duration_s"))),
+        (
+            "Sample Rate (Hz)",
+            _safe(metadata.get("sample_rate") or excitation.get("sample_rate")),
+        ),
+        (
+            "Duration (s)",
+            _safe(metadata.get("duration_s") or excitation.get("duration_s")),
+        ),
     ]
     story.append(_kv_table(app_kv))
 
@@ -260,28 +339,42 @@ def _build_wolf_section(story, wolf, H2, BODY):
         top = wolf_sorted[:12]
         rows = []
         for r in top:
-            rows.append([
-                _safe(r.get("label")),
-                _safe(r.get("x_mm")),
-                _safe(r.get("y_mm")),
-                f"{float(r.get('localization_index', 0.0) or 0.0):.3f}",
-                f"{float(r.get('coherence_mean', 0.0) or 0.0):.3f}",
-            ])
-        story.append(_simple_table(
-            ["Point", "x (mm)", "y (mm)", "Localization", "Coherence"],
-            rows,
-            col_widths=[1.3*inch, 1.15*inch, 1.15*inch, 1.3*inch, 1.3*inch],
-        ))
-        story.append(Paragraph(
-            "Interpretation: high localization combined with high coherence suggests spatially concentrated resonant behavior "
-            "and is a candidate indicator of wolf-prone regions when correlated with playing tests.",
-            BODY
-        ))
+            rows.append(
+                [
+                    _safe(r.get("label")),
+                    _safe(r.get("x_mm")),
+                    _safe(r.get("y_mm")),
+                    f"{float(r.get('localization_index', 0.0) or 0.0):.3f}",
+                    f"{float(r.get('coherence_mean', 0.0) or 0.0):.3f}",
+                ]
+            )
+        story.append(
+            _simple_table(
+                ["Point", "x (mm)", "y (mm)", "Localization", "Coherence"],
+                rows,
+                col_widths=[
+                    1.3 * inch,
+                    1.15 * inch,
+                    1.15 * inch,
+                    1.3 * inch,
+                    1.3 * inch,
+                ],
+            )
+        )
+        story.append(
+            Paragraph(
+                "Interpretation: high localization combined with high coherence suggests spatially concentrated resonant behavior "
+                "and is a candidate indicator of wolf-prone regions when correlated with playing tests.",
+                BODY,
+            )
+        )
     else:
-        story.append(Paragraph(
-            "No wolf_map.json found. If you ran the roving-grid tool, confirm it wrote derived/wolf_map.json or wolf_map.json.",
-            BODY
-        ))
+        story.append(
+            Paragraph(
+                "No wolf_map.json found. If you ran the roving-grid tool, confirm it wrote derived/wolf_map.json or wolf_map.json.",
+                BODY,
+            )
+        )
 
 
 def _extract_wolf_data(wolf: Any) -> Optional[list]:
@@ -299,20 +392,38 @@ def _build_resonance_section(story, resonance, H2, BODY):
     res_rows = []
     if isinstance(resonance, dict) and isinstance(resonance.get("rows"), list):
         for r in resonance["rows"][:16]:
-            res_rows.append([_safe(r.get("freq_hz")), _safe(r.get("q")), _safe(r.get("note")), _safe(r.get("confidence"))])
+            res_rows.append(
+                [
+                    _safe(r.get("freq_hz")),
+                    _safe(r.get("q")),
+                    _safe(r.get("note")),
+                    _safe(r.get("confidence")),
+                ]
+            )
     elif isinstance(resonance, list):
         for r in resonance[:16]:
             if isinstance(r, dict):
-                res_rows.append([_safe(r.get("freq_hz")), _safe(r.get("q")), _safe(r.get("note")), _safe(r.get("confidence"))])
+                res_rows.append(
+                    [
+                        _safe(r.get("freq_hz")),
+                        _safe(r.get("q")),
+                        _safe(r.get("note")),
+                        _safe(r.get("confidence")),
+                    ]
+                )
 
     if res_rows:
-        story.append(_simple_table(
-            ["f0 (Hz)", "Q", "Note", "Conf."],
-            res_rows,
-            col_widths=[1.4*inch, 1.0*inch, 2.6*inch, 1.6*inch],
-        ))
+        story.append(
+            _simple_table(
+                ["f0 (Hz)", "Q", "Note", "Conf."],
+                res_rows,
+                col_widths=[1.4 * inch, 1.0 * inch, 2.6 * inch, 1.6 * inch],
+            )
+        )
     else:
-        story.append(Paragraph("No resonance_table.json present (this is optional).", BODY))
+        story.append(
+            Paragraph("No resonance_table.json present (this is optional).", BODY)
+        )
 
 
 def _build_plots_section(story, bundle_dir, H2, BODY):
@@ -323,8 +434,12 @@ def _build_plots_section(story, bundle_dir, H2, BODY):
         story.append(Paragraph("Selected plots included from bundle/plots:", BODY))
         for img_path in imgs:
             im = Image(str(img_path))
-            im._restrictSize(6.4*inch, 4.5*inch)
-            story.append(KeepTogether([Paragraph(f"<b>{img_path.name}</b>", BODY), im, Spacer(1, 10)]))
+            im._restrictSize(6.4 * inch, 4.5 * inch)
+            story.append(
+                KeepTogether(
+                    [Paragraph(f"<b>{img_path.name}</b>", BODY), im, Spacer(1, 10)]
+                )
+            )
     else:
         story.append(Paragraph("No PNG plots found in bundle/plots.", BODY))
 
@@ -332,6 +447,7 @@ def _build_plots_section(story, bundle_dir, H2, BODY):
 # ----------------------------
 # Report builder
 # ----------------------------
+
 
 def build_report(bundle_dir: Path, out_pdf: Path, *, title: str, author: str) -> None:
     styles = getSampleStyleSheet()
@@ -341,19 +457,27 @@ def build_report(bundle_dir: Path, out_pdf: Path, *, title: str, author: str) ->
     geometry = _read_json(bundle_dir / "geometry.json") or {}
     grid = _read_json(bundle_dir / "grid.json") or {}
     excitation = _read_json(bundle_dir / "excitation.json") or {}
-    wolf = _read_json(bundle_dir / "derived" / "wolf_map.json") or _read_json(bundle_dir / "wolf_map.json") or {}
-    resonance = _read_json(bundle_dir / "derived" / "resonance_table.json") or _read_json(bundle_dir / "resonance_table.json") or {}
+    wolf = (
+        _read_json(bundle_dir / "derived" / "wolf_map.json")
+        or _read_json(bundle_dir / "wolf_map.json")
+        or {}
+    )
+    resonance = (
+        _read_json(bundle_dir / "derived" / "resonance_table.json")
+        or _read_json(bundle_dir / "resonance_table.json")
+        or {}
+    )
     manifest = _read_json(bundle_dir / "manifest.json") or {}
 
-    units = (grid.get("units") or geometry.get("units") or metadata.get("units") or "mm")
+    units = grid.get("units") or geometry.get("units") or metadata.get("units") or "mm"
 
     doc = SimpleDocTemplate(
         str(out_pdf),
         pagesize=letter,
-        leftMargin=0.85*inch,
-        rightMargin=0.85*inch,
-        topMargin=0.9*inch,
-        bottomMargin=0.85*inch,
+        leftMargin=0.85 * inch,
+        rightMargin=0.85 * inch,
+        topMargin=0.9 * inch,
+        bottomMargin=0.85 * inch,
         title=title,
         author=author,
     )
@@ -361,16 +485,20 @@ def build_report(bundle_dir: Path, out_pdf: Path, *, title: str, author: str) ->
     story: list[Any] = []
 
     # 1. Cover + Abstract
-    _build_cover_section(story, styles, title, bundle_dir, metadata, manifest, units, H2, BODY)
+    _build_cover_section(
+        story, styles, title, bundle_dir, metadata, manifest, units, H2, BODY
+    )
 
     # 2. Introduction
     story.append(Paragraph("1. Introduction", H1))
-    story.append(Paragraph(
-        "Goal: achieve high observability of coupled vibro-acoustic behavior with minimal intrusion (no added plate mass). "
-        "This report documents apparatus, protocol, signal processing, results, and an error/confidence framework suitable "
-        "for repeatable shop or lab use.",
-        BODY
-    ))
+    story.append(
+        Paragraph(
+            "Goal: achieve high observability of coupled vibro-acoustic behavior with minimal intrusion (no added plate mass). "
+            "This report documents apparatus, protocol, signal processing, results, and an error/confidence framework suitable "
+            "for repeatable shop or lab use.",
+            BODY,
+        )
+    )
 
     # 3. Physical System Description
     _build_system_section(story, metadata, geometry, grid, units, H1, H2, BODY, MONO)
@@ -391,12 +519,14 @@ def build_report(bundle_dir: Path, out_pdf: Path, *, title: str, author: str) ->
 
     # 6. Signal Processing
     story.append(Paragraph("5. Signal Processing", H1))
-    story.append(Paragraph(
-        "Operational transfer estimate uses cross/auto spectral densities: H_ir(f)=G_ir(f)/G_rr(f). "
-        "Coherence is used as a validity gate. For time-gated impulse response workflows, a deconvolution "
-        "step yields h(t), followed by windowing h_g(t) prior to FFT.",
-        BODY
-    ))
+    story.append(
+        Paragraph(
+            "Operational transfer estimate uses cross/auto spectral densities: H_ir(f)=G_ir(f)/G_rr(f). "
+            "Coherence is used as a validity gate. For time-gated impulse response workflows, a deconvolution "
+            "step yields h(t), followed by windowing h_g(t) prior to FFT.",
+            BODY,
+        )
+    )
 
     # 7. Results
     story.append(Paragraph("6. Results", H1))
@@ -406,18 +536,24 @@ def build_report(bundle_dir: Path, out_pdf: Path, *, title: str, author: str) ->
 
     # 8. Error Analysis
     story.append(Paragraph("7. Error Analysis and Confidence", H1))
-    story.append(Paragraph(
-        "Uncertainty sources include microphone positioning tolerances, excitation repeatability, environmental reflections "
-        "(mitigated via close placement and time gating), and support-condition variability. Confidence should be assessed "
-        "using coherence thresholds and repeated-trial variance (e.g., coefficient of variation across runs).",
-        BODY
-    ))
+    story.append(
+        Paragraph(
+            "Uncertainty sources include microphone positioning tolerances, excitation repeatability, environmental reflections "
+            "(mitigated via close placement and time gating), and support-condition variability. Confidence should be assessed "
+            "using coherence thresholds and repeated-trial variance (e.g., coefficient of variation across runs).",
+            BODY,
+        )
+    )
 
     # 9. Appendices
     story.append(Paragraph("8. Appendices", H1))
     story.append(Paragraph("8.1 Manifest (if present)", H2))
     if manifest:
-        story.append(Paragraph(f"<pre>{json.dumps(manifest, indent=2, sort_keys=True)}</pre>", MONO))
+        story.append(
+            Paragraph(
+                f"<pre>{json.dumps(manifest, indent=2, sort_keys=True)}</pre>", MONO
+            )
+        )
     else:
         story.append(Paragraph("manifest.json not present.", BODY))
 
@@ -427,10 +563,16 @@ def build_report(bundle_dir: Path, out_pdf: Path, *, title: str, author: str) ->
 
 
 def _parse_args() -> argparse.Namespace:
-    ap = argparse.ArgumentParser(description="Generate a PDF lab report from a Tap Tone bundle.")
-    ap.add_argument("--bundle", type=str, required=True, help="Path to bundle directory")
+    ap = argparse.ArgumentParser(
+        description="Generate a PDF lab report from a Tap Tone bundle."
+    )
+    ap.add_argument(
+        "--bundle", type=str, required=True, help="Path to bundle directory"
+    )
     ap.add_argument("--out", type=str, required=True, help="Output PDF path")
-    ap.add_argument("--title", type=str, default="Tap Tone Lab Report", help="Report title")
+    ap.add_argument(
+        "--title", type=str, default="Tap Tone Lab Report", help="Report title"
+    )
     ap.add_argument("--author", type=str, default="(author)", help="Author name")
     return ap.parse_args()
 

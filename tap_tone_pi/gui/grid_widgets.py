@@ -6,9 +6,9 @@ Provides:
 - GridProgressPanel: Visual grid with point status colors
 - GridMeasureDialog: Manage grid measurement sessions
 """
+
 from __future__ import annotations
 
-import math
 import tkinter as tk
 from pathlib import Path
 from tkinter import ttk, messagebox, filedialog
@@ -22,23 +22,32 @@ try:
         PointStatus,
         PointProgress,
     )
+
     HAS_GRID = True
 except ImportError:
     HAS_GRID = False
+
     # Stub classes for type hints
-    class Grid: pass
-    class GridPoint: pass
-    class GridSession: pass
-    class PointStatus: pass
+    class Grid:
+        pass
+
+    class GridPoint:
+        pass
+
+    class GridSession:
+        pass
+
+    class PointStatus:
+        pass
 
 
 # Status colors
 STATUS_COLORS = {
-    "pending": "#9E9E9E",     # Gray
-    "passed": "#4CAF50",      # Green
-    "warned": "#FF9800",      # Orange
-    "failed": "#F44336",      # Red
-    "skipped": "#607D8B",     # Blue-gray
+    "pending": "#9E9E9E",  # Gray
+    "passed": "#4CAF50",  # Green
+    "warned": "#FF9800",  # Orange
+    "failed": "#F44336",  # Red
+    "skipped": "#607D8B",  # Blue-gray
 }
 
 
@@ -136,7 +145,9 @@ class GridEditorDialog(tk.Toplevel):
 
         tk.Label(row_name, text="Name:", width=10, anchor=tk.W).pack(side=tk.LEFT)
         self._name_var = tk.StringVar(value="My Grid")
-        tk.Entry(row_name, textvariable=self._name_var, width=30).pack(side=tk.LEFT, padx=5)
+        tk.Entry(row_name, textvariable=self._name_var, width=30).pack(
+            side=tk.LEFT, padx=5
+        )
 
         # Generate button
         tk.Button(
@@ -198,13 +209,19 @@ class GridEditorDialog(tk.Toplevel):
         row.pack(fill=tk.X, pady=2)
 
         tk.Label(row, text="Rows:", width=8, anchor=tk.W).pack(side=tk.LEFT)
-        tk.Spinbox(row, from_=1, to=20, textvariable=self._rows_var, width=5).pack(side=tk.LEFT, padx=5)
+        tk.Spinbox(row, from_=1, to=20, textvariable=self._rows_var, width=5).pack(
+            side=tk.LEFT, padx=5
+        )
 
         tk.Label(row, text="Cols:", width=8, anchor=tk.W).pack(side=tk.LEFT)
-        tk.Spinbox(row, from_=1, to=20, textvariable=self._cols_var, width=5).pack(side=tk.LEFT, padx=5)
+        tk.Spinbox(row, from_=1, to=20, textvariable=self._cols_var, width=5).pack(
+            side=tk.LEFT, padx=5
+        )
 
         tk.Label(row, text="Spacing (mm):", width=12, anchor=tk.W).pack(side=tk.LEFT)
-        tk.Spinbox(row, from_=1, to=500, textvariable=self._spacing_var, width=8).pack(side=tk.LEFT, padx=5)
+        tk.Spinbox(row, from_=1, to=500, textvariable=self._spacing_var, width=8).pack(
+            side=tk.LEFT, padx=5
+        )
 
     def _setup_circular_params(self) -> None:
         """Setup circular grid parameters."""
@@ -215,12 +232,18 @@ class GridEditorDialog(tk.Toplevel):
         row.pack(fill=tk.X, pady=2)
 
         tk.Label(row, text="Points:", width=8, anchor=tk.W).pack(side=tk.LEFT)
-        tk.Spinbox(row, from_=3, to=24, textvariable=self._num_points_var, width=5).pack(side=tk.LEFT, padx=5)
+        tk.Spinbox(
+            row, from_=3, to=24, textvariable=self._num_points_var, width=5
+        ).pack(side=tk.LEFT, padx=5)
 
         tk.Label(row, text="Radius (mm):", width=12, anchor=tk.W).pack(side=tk.LEFT)
-        tk.Spinbox(row, from_=10, to=500, textvariable=self._radius_var, width=8).pack(side=tk.LEFT, padx=5)
+        tk.Spinbox(row, from_=10, to=500, textvariable=self._radius_var, width=8).pack(
+            side=tk.LEFT, padx=5
+        )
 
-        tk.Checkbutton(row, text="Include Center", variable=self._include_center_var).pack(side=tk.LEFT, padx=10)
+        tk.Checkbutton(
+            row, text="Include Center", variable=self._include_center_var
+        ).pack(side=tk.LEFT, padx=10)
 
     def _setup_line_params(self) -> None:
         """Setup line grid parameters."""
@@ -231,10 +254,14 @@ class GridEditorDialog(tk.Toplevel):
         row.pack(fill=tk.X, pady=2)
 
         tk.Label(row, text="Points:", width=8, anchor=tk.W).pack(side=tk.LEFT)
-        tk.Spinbox(row, from_=2, to=50, textvariable=self._num_points_var, width=5).pack(side=tk.LEFT, padx=5)
+        tk.Spinbox(
+            row, from_=2, to=50, textvariable=self._num_points_var, width=5
+        ).pack(side=tk.LEFT, padx=5)
 
         tk.Label(row, text="Length (mm):", width=12, anchor=tk.W).pack(side=tk.LEFT)
-        tk.Spinbox(row, from_=10, to=1000, textvariable=self._length_var, width=8).pack(side=tk.LEFT, padx=5)
+        tk.Spinbox(row, from_=10, to=1000, textvariable=self._length_var, width=8).pack(
+            side=tk.LEFT, padx=5
+        )
 
         tk.Label(row, text="Orientation:", width=10, anchor=tk.W).pack(side=tk.LEFT)
         ttk.Combobox(
@@ -331,7 +358,7 @@ class GridEditorDialog(tk.Toplevel):
         grid_h = max_y - min_y or 1
 
         padding = 40
-        scale = min((w - 2*padding) / grid_w, (h - 2*padding) / grid_h)
+        scale = min((w - 2 * padding) / grid_w, (h - 2 * padding) / grid_h)
 
         # Transform function
         def transform(x: float, y: float) -> tuple[float, float]:
@@ -346,8 +373,10 @@ class GridEditorDialog(tk.Toplevel):
             tx, ty = transform(point.x, point.y)
 
             self.canvas.create_oval(
-                tx - point_radius, ty - point_radius,
-                tx + point_radius, ty + point_radius,
+                tx - point_radius,
+                ty - point_radius,
+                tx + point_radius,
+                ty + point_radius,
                 fill="#2196F3",
                 outline="#1976D2",
                 width=2,
@@ -355,7 +384,8 @@ class GridEditorDialog(tk.Toplevel):
 
             # Label
             self.canvas.create_text(
-                tx, ty - point_radius - 8,
+                tx,
+                ty - point_radius - 8,
                 text=point.id,
                 font=("Helvetica", 9),
                 fill="#333",
@@ -492,8 +522,12 @@ class GridProgressPanel(tk.Frame):
         for status, color in STATUS_COLORS.items():
             f = tk.Frame(legend)
             f.pack(side=tk.LEFT, padx=5)
-            tk.Canvas(f, width=12, height=12, bg=color, highlightthickness=0).pack(side=tk.LEFT)
-            tk.Label(f, text=status.title(), font=("Helvetica", 8), fg="#666").pack(side=tk.LEFT, padx=2)
+            tk.Canvas(f, width=12, height=12, bg=color, highlightthickness=0).pack(
+                side=tk.LEFT
+            )
+            tk.Label(f, text=status.title(), font=("Helvetica", 8), fg="#666").pack(
+                side=tk.LEFT, padx=2
+            )
 
     def set_session(self, session: GridSession) -> None:
         """Set the grid session to display."""
@@ -534,7 +568,7 @@ class GridProgressPanel(tk.Frame):
         grid_h = max_y - min_y or 1
 
         padding = 30
-        scale = min((w - 2*padding) / grid_w, (h - 2*padding) / grid_h)
+        scale = min((w - 2 * padding) / grid_w, (h - 2 * padding) / grid_h)
 
         # Transform function
         def transform(x: float, y: float) -> tuple[float, float]:
@@ -562,8 +596,10 @@ class GridProgressPanel(tk.Frame):
 
             # Draw point
             item_id = self.canvas.create_oval(
-                tx - point_radius, ty - point_radius,
-                tx + point_radius, ty + point_radius,
+                tx - point_radius,
+                ty - point_radius,
+                tx + point_radius,
+                ty + point_radius,
                 fill=color,
                 outline=outline_color,
                 width=outline_width,
@@ -573,7 +609,8 @@ class GridProgressPanel(tk.Frame):
 
             # Label
             self.canvas.create_text(
-                tx, ty,
+                tx,
+                ty,
                 text=point.id,
                 font=("Helvetica", 9, "bold"),
                 fill="white",
@@ -736,7 +773,9 @@ class GridMeasureDialog(tk.Toplevel):
             # Check if session is complete
             if self.session.is_complete:
                 self.point_label.configure(text="Session Complete!")
-                self.status_label.configure(text=f"All {self.session.total_points} points measured")
+                self.status_label.configure(
+                    text=f"All {self.session.total_points} points measured"
+                )
                 self.result_label.configure(text="")
                 self.measure_btn.configure(state=tk.DISABLED)
                 self.skip_btn.configure(state=tk.DISABLED)
@@ -748,7 +787,9 @@ class GridMeasureDialog(tk.Toplevel):
                 next_point = self.session.next_pending()
                 if next_point:
                     self.point_label.configure(text=f"Point: {next_point.id}")
-                    self.status_label.configure(text=f"Position: ({next_point.x:.1f}, {next_point.y:.1f})")
+                    self.status_label.configure(
+                        text=f"Position: ({next_point.x:.1f}, {next_point.y:.1f})"
+                    )
                 else:
                     self.point_label.configure(text="No pending points")
             return
@@ -763,7 +804,9 @@ class GridMeasureDialog(tk.Toplevel):
             self.status_label.configure(text=status_text)
 
             if progress.dominant_hz:
-                self.result_label.configure(text=f"Dominant frequency: {progress.dominant_hz:.1f} Hz")
+                self.result_label.configure(
+                    text=f"Dominant frequency: {progress.dominant_hz:.1f} Hz"
+                )
             else:
                 self.result_label.configure(text="")
 

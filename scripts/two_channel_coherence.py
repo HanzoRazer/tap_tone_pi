@@ -84,7 +84,9 @@ def _normalize_spec(spec: np.ndarray) -> np.ndarray:
     return (spec / m).astype(np.float32) if m > 0 else spec.astype(np.float32)
 
 
-def _dominant_peak(freqs: np.ndarray, mag: np.ndarray, fmin: float, fmax: float) -> float | None:
+def _dominant_peak(
+    freqs: np.ndarray, mag: np.ndarray, fmin: float, fmax: float
+) -> float | None:
     if freqs.size == 0:
         return None
     mask = (freqs >= fmin) & (freqs <= fmax)
@@ -95,7 +97,9 @@ def _dominant_peak(freqs: np.ndarray, mag: np.ndarray, fmin: float, fmax: float)
     return float(freqs_m[idx])
 
 
-def _downsample_series(f: np.ndarray, y: np.ndarray, max_points: int) -> list[dict[str, float]]:
+def _downsample_series(
+    f: np.ndarray, y: np.ndarray, max_points: int
+) -> list[dict[str, float]]:
     if f.size == 0:
         return []
     if f.size <= max_points:
@@ -291,15 +295,21 @@ def analyze_2ch(
 
     f_lo, f_hi = band_focus
     mask_focus = (f_coh >= f_lo) & (f_coh <= f_hi)
-    coh_mean_focus = float(np.mean(coh[mask_focus])) if np.any(mask_focus) else float(np.mean(coh)) if coh.size else 0.0
+    coh_mean_focus = (
+        float(np.mean(coh[mask_focus]))
+        if np.any(mask_focus)
+        else float(np.mean(coh))
+        if coh.size
+        else 0.0
+    )
 
     conf = 0.0
     if clip0 or clip1:
         conf = 0.0
     else:
-        if (rms0 > 0.005 and rms1 > 0.005):
+        if rms0 > 0.005 and rms1 > 0.005:
             conf = min(1.0, 0.4 + 0.6 * max(0.0, min(1.0, coh_mean_focus)))
-        elif (rms0 > 0.01 or rms1 > 0.01):
+        elif rms0 > 0.01 or rms1 > 0.01:
             conf = 0.25
 
     analysis: dict[str, Any] = {
@@ -379,14 +389,21 @@ def persist_bundle(
 
     analysis_path = cap_dir / "analysis.json"
     analysis_out = dict(analysis)
-    analysis_out["ts_utc"] = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    analysis_out["ts_utc"] = (
+        dt.datetime.now(dt.timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
     analysis_out["label"] = label
     _write_json(analysis_path, analysis_out)
 
     spec_path = cap_dir / "spectrum.csv"
     lines = ["freq_hz,ch0_mag,ch1_mag\n"]
     for i in range(freqs.size):
-        lines.append(f"{float(freqs[i]):.6f},{float(ch0_mag[i]):.8f},{float(ch1_mag[i]):.8f}\n")
+        lines.append(
+            f"{float(freqs[i]):.6f},{float(ch0_mag[i]):.8f},{float(ch1_mag[i]):.8f}\n"
+        )
     spec_path.write_text("".join(lines), encoding="utf-8")
 
     if write_channels:
@@ -394,8 +411,18 @@ def persist_bundle(
             cap_dir / "channels.json",
             {
                 "channels": [
-                    {"index": 0, "id": "mic_0", "type": "microphone", "role": "reference"},
-                    {"index": 1, "id": "mic_1", "type": "microphone", "role": "secondary"},
+                    {
+                        "index": 0,
+                        "id": "mic_0",
+                        "type": "microphone",
+                        "role": "reference",
+                    },
+                    {
+                        "index": 1,
+                        "id": "mic_1",
+                        "type": "microphone",
+                        "role": "secondary",
+                    },
                 ]
             },
         )
@@ -425,14 +452,20 @@ def persist_bundle(
             "confidence": analysis_out.get("confidence"),
             "clipped": analysis_out.get("clipped"),
             "rms": analysis_out.get("rms"),
-            "cross_delay_s": (analysis_out.get("cross_channel") or {}).get("delay_seconds"),
-            "coherence_focus_mean": (analysis_out.get("cross_channel") or {}).get("coherence_focus_mean"),
+            "cross_delay_s": (analysis_out.get("cross_channel") or {}).get(
+                "delay_seconds"
+            ),
+            "coherence_focus_mean": (analysis_out.get("cross_channel") or {}).get(
+                "coherence_focus_mean"
+            ),
         },
     )
 
     if write_plots:
         n = raw0.size
-        t_s = (np.arange(n, dtype=np.float32) / float(cap.sample_rate)).astype(np.float32)
+        t_s = (np.arange(n, dtype=np.float32) / float(cap.sample_rate)).astype(
+            np.float32
+        )
         _write_plots(
             cap_dir=cap_dir,
             max_hz=plot_max_hz,
@@ -452,14 +485,22 @@ def persist_bundle(
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="2-channel capture + coherence + delay + phase (Phase 2).")
+    ap = argparse.ArgumentParser(
+        description="2-channel capture + coherence + delay + phase (Phase 2)."
+    )
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p_dev = sub.add_parser("devices", help="List audio input devices")
-    p_dev.add_argument("--all", action="store_true", help="Show devices even if no input channels")
+    p_dev.add_argument(
+        "--all", action="store_true", help="Show devices even if no input channels"
+    )
 
-    p_run = sub.add_parser("run", help="Capture 2ch audio and compute coherence/delay/phase")
-    p_run.add_argument("--device", type=int, required=True, help="Input device index with >=2 inputs")
+    p_run = sub.add_parser(
+        "run", help="Capture 2ch audio and compute coherence/delay/phase"
+    )
+    p_run.add_argument(
+        "--device", type=int, required=True, help="Input device index with >=2 inputs"
+    )
     p_run.add_argument("--sample-rate", type=int, default=48000)
     p_run.add_argument("--seconds", type=float, default=2.5)
     p_run.add_argument("--label", type=str, default=None)
@@ -469,7 +510,9 @@ def main() -> None:
     p_run.add_argument("--peak-max-hz", type=float, default=2000.0)
     p_run.add_argument("--nperseg", type=int, default=4096)
     p_run.add_argument("--coh-max-points", type=int, default=300)
-    p_run.add_argument("--focus-band", type=str, default="60,600", help="e.g. '60,600' Hz")
+    p_run.add_argument(
+        "--focus-band", type=str, default="60,600", help="e.g. '60,600' Hz"
+    )
     p_run.add_argument("--write-channels", action="store_true")
     p_run.add_argument("--write-geometry", action="store_true")
     p_run.add_argument("--mic-distance-mm", type=float, default=None)
@@ -484,7 +527,9 @@ def main() -> None:
         for d in devs:
             if (not args.all) and (d["max_input_channels"] <= 0):
                 continue
-            print(f'[{d["index"]}] {d["name"]} (in={d["max_input_channels"]}, default_sr={d["default_samplerate"]})')
+            print(
+                f'[{d["index"]}] {d["name"]} (in={d["max_input_channels"]}, default_sr={d["default_samplerate"]})'
+            )
         return
 
     # run
@@ -496,10 +541,14 @@ def main() -> None:
 
     dev = sd.query_devices(args.device)
     if int(dev.get("max_input_channels") or 0) < 2:
-        raise SystemExit(f"Device {args.device} has <2 input channels: {dev.get('name')}")
+        raise SystemExit(
+            f"Device {args.device} has <2 input channels: {dev.get('name')}"
+        )
 
     print("Recording 2-channel audio...")
-    cap = record_2ch(device=args.device, sample_rate=args.sample_rate, seconds=args.seconds)
+    cap = record_2ch(
+        device=args.device, sample_rate=args.sample_rate, seconds=args.seconds
+    )
 
     print("Analyzing coherence / delay / phase...")
     out = analyze_2ch(
@@ -517,7 +566,9 @@ def main() -> None:
     cc = analysis.get("cross_channel", {})
     print("")
     print(f"Dominant: {analysis.get('dominant_hz')} Hz")
-    print(f"RMS: {analysis['rms']}  Clipped: {analysis['clipped']}  Conf: {analysis['confidence']:.2f}")
+    print(
+        f"RMS: {analysis['rms']}  Clipped: {analysis['clipped']}  Conf: {analysis['confidence']:.2f}"
+    )
     print(f"Delay: {cc.get('delay_seconds')} s (samples={cc.get('delay_samples')})")
     print(f"Coherence mean [{f0:.0f},{f1:.0f}] Hz: {cc.get('coherence_focus_mean')}")
     print("")

@@ -4,6 +4,7 @@ Tests exercise ``cmd_evidence_check`` directly (fast + hermetic).
 ``PROJECT_ROOT`` is monkeypatched so repo-relative path resolution
 is deterministic and isolated.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -67,23 +68,29 @@ def _write_required_attempt_artifacts(attempt_dir: Path) -> None:
     _write_wav_stub(attempt_dir / "audio.wav")
     _write_text(
         attempt_dir / "analysis.json",
-        json.dumps({
-            "peaks": [{"freq_hz": 192.3, "magnitude": 0.88}],
-        }),
+        json.dumps(
+            {
+                "peaks": [{"freq_hz": 192.3, "magnitude": 0.88}],
+            }
+        ),
     )
     _write_text(
         attempt_dir / "capture_meta.json",
-        json.dumps({
-            "sample_rate_hz": 48000,
-            "device_id": "test_mic",
-        }),
+        json.dumps(
+            {
+                "sample_rate_hz": 48000,
+                "device_id": "test_mic",
+            }
+        ),
     )
     _write_text(
         attempt_dir / "quality_check.json",
-        json.dumps({
-            "verdict": "pass",
-            "triggered_rules": [],
-        }),
+        json.dumps(
+            {
+                "verdict": "pass",
+                "triggered_rules": [],
+            }
+        ),
     )
 
 
@@ -107,7 +114,8 @@ class TestCmdEvidenceCheck:
         """Nested layout: session/point_001/attempt_001/{required files}."""
         session_dir = fake_repo_root / "out" / "session_0001"
         attempt_dir = _make_attempt_dir(
-            session_dir, Path("point_001") / "attempt_001",
+            session_dir,
+            Path("point_001") / "attempt_001",
         )
         _write_required_attempt_artifacts(attempt_dir)
 
@@ -212,14 +220,16 @@ class TestCmdEvidenceCheck:
 
         flat_attempt = _make_attempt_dir(session_dir, Path("attempt_001"))
         nested_attempt = _make_attempt_dir(
-            session_dir, Path("point_001") / "attempt_002",
+            session_dir,
+            Path("point_001") / "attempt_002",
         )
 
         _write_required_attempt_artifacts(flat_attempt)
         _write_required_attempt_artifacts(nested_attempt)
 
         args = _args(
-            session=str(Path("out/session_mixed")), json_out=True,
+            session=str(Path("out/session_mixed")),
+            json_out=True,
         )
         rc = cli_main_mod.cmd_evidence_check(args)
         assert rc == 0

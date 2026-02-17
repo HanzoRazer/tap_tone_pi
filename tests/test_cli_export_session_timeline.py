@@ -1,4 +1,5 @@
 """CLI smoke test for ``ttp export-session-timeline`` (PR #16 Seg 1)."""
+
 import argparse
 from pathlib import Path
 

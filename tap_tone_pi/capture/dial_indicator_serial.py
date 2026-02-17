@@ -14,10 +14,11 @@ Usage:
 Migration:
     # Old path (deprecated)
     python modes/acquisition/dial_indicator_serial.py --port ... --out ...
-    
+
     # New path (v2.0.0+)
     python -m tap_tone_pi.capture.dial_indicator_serial --port ... --out ...
 """
+
 from __future__ import annotations
 
 import argparse

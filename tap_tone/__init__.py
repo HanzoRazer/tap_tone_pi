@@ -23,6 +23,7 @@ CLI migration:
 
 See docs/MIGRATION.md for full details.
 """
+
 from __future__ import annotations
 
 import warnings
@@ -32,7 +33,7 @@ warnings.warn(
     "See 'from tap_tone_pi import ...' or run 'ttp --help'. "
     "This shim will be removed in v3.0.0.",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )
 
 # Backward compatibility shims - import from new locations

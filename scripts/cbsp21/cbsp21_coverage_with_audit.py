@@ -82,23 +82,46 @@ def main() -> int:
 
     if not full.exists():
         print(f"CBSP21 FAIL: full path missing: {full}")
-        rec = audit_record(full=full, scanned=scanned, full_bytes=0, scanned_bytes=0,
-                           coverage=0.0, threshold=args.threshold, status="fail")
+        rec = audit_record(
+            full=full,
+            scanned=scanned,
+            full_bytes=0,
+            scanned_bytes=0,
+            coverage=0.0,
+            threshold=args.threshold,
+            status="fail",
+        )
         append_jsonl(log, rec)
         return 1
 
     if not scanned.exists():
         print(f"CBSP21 FAIL: scanned path missing: {scanned}")
-        rec = audit_record(full=full, scanned=scanned, full_bytes=compute_bytes(full), scanned_bytes=0,
-                           coverage=0.0, threshold=args.threshold, status="fail")
+        rec = audit_record(
+            full=full,
+            scanned=scanned,
+            full_bytes=compute_bytes(full),
+            scanned_bytes=0,
+            coverage=0.0,
+            threshold=args.threshold,
+            status="fail",
+        )
         append_jsonl(log, rec)
         return 1
 
     # Guard: mismatch
     if full.is_file() != scanned.is_file():
-        print("CBSP21 FAIL: full and scanned must both be files or both be directories.")
-        rec = audit_record(full=full, scanned=scanned, full_bytes=compute_bytes(full), scanned_bytes=compute_bytes(scanned),
-                           coverage=0.0, threshold=args.threshold, status="fail")
+        print(
+            "CBSP21 FAIL: full and scanned must both be files or both be directories."
+        )
+        rec = audit_record(
+            full=full,
+            scanned=scanned,
+            full_bytes=compute_bytes(full),
+            scanned_bytes=compute_bytes(scanned),
+            coverage=0.0,
+            threshold=args.threshold,
+            status="fail",
+        )
         append_jsonl(log, rec)
         return 1
 
@@ -107,8 +130,15 @@ def main() -> int:
 
     if not full_bytes:
         print("CBSP21 FAIL: full source empty.")
-        rec = audit_record(full=full, scanned=scanned, full_bytes=0, scanned_bytes=scanned_bytes,
-                           coverage=0.0, threshold=args.threshold, status="fail")
+        rec = audit_record(
+            full=full,
+            scanned=scanned,
+            full_bytes=0,
+            scanned_bytes=scanned_bytes,
+            coverage=0.0,
+            threshold=args.threshold,
+            status="fail",
+        )
         append_jsonl(log, rec)
         return 1
 

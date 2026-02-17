@@ -24,6 +24,7 @@ class CapabilityAction(str, Enum):
     - VALIDATE_*: Checks conformance to spec
     - TRANSFORM_*: Modifies existing data
     """
+
     # Analysis (read-only)
     ANALYZE_AUDIO = "analyze_audio"
     ANALYZE_GEOMETRY = "analyze_geometry"
@@ -55,6 +56,7 @@ class SafeDefaults:
     These defaults are chosen for safety over performance.
     Agents can override, but must do so explicitly.
     """
+
     # Privacy defaults
     redaction_layer: int = 3  # 0=ephemeral, 5=cohort-only
     pii_scrub_enabled: bool = True
@@ -86,6 +88,7 @@ class ToolCapabilityV1:
             output_schemas=["wolf_candidates_v1", "mode_analysis_v1"],
         )
     """
+
     # Identity
     tool_id: str
     version: str

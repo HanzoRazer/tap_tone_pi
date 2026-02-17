@@ -7,6 +7,7 @@ session's ``events.jsonl`` stream.
 Fail-closed: never raises; returns ``False`` on any failure.
 No Tkinter dependency — pure I/O helper safe for testing.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

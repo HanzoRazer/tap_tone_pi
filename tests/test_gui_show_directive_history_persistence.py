@@ -1,4 +1,5 @@
 """Tests for show_directive_history session-local persistence (PR #15.1)."""
+
 from pathlib import Path
 
 from tap_tone_pi.gui.advisory_state import (

@@ -5,6 +5,7 @@ Tiny, hardware-free Chladni demo generator:
  - creates placeholder images F0148.png and F0226.png (no image decoding needed)
  - runs peaks_from_wav and index_patterns (which appends to manifest)
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -59,26 +60,47 @@ def main():
 
     # 3) Extract peaks
     peaks_path = OUT / "peaks.json"
-    subprocess.run([
-        sys.executable, "-m", "modes.chladni.peaks_from_wav",
-        "--wav", str(wav_path),
-        "--out", str(peaks_path),
-        "--min-hz", "50",
-        "--max-hz", "500",
-    ], check=True)
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "modes.chladni.peaks_from_wav",
+            "--wav",
+            str(wav_path),
+            "--out",
+            str(peaks_path),
+            "--min-hz",
+            "50",
+            "--max-hz",
+            "500",
+        ],
+        check=True,
+    )
     print(f"Wrote {peaks_path}")
 
     # 4) Index patterns (also appends to manifest automatically)
     chladni_run_path = OUT / "chladni_run.json"
-    subprocess.run([
-        sys.executable, "-m", "modes.chladni.index_patterns",
-        "--peaks-json", str(peaks_path),
-        "--images", str(image_paths[0]), str(image_paths[1]),
-        "--plate-id", "DEMO_PLATE",
-        "--tempC", "22.0",
-        "--rh", "45.0",
-        "--out", str(chladni_run_path),
-    ], check=True)
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "modes.chladni.index_patterns",
+            "--peaks-json",
+            str(peaks_path),
+            "--images",
+            str(image_paths[0]),
+            str(image_paths[1]),
+            "--plate-id",
+            "DEMO_PLATE",
+            "--tempC",
+            "22.0",
+            "--rh",
+            "45.0",
+            "--out",
+            str(chladni_run_path),
+        ],
+        check=True,
+    )
     print(f"Wrote {chladni_run_path}")
 
     print("\nChladni demo complete!")

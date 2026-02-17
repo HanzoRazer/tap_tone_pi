@@ -5,6 +5,7 @@ Compares two measurement sessions (before/after wood removal) and
 produces a structured diff showing changes in frequency, amplitude,
 and quality metrics.
 """
+
 from __future__ import annotations
 
 import json
@@ -16,6 +17,7 @@ from typing import Any
 @dataclass
 class PeakDiff:
     """Difference in a single peak between two measurements."""
+
     label: str
     freq_a: float | None = None
     freq_b: float | None = None
@@ -65,6 +67,7 @@ class PeakDiff:
 @dataclass
 class MetricDiff:
     """Difference in a single metric between two measurements."""
+
     name: str
     value_a: float | None = None
     value_b: float | None = None
@@ -88,6 +91,7 @@ class MetricDiff:
 @dataclass
 class SessionDiff:
     """Complete diff between two measurement sessions."""
+
     session_a: str  # Name/path of session A (before)
     session_b: str  # Name/path of session B (after)
     peaks: list[PeakDiff] = field(default_factory=list)
@@ -109,7 +113,10 @@ class SessionDiff:
             "peaks_added": peaks_added,
             "peaks_removed": peaks_removed,
             "peaks_changed": peaks_changed,
-            "peaks_unchanged": len(self.peaks) - peaks_added - peaks_removed - peaks_changed,
+            "peaks_unchanged": len(self.peaks)
+            - peaks_added
+            - peaks_removed
+            - peaks_changed,
             "avg_freq_delta_hz": avg_freq_delta,
             "total_peaks_a": sum(1 for p in self.peaks if p.freq_a is not None),
             "total_peaks_b": sum(1 for p in self.peaks if p.freq_b is not None),
@@ -190,7 +197,11 @@ def _extract_peaks(data: dict[str, Any]) -> list[tuple[str, float, float]]:
         for label, info in data["peaks"].items():
             if isinstance(info, dict):
                 freq = info.get("freq_hz") or info.get("frequency")
-                amp = info.get("amp") or info.get("magnitude") or info.get("amplitude", 1.0)
+                amp = (
+                    info.get("amp")
+                    or info.get("magnitude")
+                    or info.get("amplitude", 1.0)
+                )
                 if freq:
                     peaks.append((label, float(freq), float(amp)))
 
@@ -280,13 +291,15 @@ def compare_sessions(
         freq_a, amp_a = peaks_a.get(label, (None, None))
         freq_b, amp_b = peaks_b.get(label, (None, None))
 
-        diff.peaks.append(PeakDiff(
-            label=label,
-            freq_a=freq_a,
-            freq_b=freq_b,
-            amp_a=amp_a,
-            amp_b=amp_b,
-        ))
+        diff.peaks.append(
+            PeakDiff(
+                label=label,
+                freq_a=freq_a,
+                freq_b=freq_b,
+                amp_a=amp_a,
+                amp_b=amp_b,
+            )
+        )
 
     # Extract and compare metrics
     metrics_a = {name: (val, unit) for name, val, unit in _extract_metrics(data_a)}
@@ -298,12 +311,14 @@ def compare_sessions(
         val_a, unit_a = metrics_a.get(name, (None, ""))
         val_b, unit_b = metrics_b.get(name, (None, ""))
 
-        diff.metrics.append(MetricDiff(
-            name=name,
-            value_a=val_a,
-            value_b=val_b,
-            unit=unit_a or unit_b,
-        ))
+        diff.metrics.append(
+            MetricDiff(
+                name=name,
+                value_a=val_a,
+                value_b=val_b,
+                unit=unit_a or unit_b,
+            )
+        )
 
     return diff
 
@@ -312,8 +327,8 @@ def format_diff_report(diff: SessionDiff) -> str:
     """Format a diff as a human-readable text report."""
     lines = []
 
-    lines.append(f"Session Comparison Report")
-    lines.append(f"=" * 50)
+    lines.append("Session Comparison Report")
+    lines.append("=" * 50)
     lines.append(f"Before: {diff.session_a}")
     lines.append(f"After:  {diff.session_b}")
     if diff.point_id:
@@ -340,14 +355,18 @@ def format_diff_report(diff: SessionDiff) -> str:
     # Peaks table
     if diff.peaks:
         lines.append("Peak Changes:")
-        lines.append(f"  {'Label':<10} {'Freq A':>10} {'Freq B':>10} {'Δ Hz':>10} {'Status':<10}")
+        lines.append(
+            f"  {'Label':<10} {'Freq A':>10} {'Freq B':>10} {'Δ Hz':>10} {'Status':<10}"
+        )
         lines.append(f"  {'-'*10} {'-'*10} {'-'*10} {'-'*10} {'-'*10}")
 
         for p in diff.peaks:
             freq_a_str = f"{p.freq_a:.1f}" if p.freq_a else "-"
             freq_b_str = f"{p.freq_b:.1f}" if p.freq_b else "-"
             delta_str = f"{p.freq_delta:+.1f}" if p.freq_delta else "-"
-            lines.append(f"  {p.label:<10} {freq_a_str:>10} {freq_b_str:>10} {delta_str:>10} {p.status:<10}")
+            lines.append(
+                f"  {p.label:<10} {freq_a_str:>10} {freq_b_str:>10} {delta_str:>10} {p.status:<10}"
+            )
         lines.append("")
 
     # Metrics table
@@ -360,7 +379,9 @@ def format_diff_report(diff: SessionDiff) -> str:
             val_a_str = f"{m.value_a:.4f}" if m.value_a else "-"
             val_b_str = f"{m.value_b:.4f}" if m.value_b else "-"
             delta_pct_str = f"{m.delta_pct:+.1f}%" if m.delta_pct else "-"
-            lines.append(f"  {m.name:<20} {val_a_str:>12} {val_b_str:>12} {delta_pct_str:>10}")
+            lines.append(
+                f"  {m.name:<20} {val_a_str:>12} {val_b_str:>12} {delta_pct_str:>10}"
+            )
 
     return "\n".join(lines)
 

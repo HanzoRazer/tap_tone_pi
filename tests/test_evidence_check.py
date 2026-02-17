@@ -3,6 +3,7 @@
 Tests use tmp_path to create fake session structures — hermetic, no real audio.
 Aligned with the frozen-report, attempt-based discovery API.
 """
+
 import json
 import pytest
 from pathlib import Path
@@ -47,21 +48,30 @@ def _make_attempt(
         (attempt_dir / "audio.wav").write_bytes(b"RIFF" + b"\x00" * 100)
 
     if "analysis.json" not in skip:
-        _write_json(attempt_dir / "analysis.json", {
-            "peaks": [{"freq_hz": 192.3, "magnitude": 0.88}],
-        })
+        _write_json(
+            attempt_dir / "analysis.json",
+            {
+                "peaks": [{"freq_hz": 192.3, "magnitude": 0.88}],
+            },
+        )
 
     if "capture_meta.json" not in skip:
-        _write_json(attempt_dir / "capture_meta.json", {
-            "sample_rate_hz": 48000,
-            "device_id": "test_mic",
-        })
+        _write_json(
+            attempt_dir / "capture_meta.json",
+            {
+                "sample_rate_hz": 48000,
+                "device_id": "test_mic",
+            },
+        )
 
     if "quality_check.json" not in skip:
-        _write_json(attempt_dir / "quality_check.json", {
-            "verdict": "pass",
-            "triggered_rules": [],
-        })
+        _write_json(
+            attempt_dir / "quality_check.json",
+            {
+                "verdict": "pass",
+                "triggered_rules": [],
+            },
+        )
 
     if corrupt_json:
         target = attempt_dir / corrupt_json
@@ -93,7 +103,11 @@ def _make_session(
 
             skip = set(skip_in_attempt) if skip_in_attempt else set()
             corrupt = None
-            if corrupt_json_in and corrupt_json_in[0] == pi and corrupt_json_in[1] == ai:
+            if (
+                corrupt_json_in
+                and corrupt_json_in[0] == pi
+                and corrupt_json_in[1] == ai
+            ):
                 corrupt = corrupt_json_in[2]
 
             _make_attempt(attempt_dir, skip=skip, corrupt_json=corrupt)
@@ -433,8 +447,12 @@ class TestFindingFields:
         assert "hint" not in d
 
     def test_meta_in_to_dict(self):
-        f = Finding("E001", FindingSeverity.INFO, "info",
-                     meta={"expected": 48000, "actual": 44100})
+        f = Finding(
+            "E001",
+            FindingSeverity.INFO,
+            "info",
+            meta={"expected": 48000, "actual": 44100},
+        )
         d = f.to_dict()
         assert d["meta"] == {"expected": 48000, "actual": 44100}
 

@@ -14,18 +14,25 @@ This module depends only on:
 - tap_tone_pi.core.quality_policy (Verdict, Severity, QualityVerdict, TriggeredRule)
 It does not modify any QC outputs.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Sequence
 
-from tap_tone_pi.core.quality_policy import QualityVerdict, TriggeredRule, Verdict, Severity
+from tap_tone_pi.core.quality_policy import (
+    QualityVerdict,
+    TriggeredRule,
+    Verdict,
+    Severity,
+)
 
 
 # =============================================================================
 # PR6: Explanation Mode (three-tier verbosity)
 # =============================================================================
+
 
 class ExplanationMode(str, Enum):
     """Three-tier explanation verbosity.
@@ -34,6 +41,7 @@ class ExplanationMode(str, Enum):
     SHORT: One-sentence explanation + immediate fix (seen before, low repetition).
     COMPACT: No explanation — 'Same issue recurring, focus on fix' (heavy repetition).
     """
+
     FULL = "full"
     SHORT = "short"
     COMPACT = "compact"
@@ -100,9 +108,7 @@ class SessionTracker:
         Must be called exactly once per verdict render — before
         ``make_context()`` / ``build_agent_message()``.
         """
-        current_rules = {
-            tr.rule.rule_id for tr in (verdict.triggered_rules or [])
-        }
+        current_rules = {tr.rule.rule_id for tr in (verdict.triggered_rules or [])}
 
         # Rule counts + consecutive hits
         for rid in current_rules:
@@ -175,6 +181,7 @@ class AgentContext:
     - user_stage may be provided explicitly; otherwise inferred from pass_count/session_count.
     - history counters are optional. If omitted, the agent won't escalate messaging.
     """
+
     workflow: Workflow = "record"
     user_stage: Optional[UserStage] = None
 
@@ -230,6 +237,7 @@ class SuggestedAction:
     Suggested actions are *choices* presented to the operator (or UI buttons).
     They do not execute anything and do not alter measurement outputs.
     """
+
     action_id: str
     label: str
     rationale: str
@@ -256,6 +264,7 @@ class AgentMessage:
 # -----------------------------------------------------------------------------
 # Message spec tables
 # -----------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class RuleMessageSpec:
@@ -313,7 +322,12 @@ VERDICT_TEMPLATES: Dict[Verdict, VerdictTemplate] = {
         default_actions=(
             SuggestedAction("retry", "Retry", "Correct conditions and retake"),
             SuggestedAction("abort", "Abort", "Stop and troubleshoot"),
-            SuggestedAction("override", "Override (requires reason)", "Log exception explicitly", requires_input=True),
+            SuggestedAction(
+                "override",
+                "Override (requires reason)",
+                "Log exception explicitly",
+                requires_input=True,
+            ),
         ),
     ),
 }
@@ -330,7 +344,9 @@ RULE_SPECS: Dict[str, RuleMessageSpec] = {
         fallback_fix="Use a softer tap if gain can't be changed.",
         advanced_note="If clipping persists at low gain, check OS mic boost / auto gain control.",
         actions=(
-            SuggestedAction("adjust_gain_down", "Lower gain and retry", "Prevents distortion"),
+            SuggestedAction(
+                "adjust_gain_down", "Lower gain and retry", "Prevents distortion"
+            ),
             SuggestedAction("retry", "Retry capture", "Need an unclipped waveform"),
             SuggestedAction("abort", "Abort", "Cannot proceed with clipped data"),
         ),
@@ -344,9 +360,15 @@ RULE_SPECS: Dict[str, RuleMessageSpec] = {
         fallback_fix="Increase input gain and confirm the level meter moves.",
         advanced_note="On Pi, wrong default device is common after USB reconnect.",
         actions=(
-            SuggestedAction("check_device", "Check input device", "Wrong input looks like silence"),
-            SuggestedAction("retry", "Retry with a harder tap", "Need a measurable impulse"),
-            SuggestedAction("run_setup", "Run setup wizard", "Persist the right device"),
+            SuggestedAction(
+                "check_device", "Check input device", "Wrong input looks like silence"
+            ),
+            SuggestedAction(
+                "retry", "Retry with a harder tap", "Need a measurable impulse"
+            ),
+            SuggestedAction(
+                "run_setup", "Run setup wizard", "Persist the right device"
+            ),
         ),
     ),
     "Q003": RuleMessageSpec(
@@ -358,8 +380,16 @@ RULE_SPECS: Dict[str, RuleMessageSpec] = {
         fallback_fix="Increase capture duration slightly (e.g., 2.5s → 4s).",
         advanced_note="If peak range excludes the true mode, adjust analysis config later—avoid changing during baseline.",
         actions=(
-            SuggestedAction("retry", "Retry with better coupling", "Cleaner impulse yields clear peaks"),
-            SuggestedAction("adjust_duration_up", "Increase duration and retry", "Gives more usable decay"),
+            SuggestedAction(
+                "retry",
+                "Retry with better coupling",
+                "Cleaner impulse yields clear peaks",
+            ),
+            SuggestedAction(
+                "adjust_duration_up",
+                "Increase duration and retry",
+                "Gives more usable decay",
+            ),
             SuggestedAction("help", "Show tapping tips", "Reduce operator variability"),
         ),
     ),
@@ -373,7 +403,9 @@ RULE_SPECS: Dict[str, RuleMessageSpec] = {
         advanced_note="If confidence is consistently low, check environment noise and mic placement.",
         actions=(
             SuggestedAction("retry", "Retry capture", "Need higher confidence"),
-            SuggestedAction("check_environment", "Reduce noise and retry", "Noise lowers confidence"),
+            SuggestedAction(
+                "check_environment", "Reduce noise and retry", "Noise lowers confidence"
+            ),
             SuggestedAction("abort", "Abort", "Cannot proceed under threshold"),
         ),
     ),
@@ -386,7 +418,9 @@ RULE_SPECS: Dict[str, RuleMessageSpec] = {
         fallback_fix="Run setup wizard to save a compatible device/rate combination.",
         advanced_note="If the device rejects rates, fall back to its supported default.",
         actions=(
-            SuggestedAction("set_samplerate_standard", "Use 48k and retry", "Policy-approved rate"),
+            SuggestedAction(
+                "set_samplerate_standard", "Use 48k and retry", "Policy-approved rate"
+            ),
             SuggestedAction("run_setup", "Run setup wizard", "Persist correct rate"),
             SuggestedAction("abort", "Abort", "Cannot proceed with non-standard rate"),
         ),
@@ -401,8 +435,12 @@ RULE_SPECS: Dict[str, RuleMessageSpec] = {
         fallback_fix="Retake once to see if confidence improves.",
         advanced_note="If confidence remains high, accepting is usually fine.",
         actions=(
-            SuggestedAction("accept", "Accept with warning", "Measurement may still be valid"),
-            SuggestedAction("retry", "Retry with slightly higher level", "Improve repeatability"),
+            SuggestedAction(
+                "accept", "Accept with warning", "Measurement may still be valid"
+            ),
+            SuggestedAction(
+                "retry", "Retry with slightly higher level", "Improve repeatability"
+            ),
         ),
     ),
     "Q011": RuleMessageSpec(
@@ -414,8 +452,12 @@ RULE_SPECS: Dict[str, RuleMessageSpec] = {
         fallback_fix="Accept if consistent and confidence is strong.",
         advanced_note="Aim for headroom; avoid any automatic mic boost features.",
         actions=(
-            SuggestedAction("retry", "Retry with slightly lower gain", "Avoid clipping next attempt"),
-            SuggestedAction("accept", "Accept with warning", "Current capture is not clipped"),
+            SuggestedAction(
+                "retry", "Retry with slightly lower gain", "Avoid clipping next attempt"
+            ),
+            SuggestedAction(
+                "accept", "Accept with warning", "Current capture is not clipped"
+            ),
         ),
     ),
     "Q012": RuleMessageSpec(
@@ -440,8 +482,14 @@ RULE_SPECS: Dict[str, RuleMessageSpec] = {
         fallback_fix="Accept if the dominant frequency is stable across attempts.",
         advanced_note="Not necessarily bad; some structures naturally show fewer peaks.",
         actions=(
-            SuggestedAction("retry", "Retry with improved coupling", "May reveal clearer peak structure"),
-            SuggestedAction("accept", "Accept with warning", "Dominant peak may still be valid"),
+            SuggestedAction(
+                "retry",
+                "Retry with improved coupling",
+                "May reveal clearer peak structure",
+            ),
+            SuggestedAction(
+                "accept", "Accept with warning", "Dominant peak may still be valid"
+            ),
         ),
     ),
 }
@@ -450,6 +498,7 @@ RULE_SPECS: Dict[str, RuleMessageSpec] = {
 # -----------------------------------------------------------------------------
 # FTUE stage inference + selection rules
 # -----------------------------------------------------------------------------
+
 
 def infer_user_stage(ctx: AgentContext) -> UserStage:
     """
@@ -479,6 +528,7 @@ def sort_triggered_rules(triggered: Sequence[TriggeredRule]) -> List[TriggeredRu
     """
     HARD first, then SOFT, then stable by rule_id.
     """
+
     def key(tr: TriggeredRule) -> tuple[int, str]:
         sev_rank = 0 if tr.rule.severity == Severity.HARD else 1
         return (sev_rank, tr.rule.rule_id)
@@ -486,7 +536,9 @@ def sort_triggered_rules(triggered: Sequence[TriggeredRule]) -> List[TriggeredRu
     return sorted(triggered, key=key)
 
 
-def _top_k_rules_for_stage(stage: UserStage, sorted_rules: Sequence[TriggeredRule]) -> List[TriggeredRule]:
+def _top_k_rules_for_stage(
+    stage: UserStage, sorted_rules: Sequence[TriggeredRule]
+) -> List[TriggeredRule]:
     if stage == "first_run":
         return list(sorted_rules[:2])  # show only top 1–2
     return list(sorted_rules)
@@ -496,7 +548,10 @@ def _top_k_rules_for_stage(stage: UserStage, sorted_rules: Sequence[TriggeredRul
 # Fatigue policy — suppress repeated explanations
 # -----------------------------------------------------------------------------
 
-def should_show_learning_hint(ctx: AgentContext, rule_ids: List[str], stage: UserStage) -> bool:
+
+def should_show_learning_hint(
+    ctx: AgentContext, rule_ids: List[str], stage: UserStage
+) -> bool:
     """
     Show learning hint only if ALL are true:
     1. user is first_run or novice
@@ -549,7 +604,9 @@ def should_show_full_explanation(ctx: AgentContext, rule_id: str) -> bool:
     return True
 
 
-def _pick_ftue_hint(stage: UserStage, ctx: AgentContext, rule_ids: List[str]) -> Optional[str]:
+def _pick_ftue_hint(
+    stage: UserStage, ctx: AgentContext, rule_ids: List[str]
+) -> Optional[str]:
     hints = FTUE_HINTS.get(stage, ())
     if not hints:
         return None
@@ -593,18 +650,48 @@ def _merge_actions(
     # Escalation: if repeat rule hit, inject stronger corrective action earlier
     # (still deterministic; no hidden interpretation)
     def repeated(rule_id: str, threshold: int) -> bool:
-        return (ctx.get_consecutive_hits(rule_id) >= threshold) or (ctx.get_rule_count(rule_id) >= threshold)
+        return (ctx.get_consecutive_hits(rule_id) >= threshold) or (
+            ctx.get_rule_count(rule_id) >= threshold
+        )
 
     # Special escalations (PR6: expanded for Q010 and Q003)
     if "Q011" in rule_ids and repeated("Q011", 3):
-        add(SuggestedAction("adjust_gain_down", "Lower gain before retrying", "Near-clipping repeated; reduce risk of clipping"))
+        add(
+            SuggestedAction(
+                "adjust_gain_down",
+                "Lower gain before retrying",
+                "Near-clipping repeated; reduce risk of clipping",
+            )
+        )
     if "Q002" in rule_ids and repeated("Q002", 2):
-        add(SuggestedAction("check_device", "Check input device", "Silence repeated; likely wrong device"))
-        add(SuggestedAction("run_setup", "Run setup wizard", "Persist correct device selection"))
+        add(
+            SuggestedAction(
+                "check_device",
+                "Check input device",
+                "Silence repeated; likely wrong device",
+            )
+        )
+        add(
+            SuggestedAction(
+                "run_setup", "Run setup wizard", "Persist correct device selection"
+            )
+        )
     if "Q010" in rule_ids and repeated("Q010", 3):
-        add(SuggestedAction("adjust_gain_up", "Move mic closer and increase gain", "Quiet signal repeated; need stronger input"))
+        add(
+            SuggestedAction(
+                "adjust_gain_up",
+                "Move mic closer and increase gain",
+                "Quiet signal repeated; need stronger input",
+            )
+        )
     if "Q003" in rule_ids and repeated("Q003", 3):
-        add(SuggestedAction("check_environment", "Retap with firmer coupling; confirm mic", "No peaks repeated; coupling or environment issue"))
+        add(
+            SuggestedAction(
+                "check_environment",
+                "Retap with firmer coupling; confirm mic",
+                "No peaks repeated; coupling or environment issue",
+            )
+        )
 
     # For FAIL, pull in top rule actions first (more actionable than generic abort/override)
     if verdict == Verdict.FAIL:
@@ -617,7 +704,11 @@ def _merge_actions(
             add(a)
         # First_run: also add help if missing
         if stage == "first_run":
-            add(SuggestedAction("help", "Show quick help", "Common fixes for first measurement"))
+            add(
+                SuggestedAction(
+                    "help", "Show quick help", "Common fixes for first measurement"
+                )
+            )
         return tuple(merged[:4])  # keep concise
 
     # WARN: reorder accept/retry based on stage
@@ -629,9 +720,21 @@ def _merge_actions(
             add(a)
         # reorder: novice/first_run => retry first; regular/expert => accept first
         if stage in ("first_run", "novice"):
-            merged.sort(key=lambda a: 0 if a.action_id == "retry" else 1 if a.action_id == "accept" else 2)
+            merged.sort(
+                key=lambda a: 0
+                if a.action_id == "retry"
+                else 1
+                if a.action_id == "accept"
+                else 2
+            )
         else:
-            merged.sort(key=lambda a: 0 if a.action_id == "accept" else 1 if a.action_id == "retry" else 2)
+            merged.sort(
+                key=lambda a: 0
+                if a.action_id == "accept"
+                else 1
+                if a.action_id == "retry"
+                else 2
+            )
         return tuple(merged[:3])
 
     # PASS: only defaults (advance)
@@ -756,14 +859,18 @@ def build_agent_message(ctx: AgentContext, verdict: QualityVerdict) -> AgentMess
     triggered_sorted = sort_triggered_rules(verdict.triggered_rules or [])
     rule_ids = [_rule_id(tr) for tr in triggered_sorted]
 
-    show_details = ctx.show_details and (stage != "first_run" or ctx.workflow != "record")
+    show_details = ctx.show_details and (
+        stage != "first_run" or ctx.workflow != "record"
+    )
     top_rules = _top_k_rules_for_stage(stage, triggered_sorted)
     verdict_streak_suppress = should_suppress_for_verdict_streak(ctx)
 
     # Build details
     details: List[str] = []
     if show_details and top_rules:
-        details = _build_details_for_stage(stage, top_rules, ctx, verdict_streak_suppress)
+        details = _build_details_for_stage(
+            stage, top_rules, ctx, verdict_streak_suppress
+        )
 
     # Build actions
     rule_actions = _collect_rule_actions(top_rules)
@@ -785,7 +892,11 @@ def build_agent_message(ctx: AgentContext, verdict: QualityVerdict) -> AgentMess
     telemetry = _build_telemetry_tuple(rule_ids, verdict, stage, ctx)
 
     # First-run minimal details
-    if stage == "first_run" and ctx.workflow in ("record", "measure") and not ctx.show_details:
+    if (
+        stage == "first_run"
+        and ctx.workflow in ("record", "measure")
+        and not ctx.show_details
+    ):
         details = []
 
     return AgentMessage(
@@ -801,13 +912,13 @@ def build_agent_message(ctx: AgentContext, verdict: QualityVerdict) -> AgentMess
 def render_agent_message_cli(msg: AgentMessage, *, color: bool = False) -> str:
     """
     Render AgentMessage for CLI output.
-    
+
     Args:
         msg: The AgentMessage to render
         color: Whether to include ANSI color codes (default False for deterministic output)
     """
     lines: List[str] = []
-    
+
     title = msg.title
     if color:
         verdict = msg.get_tag("verdict")
@@ -817,7 +928,7 @@ def render_agent_message_cli(msg: AgentMessage, *, color: bool = False) -> str:
             title = f"\033[33m{title}\033[0m"  # Yellow
         elif verdict == "pass":
             title = f"\033[32m{title}\033[0m"  # Green
-    
+
     lines.append(title)
     lines.append(msg.summary)
 

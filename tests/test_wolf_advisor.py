@@ -4,8 +4,6 @@ import numpy as np
 import pytest
 
 from tap_tone.wolf_beat import (
-    PeakInfo,
-    PeakPair,
     WolfBeatResult,
     AvoidedCrossingModel,
     analyze_wolf_beat,
@@ -28,6 +26,7 @@ from tap_tone.wolf_advisor import (
 # -----------------------------------------------------------------------------
 # Fixtures
 # -----------------------------------------------------------------------------
+
 
 @pytest.fixture
 def split_doublet_frf():
@@ -85,6 +84,7 @@ def wolf_result_no_wolf(no_wolf_frf):
 # -----------------------------------------------------------------------------
 # Avoided-Crossing Model Tests
 # -----------------------------------------------------------------------------
+
 
 class TestAvoidedCrossingModel:
     """Tests for dimensionless avoided-crossing physics model."""
@@ -238,6 +238,7 @@ class TestSimulationFunctions:
 # Wolf Advisor Tests
 # -----------------------------------------------------------------------------
 
+
 class TestWolfAdvisor:
     """Tests for WolfAdvisor decision support engine."""
 
@@ -320,6 +321,7 @@ class TestMitigationRecommendation:
 # Wolf Directive Tests
 # -----------------------------------------------------------------------------
 
+
 class TestWolfDirective:
     """Tests for attention directive generation."""
 
@@ -339,7 +341,10 @@ class TestWolfDirective:
         directive = generate_wolf_directive(advisor)
 
         assert directive.wolf_severity == "none"
-        assert "No wolf" in directive.action_prompt or "no" in directive.action_prompt.lower()
+        assert (
+            "No wolf" in directive.action_prompt
+            or "no" in directive.action_prompt.lower()
+        )
 
     def test_directive_serialization(self, wolf_result_with_pair):
         """Directive should serialize correctly."""
@@ -365,6 +370,7 @@ class TestWolfDirective:
 # Convenience Function Tests
 # -----------------------------------------------------------------------------
 
+
 class TestConvenienceFunctions:
     """Tests for advise_on_wolf convenience function."""
 
@@ -386,6 +392,7 @@ class TestConvenienceFunctions:
 # -----------------------------------------------------------------------------
 # Edge Cases
 # -----------------------------------------------------------------------------
+
 
 class TestEdgeCases:
     """Edge case tests for advisor."""

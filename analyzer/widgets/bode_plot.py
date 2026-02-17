@@ -5,12 +5,17 @@ Displays magnitude (dB) and phase plots with log frequency axis.
 Migrated from luthiers-toolbox TransferFunctionRenderer.vue.
 """
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 import numpy as np
 
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel,
-    QComboBox, QPushButton, QFrame
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QCheckBox,
+    QLabel,
+    QComboBox,
+    QFrame,
 )
 from PyQt6.QtCore import pyqtSignal
 
@@ -76,13 +81,9 @@ class BodePlotWidget(QWidget):
         # Frequency range selector
         controls.addWidget(QLabel("Range:"))
         self._range_combo = QComboBox()
-        self._range_combo.addItems([
-            "Full",
-            "20-2000 Hz",
-            "20-5000 Hz",
-            "50-1000 Hz",
-            "100-500 Hz"
-        ])
+        self._range_combo.addItems(
+            ["Full", "20-2000 Hz", "20-5000 Hz", "50-1000 Hz", "100-500 Hz"]
+        )
         self._range_combo.currentIndexChanged.connect(self._update_plot)
         controls.addWidget(self._range_combo)
 
@@ -91,7 +92,7 @@ class BodePlotWidget(QWidget):
         layout.addWidget(controls_frame)
 
         # Matplotlib figure with subplots
-        self._figure = Figure(figsize=(10, 6), facecolor='#1e1e1e')
+        self._figure = Figure(figsize=(10, 6), facecolor="#1e1e1e")
         self._canvas = FigureCanvas(self._figure)
         layout.addWidget(self._canvas)
 
@@ -102,21 +103,21 @@ class BodePlotWidget(QWidget):
         self._setup_axes_style()
 
         # Connect click event
-        self._canvas.mpl_connect('button_press_event', self._on_click)
+        self._canvas.mpl_connect("button_press_event", self._on_click)
 
     def _setup_axes_style(self):
         """Apply dark theme styling to axes."""
         for ax in [self._ax_mag, self._ax_phase]:
-            ax.set_facecolor('#252526')
-            ax.tick_params(colors='white')
-            ax.xaxis.label.set_color('white')
-            ax.yaxis.label.set_color('white')
-            ax.title.set_color('white')
-            ax.spines['bottom'].set_color('#555')
-            ax.spines['top'].set_color('#555')
-            ax.spines['left'].set_color('#555')
-            ax.spines['right'].set_color('#555')
-            ax.grid(True, alpha=0.3, color='#555')
+            ax.set_facecolor("#252526")
+            ax.tick_params(colors="white")
+            ax.xaxis.label.set_color("white")
+            ax.yaxis.label.set_color("white")
+            ax.title.set_color("white")
+            ax.spines["bottom"].set_color("#555")
+            ax.spines["top"].set_color("#555")
+            ax.spines["left"].set_color("#555")
+            ax.spines["right"].set_color("#555")
+            ax.grid(True, alpha=0.3, color="#555")
 
     def set_data(
         self,
@@ -124,7 +125,7 @@ class BodePlotWidget(QWidget):
         magnitude_db: List[float],
         phase: Optional[List[float]] = None,
         coherence: Optional[List[float]] = None,
-        peaks: Optional[List[Dict[str, float]]] = None
+        peaks: Optional[List[Dict[str, float]]] = None,
     ):
         """
         Set the transfer function data.
@@ -178,7 +179,7 @@ class BodePlotWidget(QWidget):
 
         result = []
         for i in range(0, len(arr), chunk_size):
-            chunk = arr_np[i:i+chunk_size]
+            chunk = arr_np[i : i + chunk_size]
             if len(chunk) > 0:
                 result.append(float(np.min(chunk)))
                 result.append(float(np.max(chunk)))
@@ -194,7 +195,11 @@ class BodePlotWidget(QWidget):
             freq = self._decimate(self._frequencies, self.MAX_POINTS)
             mag_db = self._decimate(self._magnitude_db, self.MAX_POINTS)
             phase = self._decimate(self._phase, self.MAX_POINTS) if self._phase else []
-            coh = self._decimate(self._coherence, self.MAX_POINTS) if self._coherence else []
+            coh = (
+                self._decimate(self._coherence, self.MAX_POINTS)
+                if self._coherence
+                else []
+            )
         else:
             freq = self._frequencies
             mag_db = self._magnitude_db
@@ -232,12 +237,12 @@ class BodePlotWidget(QWidget):
             return
 
         ax_coh = self._ax_mag.twinx()
-        ax_coh.semilogx(freq, coh, 'g-', linewidth=0.8, alpha=0.7, label='Coherence')
-        ax_coh.set_ylabel('Coherence', color='#4a4')
+        ax_coh.semilogx(freq, coh, "g-", linewidth=0.8, alpha=0.7, label="Coherence")
+        ax_coh.set_ylabel("Coherence", color="#4a4")
         ax_coh.set_ylim(0, 1.1)
-        ax_coh.tick_params(colors='#4a4')
+        ax_coh.tick_params(colors="#4a4")
         # Draw coherence threshold line
-        ax_coh.axhline(y=0.8, color='#4a4', linestyle='--', alpha=0.5)
+        ax_coh.axhline(y=0.8, color="#4a4", linestyle="--", alpha=0.5)
 
     def _plot_peaks(self, freq_range: tuple) -> None:
         """Plot peak markers on magnitude axes."""
@@ -245,29 +250,31 @@ class BodePlotWidget(QWidget):
             return
 
         for peak in self._peaks:
-            peak_freq = peak.get('freq_hz', 0)
+            peak_freq = peak.get("freq_hz", 0)
             if freq_range and (peak_freq < freq_range[0] or peak_freq > freq_range[1]):
                 continue
 
             # Find nearest magnitude value
-            peak_mag = peak.get('magnitude_db')
-            if peak_mag is None and 'magnitude' in peak:
+            peak_mag = peak.get("magnitude_db")
+            if peak_mag is None and "magnitude" in peak:
                 # Convert linear to dB
                 from analyzer.loaders.transfer_function import linear_to_db
-                peak_mag = linear_to_db(peak['magnitude'])
 
-            self._ax_mag.axvline(x=peak_freq, color='#ff6b6b', linestyle='--',
-                                 alpha=0.6, linewidth=0.8)
+                peak_mag = linear_to_db(peak["magnitude"])
+
+            self._ax_mag.axvline(
+                x=peak_freq, color="#ff6b6b", linestyle="--", alpha=0.6, linewidth=0.8
+            )
             # Annotate peak
             if peak_mag is not None:
                 self._ax_mag.annotate(
-                    f'{peak_freq:.0f}Hz',
+                    f"{peak_freq:.0f}Hz",
                     xy=(peak_freq, peak_mag),
                     xytext=(5, 5),
-                    textcoords='offset points',
+                    textcoords="offset points",
                     fontsize=8,
-                    color='#ff6b6b',
-                    alpha=0.8
+                    color="#ff6b6b",
+                    alpha=0.8,
                 )
 
     def _plot_phase(self, freq: List[float], phase: List[float]) -> None:
@@ -276,16 +283,16 @@ class BodePlotWidget(QWidget):
             self._ax_phase.set_visible(False)
             return
 
-        self._ax_phase.semilogx(freq, phase, 'm-', linewidth=1, label='Phase')
-        self._ax_phase.set_ylabel('Phase (°)', color='white')
-        self._ax_phase.set_xlabel('Frequency (Hz)', color='white')
+        self._ax_phase.semilogx(freq, phase, "m-", linewidth=1, label="Phase")
+        self._ax_phase.set_ylabel("Phase (°)", color="white")
+        self._ax_phase.set_xlabel("Frequency (Hz)", color="white")
 
         # Add reference lines
         for ref in [-180, -90, 0, 90, 180]:
             if min(phase) <= ref <= max(phase):
-                self._ax_phase.axhline(y=ref, color='#555', linestyle=':',
-                                       alpha=0.5, linewidth=0.5)
-
+                self._ax_phase.axhline(
+                    y=ref, color="#555", linestyle=":", alpha=0.5, linewidth=0.5
+                )
 
     def _update_plot(self):
         """Update the plot with current data."""
@@ -299,7 +306,9 @@ class BodePlotWidget(QWidget):
 
         # Get and filter data
         freq, mag_db, phase, coh = self._decimate_data_if_needed()
-        freq, mag_db, phase, coh = self._apply_freq_range_filter(freq, mag_db, phase, coh)
+        freq, mag_db, phase, coh = self._apply_freq_range_filter(
+            freq, mag_db, phase, coh
+        )
 
         if not freq:
             self._setup_axes_style()
@@ -307,9 +316,11 @@ class BodePlotWidget(QWidget):
             return
 
         # Plot magnitude
-        self._ax_mag.semilogx(freq, mag_db, 'c-', linewidth=1, label='Magnitude')
-        self._ax_mag.set_ylabel('Magnitude (dB)', color='white')
-        self._ax_mag.set_title('Transfer Function (Bode Plot)', color='white', fontsize=10)
+        self._ax_mag.semilogx(freq, mag_db, "c-", linewidth=1, label="Magnitude")
+        self._ax_mag.set_ylabel("Magnitude (dB)", color="white")
+        self._ax_mag.set_title(
+            "Transfer Function (Bode Plot)", color="white", fontsize=10
+        )
 
         # Plot overlays
         self._plot_coherence(freq, coh)
@@ -331,8 +342,9 @@ class BodePlotWidget(QWidget):
 
     def export_figure(self, path: str, dpi: int = 150):
         """Export the figure to a file."""
-        self._figure.savefig(path, dpi=dpi, facecolor='#1e1e1e',
-                            edgecolor='none', bbox_inches='tight')
+        self._figure.savefig(
+            path, dpi=dpi, facecolor="#1e1e1e", edgecolor="none", bbox_inches="tight"
+        )
 
 
 class WsiPlotWidget(QWidget):
@@ -383,7 +395,7 @@ class WsiPlotWidget(QWidget):
         layout.addWidget(controls_frame)
 
         # Matplotlib figure
-        self._figure = Figure(figsize=(10, 4), facecolor='#1e1e1e')
+        self._figure = Figure(figsize=(10, 4), facecolor="#1e1e1e")
         self._canvas = FigureCanvas(self._figure)
         layout.addWidget(self._canvas)
 
@@ -393,21 +405,21 @@ class WsiPlotWidget(QWidget):
         # Data
         self._wsi_data = None
 
-        self._canvas.mpl_connect('button_press_event', self._on_click)
+        self._canvas.mpl_connect("button_press_event", self._on_click)
 
     def _setup_axes_style(self):
         """Apply dark theme styling."""
         ax = self._ax
-        ax.set_facecolor('#252526')
-        ax.tick_params(colors='white')
-        ax.xaxis.label.set_color('white')
-        ax.yaxis.label.set_color('white')
-        ax.title.set_color('white')
-        ax.spines['bottom'].set_color('#555')
-        ax.spines['top'].set_color('#555')
-        ax.spines['left'].set_color('#555')
-        ax.spines['right'].set_color('#555')
-        ax.grid(True, alpha=0.3, color='#555')
+        ax.set_facecolor("#252526")
+        ax.tick_params(colors="white")
+        ax.xaxis.label.set_color("white")
+        ax.yaxis.label.set_color("white")
+        ax.title.set_color("white")
+        ax.spines["bottom"].set_color("#555")
+        ax.spines["top"].set_color("#555")
+        ax.spines["left"].set_color("#555")
+        ax.spines["right"].set_color("#555")
+        ax.grid(True, alpha=0.3, color="#555")
 
     def set_data(self, wsi_data):
         """
@@ -418,7 +430,9 @@ class WsiPlotWidget(QWidget):
         """
         self._wsi_data = wsi_data
         self._show_coh_cb.setEnabled(wsi_data.has_coherence() if wsi_data else False)
-        self._show_pd_cb.setEnabled(wsi_data.has_phase_disorder() if wsi_data else False)
+        self._show_pd_cb.setEnabled(
+            wsi_data.has_phase_disorder() if wsi_data else False
+        )
         self._update_plot()
 
     def _decimate_data_if_needed(self) -> tuple:
@@ -430,7 +444,11 @@ class WsiPlotWidget(QWidget):
             freq = self._decimate(self._frequencies, self.MAX_POINTS)
             mag_db = self._decimate(self._magnitude_db, self.MAX_POINTS)
             phase = self._decimate(self._phase, self.MAX_POINTS) if self._phase else []
-            coh = self._decimate(self._coherence, self.MAX_POINTS) if self._coherence else []
+            coh = (
+                self._decimate(self._coherence, self.MAX_POINTS)
+                if self._coherence
+                else []
+            )
         else:
             freq = self._frequencies
             mag_db = self._magnitude_db
@@ -468,12 +486,12 @@ class WsiPlotWidget(QWidget):
             return
 
         ax_coh = self._ax_mag.twinx()
-        ax_coh.semilogx(freq, coh, 'g-', linewidth=0.8, alpha=0.7, label='Coherence')
-        ax_coh.set_ylabel('Coherence', color='#4a4')
+        ax_coh.semilogx(freq, coh, "g-", linewidth=0.8, alpha=0.7, label="Coherence")
+        ax_coh.set_ylabel("Coherence", color="#4a4")
         ax_coh.set_ylim(0, 1.1)
-        ax_coh.tick_params(colors='#4a4')
+        ax_coh.tick_params(colors="#4a4")
         # Draw coherence threshold line
-        ax_coh.axhline(y=0.8, color='#4a4', linestyle='--', alpha=0.5)
+        ax_coh.axhline(y=0.8, color="#4a4", linestyle="--", alpha=0.5)
 
     def _plot_peaks(self, freq_range: tuple) -> None:
         """Plot peak markers on magnitude axes."""
@@ -481,29 +499,31 @@ class WsiPlotWidget(QWidget):
             return
 
         for peak in self._peaks:
-            peak_freq = peak.get('freq_hz', 0)
+            peak_freq = peak.get("freq_hz", 0)
             if freq_range and (peak_freq < freq_range[0] or peak_freq > freq_range[1]):
                 continue
 
             # Find nearest magnitude value
-            peak_mag = peak.get('magnitude_db')
-            if peak_mag is None and 'magnitude' in peak:
+            peak_mag = peak.get("magnitude_db")
+            if peak_mag is None and "magnitude" in peak:
                 # Convert linear to dB
                 from analyzer.loaders.transfer_function import linear_to_db
-                peak_mag = linear_to_db(peak['magnitude'])
 
-            self._ax_mag.axvline(x=peak_freq, color='#ff6b6b', linestyle='--',
-                                 alpha=0.6, linewidth=0.8)
+                peak_mag = linear_to_db(peak["magnitude"])
+
+            self._ax_mag.axvline(
+                x=peak_freq, color="#ff6b6b", linestyle="--", alpha=0.6, linewidth=0.8
+            )
             # Annotate peak
             if peak_mag is not None:
                 self._ax_mag.annotate(
-                    f'{peak_freq:.0f}Hz',
+                    f"{peak_freq:.0f}Hz",
                     xy=(peak_freq, peak_mag),
                     xytext=(5, 5),
-                    textcoords='offset points',
+                    textcoords="offset points",
                     fontsize=8,
-                    color='#ff6b6b',
-                    alpha=0.8
+                    color="#ff6b6b",
+                    alpha=0.8,
                 )
 
     def _plot_phase(self, freq: List[float], phase: List[float]) -> None:
@@ -512,16 +532,16 @@ class WsiPlotWidget(QWidget):
             self._ax_phase.set_visible(False)
             return
 
-        self._ax_phase.semilogx(freq, phase, 'm-', linewidth=1, label='Phase')
-        self._ax_phase.set_ylabel('Phase (°)', color='white')
-        self._ax_phase.set_xlabel('Frequency (Hz)', color='white')
+        self._ax_phase.semilogx(freq, phase, "m-", linewidth=1, label="Phase")
+        self._ax_phase.set_ylabel("Phase (°)", color="white")
+        self._ax_phase.set_xlabel("Frequency (Hz)", color="white")
 
         # Add reference lines
         for ref in [-180, -90, 0, 90, 180]:
             if min(phase) <= ref <= max(phase):
-                self._ax_phase.axhline(y=ref, color='#555', linestyle=':',
-                                       alpha=0.5, linewidth=0.5)
-
+                self._ax_phase.axhline(
+                    y=ref, color="#555", linestyle=":", alpha=0.5, linewidth=0.5
+                )
 
     def _update_plot(self):
         """Update the plot."""
@@ -539,46 +559,61 @@ class WsiPlotWidget(QWidget):
         if self._show_admissible_cb.isChecked() and data.admissible:
             regions = data.get_admissible_regions()
             for start, end in regions:
-                self._ax.axvspan(start, end, alpha=0.15, color='green',
-                                label='Admissible' if start == regions[0][0] else None)
+                self._ax.axvspan(
+                    start,
+                    end,
+                    alpha=0.15,
+                    color="green",
+                    label="Admissible" if start == regions[0][0] else None,
+                )
 
         # Plot WSI curve
-        self._ax.plot(freq, data.wsi, 'c-', linewidth=1.5, label='WSI')
+        self._ax.plot(freq, data.wsi, "c-", linewidth=1.5, label="WSI")
 
         # Plot coherence mean if enabled
         if self._show_coh_cb.isChecked() and data.coh_mean:
             ax2 = self._ax.twinx()
-            ax2.plot(freq, data.coh_mean, 'g-', linewidth=0.8, alpha=0.7, label='Coh Mean')
-            ax2.set_ylabel('Coherence', color='#4a4')
+            ax2.plot(
+                freq, data.coh_mean, "g-", linewidth=0.8, alpha=0.7, label="Coh Mean"
+            )
+            ax2.set_ylabel("Coherence", color="#4a4")
             ax2.set_ylim(0, 1.1)
-            ax2.tick_params(colors='#4a4')
+            ax2.tick_params(colors="#4a4")
 
         # Plot phase disorder if enabled
         if self._show_pd_cb.isChecked() and data.phase_disorder:
             ax3 = self._ax.twinx()
             if self._show_coh_cb.isChecked():
-                ax3.spines['right'].set_position(('outward', 60))
-            ax3.plot(freq, data.phase_disorder, 'm-', linewidth=0.8, alpha=0.7,
-                    label='Phase Disorder')
-            ax3.set_ylabel('Phase Disorder', color='#a4a')
-            ax3.tick_params(colors='#a4a')
+                ax3.spines["right"].set_position(("outward", 60))
+            ax3.plot(
+                freq,
+                data.phase_disorder,
+                "m-",
+                linewidth=0.8,
+                alpha=0.7,
+                label="Phase Disorder",
+            )
+            ax3.set_ylabel("Phase Disorder", color="#a4a")
+            ax3.tick_params(colors="#a4a")
 
         # Mark problem frequencies
         problems = data.get_problem_frequencies(0.7)
         for prob in problems:
-            color = '#ff4444' if prob['severity'] == 'high' else '#ff8844'
-            self._ax.axvline(x=prob['freq_hz'], color=color, linestyle='--',
-                            alpha=0.6, linewidth=0.8)
+            color = "#ff4444" if prob["severity"] == "high" else "#ff8844"
+            self._ax.axvline(
+                x=prob["freq_hz"], color=color, linestyle="--", alpha=0.6, linewidth=0.8
+            )
 
         # WSI threshold line
-        self._ax.axhline(y=0.7, color='#ff6b6b', linestyle=':', alpha=0.5,
-                        label='WSI Threshold')
+        self._ax.axhline(
+            y=0.7, color="#ff6b6b", linestyle=":", alpha=0.5, label="WSI Threshold"
+        )
 
-        self._ax.set_xlabel('Frequency (Hz)', color='white')
-        self._ax.set_ylabel('Wolf Stress Index', color='white')
-        self._ax.set_title('Wolf Stress Index Analysis', color='white', fontsize=10)
+        self._ax.set_xlabel("Frequency (Hz)", color="white")
+        self._ax.set_ylabel("Wolf Stress Index", color="white")
+        self._ax.set_title("Wolf Stress Index Analysis", color="white", fontsize=10)
         self._ax.set_ylim(0, 1.1)
-        self._ax.legend(loc='upper right', fontsize=8)
+        self._ax.legend(loc="upper right", fontsize=8)
 
         self._setup_axes_style()
         self._figure.tight_layout()
@@ -593,5 +628,6 @@ class WsiPlotWidget(QWidget):
 
     def export_figure(self, path: str, dpi: int = 150):
         """Export the figure to file."""
-        self._figure.savefig(path, dpi=dpi, facecolor='#1e1e1e',
-                            edgecolor='none', bbox_inches='tight')
+        self._figure.savefig(
+            path, dpi=dpi, facecolor="#1e1e1e", edgecolor="none", bbox_inches="tight"
+        )

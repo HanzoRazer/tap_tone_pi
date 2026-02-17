@@ -1,4 +1,5 @@
 """Tests for TRUST_EROSION banner session-persistent dismissal (PR #13 Seg 2)."""
+
 from pathlib import Path
 
 from tap_tone_pi.gui.advisory_state import (

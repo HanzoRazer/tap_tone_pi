@@ -53,16 +53,16 @@ class SpectrumChartWidget(QWidget):
 
     def _apply_dark_theme(self):
         """Apply dark theme to the matplotlib figure."""
-        self.figure.patch.set_facecolor('#1e1e1e')
+        self.figure.patch.set_facecolor("#1e1e1e")
 
         for ax in [self.ax_mag, self.ax_coh]:
-            ax.set_facecolor('#252526')
-            ax.tick_params(colors='#cccccc')
-            ax.xaxis.label.set_color('#cccccc')
-            ax.yaxis.label.set_color('#cccccc')
-            ax.title.set_color('#cccccc')
+            ax.set_facecolor("#252526")
+            ax.tick_params(colors="#cccccc")
+            ax.xaxis.label.set_color("#cccccc")
+            ax.yaxis.label.set_color("#cccccc")
+            ax.title.set_color("#cccccc")
             for spine in ax.spines.values():
-                spine.set_color('#3d3d3d')
+                spine.set_color("#3d3d3d")
 
     def set_data(self, data: Dict[str, Any]):
         """
@@ -93,25 +93,37 @@ class SpectrumChartWidget(QWidget):
             return
 
         # Plot magnitude
-        self.ax_mag.semilogy(self._freq, self._magnitude, color='#007acc', linewidth=0.8)
+        self.ax_mag.semilogy(
+            self._freq, self._magnitude, color="#007acc", linewidth=0.8
+        )
         self.ax_mag.set_ylabel("Magnitude (dB)")
         self.ax_mag.set_title("Transfer Function Magnitude")
-        self.ax_mag.grid(True, alpha=0.3, color='#3d3d3d')
+        self.ax_mag.grid(True, alpha=0.3, color="#3d3d3d")
 
         # Plot coherence if available
         if self._coherence is not None and len(self._coherence) > 0:
-            self.ax_coh.plot(self._freq, self._coherence, color='#4ec9b0', linewidth=0.8)
+            self.ax_coh.plot(
+                self._freq, self._coherence, color="#4ec9b0", linewidth=0.8
+            )
             self.ax_coh.set_ylim(0, 1.1)
-            self.ax_coh.axhline(y=0.9, color='#ce9178', linestyle='--', alpha=0.5, label='0.9 threshold')
+            self.ax_coh.axhline(
+                y=0.9, color="#ce9178", linestyle="--", alpha=0.5, label="0.9 threshold"
+            )
             self.ax_coh.set_ylabel("Coherence")
-            self.ax_coh.legend(loc='lower right')
+            self.ax_coh.legend(loc="lower right")
         else:
-            self.ax_coh.text(0.5, 0.5, "No coherence data",
-                           ha='center', va='center', transform=self.ax_coh.transAxes,
-                           color='#6d6d6d')
+            self.ax_coh.text(
+                0.5,
+                0.5,
+                "No coherence data",
+                ha="center",
+                va="center",
+                transform=self.ax_coh.transAxes,
+                color="#6d6d6d",
+            )
 
         self.ax_coh.set_xlabel("Frequency (Hz)")
-        self.ax_coh.grid(True, alpha=0.3, color='#3d3d3d')
+        self.ax_coh.grid(True, alpha=0.3, color="#3d3d3d")
 
         # Apply dark theme
         self._apply_dark_theme()
@@ -123,7 +135,9 @@ class SpectrumChartWidget(QWidget):
         """Check if data is loaded."""
         return self._freq is not None and len(self._freq) > 0
 
-    def find_peaks(self, min_prominence: float = 0.1, min_distance: int = 10) -> List[Dict[str, float]]:
+    def find_peaks(
+        self, min_prominence: float = 0.1, min_distance: int = 10
+    ) -> List[Dict[str, float]]:
         """
         Find peaks in the current spectrum.
 
@@ -138,7 +152,7 @@ class SpectrumChartWidget(QWidget):
             self._magnitude,
             self._coherence,
             min_prominence=min_prominence,
-            min_distance=min_distance
+            min_distance=min_distance,
         )
 
     def analyze_coherence(self) -> Dict[str, float]:
@@ -155,7 +169,9 @@ class SpectrumChartWidget(QWidget):
             "mean": float(np.mean(self._coherence)),
             "min": float(np.min(self._coherence)),
             "max": float(np.max(self._coherence)),
-            "pct_above_90": float(np.sum(self._coherence >= 0.9) / len(self._coherence) * 100)
+            "pct_above_90": float(
+                np.sum(self._coherence >= 0.9) / len(self._coherence) * 100
+            ),
         }
 
     def zoom_in(self):
@@ -164,7 +180,7 @@ class SpectrumChartWidget(QWidget):
         xlim = self.ax_mag.get_xlim()
         center = (xlim[0] + xlim[1]) / 2
         width = (xlim[1] - xlim[0]) / 1.2
-        self.ax_mag.set_xlim(center - width/2, center + width/2)
+        self.ax_mag.set_xlim(center - width / 2, center + width / 2)
         self.canvas.draw()
 
     def zoom_out(self):
@@ -173,7 +189,7 @@ class SpectrumChartWidget(QWidget):
         xlim = self.ax_mag.get_xlim()
         center = (xlim[0] + xlim[1]) / 2
         width = (xlim[1] - xlim[0]) * 1.2
-        self.ax_mag.set_xlim(center - width/2, center + width/2)
+        self.ax_mag.set_xlim(center - width / 2, center + width / 2)
         self.canvas.draw()
 
     def reset_zoom(self):
@@ -195,14 +211,14 @@ class SpectrumChartWidget(QWidget):
         for peak in peaks:
             freq = peak["freq_hz"]
             mag = peak["magnitude"]
-            self.ax_mag.axvline(x=freq, color='#ce9178', linestyle='--', alpha=0.5)
+            self.ax_mag.axvline(x=freq, color="#ce9178", linestyle="--", alpha=0.5)
             self.ax_mag.annotate(
                 f"{freq:.0f} Hz",
                 xy=(freq, mag),
                 xytext=(5, 5),
-                textcoords='offset points',
+                textcoords="offset points",
                 fontsize=8,
-                color='#cccccc'
+                color="#cccccc",
             )
 
         self.canvas.draw()

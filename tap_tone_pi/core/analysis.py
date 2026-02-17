@@ -7,10 +7,11 @@ Migration
 ---------
     # Old import (deprecated)
     from tap_tone.analysis import analyze_tap, Peak, AnalysisResult
-    
+
     # New import (v2.0.0+)
     from tap_tone_pi.core.analysis import analyze_tap, Peak, AnalysisResult
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -24,6 +25,7 @@ from scipy.signal import butter, filtfilt, find_peaks
 @dataclass(frozen=True)
 class Peak:
     """A detected frequency peak."""
+
     freq_hz: float
     magnitude: float  # normalized 0..1
 
@@ -31,6 +33,7 @@ class Peak:
 @dataclass(frozen=True)
 class AnalysisResult:
     """Result of tap tone FFT analysis."""
+
     dominant_hz: float | None
     peaks: list[Peak]
     clipped: bool
@@ -62,7 +65,7 @@ def analyze_tap(
     max_peaks: int = 12,
 ) -> AnalysisResult:
     """Analyze tap impulse audio and extract frequency peaks.
-    
+
     Args:
         audio: Input audio signal (float32, [-1, 1])
         sample_rate: Sample rate in Hz
@@ -72,7 +75,7 @@ def analyze_tap(
         peak_min_prominence: Minimum peak prominence (0-1)
         peak_min_spacing_hz: Minimum spacing between peaks
         max_peaks: Maximum number of peaks to return
-    
+
     Returns:
         AnalysisResult with detected peaks and spectrum
     """
@@ -107,7 +110,11 @@ def analyze_tap(
 
     # Normalize magnitude to 0..1 (lab version: explicit float32)
     spec_max = float(spec.max()) if spec.size else 0.0
-    spec_n = (spec / spec_max).astype(np.float32) if spec_max > 0 else spec.astype(np.float32)
+    spec_n = (
+        (spec / spec_max).astype(np.float32)
+        if spec_max > 0
+        else spec.astype(np.float32)
+    )
 
     # Band mask
     mask = (freqs >= peak_min_hz) & (freqs <= peak_max_hz)
@@ -129,10 +136,14 @@ def analyze_tap(
     df = float(freqs_m[1] - freqs_m[0])
     min_dist_bins = max(1, int(round(peak_min_spacing_hz / df)))
 
-    peaks_idx, _ = find_peaks(spec_m, prominence=peak_min_prominence, distance=min_dist_bins)
+    peaks_idx, _ = find_peaks(
+        spec_m, prominence=peak_min_prominence, distance=min_dist_bins
+    )
 
     # Sort peaks by magnitude descending
-    peaks_sorted = sorted(peaks_idx.tolist(), key=lambda i: float(spec_m[i]), reverse=True)[:max_peaks]
+    peaks_sorted = sorted(
+        peaks_idx.tolist(), key=lambda i: float(spec_m[i]), reverse=True
+    )[:max_peaks]
     peaks_out: list[Peak] = [
         Peak(freq_hz=float(freqs_m[i]), magnitude=float(spec_m[i]))
         for i in peaks_sorted
@@ -160,7 +171,7 @@ def analyze_tap(
 
 def analysis_to_json_dict(res: AnalysisResult) -> dict[str, Any]:
     """Convert AnalysisResult to JSON-serializable dict.
-    
+
     Note: This uses the simpler format for backward compatibility.
     The storage layer adds additional fields (label, sample_rate, ts_utc).
     """

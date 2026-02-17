@@ -34,7 +34,9 @@ def iso_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
-def mk_source(repo: str, component: str = "test_component", version: str = "1.0.0") -> dict:
+def mk_source(
+    repo: str, component: str = "test_component", version: str = "1.0.0"
+) -> dict:
     return {"repo": repo, "component": component, "version": version}
 
 
@@ -61,6 +63,7 @@ def mk_event(
 
 
 # --- Moment-case fixtures (mirror markdown examples) ---
+
 
 @pytest.fixture
 def ev_analysis_started():
@@ -233,6 +236,7 @@ def ev_system_error():
 
 # --- Directive outcome fixtures (PR #10: MOM-004/005) ---
 
+
 def _mk_attention_requested(n: int, base_ts: int = 0) -> list:
     """Generate n attention_requested events with sequential timestamps."""
     return [
@@ -278,20 +282,32 @@ def ev_confidence_climb_stream():
 @pytest.fixture
 def ev_trust_erosion_stream():
     """5 shown + 4 dismissed + 1 ack (80% dismiss rate) → TRUST_EROSION."""
-    return _mk_attention_requested(5) + _mk_attention_dismissed(4) + _mk_attention_acknowledged(1, base_ts=30)
+    return (
+        _mk_attention_requested(5)
+        + _mk_attention_dismissed(4)
+        + _mk_attention_acknowledged(1, base_ts=30)
+    )
 
 
 @pytest.fixture
 def ev_mixed_below_threshold():
     """5 shown + 3 ack + 2 dismiss (60% ack, 40% dismiss) → neither moment."""
-    return _mk_attention_requested(5) + _mk_attention_acknowledged(3) + _mk_attention_dismissed(2, base_ts=30)
+    return (
+        _mk_attention_requested(5)
+        + _mk_attention_acknowledged(3)
+        + _mk_attention_dismissed(2, base_ts=30)
+    )
 
 
 @pytest.fixture
 def ev_trust_erosion_idle_path():
     """3 idle_timeout events → TRUST_EROSION via Path B."""
     return [
-        mk_event(event_type="idle_timeout", occurred_at=f"2026-02-06T12:0{i}:00Z", payload={"idle_seconds": 10})
+        mk_event(
+            event_type="idle_timeout",
+            occurred_at=f"2026-02-06T12:0{i}:00Z",
+            payload={"idle_seconds": 10},
+        )
         for i in range(3)
     ]
 

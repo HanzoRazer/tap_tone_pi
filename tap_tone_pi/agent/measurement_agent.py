@@ -13,6 +13,7 @@ It NEVER:
 - Auto-adjusts parameters
 - Makes silent decisions
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -35,41 +36,42 @@ if TYPE_CHECKING:
 @dataclass
 class MeasurementAgent:
     """Stateful conductor for measurement workflows.
-    
+
     The agent wraps the quality gate and workflow components,
     providing structured explanations and action guidance
     without modifying measurement facts.
     """
+
     context: AgentContext = field(default_factory=AgentContext)
     on_message: Callable[[AgentMessage], None] | None = None
-    
+
     def on_verdict(self, verdict: "QualityVerdict") -> AgentMessage:
         """Process a quality verdict and generate operator guidance.
-        
+
         This is the main entry point after a quality check completes.
-        
+
         Args:
             verdict: The QualityVerdict from check_quality()
-        
+
         Returns:
             AgentMessage with title, summary, details, and suggested actions
         """
         # Extract rule IDs from triggered rules
         rule_ids = [r.rule.rule_id for r in verdict.triggered]
         verdict_str = verdict.verdict.value.lower()  # "pass", "warn", "fail"
-        
+
         # Update context history (PR7: includes verdict streak tracking)
         self.context.record_rules(rule_ids, verdict=verdict_str)
-        
+
         # Build the message
         message = self._build_message(verdict_str, rule_ids)
-        
+
         # Emit if callback registered
         if self.on_message:
             self.on_message(message)
-        
+
         return message
-    
+
     def _build_message(
         self,
         verdict: str,
@@ -78,12 +80,12 @@ class MeasurementAgent:
         """Build an AgentMessage from verdict and rules."""
         template = get_verdict_template(verdict)
         stage = self.context.user_stage
-        
+
         # Order and limit rules based on FTUE stage
         ordered_rules = order_rules(rule_ids)
         max_rules = max_rules_to_show(stage)
         display_rules = ordered_rules[:max_rules]
-        
+
         # Build detail lines for each rule
         details: list[str] = []
         for rule_id in display_rules:
@@ -92,22 +94,22 @@ class MeasurementAgent:
                 include_why = show_why_it_matters(stage, spec.severity)
                 detail = build_rule_detail(spec, self.context, include_why=include_why)
                 details.append(detail)
-        
+
         # Select actions
         actions = select_actions_for_verdict(verdict, rule_ids, self.context)
         max_actions = max_actions_to_show(stage)
         display_actions = actions[:max_actions]
-        
+
         # Always include Help for first_run/novice if not already present
         if stage in (UserStage.FIRST_RUN, UserStage.NOVICE):
             if not any(a.action_id == ActionId.HELP for a in display_actions):
-                display_actions.append(SuggestedAction(
-                    ActionId.HELP, "Help", "Show guidance"
-                ))
-        
+                display_actions.append(
+                    SuggestedAction(ActionId.HELP, "Help", "Show guidance")
+                )
+
         # Get FTUE hint
         hint = get_ftue_hint(stage, self.context.attempt_num)
-        
+
         return AgentMessage(
             title=template.title,
             summary=template.summary,
@@ -122,23 +124,23 @@ class MeasurementAgent:
                 "point_id": self.context.point_id,
             },
         )
-    
+
     def suggest_next_action(self) -> SuggestedAction | None:
         """Get the primary recommended action based on current state.
-        
+
         Returns the first action from the most recent message,
         or None if no actions available.
         """
         # This would typically look at the last message generated
         # For now, return None (caller should use on_verdict result)
         return None
-    
+
     def reset_for_point(self, point_id: str) -> None:
         """Reset attempt-level context for a new point."""
         self.context.point_id = point_id
         self.context.attempt_num = 1
         self.context.consecutive_rule_hits.clear()
-    
+
     def advance_attempt(self) -> None:
         """Increment attempt counter (on retry)."""
         self.context.attempt_num += 1
@@ -150,19 +152,19 @@ def build_agent_message(
     context: AgentContext | None = None,
 ) -> AgentMessage:
     """Convenience function to build an agent message without instantiating agent.
-    
+
     Use this in existing code paths that just need message generation.
-    
+
     Args:
         verdict: "pass", "warn", or "fail"
         rule_ids: List of triggered rule IDs (e.g., ["Q001", "Q011"])
         context: Optional AgentContext; uses defaults if not provided
-    
+
     Returns:
         AgentMessage ready for CLI/GUI rendering
     """
     ctx = context or AgentContext()
     ctx.record_rules(rule_ids, verdict=verdict)
-    
+
     agent = MeasurementAgent(context=ctx)
     return agent._build_message(verdict, rule_ids)

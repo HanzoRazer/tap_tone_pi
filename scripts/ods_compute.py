@@ -18,6 +18,7 @@ Usage:
         --frequencies 100,150,185,220,300 \
         --out ./captures/grid_run_001/derived/ods
 """
+
 from __future__ import annotations
 
 import argparse
@@ -60,7 +61,7 @@ def compute_transfer_function(
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Compute transfer function H(f) = FFT(roving) / FFT(reference).
-    
+
     Returns:
         freqs: frequency bins (Hz)
         H: complex transfer function
@@ -68,21 +69,21 @@ def compute_transfer_function(
     # Preprocessing
     ref = _highpass(reference - np.mean(reference), sample_rate, highpass_hz)
     rov = _highpass(roving - np.mean(roving), sample_rate, highpass_hz)
-    
+
     # Window
     window = np.hanning(len(ref)).astype(np.float32)
     ref_w = ref * window
     rov_w = rov * window
-    
+
     # FFT
     ref_fft = rfft(ref_w)
     rov_fft = rfft(rov_w)
     freqs = rfftfreq(len(ref), d=1.0 / sample_rate)
-    
+
     # Transfer function with regularization to avoid division by zero
     eps = 1e-10 * np.max(np.abs(ref_fft))
     H = rov_fft / (ref_fft + eps)
-    
+
     return freqs.astype(np.float32), H.astype(np.complex64)
 
 
@@ -99,7 +100,7 @@ def load_grid_points(capture_dir: Path) -> List[Dict[str, Any]]:
         points_dir = capture_dir / "points"
         if not points_dir.exists():
             raise FileNotFoundError(f"No grid.json or points/ found in {capture_dir}")
-        
+
         points = []
         for point_dir in sorted(points_dir.iterdir()):
             if point_dir.is_dir():
@@ -107,13 +108,15 @@ def load_grid_points(capture_dir: Path) -> List[Dict[str, Any]]:
                 if meta_path.exists():
                     with open(meta_path, "r", encoding="utf-8") as f:
                         meta = json.load(f)
-                    points.append({
-                        "id": meta["point_id"],
-                        "x": meta["position"]["x"],
-                        "y": meta["position"]["y"],
-                    })
+                    points.append(
+                        {
+                            "id": meta["point_id"],
+                            "x": meta["position"]["x"],
+                            "y": meta["position"]["y"],
+                        }
+                    )
         return points
-    
+
     with open(grid_path, "r", encoding="utf-8") as f:
         grid_data = json.load(f)
     return grid_data["points"]
@@ -132,55 +135,55 @@ def main() -> int:
     ap.add_argument("--out", required=True, help="Output directory for ODS results")
     ap.add_argument("--highpass", type=float, default=20.0, help="Highpass filter (Hz)")
     args = ap.parse_args()
-    
+
     capture_dir = Path(args.capture_dir)
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Parse target frequencies
     target_freqs = [float(f.strip()) for f in args.frequencies.split(",")]
-    
+
     # Load grid points
     points = load_grid_points(capture_dir)
     print(f"Processing {len(points)} grid points...")
-    
+
     # Compute transfer functions for all points
     all_H: Dict[str, np.ndarray] = {}
     freqs: Optional[np.ndarray] = None
     sample_rate: Optional[int] = None
-    
+
     for point in points:
         point_id = point["id"]
         point_dir = capture_dir / "points" / point_id
-        
+
         if not point_dir.exists():
             print(f"  Warning: {point_id} not found, skipping")
             continue
-        
+
         audio, sr = load_point_audio(point_dir)
         if sample_rate is None:
             sample_rate = sr
-        
+
         # Channel 0 = reference, Channel 1 = roving
         reference = audio[:, 0]
         roving = audio[:, 1]
-        
+
         f, H = compute_transfer_function(reference, roving, sr, args.highpass)
-        
+
         if freqs is None:
             freqs = f
-        
+
         all_H[point_id] = H
         print(f"  {point_id}: H(f) computed ({len(H)} bins)")
-    
+
     if freqs is None:
         print("Error: No valid captures found")
         return 1
-    
+
     # Save full transfer function data (for later analysis)
     point_ids = list(all_H.keys())
     H_matrix = np.array([all_H[pid] for pid in point_ids])  # shape: (n_points, n_freqs)
-    
+
     np.savez_compressed(
         out_dir / "transfer_functions.npz",
         point_ids=np.array(point_ids),
@@ -188,28 +191,30 @@ def main() -> int:
         H_real=H_matrix.real,
         H_imag=H_matrix.imag,
     )
-    
+
     # Generate ODS for each target frequency
     ods_files = []
     for target_hz in target_freqs:
         idx = find_nearest_freq_idx(freqs, target_hz)
         actual_hz = float(freqs[idx])
-        
+
         ods_values = []
         for point in points:
             pid = point["id"]
             if pid not in all_H:
                 continue
-            
+
             H_val = all_H[pid][idx]
-            ods_values.append({
-                "point_id": pid,
-                "x": point["x"],
-                "y": point["y"],
-                "magnitude": float(np.abs(H_val)),
-                "phase_deg": float(np.angle(H_val, deg=True)),
-            })
-        
+            ods_values.append(
+                {
+                    "point_id": pid,
+                    "x": point["x"],
+                    "y": point["y"],
+                    "magnitude": float(np.abs(H_val)),
+                    "phase_deg": float(np.angle(H_val, deg=True)),
+                }
+            )
+
         ods_data = {
             "artifact_type": "ods_shape",
             "target_frequency_hz": target_hz,
@@ -218,15 +223,15 @@ def main() -> int:
             "n_points": len(ods_values),
             "values": ods_values,
         }
-        
+
         filename = f"ods_f_{actual_hz:.1f}Hz.json"
         ods_path = out_dir / filename
         with open(ods_path, "w", encoding="utf-8") as f:
             json.dump(ods_data, f, indent=2)
-        
+
         ods_files.append(filename)
         print(f"  ODS @ {actual_hz:.1f} Hz → {filename}")
-    
+
     # Write summary
     summary = {
         "artifact_type": "ods_summary",
@@ -240,10 +245,10 @@ def main() -> int:
         "ods_files": ods_files,
         "transfer_function_file": "transfer_functions.npz",
     }
-    
+
     with open(out_dir / "ods_summary.json", "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
-    
+
     print(f"\nODS computation complete: {out_dir}")
     return 0
 

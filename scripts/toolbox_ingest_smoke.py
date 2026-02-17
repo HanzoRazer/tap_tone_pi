@@ -3,6 +3,7 @@
 ToolBox ingest smoke: validates demo Analyzer artifacts against the registry
 contracts and prints a concise summary. Exit non-zero on failure.
 """
+
 from __future__ import annotations
 import json
 import sys
@@ -28,7 +29,7 @@ def load_registry() -> Dict[Tuple[str, str], dict]:
     """Load schema registry and return index mapping (schema_id, version) -> schema."""
     data = json.loads(REG.read_text(encoding="utf-8"))
     index: Dict[Tuple[str, str], dict] = {}
-    
+
     # Handle both array and object registry formats
     schemas = data.get("schemas", {})
     if isinstance(schemas, dict):
@@ -52,7 +53,7 @@ def load_registry() -> Dict[Tuple[str, str], dict]:
             schema_path = REPO / path_str if path_str else None
             if schema_path and schema_path.exists():
                 index[(sid, ver)] = json.loads(schema_path.read_text(encoding="utf-8"))
-    
+
     return index
 
 
@@ -62,15 +63,15 @@ def validate(doc: dict, schemas: Dict[Tuple[str, str], dict]) -> List[str]:
     sid = str(doc.get("schema_id") or "")
     ver = str(doc.get("schema_version") or "")
     errs: List[str] = []
-    
+
     # Phase-2 artifacts use schema_version as both identifier and version
     # e.g. "phase2_ods_snapshot_v2" is the schema_version const
     if not sid and ver:
         sid = ver  # Use schema_version as identifier for lookup
-    
+
     if not sid:
         return [f"missing schema_id/version: {sid}/{ver}"]
-    
+
     key = (sid, ver)
     if key not in schemas:
         # Try by schema_version_const (for phase2 schemas)
@@ -82,13 +83,13 @@ def validate(doc: dict, schemas: Dict[Tuple[str, str], dict]) -> List[str]:
             key = matching[0]
         else:
             return [f"no schema for ({sid}, {ver}) in registry"]
-    
+
     schema = schemas[key]
     v = Draft202012Validator(schema)
     for e in sorted(v.iter_errors(doc), key=lambda e: str(e.path)):
         path_str = "/".join(map(str, e.path)) or "<root>"
         errs.append(f"{path_str}: {e.message}")
-    
+
     return errs
 
 
@@ -101,12 +102,14 @@ def main() -> int:
     if not REG.exists():
         print("❌ missing contracts/schema_registry.json", file=sys.stderr)
         return 2
-    
+
     schemas = load_registry()
     if not schemas:
-        print("⚠️  No schemas loaded from registry; skipping validation", file=sys.stderr)
+        print(
+            "⚠️  No schemas loaded from registry; skipping validation", file=sys.stderr
+        )
         # Don't fail if registry is empty (schemas may be in different format)
-    
+
     # Targets: pick representative artifacts from each demo
     artifacts = [
         CHLADNI_DIR / "chladni_run.json",
@@ -118,21 +121,21 @@ def main() -> int:
     bad: List[str] = []
     ok = 0
     skipped = 0
-    
+
     for p in artifacts:
         if not p.exists():
             print(f"⚠️  skipping (not found): {p.relative_to(REPO)}")
             skipped += 1
             continue
-        
+
         doc = read_json(p)
-        
+
         # If no schemas loaded, just check the artifact is valid JSON with expected fields
         if not schemas:
             if "schema_id" in doc or "artifact_type" in doc:
                 ok += 1
             continue
-        
+
         errs = validate(doc, schemas)
         if errs:
             bad.append(f"{p.relative_to(REPO)} invalid:\n  - " + "\n  - ".join(errs))
@@ -149,16 +152,20 @@ def main() -> int:
             # Check expected artifact count
             arts = md["artifacts"]
             if len(arts) < 4:
-                bad.append(f"{man.relative_to(REPO)}: expected ≥4 artifacts, got {len(arts)}")
+                bad.append(
+                    f"{man.relative_to(REPO)}: expected ≥4 artifacts, got {len(arts)}"
+                )
 
     if bad:
         print("❌ ToolBox ingest smoke failed:")
         for b in bad:
             print(" -", b)
         return 1
-    
+
     total = len(artifacts)
-    print(f"✅ ToolBox ingest smoke passed ({ok}/{total - skipped} validated, {skipped} skipped).")
+    print(
+        f"✅ ToolBox ingest smoke passed ({ok}/{total - skipped} validated, {skipped} skipped)."
+    )
     return 0
 
 

@@ -6,6 +6,7 @@ Usage::
     banner = InfoBanner(parent, text="Some message.", on_dismiss=callback)
     banner.pack(fill=tk.X, pady=(0, 8))
 """
+
 from __future__ import annotations
 
 import tkinter as tk

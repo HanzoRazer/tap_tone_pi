@@ -3,6 +3,7 @@
 This package provides shared helpers for exporting, validating, and comparing
 viewer_pack_v1 evidence bundles.
 """
+
 from tap_tone.viewer_pack.manifest import (
     load_viewer_pack,
     canonical_json_bytes,

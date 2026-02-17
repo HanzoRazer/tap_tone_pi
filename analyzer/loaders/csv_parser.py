@@ -46,7 +46,7 @@ class SpectrumCSVParser:
         # Detect delimiter
         delimiter = self._detect_delimiter(file_path)
 
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f, delimiter=delimiter)
 
             # Map column names
@@ -106,28 +106,23 @@ class SpectrumCSVParser:
             "coherence": coherence,
             "phase_deg": phase_deg,
             "point_count": len(freq_hz),
-            "freq_range": [min(freq_hz), max(freq_hz)] if freq_hz else [0, 0]
+            "freq_range": [min(freq_hz), max(freq_hz)] if freq_hz else [0, 0],
         }
 
     def _detect_delimiter(self, file_path: Path) -> str:
         """Detect CSV delimiter (comma or tab)."""
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             first_line = f.readline()
 
             # Count delimiters
-            comma_count = first_line.count(',')
-            tab_count = first_line.count('\t')
+            comma_count = first_line.count(",")
+            tab_count = first_line.count("\t")
 
-            return '\t' if tab_count > comma_count else ','
+            return "\t" if tab_count > comma_count else ","
 
     def _map_columns(self, fieldnames: List[str]) -> Dict[str, Optional[str]]:
         """Map detected column names to standard names."""
-        col_map = {
-            "freq_hz": None,
-            "H_mag": None,
-            "coherence": None,
-            "phase_deg": None
-        }
+        col_map = {"freq_hz": None, "H_mag": None, "coherence": None, "phase_deg": None}
 
         for fn in fieldnames:
             fn_lower = fn.lower()

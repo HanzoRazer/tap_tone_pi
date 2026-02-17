@@ -196,4 +196,3 @@ Key Phase 2 schemas:
 ## Contributing
 
 See `CONTRIBUTING.md`.
-

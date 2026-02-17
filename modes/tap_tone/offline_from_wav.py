@@ -46,13 +46,9 @@ def analyze(
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(
-        description="Offline tap-tone analysis from WAV file"
-    )
+    ap = argparse.ArgumentParser(description="Offline tap-tone analysis from WAV file")
     ap.add_argument("--wav", required=True, help="Path to WAV file")
-    ap.add_argument(
-        "--peaks", type=int, default=6, help="Number of peaks to extract"
-    )
+    ap.add_argument("--peaks", type=int, default=6, help="Number of peaks to extract")
     ap.add_argument(
         "--labels",
         nargs="*",

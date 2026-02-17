@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import replace
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 from tap_tone_pi.agentic.contracts.analyzer_attention import (
     AttentionAction,
@@ -54,7 +54,9 @@ def _coerce_directive(obj: Any) -> Optional[AttentionDirectiveV1]:
             if focus_obj is None:
                 focus_obj = FocusTarget(target_type="session", target_id="current")
             return AttentionDirectiveV1(
-                directive_id=str(obj.get("directive_id") or f"policy_{uuid.uuid4().hex[:8]}"),
+                directive_id=str(
+                    obj.get("directive_id") or f"policy_{uuid.uuid4().hex[:8]}"
+                ),
                 action=action_enum,
                 summary=str(obj.get("summary") or ""),
                 focus=focus_obj,
@@ -66,12 +68,7 @@ def _coerce_directive(obj: Any) -> Optional[AttentionDirectiveV1]:
 
 
 def _dim(uwsm: dict, name: str, default_value: str = "medium") -> str:
-    return (
-        (uwsm or {})
-        .get("dimensions", {})
-        .get(name, {})
-        .get("value", default_value)
-    )
+    return (uwsm or {}).get("dimensions", {}).get(name, {}).get("value", default_value)
 
 
 def _capability_allows_view_adjustment(capability: Any) -> bool:
@@ -79,7 +76,9 @@ def _capability_allows_view_adjustment(capability: Any) -> bool:
         return False
     # Dict-style (used in tests and inline capabilities)
     if isinstance(capability, dict):
-        return bool(capability.get("automation_limits", {}).get("agent_can_adjust_view", False))
+        return bool(
+            capability.get("automation_limits", {}).get("agent_can_adjust_view", False)
+        )
     # Dataclass-style (ToolCapabilityV1)
     limits = getattr(capability, "automation_limits", None)
     if limits is None:
@@ -144,7 +143,11 @@ def decide(
 
     # Initiative gate: user_led suppresses proactive suggestions
     soft_prompt = False
-    if initiative == "user_led" and moment_name in ("HESITATION", "FINDING", "FIRST_SIGNAL"):
+    if initiative == "user_led" and moment_name in (
+        "HESITATION",
+        "FINDING",
+        "FIRST_SIGNAL",
+    ):
         # Allow either no directive or a very soft INSPECT with a "Want a suggestion?" prompt.
         if moment_name == "HESITATION":
             action = "INSPECT"
@@ -170,7 +173,11 @@ def decide(
 
     # In M1/M2: emit directive unless action == NONE
     emit_directive = action != "NONE"
-    directive = _build_directive(action, guidance=guidance, soft_prompt=soft_prompt) if emit_directive else None
+    directive = (
+        _build_directive(action, guidance=guidance, soft_prompt=soft_prompt)
+        if emit_directive
+        else None
+    )
     directive = _coerce_directive(directive)
 
     # Guidance density gate: summary-only when very_low
@@ -182,11 +189,16 @@ def decide(
     if mode == "M2":
         if _capability_allows_view_adjustment(capability):
             # One-Trace onboarding for FIRST_SIGNAL + FTUE
-            if moment_name == "FIRST_SIGNAL" and bool(context.get("first_time_user", False)):
+            if moment_name == "FIRST_SIGNAL" and bool(
+                context.get("first_time_user", False)
+            ):
                 primary_panel = context.get("primary_panel", "spectrum")
                 primary_trace = context.get("primary_trace", "main")
                 issue_commands = [
-                    {"name": "hide_all_except", "parameters": {"panel_id": primary_panel}},
+                    {
+                        "name": "hide_all_except",
+                        "parameters": {"panel_id": primary_panel},
+                    },
                     {"name": "focus_trace", "parameters": {"trace_id": primary_trace}},
                 ]
             # OVERLOAD recovery: reset view to defaults
@@ -210,7 +222,9 @@ def decide(
     return out
 
 
-def _build_directive(action: str, *, guidance: str, soft_prompt: bool) -> AttentionDirectiveV1:
+def _build_directive(
+    action: str, *, guidance: str, soft_prompt: bool
+) -> AttentionDirectiveV1:
     """
     Build an AttentionDirectiveV1 dataclass for the given action.
     """
@@ -237,7 +251,9 @@ def _build_directive(action: str, *, guidance: str, soft_prompt: bool) -> Attent
         detail = "Want a suggestion for what to try next?"
 
     # Map uppercase action string to AttentionAction enum (lowercase values)
-    action_enum = AttentionAction(action.lower()) if action != "NONE" else AttentionAction.INSPECT
+    action_enum = (
+        AttentionAction(action.lower()) if action != "NONE" else AttentionAction.INSPECT
+    )
 
     return AttentionDirectiveV1(
         directive_id=f"policy_{uuid.uuid4().hex[:8]}",

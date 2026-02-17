@@ -10,10 +10,9 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Tuple, Optional
+from typing import Dict, Tuple, Optional
 
 from tap_tone_pi.agentic.spine.uwsm_update import ensure_uwsm
 
@@ -68,7 +67,9 @@ def _extract_confidence_map(uwsm: dict) -> Dict[str, float]:
     return out
 
 
-def load_uwsm_state(*, now: Optional[datetime] = None) -> Tuple[dict, Dict[str, float], datetime]:
+def load_uwsm_state(
+    *, now: Optional[datetime] = None
+) -> Tuple[dict, Dict[str, float], datetime]:
     """
     Load UWSM from disk. Fail-closed to defaults.
     Returns (uwsm_dict, confidence_map, updated_at_dt).
@@ -88,7 +89,10 @@ def load_uwsm_state(*, now: Optional[datetime] = None) -> Tuple[dict, Dict[str, 
         data = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(data, dict):
             return uwsm, conf, updated_at
-        if data.get("schema_id") != SCHEMA_ID or data.get("schema_version") != SCHEMA_VERSION:
+        if (
+            data.get("schema_id") != SCHEMA_ID
+            or data.get("schema_version") != SCHEMA_VERSION
+        ):
             return uwsm, conf, updated_at
         loaded = data.get("uwsm")
         if not isinstance(loaded, dict):

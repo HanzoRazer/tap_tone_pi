@@ -4,6 +4,7 @@ Pytest gate: validate viewer_pack_v1 exports for known-good Phase 2 sessions.
 
 Runs the CLI validator against pre-exported packs; fails fast on first failure.
 """
+
 import os
 import subprocess
 import sys

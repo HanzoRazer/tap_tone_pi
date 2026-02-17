@@ -21,6 +21,7 @@ Usage:
         --method 3point --span 400 --width 20 --thickness 3.0 \\
         --rate 50 --fit-pct-low 10 --fit-pct-high 90
 """
+
 from __future__ import annotations
 
 import argparse

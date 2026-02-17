@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """
 Validates that the Chladni demo produces a run-level manifest with the
 expected entries (WAV, peaks, images, chladni_run.json) and that the
@@ -16,6 +17,7 @@ REPO = Path(__file__).resolve().parents[1]
 RUN_DIR = REPO / "out" / "DEMO" / "chladni"
 MANIFEST = RUN_DIR / "manifest.json"
 
+
 def _sha256_file(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as f:
@@ -23,13 +25,16 @@ def _sha256_file(path: Path) -> str:
             h.update(chunk)
     return h.hexdigest()
 
+
 def _run_cmd(args):
     subprocess.check_call(args, cwd=REPO)
+
 
 def _clean_run_dir():
     """Remove existing demo artifacts to ensure clean state."""
     if RUN_DIR.exists():
         shutil.rmtree(RUN_DIR)
+
 
 def _ensure_demo_artifacts():
     # Clean before running to ensure deterministic state
@@ -37,6 +42,7 @@ def _ensure_demo_artifacts():
     # The make_demo.py script runs the full flow:
     # WAV → peaks_from_wav → index_patterns (which appends to manifest)
     _run_cmd([sys.executable, "examples/chladni/make_demo.py"])
+
 
 def test_chladni_manifest_hashes_and_idempotency():
     _ensure_demo_artifacts()
@@ -84,4 +90,6 @@ def test_chladni_manifest_hashes_and_idempotency():
     _run_cmd([sys.executable, "examples/chladni/make_demo.py"])
     doc2 = json.loads(MANIFEST.read_text(encoding="utf-8"))
     after_count = len(doc2.get("artifacts") or [])
-    assert after_count == before_count, "manifest append is not idempotent; artifact duplication detected"
+    assert (
+        after_count == before_count
+    ), "manifest append is not idempotent; artifact duplication detected"

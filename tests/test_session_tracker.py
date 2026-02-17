@@ -4,12 +4,10 @@ Verify that fatigue stats are tracked consistently across entrypoints
 via the single-source SessionTracker, and that the standalone path
 (MeasurementAgent) also tracks verdict streaks correctly.
 """
-import pytest
+
 from dataclasses import dataclass, field
 
 from tap_tone_pi.agent.messages import (
-    AgentContext,
-    AgentMessage,
     SessionTracker,
     build_agent_message,
     render_agent_message_cli,
@@ -25,6 +23,7 @@ from tap_tone_pi.core.quality_policy import (
 # =============================================================================
 # Helpers: build real QualityVerdict objects
 # =============================================================================
+
 
 def _make_verdict(verdict: Verdict, rule_ids: list[str]) -> QualityVerdict:
     """Build a QualityVerdict with the given triggered rule IDs."""
@@ -52,6 +51,7 @@ def _fail_q001() -> QualityVerdict:
 # =============================================================================
 # SessionTracker unit tests
 # =============================================================================
+
 
 class TestSessionTrackerRuleCounts:
     """Verify rule_counts, consecutive_hits, and verdict streak."""
@@ -125,6 +125,7 @@ class TestSessionTrackerRuleCounts:
 # =============================================================================
 # Integrated path: build_agent_message + SessionTracker end-to-end
 # =============================================================================
+
 
 class TestIntegratedEntrypointConsistency:
     """Two consecutive WARNs through SessionTracker produce compact on second."""
@@ -212,13 +213,13 @@ class TestIntegratedEntrypointConsistency:
 # Standalone path: MeasurementAgent verdict streak tracking
 # =============================================================================
 
+
 class TestStandaloneEntrypointConsistency:
     """MeasurementAgent.on_verdict() now tracks verdict streaks via record_rules."""
 
     def test_verdict_streak_tracked(self):
         """Two identical verdicts through MeasurementAgent increment streak."""
         from tap_tone_pi.agent import MeasurementAgent
-        from tap_tone_pi.agent.types import AgentContext as StandaloneCtx
 
         # Mock verdict compatible with standalone path
         @dataclass
@@ -277,19 +278,25 @@ class TestStandaloneEntrypointConsistency:
         agent = MeasurementAgent()
 
         # Two warns
-        v_warn = MockVerdict(verdict=WarnV(), triggered=[MockTriggered(MockRule("Q011"))])
+        v_warn = MockVerdict(
+            verdict=WarnV(), triggered=[MockTriggered(MockRule("Q011"))]
+        )
         agent.on_verdict(v_warn)
         agent.on_verdict(v_warn)
         assert agent.context.consecutive_same_verdict == 2
 
         # Switch to fail
-        v_fail = MockVerdict(verdict=FailV(), triggered=[MockTriggered(MockRule("Q001"))])
+        v_fail = MockVerdict(
+            verdict=FailV(), triggered=[MockTriggered(MockRule("Q001"))]
+        )
         agent.on_verdict(v_fail)
         assert agent.context.consecutive_same_verdict == 1
 
     def test_standalone_build_agent_message_tracks_verdict(self):
         """Standalone convenience build_agent_message also tracks verdict."""
-        from tap_tone_pi.agent.measurement_agent import build_agent_message as standalone_bam
+        from tap_tone_pi.agent.measurement_agent import (
+            build_agent_message as standalone_bam,
+        )
         from tap_tone_pi.agent.types import AgentContext as StandaloneCtx
 
         ctx = StandaloneCtx()
@@ -304,13 +311,13 @@ class TestStandaloneEntrypointConsistency:
 # Cross-path consistency: same history → same output
 # =============================================================================
 
+
 class TestCrossPathConsistency:
     """SessionTracker and MeasurementAgent produce consistent history state."""
 
     def test_rule_counts_match_after_two_verdicts(self):
         """Both paths agree on rule_counts after identical verdict sequences."""
         from tap_tone_pi.agent import MeasurementAgent
-        from tap_tone_pi.agent.types import AgentContext as StandaloneCtx
 
         # --- Integrated path via SessionTracker ---
         tracker = SessionTracker()

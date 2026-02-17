@@ -19,8 +19,9 @@ from datetime import datetime
 @dataclass
 class TuningPoint:
     """Single measurement point in the tuning process."""
-    mass_g: float                    # Plate mass in grams
-    freq_hz: float                   # Measured frequency (monopole, etc.)
+
+    mass_g: float  # Plate mass in grams
+    freq_hz: float  # Measured frequency (monopole, etc.)
     deflection_x_mm: Optional[float] = None  # Cross-grain deflection
     deflection_y_mm: Optional[float] = None  # Along-grain deflection
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
@@ -33,7 +34,7 @@ class TuningPoint:
             "deflection_x_mm": self.deflection_x_mm,
             "deflection_y_mm": self.deflection_y_mm,
             "timestamp": self.timestamp,
-            "notes": self.notes
+            "notes": self.notes,
         }
 
     @classmethod
@@ -44,20 +45,21 @@ class TuningPoint:
             deflection_x_mm=d.get("deflection_x_mm"),
             deflection_y_mm=d.get("deflection_y_mm"),
             timestamp=d.get("timestamp", ""),
-            notes=d.get("notes", "")
+            notes=d.get("notes", ""),
         )
 
 
 @dataclass
 class RegressionResult:
     """Result of linear regression fit."""
-    slope: float           # Hz per gram (typically negative - less mass = higher freq)
-    intercept: float       # Frequency at zero mass (theoretical)
-    r_squared: float       # Goodness of fit (0-1)
-    n_points: int          # Number of data points
+
+    slope: float  # Hz per gram (typically negative - less mass = higher freq)
+    intercept: float  # Frequency at zero mass (theoretical)
+    r_squared: float  # Goodness of fit (0-1)
+    n_points: int  # Number of data points
 
     # Derived predictions
-    hz_per_gram: float     # How much frequency changes per gram removed
+    hz_per_gram: float  # How much frequency changes per gram removed
 
     def predict_freq(self, mass_g: float) -> float:
         """Predict frequency for a given mass."""
@@ -66,7 +68,7 @@ class RegressionResult:
     def predict_mass_for_freq(self, target_freq_hz: float) -> float:
         """Predict mass needed to achieve target frequency."""
         if abs(self.slope) < 1e-9:
-            return float('inf')  # Slope too flat
+            return float("inf")  # Slope too flat
         return (target_freq_hz - self.intercept) / self.slope
 
     def compute_mass_delta(self, current_mass_g: float, target_freq_hz: float) -> float:
@@ -132,9 +134,9 @@ class PlateTuningRegression:
         sum_x = np.sum(masses)
         sum_y = np.sum(freqs)
         sum_xy = np.sum(masses * freqs)
-        sum_x2 = np.sum(masses ** 2)
+        sum_x2 = np.sum(masses**2)
 
-        denom = n * sum_x2 - sum_x ** 2
+        denom = n * sum_x2 - sum_x**2
         if abs(denom) < 1e-9:
             return None  # Points are collinear in x
 
@@ -152,7 +154,7 @@ class PlateTuningRegression:
             intercept=intercept,
             r_squared=r_squared,
             n_points=n,
-            hz_per_gram=slope  # Direct interpretation
+            hz_per_gram=slope,  # Direct interpretation
         )
 
         return self._result
@@ -182,10 +184,7 @@ class PlateTuningRegression:
 
         # Compute predictions (objective math)
         target_mass = self.result.predict_mass_for_freq(self.target_freq_hz)
-        mass_delta = self.result.compute_mass_delta(
-            current.mass_g,
-            self.target_freq_hz
-        )
+        mass_delta = self.result.compute_mass_delta(current.mass_g, self.target_freq_hz)
 
         return {
             "current_mass_g": current.mass_g,
@@ -195,8 +194,11 @@ class PlateTuningRegression:
             "mass_delta_g": mass_delta,  # positive = current > target
             "hz_per_gram": self.result.hz_per_gram,
             "r_squared": self.result.r_squared,
-            "confidence": "high" if self.result.r_squared > 0.9 else
-                         "medium" if self.result.r_squared > 0.7 else "low",
+            "confidence": "high"
+            if self.result.r_squared > 0.9
+            else "medium"
+            if self.result.r_squared > 0.7
+            else "low",
         }
 
     def get_trajectory_data(self) -> Dict[str, Any]:
@@ -207,7 +209,11 @@ class PlateTuningRegression:
             Dict with points, regression line, and target overlay
         """
         if not self.points:
-            return {"points": {"mass_g": [], "freq_hz": [], "labels": []}, "line": None, "target": None}
+            return {
+                "points": {"mass_g": [], "freq_hz": [], "labels": []},
+                "line": None,
+                "target": None,
+            }
 
         masses = [p.mass_g for p in self.points]
         freqs = [p.freq_hz for p in self.points]
@@ -216,10 +222,10 @@ class PlateTuningRegression:
             "points": {
                 "mass_g": masses,
                 "freq_hz": freqs,
-                "labels": [f"#{i+1}" for i in range(len(self.points))]
+                "labels": [f"#{i+1}" for i in range(len(self.points))],
             },
             "line": None,
-            "target": None
+            "target": None,
         }
 
         if self.result:
@@ -241,14 +247,14 @@ class PlateTuningRegression:
                 "mass_g": line_masses.tolist(),
                 "freq_hz": line_freqs.tolist(),
                 "equation": f"f = {self.result.slope:.3f}m + {self.result.intercept:.1f}",
-                "r_squared": self.result.r_squared
+                "r_squared": self.result.r_squared,
             }
 
         if self.target_freq_hz and self.result:
             target_mass = self.result.predict_mass_for_freq(self.target_freq_hz)
             data["target"] = {
                 "freq_hz": self.target_freq_hz,
-                "predicted_mass_g": target_mass
+                "predicted_mass_g": target_mass,
             }
 
         return data
@@ -258,7 +264,7 @@ class PlateTuningRegression:
         return {
             "plate_name": self.plate_name,
             "target_freq_hz": self.target_freq_hz,
-            "points": [p.to_dict() for p in self.points]
+            "points": [p.to_dict() for p in self.points],
         }
 
     @classmethod
@@ -273,7 +279,7 @@ class PlateTuningRegression:
 
 def quick_predict(
     points: List[Tuple[float, float]],  # [(mass_g, freq_hz), ...]
-    target_freq_hz: float
+    target_freq_hz: float,
 ) -> Dict[str, float]:
     """
     Quick prediction without creating full objects.

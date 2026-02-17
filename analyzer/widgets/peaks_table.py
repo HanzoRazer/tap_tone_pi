@@ -5,8 +5,12 @@ Peaks table widget for displaying detected resonance peaks.
 from typing import List, Dict, Any
 
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem,
-    QHeaderView, QLabel
+    QWidget,
+    QVBoxLayout,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+    QLabel,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 
@@ -34,13 +38,9 @@ class PeaksTableWidget(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels([
-            "Frequency (Hz)",
-            "Magnitude",
-            "Coherence",
-            "Mode",
-            "Notes"
-        ])
+        self.table.setHorizontalHeaderLabels(
+            ["Frequency (Hz)", "Magnitude", "Coherence", "Mode", "Notes"]
+        )
 
         # Configure table
         self.table.setAlternatingRowColors(True)
@@ -83,27 +83,33 @@ class PeaksTableWidget(QWidget):
         for row, peak in enumerate(self._peaks):
             # Frequency
             freq_item = QTableWidgetItem(f"{peak.get('freq_hz', 0):.1f}")
-            freq_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            freq_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            )
             self.table.setItem(row, 0, freq_item)
 
             # Magnitude
             mag_item = QTableWidgetItem(f"{peak.get('magnitude', 0):.4f}")
-            mag_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            mag_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            )
             self.table.setItem(row, 1, mag_item)
 
             # Coherence
-            coh = peak.get('coherence')
+            coh = peak.get("coherence")
             coh_text = f"{coh:.3f}" if coh is not None else "-"
             coh_item = QTableWidgetItem(coh_text)
-            coh_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            coh_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            )
             self.table.setItem(row, 2, coh_item)
 
             # Mode identification
-            mode_item = QTableWidgetItem(peak.get('mode', ''))
+            mode_item = QTableWidgetItem(peak.get("mode", ""))
             self.table.setItem(row, 3, mode_item)
 
             # Notes
-            notes_item = QTableWidgetItem(peak.get('notes', ''))
+            notes_item = QTableWidgetItem(peak.get("notes", ""))
             self.table.setItem(row, 4, notes_item)
 
     def _on_selection_changed(self):
@@ -132,14 +138,16 @@ class PeaksTableWidget(QWidget):
         """Export peaks to CSV file."""
         import csv
 
-        with open(file_path, 'w', newline='') as f:
+        with open(file_path, "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow(['freq_hz', 'magnitude', 'coherence', 'mode', 'notes'])
+            writer.writerow(["freq_hz", "magnitude", "coherence", "mode", "notes"])
             for peak in self._peaks:
-                writer.writerow([
-                    peak.get('freq_hz', ''),
-                    peak.get('magnitude', ''),
-                    peak.get('coherence', ''),
-                    peak.get('mode', ''),
-                    peak.get('notes', '')
-                ])
+                writer.writerow(
+                    [
+                        peak.get("freq_hz", ""),
+                        peak.get("magnitude", ""),
+                        peak.get("coherence", ""),
+                        peak.get("mode", ""),
+                        peak.get("notes", ""),
+                    ]
+                )

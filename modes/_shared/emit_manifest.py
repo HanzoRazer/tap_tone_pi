@@ -10,6 +10,7 @@ Usage:
 
 Output: JSON manifest with SHA-256 hashes for all artifacts.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -51,12 +52,14 @@ def write_manifest(
     items = []
     for a in artifacts:
         q = Path(a)
-        items.append({
-            "path": q.as_posix(),
-            "exists": q.exists(),
-            "bytes": q.stat().st_size if q.exists() else 0,
-            "sha256": _sha256(q) if q.exists() and q.is_file() else None,
-        })
+        items.append(
+            {
+                "path": q.as_posix(),
+                "exists": q.exists(),
+                "bytes": q.stat().st_size if q.exists() else 0,
+                "sha256": _sha256(q) if q.exists() and q.is_file() else None,
+            }
+        )
 
     manifest = {
         "artifact_type": "measurement_manifest",

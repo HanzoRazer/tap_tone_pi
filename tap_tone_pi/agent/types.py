@@ -3,6 +3,7 @@
 These are the structured outputs the agent produces;
 CLI/GUI renders them appropriately.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -12,14 +13,16 @@ from typing import Literal
 
 class UserStage(str, Enum):
     """User experience level for progressive disclosure."""
+
     FIRST_RUN = "first_run"  # Never completed a PASS
-    NOVICE = "novice"        # ≤5 sessions or ≤20 captures
-    REGULAR = "regular"      # Steady usage
-    EXPERT = "expert"        # Explicitly toggled or inferred
+    NOVICE = "novice"  # ≤5 sessions or ≤20 captures
+    REGULAR = "regular"  # Steady usage
+    EXPERT = "expert"  # Explicitly toggled or inferred
 
 
 class ActionId(str, Enum):
     """Canonical action identifiers."""
+
     RETRY = "retry"
     ACCEPT = "accept"
     ADVANCE = "advance"
@@ -38,6 +41,7 @@ class ActionId(str, Enum):
 @dataclass
 class SuggestedAction:
     """A recommended action the operator can take."""
+
     action_id: ActionId
     label: str
     rationale: str
@@ -55,6 +59,7 @@ class SuggestedAction:
 @dataclass
 class AgentMessage:
     """Structured agent response for CLI/GUI rendering."""
+
     title: str
     summary: str
     details: list[str] = field(default_factory=list)
@@ -87,6 +92,7 @@ class AgentMessage:
 @dataclass
 class AgentContext:
     """Minimum context the agent needs to generate messages."""
+
     user_stage: UserStage = UserStage.REGULAR
     workflow: Literal["record", "measure", "phase2"] = "measure"
     point_id: str = ""
@@ -95,7 +101,7 @@ class AgentContext:
     device_name: str = "default"
     sample_rate: int = 48000
     policy_version: str = "1.0.0"
-    
+
     # History tracking
     rule_counts_session: dict[str, int] = field(default_factory=dict)
     consecutive_same_verdict: int = 0
@@ -112,9 +118,13 @@ class AgentContext:
                      If empty, verdict streak is not updated (backward compat).
         """
         for rule_id in rule_ids:
-            self.rule_counts_session[rule_id] = self.rule_counts_session.get(rule_id, 0) + 1
-            self.consecutive_rule_hits[rule_id] = self.consecutive_rule_hits.get(rule_id, 0) + 1
-        
+            self.rule_counts_session[rule_id] = (
+                self.rule_counts_session.get(rule_id, 0) + 1
+            )
+            self.consecutive_rule_hits[rule_id] = (
+                self.consecutive_rule_hits.get(rule_id, 0) + 1
+            )
+
         # Reset consecutive counts for rules NOT triggered
         for rid in list(self.consecutive_rule_hits.keys()):
             if rid not in rule_ids:

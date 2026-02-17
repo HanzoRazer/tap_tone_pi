@@ -3,21 +3,21 @@
 The agent produces structured AgentMessage; this module formats for output.
 Supports both standalone (types.py) and integrated (messages.py) AgentMessage.
 """
+
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional
 
 # Import standalone types for type hints
-from .types import AgentMessage as StandaloneAgentMessage
 
 
 def _get_severity(msg: Any) -> str:
     """Extract severity from AgentMessage (works with both standalone and integrated)."""
     # Standalone version has .severity property
-    if hasattr(msg, 'severity'):
+    if hasattr(msg, "severity"):
         return msg.severity
     # Integrated version stores in telemetry_tags
-    if hasattr(msg, 'get_tag'):
+    if hasattr(msg, "get_tag"):
         verdict = msg.get_tag("verdict")
         if verdict == "fail":
             return "error"
@@ -25,7 +25,7 @@ def _get_severity(msg: Any) -> str:
             return "warn"
         return "info"
     # Fallback: check telemetry_tags dict
-    if hasattr(msg, 'telemetry_tags'):
+    if hasattr(msg, "telemetry_tags"):
         tags = msg.telemetry_tags
         if isinstance(tags, dict):
             verdict = tags.get("verdict", "pass")
@@ -46,7 +46,7 @@ def _get_severity(msg: Any) -> str:
 
 def _get_action_id(action: Any) -> str:
     """Extract action_id string from action (works with enum or string)."""
-    if hasattr(action.action_id, 'value'):
+    if hasattr(action.action_id, "value"):
         return action.action_id.value
     return str(action.action_id)
 
@@ -55,30 +55,31 @@ def _get_action_id(action: Any) -> str:
 # CLI RENDERING
 # =============================================================================
 
+
 def render_cli(msg: AgentMessage, color: bool = True) -> str:
     """Render AgentMessage for CLI output.
-    
+
     Args:
         msg: The agent message to render
         color: Whether to include ANSI color codes
-    
+
     Returns:
         Formatted string for terminal display
     """
     lines: list[str] = []
     severity = _get_severity(msg)
-    
+
     # Title with severity coloring
     title_line = msg.title
     if color:
         title_line = _colorize(msg.title, severity)
     lines.append(title_line)
     lines.append("=" * len(msg.title))
-    
+
     # Summary
     lines.append("")
     lines.append(msg.summary)
-    
+
     # Details (rule explanations)
     if msg.details:
         lines.append("")
@@ -86,7 +87,7 @@ def render_cli(msg: AgentMessage, color: bool = True) -> str:
         for detail in msg.details:
             for line in detail.split("\n"):
                 lines.append(f"  {line}")
-    
+
     # Suggested actions
     if msg.suggested_actions:
         lines.append("")
@@ -95,7 +96,7 @@ def render_cli(msg: AgentMessage, color: bool = True) -> str:
             suffix = " *" if action.requires_input else ""
             lines.append(f"  {i}. {action.label}{suffix}")
             lines.append(f"     ({action.rationale})")
-    
+
     # Learning hint (FTUE)
     if msg.learning_hint:
         lines.append("")
@@ -103,16 +104,16 @@ def render_cli(msg: AgentMessage, color: bool = True) -> str:
         if color:
             hint = f"\033[36m{hint}\033[0m"  # Cyan
         lines.append(hint)
-    
+
     return "\n".join(lines)
 
 
 def _colorize(text: str, severity: str) -> str:
     """Apply ANSI color based on severity."""
     colors = {
-        "error": "\033[31m",   # Red
-        "warn": "\033[33m",    # Yellow
-        "info": "\033[32m",    # Green
+        "error": "\033[31m",  # Red
+        "warn": "\033[33m",  # Yellow
+        "info": "\033[32m",  # Green
     }
     reset = "\033[0m"
     color = colors.get(severity, "")
@@ -123,9 +124,10 @@ def _colorize(text: str, severity: str) -> str:
 # GUI RENDERING
 # =============================================================================
 
+
 def render_gui(msg: AgentMessage) -> dict:
     """Render AgentMessage for GUI consumption.
-    
+
     Returns a dict suitable for GUI binding:
     - title_text: str
     - title_style: str (css class or style name)
@@ -137,10 +139,10 @@ def render_gui(msg: AgentMessage) -> dict:
     severity = _get_severity(msg)
     style_map = {
         "error": "error",
-        "warn": "warning", 
+        "warn": "warning",
         "info": "success",
     }
-    
+
     # Build details as HTML-like formatted text
     details_parts = []
     for detail in msg.details:
@@ -149,7 +151,7 @@ def render_gui(msg: AgentMessage) -> dict:
         formatted = formatted.replace("[ERROR]", "<b style='color:red'>[ERROR]</b>")
         formatted = formatted.replace("[WARN]", "<b style='color:orange'>[WARN]</b>")
         details_parts.append(f"<p>{formatted}</p>")
-    
+
     return {
         "title_text": msg.title,
         "title_style": style_map.get(severity, "info"),
@@ -173,6 +175,7 @@ def render_gui(msg: AgentMessage) -> dict:
 # COMPACT RENDERING (for logs/JSON)
 # =============================================================================
 
+
 def render_compact(msg: AgentMessage) -> str:
     """Render a one-line summary for logging."""
     severity = _get_severity(msg)
@@ -193,6 +196,7 @@ def render_compact(msg: AgentMessage) -> str:
 # =============================================================================
 # SHADOW DIRECTIVE RENDERING (PR #3 — CLI co-render)
 # =============================================================================
+
 
 def _directive_severity(action: str | None) -> str:
     """Map advisory action to severity for ``_colorize``."""
@@ -349,8 +353,9 @@ def render_cli_shadow_record(
         return _render_shadow_error_path(error, lines, verbose, color)
 
     # ---- extract advisory fields ----
-    action, summary, focus, adv_conf, moment_id, moment_conf, trigger_count = \
+    action, summary, focus, adv_conf, moment_id, moment_conf, trigger_count = (
         _extract_advisory_fields(advisory, moment)
+    )
 
     # ---- summary ----
     if not summary:
@@ -362,8 +367,14 @@ def render_cli_shadow_record(
     # ---- details section ----
     confidence = adv_conf if isinstance(adv_conf, (int, float)) else moment_conf
     detail_lines = _build_shadow_details(
-        action, focus, confidence, verbose,
-        moment_id, trigger_count, commands, rec,
+        action,
+        focus,
+        confidence,
+        verbose,
+        moment_id,
+        trigger_count,
+        commands,
+        rec,
     )
 
     if detail_lines:

@@ -2,6 +2,7 @@
 
 PR5: Ensures cmd_measure uses persisted FTUE state and updates it correctly.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -10,12 +11,11 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
-import pytest
-
 
 @dataclass
 class _StubAnalysis:
     """Minimal analysis result for testing."""
+
     dominant_hz: float = 440.0
     rms: float = 0.05
     confidence: float = 0.9
@@ -29,6 +29,7 @@ class _StubAnalysis:
 @dataclass
 class _StubResult:
     """Minimal loop result for testing."""
+
     error: str | None = None
     analysis: _StubAnalysis | None = None
     verdict: Any = None
@@ -58,6 +59,7 @@ class TestCmdMeasureFtueWiring:
 
         # Monkeypatch CONFIG_FILE to use tmp path
         import tap_tone_pi.core.user_config as user_config_mod
+
         monkeypatch.setattr(user_config_mod, "CONFIG_FILE", config_path)
 
         # Create a PASS verdict
@@ -76,6 +78,7 @@ class TestCmdMeasureFtueWiring:
                 )
 
         import tap_tone_pi.workflow as workflow_mod
+
         monkeypatch.setattr(workflow_mod, "OperatorLoop", _StubLoop)
 
         # Create args namespace
@@ -92,6 +95,7 @@ class TestCmdMeasureFtueWiring:
 
         # Run cmd_measure
         from tap_tone_pi.cli.main import cmd_measure
+
         exit_code = cmd_measure(args)
 
         # Verify
@@ -124,6 +128,7 @@ class TestCmdMeasureFtueWiring:
 
         # Monkeypatch CONFIG_FILE
         import tap_tone_pi.core.user_config as user_config_mod
+
         monkeypatch.setattr(user_config_mod, "CONFIG_FILE", config_path)
 
         # Create verdicts
@@ -149,6 +154,7 @@ class TestCmdMeasureFtueWiring:
                 )
 
         import tap_tone_pi.workflow as workflow_mod
+
         monkeypatch.setattr(workflow_mod, "OperatorLoop", _StubLoop)
 
         args = argparse.Namespace(
@@ -164,6 +170,7 @@ class TestCmdMeasureFtueWiring:
 
         # Run 1: PASS
         from tap_tone_pi.cli.main import cmd_measure
+
         exit_code = cmd_measure(args)
         assert exit_code == 0
 
@@ -189,9 +196,7 @@ class TestCmdMeasureFtueWiring:
         # seen_rule_ids should contain Q010
         assert "Q010" in reloaded.ftue.seen_rule_ids
 
-    def test_agent_context_receives_ftue_counts(
-        self, tmp_path: Path, monkeypatch
-    ):
+    def test_agent_context_receives_ftue_counts(self, tmp_path: Path, monkeypatch):
         """AgentContext is constructed with pass_count_lifetime and session_count_lifetime."""
         from tap_tone_pi.core.user_config import (
             UserConfig,
@@ -207,6 +212,7 @@ class TestCmdMeasureFtueWiring:
         save_config(cfg, path=config_path)
 
         import tap_tone_pi.core.user_config as user_config_mod
+
         monkeypatch.setattr(user_config_mod, "CONFIG_FILE", config_path)
 
         pass_verdict = QualityVerdict(verdict=Verdict.PASS, triggered_rules=[])
@@ -223,6 +229,7 @@ class TestCmdMeasureFtueWiring:
                 )
 
         import tap_tone_pi.workflow as workflow_mod
+
         monkeypatch.setattr(workflow_mod, "OperatorLoop", _StubLoop)
 
         # Capture the AgentContext that gets created
@@ -234,8 +241,11 @@ class TestCmdMeasureFtueWiring:
             return "Measurement accepted"
 
         import tap_tone_pi.agent.messages as messages_mod
+
         original_format = messages_mod.format_verdict_summary_agent
-        monkeypatch.setattr(messages_mod, "format_verdict_summary_agent", capture_format)
+        monkeypatch.setattr(
+            messages_mod, "format_verdict_summary_agent", capture_format
+        )
 
         args = argparse.Namespace(
             device=0,
@@ -249,6 +259,7 @@ class TestCmdMeasureFtueWiring:
         )
 
         from tap_tone_pi.cli.main import cmd_measure
+
         exit_code = cmd_measure(args)
         assert exit_code == 0
 
@@ -284,12 +295,15 @@ class TestCmdMeasureFtueWiring:
         save_config(cfg, path=config_path)
 
         import tap_tone_pi.core.user_config as user_config_mod
+
         monkeypatch.setattr(user_config_mod, "CONFIG_FILE", config_path)
 
         # Create FAIL verdict
         fail_verdict = QualityVerdict(
             verdict=Verdict.FAIL,
-            triggered_rules=[TriggeredRule(rule=Q001_CLIPPED, message="Clipping detected")],
+            triggered_rules=[
+                TriggeredRule(rule=Q001_CLIPPED, message="Clipping detected")
+            ],
         )
 
         class _StubLoop:
@@ -308,6 +322,7 @@ class TestCmdMeasureFtueWiring:
                 self.overridden = True
 
         import tap_tone_pi.workflow as workflow_mod
+
         monkeypatch.setattr(workflow_mod, "OperatorLoop", _StubLoop)
 
         # Input sequence: "n" to decline retry, "my reason" for override
@@ -326,6 +341,7 @@ class TestCmdMeasureFtueWiring:
         )
 
         from tap_tone_pi.cli.main import cmd_measure
+
         exit_code = cmd_measure(args)
 
         assert exit_code == 0
@@ -358,12 +374,15 @@ class TestCmdMeasureFtueWiring:
         save_config(cfg, path=config_path)
 
         import tap_tone_pi.core.user_config as user_config_mod
+
         monkeypatch.setattr(user_config_mod, "CONFIG_FILE", config_path)
 
         # Create FAIL verdict
         fail_verdict = QualityVerdict(
             verdict=Verdict.FAIL,
-            triggered_rules=[TriggeredRule(rule=Q001_CLIPPED, message="Clipping detected")],
+            triggered_rules=[
+                TriggeredRule(rule=Q001_CLIPPED, message="Clipping detected")
+            ],
         )
 
         class _StubLoop:
@@ -381,6 +400,7 @@ class TestCmdMeasureFtueWiring:
                 pass
 
         import tap_tone_pi.workflow as workflow_mod
+
         monkeypatch.setattr(workflow_mod, "OperatorLoop", _StubLoop)
 
         # Input: override reason at max attempts prompt
@@ -398,6 +418,7 @@ class TestCmdMeasureFtueWiring:
         )
 
         from tap_tone_pi.cli.main import cmd_measure
+
         exit_code = cmd_measure(args)
 
         assert exit_code == 0

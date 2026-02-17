@@ -20,6 +20,7 @@ Output viewer_pack_v1 structure:
         meta/session_meta.json
         validation_report.json
 """
+
 from __future__ import annotations
 
 import csv
@@ -36,6 +37,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 try:
     import numpy as np
     from scipy.fft import rfft, rfftfreq
+
     HAS_NUMPY = True
 except ImportError:
     HAS_NUMPY = False
@@ -57,12 +59,18 @@ def sha256_bytes(b: bytes) -> str:
 
 def utc_now_iso() -> str:
     """Return current UTC time in ISO format."""
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 @dataclass
 class ExportResult:
     """Result of viewer pack export."""
+
     success: bool
     output_path: Optional[Path] = None
     error: Optional[str] = None
@@ -79,7 +87,9 @@ def _find_best_attempt(point_dir: Path) -> Optional[Path]:
 
     Prefers PASS > WARN > FAIL. Within same verdict, uses latest attempt.
     """
-    attempts = sorted([d for d in point_dir.iterdir() if d.is_dir() and d.name.startswith("attempt_")])
+    attempts = sorted(
+        [d for d in point_dir.iterdir() if d.is_dir() and d.name.startswith("attempt_")]
+    )
     if not attempts:
         return None
 
@@ -108,7 +118,9 @@ def _find_best_attempt(point_dir: Path) -> Optional[Path]:
     return scored[0][1] if scored else None
 
 
-def _generate_spectrum_csv(audio_path: Path, analysis_path: Path, output_path: Path) -> bool:
+def _generate_spectrum_csv(
+    audio_path: Path, analysis_path: Path, output_path: Path
+) -> bool:
     """Generate spectrum.csv from audio and analysis.
 
     Returns True if successful, False otherwise.
@@ -194,12 +206,14 @@ def export_gui_session(
         dst = pack_root / relpath
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dst)
-        files.append({
-            "relpath": relpath.replace("\\", "/"),
-            "sha256": sha256_file(dst),
-            "bytes": dst.stat().st_size,
-            "kind": kind,
-        })
+        files.append(
+            {
+                "relpath": relpath.replace("\\", "/"),
+                "sha256": sha256_file(dst),
+                "bytes": dst.stat().st_size,
+                "kind": kind,
+            }
+        )
 
     # Find all points
     for item in sorted(session_dir.iterdir()):
@@ -211,7 +225,9 @@ def export_gui_session(
             continue
 
         # Check if this looks like a point directory (has attempt_* subdirs)
-        attempts = [d for d in item.iterdir() if d.is_dir() and d.name.startswith("attempt_")]
+        attempts = [
+            d for d in item.iterdir() if d.is_dir() and d.name.startswith("attempt_")
+        ]
         if not attempts:
             continue
 
@@ -234,18 +250,24 @@ def export_gui_session(
         # Copy analysis
         analysis_path = best_attempt / "analysis.json"
         if analysis_path.exists():
-            add_file(analysis_path, f"spectra/points/{point_id}/analysis.json", "analysis_peaks")
+            add_file(
+                analysis_path,
+                f"spectra/points/{point_id}/analysis.json",
+                "analysis_peaks",
+            )
 
         # Generate spectrum CSV if possible
         if audio_path.exists():
             spectrum_path = pack_root / f"spectra/points/{point_id}/spectrum.csv"
             if _generate_spectrum_csv(audio_path, analysis_path, spectrum_path):
-                files.append({
-                    "relpath": f"spectra/points/{point_id}/spectrum.csv",
-                    "sha256": sha256_file(spectrum_path),
-                    "bytes": spectrum_path.stat().st_size,
-                    "kind": "spectrum_csv",
-                })
+                files.append(
+                    {
+                        "relpath": f"spectra/points/{point_id}/spectrum.csv",
+                        "sha256": sha256_file(spectrum_path),
+                        "bytes": spectrum_path.stat().st_size,
+                        "kind": "spectrum_csv",
+                    }
+                )
 
     if not point_ids:
         return ExportResult(
@@ -267,12 +289,14 @@ def export_gui_session(
     meta_path = pack_root / "meta" / "session_meta.json"
     meta_path.parent.mkdir(parents=True, exist_ok=True)
     meta_path.write_text(json.dumps(session_meta, indent=2), encoding="utf-8")
-    files.append({
-        "relpath": "meta/session_meta.json",
-        "sha256": sha256_file(meta_path),
-        "bytes": meta_path.stat().st_size,
-        "kind": "session_meta",
-    })
+    files.append(
+        {
+            "relpath": "meta/session_meta.json",
+            "sha256": sha256_file(meta_path),
+            "bytes": meta_path.stat().st_size,
+            "kind": "session_meta",
+        }
+    )
 
     # Create manifest
     manifest = {
@@ -285,7 +309,9 @@ def export_gui_session(
         "points": point_ids,
         "contents": {
             "audio": any(f["kind"] == "audio_raw" for f in files),
-            "spectra": any(f["kind"] in ("spectrum_csv", "analysis_peaks") for f in files),
+            "spectra": any(
+                f["kind"] in ("spectrum_csv", "analysis_peaks") for f in files
+            ),
             "coherence": False,
             "ods": False,
             "wolf": False,

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import sys
 
 from .config import CaptureConfig, AnalysisConfig
 from .capture import list_devices, record_audio
@@ -9,11 +8,15 @@ from .analysis import analyze_tap
 from .storage import persist_capture
 from .ui_simple import print_summary
 
+
 def cmd_devices(_: argparse.Namespace) -> int:
     devs = list_devices()
     for d in devs:
-        print(f'[{d["index"]}] {d["name"]} (in={d["max_input_channels"]}, out={d["max_output_channels"]})')
+        print(
+            f'[{d["index"]}] {d["name"]} (in={d["max_input_channels"]}, out={d["max_output_channels"]})'
+        )
     return 0
+
 
 def cmd_record(args: argparse.Namespace) -> int:
     cap_cfg = CaptureConfig(
@@ -54,6 +57,7 @@ def cmd_record(args: argparse.Namespace) -> int:
     print(f"Wrote: {persisted.capture_dir}")
     return 0
 
+
 def cmd_live(args: argparse.Namespace) -> int:
     print("Live mode: press Ctrl+C to stop. Tap, wait, tap...")
     i = 0
@@ -76,9 +80,11 @@ def cmd_live(args: argparse.Namespace) -> int:
         print("\nStopped.")
         return 0
 
+
 def cmd_gold_run(args: argparse.Namespace) -> int:
     """Dispatch to gold-run module."""
     from .cli.gold_run import main as gold_run_main
+
     # Pass remaining args to gold-run's own parser
     gold_argv = []
     gold_argv.extend(["--specimen-id", args.specimen_id])
@@ -100,14 +106,18 @@ def cmd_gold_run(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="tap-tone", description="Offline tap tone analyzer")
+    p = argparse.ArgumentParser(
+        prog="tap-tone", description="Offline tap tone analyzer"
+    )
     sub = p.add_subparsers(dest="cmd", required=True)
 
     p_dev = sub.add_parser("devices", help="List audio devices")
     p_dev.set_defaults(fn=cmd_devices)
 
     p_rec = sub.add_parser("record", help="Record one window and analyze")
-    p_rec.add_argument("--device", type=int, default=None, help="Input device index (see devices)")
+    p_rec.add_argument(
+        "--device", type=int, default=None, help="Input device index (see devices)"
+    )
     p_rec.add_argument("--sample-rate", type=int, default=48000)
     p_rec.add_argument("--channels", type=int, default=1)
     p_rec.add_argument("--seconds", type=float, default=2.5)
@@ -128,20 +138,26 @@ def build_parser() -> argparse.ArgumentParser:
     p_gold.add_argument("--specimen-id", required=True, help="Specimen identifier")
     p_gold.add_argument("--device", required=True, help="Audio device (index or name)")
     p_gold.add_argument("--out-dir", required=True, help="Output directory for ZIP")
-    p_gold.add_argument("--points", type=int, default=3, help="Number of points (default: 3)")
+    p_gold.add_argument(
+        "--points", type=int, default=3, help="Number of points (default: 3)"
+    )
     p_gold.add_argument("--session-id", help="Custom session ID")
     p_gold.add_argument("--batch-label", help="Batch label for grouping")
-    p_gold.add_argument("--dry-run", action="store_true", help="Preview mode, no capture")
+    p_gold.add_argument(
+        "--dry-run", action="store_true", help="Preview mode, no capture"
+    )
     p_gold.add_argument("--json", action="store_true", help="Output JSON summary")
     p_gold.add_argument("--ingest", action="store_true", help="Ingest to ToolBox")
     p_gold.set_defaults(fn=cmd_gold_run)
 
     return p
 
+
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     rc = args.fn(args)
     raise SystemExit(rc)
+
 
 if __name__ == "__main__":
     main()

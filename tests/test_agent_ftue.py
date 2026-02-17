@@ -1,5 +1,5 @@
 """Tests for FTUE (First-Time User Experience) logic."""
-import pytest
+
 from tap_tone_pi.agent import UserStage
 from tap_tone_pi.agent.ftue import (
     FTUE_HINTS,
@@ -47,7 +47,7 @@ class TestGetFTUEHint:
         hint1 = get_ftue_hint(UserStage.FIRST_RUN, attempt_num=1)
         hint2 = get_ftue_hint(UserStage.FIRST_RUN, attempt_num=2)
         hint4 = get_ftue_hint(UserStage.FIRST_RUN, attempt_num=4)
-        
+
         # Should cycle through hints
         assert hint1 != hint2
         # Attempt 4 should wrap around (3 hints → back to first)
@@ -89,7 +89,7 @@ class TestInferUserStage:
         # Exactly 5 sessions, 20 passes → still novice
         stage = infer_user_stage(total_sessions=5, total_passes=20)
         assert stage == UserStage.NOVICE
-        
+
         # 6 sessions, 21 passes → regular
         stage = infer_user_stage(total_sessions=6, total_passes=21)
         assert stage == UserStage.REGULAR

@@ -1,7 +1,7 @@
 # Tap Tone Pi — Consolidation Exit Summary
 
-**Completed:** 2026-02-05  
-**Release:** v2.0.0  
+**Completed:** 2026-02-05
+**Release:** v2.0.0
 **Tag:** https://github.com/HanzoRazer/tap_tone_pi/releases/tag/v2.0.0
 
 ---
@@ -139,7 +139,7 @@ New code should be added to `tap_tone_pi/`, not legacy locations.
 
 ## Release
 
-**Tag:** v2.0.0  
+**Tag:** v2.0.0
 **URL:** https://github.com/HanzoRazer/tap_tone_pi/releases/tag/v2.0.0
 
 ---

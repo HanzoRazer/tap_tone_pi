@@ -22,6 +22,7 @@ import numpy as np
 @dataclass
 class WoodDimensions:
     """Specimen dimensions in mm."""
+
     length: float
     width: float
     thickness: float
@@ -35,6 +36,7 @@ class WoodDimensions:
 @dataclass
 class WoodProperties:
     """Estimated wood properties."""
+
     density_kg_m3: float
     stiffness_along_gpa: float  # Young's modulus along grain
     stiffness_cross_gpa: Optional[float]  # Young's modulus across grain
@@ -49,12 +51,16 @@ class WoodProperties:
         return {
             "density_kg_m3": round(self.density_kg_m3, 1),
             "stiffness_along_gpa": round(self.stiffness_along_gpa, 2),
-            "stiffness_cross_gpa": round(self.stiffness_cross_gpa, 2) if self.stiffness_cross_gpa else None,
+            "stiffness_cross_gpa": round(self.stiffness_cross_gpa, 2)
+            if self.stiffness_cross_gpa
+            else None,
             "radiation_coefficient": round(self.radiation_coefficient, 2),
-            "damping_factor": round(self.damping_factor, 4) if self.damping_factor else None,
+            "damping_factor": round(self.damping_factor, 4)
+            if self.damping_factor
+            else None,
             "quality_grade": self.quality_grade,
             "fundamental_hz": round(self.fundamental_hz, 1),
-            "confidence": round(self.confidence, 2)
+            "confidence": round(self.confidence, 2),
         }
 
 
@@ -64,51 +70,48 @@ TONEWOOD_REFERENCES = {
         "density_range": (380, 450),
         "stiffness_range": (10, 14),
         "radiation_range": (11, 15),
-        "description": "Standard soundboard wood, bright tone"
+        "description": "Standard soundboard wood, bright tone",
     },
     "engelmann_spruce": {
         "density_range": (350, 420),
         "stiffness_range": (9, 12),
         "radiation_range": (12, 16),
-        "description": "Lighter than Sitka, warm tone"
+        "description": "Lighter than Sitka, warm tone",
     },
     "western_red_cedar": {
         "density_range": (320, 380),
         "stiffness_range": (6, 9),
         "radiation_range": (10, 13),
-        "description": "Warm, complex overtones"
+        "description": "Warm, complex overtones",
     },
     "european_spruce": {
         "density_range": (400, 480),
         "stiffness_range": (11, 16),
         "radiation_range": (12, 16),
-        "description": "Traditional choice, balanced tone"
+        "description": "Traditional choice, balanced tone",
     },
     "redwood": {
         "density_range": (340, 420),
         "stiffness_range": (7, 10),
         "radiation_range": (10, 13),
-        "description": "Warm, cedar-like character"
+        "description": "Warm, cedar-like character",
     },
     "indian_rosewood": {
         "density_range": (800, 950),
         "stiffness_range": (11, 15),
         "radiation_range": (3.5, 4.5),
-        "description": "Dense back/side wood, rich lows"
+        "description": "Dense back/side wood, rich lows",
     },
     "mahogany": {
         "density_range": (500, 650),
         "stiffness_range": (8, 12),
         "radiation_range": (4, 6),
-        "description": "Warm, punchy midrange"
-    }
+        "description": "Warm, punchy midrange",
+    },
 }
 
 
-def estimate_density(
-    weight_g: float,
-    dimensions: WoodDimensions
-) -> float:
+def estimate_density(weight_g: float, dimensions: WoodDimensions) -> float:
     """
     Calculate density from weight and dimensions.
 
@@ -132,7 +135,7 @@ def estimate_stiffness_from_frequency(
     fundamental_hz: float,
     dimensions: WoodDimensions,
     density_kg_m3: float,
-    boundary_condition: str = "free_free"
+    boundary_condition: str = "free_free",
 ) -> float:
     """
     Estimate Young's modulus from fundamental frequency.
@@ -166,7 +169,7 @@ def estimate_stiffness_from_frequency(
         lambda_n = 4.730
 
     # Moment of inertia for rectangular cross-section
-    I = (width_m * thickness_m ** 3) / 12
+    I = (width_m * thickness_m**3) / 12
 
     # Cross-sectional area
     A = width_m * thickness_m
@@ -176,14 +179,13 @@ def estimate_stiffness_from_frequency(
     # E = (f * 2π * L² / λ²)² * (ρ * A / I)
 
     omega = 2 * np.pi * fundamental_hz
-    E = (omega * length_m ** 2 / lambda_n ** 2) ** 2 * (density_kg_m3 * A / I)
+    E = (omega * length_m**2 / lambda_n**2) ** 2 * (density_kg_m3 * A / I)
 
     return E / 1e9  # Convert to GPa
 
 
 def calculate_radiation_coefficient(
-    stiffness_gpa: float,
-    density_kg_m3: float
+    stiffness_gpa: float, density_kg_m3: float
 ) -> float:
     """
     Calculate sound radiation coefficient.
@@ -209,9 +211,7 @@ def calculate_radiation_coefficient(
 
 
 def estimate_damping_from_peaks(
-    peaks: List[Dict[str, float]],
-    freq_hz: np.ndarray,
-    magnitude: np.ndarray
+    peaks: List[Dict[str, float]], freq_hz: np.ndarray, magnitude: np.ndarray
 ) -> Optional[float]:
     """
     Estimate damping factor from peak bandwidth.
@@ -358,7 +358,7 @@ def estimate_wood_properties(
     peaks: Optional[List[Dict[str, float]]] = None,
     freq_hz: Optional[np.ndarray] = None,
     magnitude: Optional[np.ndarray] = None,
-    coherence_quality: float = 0.9
+    coherence_quality: float = 0.9,
 ) -> WoodProperties:
     """
     Estimate wood properties from acoustic measurements.
@@ -386,11 +386,7 @@ def estimate_wood_properties(
         density = 420.0
 
     # Estimate stiffness
-    stiffness = estimate_stiffness_from_frequency(
-        fundamental_hz,
-        dimensions,
-        density
-    )
+    stiffness = estimate_stiffness_from_frequency(fundamental_hz, dimensions, density)
 
     # Calculate radiation coefficient
     radiation = calculate_radiation_coefficient(stiffness, density)
@@ -419,5 +415,5 @@ def estimate_wood_properties(
         damping_factor=damping,
         quality_grade=grade,
         fundamental_hz=fundamental_hz,
-        confidence=confidence
+        confidence=confidence,
     )

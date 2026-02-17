@@ -5,7 +5,6 @@ import csv
 import datetime as dt
 import hashlib
 import json
-import math
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, Optional
@@ -19,7 +18,12 @@ TOOL_VERSION = os.getenv("TAP_TONE_PI_VERSION", "v1.0")
 # Helpers (time + hashing + IO)
 # ----------------------------
 def utc_now_iso() -> str:
-    return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        dt.datetime.now(dt.timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def sha256_bytes(b: bytes) -> str:
@@ -65,7 +69,9 @@ def _kinds_count(files: List[Dict[str, Any]]) -> Dict[str, int]:
     return kinds
 
 
-def ensure_session_dir(out_root: Path, session_id: str, session_root_override: Optional[str]) -> Path:
+def ensure_session_dir(
+    out_root: Path, session_id: str, session_root_override: Optional[str]
+) -> Path:
     if session_root_override:
         return Path(session_root_override).expanduser().resolve()
     return (out_root / f"session_{session_id}").resolve()
@@ -102,12 +108,16 @@ def read_csv_pairs(path: Path) -> List[Tuple[float, float]]:
     rows: List[Tuple[float, float]] = []
     with path.open("r", encoding="utf-8") as f:
         r = csv.DictReader(f)
-        if not r.fieldnames or "load" not in r.fieldnames or "deflection" not in r.fieldnames:
+        if (
+            not r.fieldnames
+            or "load" not in r.fieldnames
+            or "deflection" not in r.fieldnames
+        ):
             raise ValueError("CSV must contain headers: load,deflection")
         for row in r:
             if row.get("load") is None or row.get("deflection") is None:
                 continue
-            rows.append((float(row["load"]), float(row["deflection"])) )
+            rows.append((float(row["load"]), float(row["deflection"])))
     if not rows:
         raise ValueError("No valid rows found in CSV.")
     return rows
@@ -151,7 +161,7 @@ def compute_ei_three_point(k_force_per_deflection: float, span_mm: float) -> flo
       EI = (P/δ) L^3 / 48
     Returns EI in N*mm^2 when k is N/mm and L is mm.
     """
-    return (k_force_per_deflection * (span_mm ** 3)) / 48.0
+    return (k_force_per_deflection * (span_mm**3)) / 48.0
 
 
 # ----------------------------
@@ -227,24 +237,50 @@ def strip_nulls(x: Any) -> Any:
 # CLI helpers (extracted from main)
 # ----------------------------
 
+
 def _parse_args() -> argparse.Namespace:
-    ap = argparse.ArgumentParser(description="Bending stiffness test (measurement-only) bundle logger + uncertainty micro")
+    ap = argparse.ArgumentParser(
+        description="Bending stiffness test (measurement-only) bundle logger + uncertainty micro"
+    )
 
     ap.add_argument("--out", required=True, help="Output directory (bundle root)")
-    ap.add_argument("--test-id", default=None, help="Optional test id; if omitted, timestamp-based id is used")
-    ap.add_argument("--method", choices=["three_point_bending", "cantilever"], default="three_point_bending")
+    ap.add_argument(
+        "--test-id",
+        default=None,
+        help="Optional test id; if omitted, timestamp-based id is used",
+    )
+    ap.add_argument(
+        "--method",
+        choices=["three_point_bending", "cantilever"],
+        default="three_point_bending",
+    )
     ap.add_argument("--units-length", choices=["mm", "in"], default="mm")
     ap.add_argument("--units-force", choices=["N", "lbf"], default="N")
 
     ap.add_argument("--specimen-id", required=True)
-    ap.add_argument("--material-role", choices=["top", "back", "brace_stock", "unknown"], default="unknown")
+    ap.add_argument(
+        "--material-role",
+        choices=["top", "back", "brace_stock", "unknown"],
+        default="unknown",
+    )
     ap.add_argument("--wood-species", default=None)
-    ap.add_argument("--grain-orientation", choices=["longitudinal", "cross", "unknown"], default="unknown")
+    ap.add_argument(
+        "--grain-orientation",
+        choices=["longitudinal", "cross", "unknown"],
+        default="unknown",
+    )
 
-    ap.add_argument("--span-mm", type=float, required=True, help="Support span in mm (or effective length).")
+    ap.add_argument(
+        "--span-mm",
+        type=float,
+        required=True,
+        help="Support span in mm (or effective length).",
+    )
 
     # Base readings (single replicate)
-    ap.add_argument("--readings-csv", default=None, help="CSV path with headers load,deflection")
+    ap.add_argument(
+        "--readings-csv", default=None, help="CSV path with headers load,deflection"
+    )
     ap.add_argument(
         "--pair",
         action="append",
@@ -261,64 +297,124 @@ def _parse_args() -> argparse.Namespace:
     )
 
     # Uncertainty inputs
-    ap.add_argument("--dial-resolution-mm", type=float, default=None, help="Dial indicator resolution in mm (optional).")
-    ap.add_argument("--load-resolution-force", type=float, default=None, help="Load resolution in same force units (optional).")
+    ap.add_argument(
+        "--dial-resolution-mm",
+        type=float,
+        default=None,
+        help="Dial indicator resolution in mm (optional).",
+    )
+    ap.add_argument(
+        "--load-resolution-force",
+        type=float,
+        default=None,
+        help="Load resolution in same force units (optional).",
+    )
     ap.add_argument("--ci-level", type=float, choices=[0.90, 0.95, 0.99], default=0.95)
 
     # Calibration (optional)
-    ap.add_argument("--dial-zeroed", action="store_true", help="Mark dial indicator as zeroed for this session.")
-    ap.add_argument("--dial-zeroed-at-utc", default=None, help="UTC timestamp when dial was zeroed (ISO). If omitted and --dial-zeroed, uses now.")
-    ap.add_argument("--dial-zero-method", choices=["manual_zero", "tare_block", "other"], default=None)
+    ap.add_argument(
+        "--dial-zeroed",
+        action="store_true",
+        help="Mark dial indicator as zeroed for this session.",
+    )
+    ap.add_argument(
+        "--dial-zeroed-at-utc",
+        default=None,
+        help="UTC timestamp when dial was zeroed (ISO). If omitted and --dial-zeroed, uses now.",
+    )
+    ap.add_argument(
+        "--dial-zero-method",
+        choices=["manual_zero", "tare_block", "other"],
+        default=None,
+    )
     ap.add_argument("--dial-zero-notes", default=None)
 
-    ap.add_argument("--load-cell-present", action="store_true", help="Indicates a load cell was used for force measurement.")
-    ap.add_argument("--load-cell-calibration-date-utc", default=None, help="ISO date/datetime (UTC) for last load cell calibration.")
+    ap.add_argument(
+        "--load-cell-present",
+        action="store_true",
+        help="Indicates a load cell was used for force measurement.",
+    )
+    ap.add_argument(
+        "--load-cell-calibration-date-utc",
+        default=None,
+        help="ISO date/datetime (UTC) for last load cell calibration.",
+    )
     ap.add_argument("--load-cell-cal-provider", default=None)
     ap.add_argument("--load-cell-cert-id", default=None)
     ap.add_argument("--load-cell-cal-notes", default=None)
 
-    ap.add_argument("--standard-used", action="store_true", help="If you ran a known standard specimen check.")
+    ap.add_argument(
+        "--standard-used",
+        action="store_true",
+        help="If you ran a known standard specimen check.",
+    )
     ap.add_argument("--standard-specimen-id", default=None)
     ap.add_argument("--standard-expected-k", type=float, default=None)
     ap.add_argument("--standard-observed-k", type=float, default=None)
     ap.add_argument("--standard-tolerance", type=float, default=None)
 
     # Session calibration (shared capsule)
-    ap.add_argument("--session-id", default=None, help="Optional session id for shared calibration capsule.")
-    ap.add_argument("--session-root", default=None, help="Optional override for session folder root. Defaults to <out>/session_<session_id>/")
-    ap.add_argument("--session-calibration", default=None, help="Path to an existing session_calibration.json to use.")
-    ap.add_argument("--write-session-calibration", action="store_true", help="Write/overwrite session_calibration.json from CLI calibration flags.")
+    ap.add_argument(
+        "--session-id",
+        default=None,
+        help="Optional session id for shared calibration capsule.",
+    )
+    ap.add_argument(
+        "--session-root",
+        default=None,
+        help="Optional override for session folder root. Defaults to <out>/session_<session_id>/",
+    )
+    ap.add_argument(
+        "--session-calibration",
+        default=None,
+        help="Path to an existing session_calibration.json to use.",
+    )
+    ap.add_argument(
+        "--write-session-calibration",
+        action="store_true",
+        help="Write/overwrite session_calibration.json from CLI calibration flags.",
+    )
 
     ap.add_argument("--operator", default=None)
     ap.add_argument("--device-id", default=None)
     ap.add_argument("--notes", default=None)
 
-    ap.add_argument("--pack", action="store_true", help="Create bundle.zip next to the bundle directory")
+    ap.add_argument(
+        "--pack",
+        action="store_true",
+        help="Create bundle.zip next to the bundle directory",
+    )
 
     return ap.parse_args()
 
 
-def _collect_replicate_samples(args: argparse.Namespace) -> List[List[Tuple[float, float]]]:
+def _collect_replicate_samples(
+    args: argparse.Namespace,
+) -> List[List[Tuple[float, float]]]:
     """Parse and collect replicate samples from args."""
     replicate_samples: List[List[Tuple[float, float]]] = []
 
     if args.replicate:
         for spec in args.replicate:
             if spec.startswith("csv:"):
-                p = Path(spec[len("csv:"):]).expanduser().resolve()
+                p = Path(spec[len("csv:") :]).expanduser().resolve()
                 replicate_samples.append(read_csv_pairs(p))
             elif spec.startswith("pairs:"):
-                s = spec[len("pairs:"):]
+                s = spec[len("pairs:") :]
                 replicate_samples.append(parse_semicolon_pairs(s))
             else:
                 raise SystemExit("Each --replicate must start with csv: or pairs:")
     else:
         # Use base readings as single replicate
         if args.readings_csv:
-            replicate_samples.append(read_csv_pairs(Path(args.readings_csv).expanduser().resolve()))
+            replicate_samples.append(
+                read_csv_pairs(Path(args.readings_csv).expanduser().resolve())
+            )
         else:
             if not args.pair:
-                raise SystemExit("Provide either --readings-csv or at least one --pair load,deflection")
+                raise SystemExit(
+                    "Provide either --readings-csv or at least one --pair load,deflection"
+                )
             replicate_samples.append(parse_pairs_list(args.pair))
 
     return replicate_samples
@@ -374,8 +470,16 @@ def _fit_replicates(
             warnings.append(f"low_linearity_r2:{fit['r2']:.4f}")
 
         # EI only when three-point AND SI/mm
-        if args.method == "three_point_bending" and args.units_length == "mm" and args.units_force == "N":
-            eis.append(compute_ei_three_point(k_force_per_deflection=fit["k"], span_mm=float(args.span_mm)))
+        if (
+            args.method == "three_point_bending"
+            and args.units_length == "mm"
+            and args.units_force == "N"
+        ):
+            eis.append(
+                compute_ei_three_point(
+                    k_force_per_deflection=fit["k"], span_mm=float(args.span_mm)
+                )
+            )
 
     return ks, r2s, eis, warnings
 
@@ -387,7 +491,11 @@ def _build_uncertainty_block(
     warnings: List[str],
 ) -> Optional[Dict[str, Any]]:
     """Build uncertainty block if applicable."""
-    if not (len(ks) > 1 or args.dial_resolution_mm is not None or args.load_resolution_force is not None):
+    if not (
+        len(ks) > 1
+        or args.dial_resolution_mm is not None
+        or args.load_resolution_force is not None
+    ):
         return None
 
     method = "replicates_normal_approx" if len(ks) > 1 else "quantization_only"
@@ -396,15 +504,23 @@ def _build_uncertainty_block(
         "method": method,
         "ci_level": float(args.ci_level),
         "inputs": {
-            "dial_resolution_mm": float(args.dial_resolution_mm) if args.dial_resolution_mm is not None else 0.0,
-            "load_resolution_force": float(args.load_resolution_force) if args.load_resolution_force is not None else None,
-            "replicates": int(len(ks))
+            "dial_resolution_mm": float(args.dial_resolution_mm)
+            if args.dial_resolution_mm is not None
+            else 0.0,
+            "load_resolution_force": float(args.load_resolution_force)
+            if args.load_resolution_force is not None
+            else None,
+            "replicates": int(len(ks)),
         },
         "k": uncertain_value(ks, args.ci_level),
-        "ei_n_mm2": uncertain_value(eis, args.ci_level) if eis and len(eis) > 0 else None
+        "ei_n_mm2": uncertain_value(eis, args.ci_level)
+        if eis and len(eis) > 0
+        else None,
     }
 
-    if len(ks) == 1 and (args.dial_resolution_mm is not None or args.load_resolution_force is not None):
+    if len(ks) == 1 and (
+        args.dial_resolution_mm is not None or args.load_resolution_force is not None
+    ):
         warnings.append("uncertainty_quantization_only_logged_no_propagation")
 
     return uncertainty_block
@@ -431,7 +547,12 @@ def _build_calibration_block(args: argparse.Namespace) -> Optional[Dict[str, Any
 
     # Load cell block
     load_cell_block = None
-    if args.load_cell_present or args.load_cell_calibration_date_utc or args.load_cell_cal_provider or args.load_cell_cert_id:
+    if (
+        args.load_cell_present
+        or args.load_cell_calibration_date_utc
+        or args.load_cell_cal_provider
+        or args.load_cell_cert_id
+    ):
         load_cell_block = {
             "present": bool(args.load_cell_present),
             "calibration_date_utc": args.load_cell_calibration_date_utc or "unknown",
@@ -444,8 +565,15 @@ def _build_calibration_block(args: argparse.Namespace) -> Optional[Dict[str, Any
     standard_block = None
     if args.standard_used or args.standard_specimen_id:
         pass_flag = None
-        if (args.standard_expected_k is not None and args.standard_observed_k is not None and args.standard_tolerance is not None):
-            pass_flag = abs(args.standard_observed_k - args.standard_expected_k) <= args.standard_tolerance
+        if (
+            args.standard_expected_k is not None
+            and args.standard_observed_k is not None
+            and args.standard_tolerance is not None
+        ):
+            pass_flag = (
+                abs(args.standard_observed_k - args.standard_expected_k)
+                <= args.standard_tolerance
+            )
 
         standard_block = {
             "used": bool(args.standard_used),
@@ -459,8 +587,10 @@ def _build_calibration_block(args: argparse.Namespace) -> Optional[Dict[str, Any
 
     return {
         "dial": dial_block or {"zeroed": False, "zeroed_at_utc": utc_now_iso()},
-        "load_cell": load_cell_block or {"present": False, "calibration_date_utc": "unknown"},
-        "standard_specimen": standard_block or {"used": False, "specimen_id": "unknown"}
+        "load_cell": load_cell_block
+        or {"present": False, "calibration_date_utc": "unknown"},
+        "standard_specimen": standard_block
+        or {"used": False, "specimen_id": "unknown"},
     }
 
 
@@ -485,7 +615,11 @@ def _build_analysis_obj(
             warnings.append("ei_not_computed_non_si_units")
 
     return {
-        "schema": {"name": "bending_stiffness", "version": "1.1", "created_at_utc": utc_now_iso()},
+        "schema": {
+            "name": "bending_stiffness",
+            "version": "1.1",
+            "created_at_utc": utc_now_iso(),
+        },
         "test": {
             "test_id": bundle_id,
             "method": args.method,
@@ -502,15 +636,23 @@ def _build_analysis_obj(
             "span_mm": float(args.span_mm),
             "support_type": "unknown",
             "load_nose_radius_mm": None,
-            "dial_indicator_resolution_mm": float(args.dial_resolution_mm) if args.dial_resolution_mm is not None else None,
+            "dial_indicator_resolution_mm": float(args.dial_resolution_mm)
+            if args.dial_resolution_mm is not None
+            else None,
         },
         "readings": {
             "csv_relpath": "raw/readings.csv",
-            "rows": [{"load": float(l), "deflection": float(d)} for l, d in replicate_samples[0]],
+            "rows": [
+                {"load": float(l), "deflection": float(d)}
+                for l, d in replicate_samples[0]
+            ],
             "replicates": [
-                {"csv_relpath": rp, "rows": [{"load": float(l), "deflection": float(d)} for l, d in rs]}
+                {
+                    "csv_relpath": rp,
+                    "rows": [{"load": float(l), "deflection": float(d)} for l, d in rs],
+                }
                 for rp, rs in zip(rep_relpaths, replicate_samples)
-            ]
+            ],
         },
         "results": {
             "k_force_per_deflection": float(k_primary),
@@ -541,14 +683,18 @@ def _apply_session_calibration(
     # Write session calibration when requested
     if args.session_id and args.write_session_calibration and calibration:
         new_session_cal = {
-            "schema": {"name": "session_calibration", "version": "1.0", "created_at_utc": utc_now_iso()},
+            "schema": {
+                "name": "session_calibration",
+                "version": "1.0",
+                "created_at_utc": utc_now_iso(),
+            },
             "session": {
                 "session_id": args.session_id,
                 "operator": args.operator,
                 "device_id": args.device_id,
-                "notes": None
+                "notes": None,
             },
-            "calibration": calibration
+            "calibration": calibration,
         }
         write_json(session_cal_path, strip_nulls(new_session_cal))
         # Update the session_cal_obj reference for downstream use
@@ -567,17 +713,28 @@ def _apply_session_calibration(
             analysis_obj["calibration"] = {}
         analysis_obj["calibration"]["session_ref"] = {
             "session_id": args.session_id,
-            "session_calibration_relpath": "calibration/session_calibration.json"
+            "session_calibration_relpath": "calibration/session_calibration.json",
         }
 
 
 def _has_calibration_flags(args: argparse.Namespace) -> bool:
     """Check if any per-run calibration flags were provided."""
-    return any([
-        args.dial_zeroed, args.dial_zero_method, args.dial_zero_notes,
-        args.load_cell_present, args.load_cell_calibration_date_utc, args.load_cell_cal_provider, args.load_cell_cert_id,
-        args.standard_used, args.standard_specimen_id, args.standard_expected_k, args.standard_observed_k, args.standard_tolerance
-    ])
+    return any(
+        [
+            args.dial_zeroed,
+            args.dial_zero_method,
+            args.dial_zero_notes,
+            args.load_cell_present,
+            args.load_cell_calibration_date_utc,
+            args.load_cell_cal_provider,
+            args.load_cell_cert_id,
+            args.standard_used,
+            args.standard_specimen_id,
+            args.standard_expected_k,
+            args.standard_observed_k,
+            args.standard_tolerance,
+        ]
+    )
 
 
 def _build_manifest_files(
@@ -590,14 +747,16 @@ def _build_manifest_files(
 
     def add_file(rel: str, kind: str, mime: str) -> None:
         p = bundle_dir / rel
-        files.append({
-            "relpath": rel,
-            "sha256": sha256_file(p),
-            "bytes": int(p.stat().st_size),
-            "mime": mime,
-            "kind": kind,
-            "point_id": None,
-        })
+        files.append(
+            {
+                "relpath": rel,
+                "sha256": sha256_file(p),
+                "bytes": int(p.stat().st_size),
+                "mime": mime,
+                "kind": kind,
+                "point_id": None,
+            }
+        )
 
     add_file("raw/readings.csv", "readings", "text/csv")
     for rp in rep_relpaths:
@@ -638,10 +797,7 @@ def _append_session_ledger(
         "units": {"length": args.units_length, "force": args.units_force},
         "ok": len(warnings_list) == 0,
         "warnings": warnings_list,
-        "files": {
-            "count": len(files),
-            "kinds": _kinds_count(files)
-        }
+        "files": {"count": len(files), "kinds": _kinds_count(files)},
     }
     append_jsonl(session_manifest_path, strip_nulls(ledger_line))
 
@@ -653,7 +809,10 @@ def main() -> None:
     args = _parse_args()
 
     started = utc_now_iso()
-    bundle_id = args.test_id or f"bend_{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+    bundle_id = (
+        args.test_id
+        or f"bend_{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+    )
 
     out_root = Path(args.out).expanduser().resolve()
     bundle_dir = out_root / bundle_id
@@ -700,17 +859,31 @@ def main() -> None:
 
     # Build analysis object
     analysis_obj = _build_analysis_obj(
-        args, bundle_id, started, replicate_samples, rep_relpaths,
-        k_primary, r2_primary, ei_primary, uncertainty_block, warnings
+        args,
+        bundle_id,
+        started,
+        replicate_samples,
+        rep_relpaths,
+        k_primary,
+        r2_primary,
+        ei_primary,
+        uncertainty_block,
+        warnings,
     )
 
     # Build and apply calibration
     calibration = _build_calibration_block(args)
-    _apply_session_calibration(args, analysis_obj, calibration, session_cal_obj, session_cal_path)
+    _apply_session_calibration(
+        args, analysis_obj, calibration, session_cal_obj, session_cal_path
+    )
 
     # Update session_cal_obj if we wrote a new one
     if args.session_id and args.write_session_calibration and calibration:
-        session_cal_obj = read_json(session_cal_path) if session_cal_path and session_cal_path.exists() else None
+        session_cal_obj = (
+            read_json(session_cal_path)
+            if session_cal_path and session_cal_path.exists()
+            else None
+        )
 
     analysis_obj = strip_nulls(analysis_obj)
 
@@ -745,9 +918,9 @@ def main() -> None:
             "load_cell_present": bool(args.load_cell_present),
             "load_cell_calibration_date_utc": args.load_cell_calibration_date_utc,
             "standard_used": bool(args.standard_used),
-            "standard_specimen_id": args.standard_specimen_id
+            "standard_specimen_id": args.standard_specimen_id,
         },
-        "session_id": args.session_id
+        "session_id": args.session_id,
     }
 
     manifest = {
@@ -773,8 +946,15 @@ def main() -> None:
     # Append to session manifest ledger
     if session_manifest_path and session_dir:
         _append_session_ledger(
-            session_manifest_path, session_dir, bundle_dir, out_root,
-            args, bundle_id, bundle_sha, analysis_obj, files
+            session_manifest_path,
+            session_dir,
+            bundle_dir,
+            out_root,
+            args,
+            bundle_id,
+            bundle_sha,
+            analysis_obj,
+            files,
         )
 
     print(f"Wrote bundle: {bundle_dir}")

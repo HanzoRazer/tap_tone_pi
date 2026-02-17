@@ -1,7 +1,7 @@
 # Developer Handoff — Session 2026-02-07
 
-**Focus:** Workflow tests + release documentation polish  
-**Commits:** `92dd014`, `40e81ea`, `ffbbf19`  
+**Focus:** Workflow tests + release documentation polish
+**Commits:** `92dd014`, `40e81ea`, `ffbbf19`
 **Branch:** `main`
 
 ---
@@ -218,5 +218,5 @@ ls out/*/quality_check.json
 
 ---
 
-**Session completed:** 2026-02-07  
+**Session completed:** 2026-02-07
 **Next session focus:** UI polish or pack diff tooling

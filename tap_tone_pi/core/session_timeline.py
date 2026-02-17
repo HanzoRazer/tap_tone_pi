@@ -14,6 +14,7 @@ Output:
 
 Fail-closed: returns ``None`` on unrecoverable errors; never raises.
 """
+
 from __future__ import annotations
 
 import json
@@ -91,9 +92,12 @@ def export_session_timeline(
                 }
 
         # Optional: UI state
-        ui_state = _read_json(
-            session_dir / "meta" / "advisory_state.json",
-        ) or {}
+        ui_state = (
+            _read_json(
+                session_dir / "meta" / "advisory_state.json",
+            )
+            or {}
+        )
 
         # Optional: policy trace from shadow record (PR #19)
         policy_trace = None

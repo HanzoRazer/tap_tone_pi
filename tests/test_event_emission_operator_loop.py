@@ -5,17 +5,23 @@ Validates:
 2. Every line is a valid AgentEventV1 JSON with required keys
 3. Replay harness accepts the produced file without errors
 """
+
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import numpy as np
 import pytest
 
-from tap_tone_pi.workflow.operator_loop import OperatorLoop, LoopState
+from tap_tone_pi.workflow.operator_loop import OperatorLoop
 from tap_tone_pi.workflow.attempt import AttemptStatus
-from tap_tone_pi.core.quality_policy import QualityVerdict, Verdict, TriggeredRule, Severity, QualityRule
+from tap_tone_pi.core.quality_policy import (
+    QualityVerdict,
+    Verdict,
+    TriggeredRule,
+    Severity,
+    QualityRule,
+)
 from tap_tone_pi.core.analysis import AnalysisResult, Peak
 
 
@@ -99,10 +105,12 @@ def _fake_analyze_tap_raise(audio, sample_rate, **kwargs):
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def patch_passing(monkeypatch):
     """Patch hardware deps for a PASS path."""
     import tap_tone_pi.workflow.operator_loop as ol
+
     monkeypatch.setattr(ol, "list_devices", _fake_device_list)
     monkeypatch.setattr(ol, "record_audio", _fake_record_audio)
     monkeypatch.setattr(ol, "analyze_tap", _fake_analyze_tap)
@@ -113,6 +121,7 @@ def patch_passing(monkeypatch):
 def patch_failing(monkeypatch):
     """Patch hardware deps for a FAIL path."""
     import tap_tone_pi.workflow.operator_loop as ol
+
     monkeypatch.setattr(ol, "list_devices", _fake_device_list)
     monkeypatch.setattr(ol, "record_audio", _fake_record_audio)
     monkeypatch.setattr(ol, "analyze_tap", _fake_analyze_tap)
@@ -123,6 +132,7 @@ def patch_failing(monkeypatch):
 def patch_analysis_error(monkeypatch):
     """Patch to trigger analysis exception path."""
     import tap_tone_pi.workflow.operator_loop as ol
+
     monkeypatch.setattr(ol, "list_devices", _fake_device_list)
     monkeypatch.setattr(ol, "record_audio", _fake_record_audio)
     monkeypatch.setattr(ol, "analyze_tap", _fake_analyze_tap_raise)
@@ -132,6 +142,7 @@ def patch_analysis_error(monkeypatch):
 # =========================================================================
 # Test 1 — events.jsonl is created
 # =========================================================================
+
 
 class TestEventsFileCreated:
     """events.jsonl must exist after a successful run_single()."""
@@ -149,7 +160,9 @@ class TestEventsFileCreated:
         loop = OperatorLoop(session_dir=tmp_path)
         loop.run_single("pt_02", device=0, sample_rate=48000, duration=2.5)
 
-        lines = (tmp_path / "events.jsonl").read_text(encoding="utf-8").strip().splitlines()
+        lines = (
+            (tmp_path / "events.jsonl").read_text(encoding="utf-8").strip().splitlines()
+        )
         assert len(lines) >= 5, f"Expected >=5 event lines, got {len(lines)}"
 
     def test_events_jsonl_exists_after_fail(self, tmp_path, patch_failing):
@@ -165,7 +178,9 @@ class TestEventsFileCreated:
         loop = OperatorLoop(session_dir=tmp_path)
         loop.run_single("pt_04", device=0, sample_rate=48000, duration=2.5)
 
-        lines = (tmp_path / "events.jsonl").read_text(encoding="utf-8").strip().splitlines()
+        lines = (
+            (tmp_path / "events.jsonl").read_text(encoding="utf-8").strip().splitlines()
+        )
         event_types = [json.loads(line)["event_type"] for line in lines]
         assert "decision_required" in event_types
 
@@ -187,6 +202,7 @@ class TestEventsFileCreated:
 # Test 2 — valid AgentEventV1 JSON
 # =========================================================================
 
+
 class TestEventJsonValidity:
     """Every line must be valid AgentEventV1 JSON with required keys."""
 
@@ -194,7 +210,9 @@ class TestEventJsonValidity:
         loop = OperatorLoop(session_dir=tmp_path)
         loop.run_single("pt_json", device=0, sample_rate=48000, duration=2.5)
 
-        lines = (tmp_path / "events.jsonl").read_text(encoding="utf-8").strip().splitlines()
+        lines = (
+            (tmp_path / "events.jsonl").read_text(encoding="utf-8").strip().splitlines()
+        )
         for i, line in enumerate(lines):
             try:
                 obj = json.loads(line)
@@ -206,7 +224,9 @@ class TestEventJsonValidity:
         loop = OperatorLoop(session_dir=tmp_path)
         loop.run_single("pt_keys", device=0, sample_rate=48000, duration=2.5)
 
-        lines = (tmp_path / "events.jsonl").read_text(encoding="utf-8").strip().splitlines()
+        lines = (
+            (tmp_path / "events.jsonl").read_text(encoding="utf-8").strip().splitlines()
+        )
         for i, line in enumerate(lines):
             obj = json.loads(line)
             missing = REQUIRED_EVENT_KEYS - set(obj.keys())
@@ -217,10 +237,14 @@ class TestEventJsonValidity:
         loop = OperatorLoop(session_dir=tmp_path)
         loop.run_single("pt_priv", device=0, sample_rate=48000, duration=2.5)
 
-        lines = (tmp_path / "events.jsonl").read_text(encoding="utf-8").strip().splitlines()
+        lines = (
+            (tmp_path / "events.jsonl").read_text(encoding="utf-8").strip().splitlines()
+        )
         for i, line in enumerate(lines):
             obj = json.loads(line)
-            assert obj["privacy_layer"] == 0, f"Line {i}: privacy_layer={obj['privacy_layer']}, expected 0"
+            assert (
+                obj["privacy_layer"] == 0
+            ), f"Line {i}: privacy_layer={obj['privacy_layer']}, expected 0"
 
     def test_event_types_are_from_vocabulary(self, tmp_path, patch_passing):
         """All event_type values must be from the known vocabulary."""
@@ -234,19 +258,23 @@ class TestEventJsonValidity:
         loop = OperatorLoop(session_dir=tmp_path)
         loop.run_single("pt_vocab", device=0, sample_rate=48000, duration=2.5)
 
-        lines = (tmp_path / "events.jsonl").read_text(encoding="utf-8").strip().splitlines()
+        lines = (
+            (tmp_path / "events.jsonl").read_text(encoding="utf-8").strip().splitlines()
+        )
         for i, line in enumerate(lines):
             obj = json.loads(line)
-            assert obj["event_type"] in valid_types, (
-                f"Line {i}: unexpected event_type={obj['event_type']!r}"
-            )
+            assert (
+                obj["event_type"] in valid_types
+            ), f"Line {i}: unexpected event_type={obj['event_type']!r}"
 
     def test_correlation_id_consistent(self, tmp_path, patch_passing):
         """All events from one run_single share the same correlation_id."""
         loop = OperatorLoop(session_dir=tmp_path)
         loop.run_single("pt_corr", device=0, sample_rate=48000, duration=2.5)
 
-        lines = (tmp_path / "events.jsonl").read_text(encoding="utf-8").strip().splitlines()
+        lines = (
+            (tmp_path / "events.jsonl").read_text(encoding="utf-8").strip().splitlines()
+        )
         corr_ids = {json.loads(line)["correlation_id"] for line in lines}
         assert len(corr_ids) == 1, f"Expected 1 correlation_id, got {corr_ids}"
 
@@ -254,6 +282,7 @@ class TestEventJsonValidity:
 # =========================================================================
 # Test 3 — replay compatibility
 # =========================================================================
+
 
 class TestReplayCompatibility:
     """events.jsonl must be loadable by the spine replay harness."""
@@ -293,7 +322,9 @@ class TestReplayCompatibility:
         loop.run_single("pt_a", device=0, sample_rate=48000, duration=2.5)
         loop.run_single("pt_b", device=0, sample_rate=48000, duration=2.5)
 
-        lines = (tmp_path / "events.jsonl").read_text(encoding="utf-8").strip().splitlines()
+        lines = (
+            (tmp_path / "events.jsonl").read_text(encoding="utf-8").strip().splitlines()
+        )
         # Each passing run emits 5 events → 10+ total
         assert len(lines) >= 10, f"Expected >=10 lines for 2 runs, got {len(lines)}"
 
@@ -302,12 +333,15 @@ class TestReplayCompatibility:
 # Test — No CLI output changes (behavioral guardrail)
 # =========================================================================
 
+
 class TestNoBehavioralChange:
     """Event emission must not change LoopResult or attempt status."""
 
     def test_pass_result_unchanged(self, tmp_path, patch_passing):
         loop = OperatorLoop(session_dir=tmp_path)
-        result = loop.run_single("pt_nochange", device=0, sample_rate=48000, duration=2.5)
+        result = loop.run_single(
+            "pt_nochange", device=0, sample_rate=48000, duration=2.5
+        )
 
         assert result.succeeded is True
         assert result.verdict.verdict == Verdict.PASS
@@ -316,7 +350,9 @@ class TestNoBehavioralChange:
 
     def test_fail_result_unchanged(self, tmp_path, patch_failing):
         loop = OperatorLoop(session_dir=tmp_path)
-        result = loop.run_single("pt_nochange_f", device=0, sample_rate=48000, duration=2.5)
+        result = loop.run_single(
+            "pt_nochange_f", device=0, sample_rate=48000, duration=2.5
+        )
 
         assert result.succeeded is False
         assert result.verdict.verdict == Verdict.FAIL

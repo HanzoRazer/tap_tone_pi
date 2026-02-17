@@ -2,9 +2,9 @@
 
 **Reviewer posture:** Skeptical outside evaluator. No credit for intent — only what the artifact proves.
 
-**Date:** 2026-02-05  
-**Artifact:** `tap_tone_pi-main` (commit snapshot, ~1.8 MB zipped)  
-**Stack:** Python 3.10+, NumPy/SciPy, sounddevice, Tkinter GUI, CLI via argparse  
+**Date:** 2026-02-05
+**Artifact:** `tap_tone_pi-main` (commit snapshot, ~1.8 MB zipped)
+**Stack:** Python 3.10+, NumPy/SciPy, sounddevice, Tkinter GUI, CLI via argparse
 **Quantitative profile:**
 - 20,834 lines of Python across 151 files
 - 3,964 lines of tests across 25 test files (19% test ratio)

@@ -1,8 +1,8 @@
 # ADR-0002: Multi-Channel Expansion Strategy
 
-**Status:** Accepted  
-**Date:** 2025-12-25  
-**Context:** Tap-Tone Measurement Node → Multi-Channel Acoustic Testing  
+**Status:** Accepted
+**Date:** 2025-12-25
+**Context:** Tap-Tone Measurement Node → Multi-Channel Acoustic Testing
 **Decision Drivers:** Phase coherence, repeatability, physical validity, controlled scope expansion
 
 ---

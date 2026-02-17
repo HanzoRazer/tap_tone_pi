@@ -6,7 +6,6 @@ Provides classification of evidence files by kind and renderer category.
 """
 
 from enum import Enum
-from typing import Optional
 from pathlib import Path
 
 
@@ -16,6 +15,7 @@ class EvidenceFileKind(Enum):
 
     Maps to renderer categories for display decisions.
     """
+
     # Audio files
     AUDIO_WAV = "audio_wav"
     AUDIO_FLAC = "audio_flac"
@@ -62,6 +62,7 @@ class RendererCategory(Enum):
 
     Each category corresponds to a specific visualization approach.
     """
+
     AUDIO = "audio"
     IMAGE = "image"
     CSV = "csv"
@@ -90,40 +91,31 @@ def kind_to_category(kind: EvidenceFileKind) -> RendererCategory:
         EvidenceFileKind.AUDIO_WAV: RendererCategory.AUDIO,
         EvidenceFileKind.AUDIO_FLAC: RendererCategory.AUDIO,
         EvidenceFileKind.AUDIO_MP3: RendererCategory.AUDIO,
-
         # Spectrum data -> spectrum chart
         EvidenceFileKind.SPECTRUM_CSV: RendererCategory.SPECTRUM_CHART,
         EvidenceFileKind.SPECTRUM_JSON: RendererCategory.SPECTRUM_CHART,
-
         # Peaks -> peaks table
         EvidenceFileKind.PEAKS_CSV: RendererCategory.PEAKS_TABLE,
         EvidenceFileKind.PEAKS_JSON: RendererCategory.PEAKS_TABLE,
-
         # Coherence -> spectrum chart (overlay)
         EvidenceFileKind.COHERENCE_CSV: RendererCategory.SPECTRUM_CHART,
         EvidenceFileKind.COHERENCE_JSON: RendererCategory.SPECTRUM_CHART,
-
         # Transfer function -> Bode plot
         EvidenceFileKind.TRANSFER_FUNCTION: RendererCategory.BODE_PLOT,
         EvidenceFileKind.FRF_JSON: RendererCategory.BODE_PLOT,
-
         # WSI -> WSI chart
         EvidenceFileKind.WSI_CURVE: RendererCategory.WSI_CHART,
         EvidenceFileKind.WOLF_CANDIDATES: RendererCategory.WSI_CHART,
-
         # Metadata -> metadata viewer
         EvidenceFileKind.SESSION_META: RendererCategory.METADATA,
         EvidenceFileKind.CAPTURE_META: RendererCategory.METADATA,
         EvidenceFileKind.MANIFEST: RendererCategory.METADATA,
-
         # Images
         EvidenceFileKind.IMAGE_PNG: RendererCategory.IMAGE,
         EvidenceFileKind.IMAGE_JPG: RendererCategory.IMAGE,
-
         # Documents
         EvidenceFileKind.MARKDOWN: RendererCategory.MARKDOWN,
         EvidenceFileKind.TEXT: RendererCategory.CSV,  # Plain text as CSV-like
-
         EvidenceFileKind.UNKNOWN: RendererCategory.UNKNOWN,
     }
     return mapping.get(kind, RendererCategory.UNKNOWN)

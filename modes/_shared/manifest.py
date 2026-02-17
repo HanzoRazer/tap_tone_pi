@@ -1,6 +1,11 @@
 from __future__ import annotations
-import hashlib, json, time, os, pathlib
+import hashlib
+import json
+import time
+import os
+import pathlib
 from typing import Dict, Any, Iterable
+
 
 def file_hash(path: str, algo: str = "sha256") -> str:
     h = hashlib.new(algo)
@@ -9,8 +14,14 @@ def file_hash(path: str, algo: str = "sha256") -> str:
             h.update(chunk)
     return h.hexdigest()
 
-def write_manifest(out_path: str, *, rig: Dict[str, Any] | None = None,
-                   artifacts: Iterable[str] = (), notes: str | None = None) -> str:
+
+def write_manifest(
+    out_path: str,
+    *,
+    rig: Dict[str, Any] | None = None,
+    artifacts: Iterable[str] = (),
+    notes: str | None = None,
+) -> str:
     p = pathlib.Path(out_path)
     p.parent.mkdir(parents=True, exist_ok=True)
     data = {
@@ -18,7 +29,7 @@ def write_manifest(out_path: str, *, rig: Dict[str, Any] | None = None,
         "ts_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "rig": rig or {},
         "artifacts": [],
-        "notes": notes or ""
+        "notes": notes or "",
     }
     for a in artifacts:
         a = os.fspath(a)

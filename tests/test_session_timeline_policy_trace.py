@@ -6,11 +6,11 @@ Validates that:
   - The schema v2 validates docs with and without policy_trace
   - The timeline viewer renders the trace section
 """
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict
 
 import pytest
 
@@ -26,26 +26,28 @@ except ImportError:
     jsonschema = None  # type: ignore
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCHEMA_PATH = (
-    REPO_ROOT / "contracts" / "schemas" / "session_timeline_v1.schema.json"
-)
+SCHEMA_PATH = REPO_ROOT / "contracts" / "schemas" / "session_timeline_v1.schema.json"
 
 
 # ------------------------------------------------------------------
 # helpers
 # ------------------------------------------------------------------
 
+
 def _write_events(session_dir: Path) -> None:
     lines = [
-        json.dumps({
-            "event_type": "attention_requested",
-            "occurred_at": "2026-02-09T10:00:00Z",
-            "source": {"component": "spine"},
-            "payload": {"directive_id": "d1"},
-        }),
+        json.dumps(
+            {
+                "event_type": "attention_requested",
+                "occurred_at": "2026-02-09T10:00:00Z",
+                "source": {"component": "spine"},
+                "payload": {"directive_id": "d1"},
+            }
+        ),
     ]
     (session_dir / "events.jsonl").write_text(
-        "\n".join(lines), encoding="utf-8",
+        "\n".join(lines),
+        encoding="utf-8",
     )
 
 
@@ -72,6 +74,7 @@ def _write_shadow_with_trace(session_dir: Path) -> None:
 # ------------------------------------------------------------------
 # 1. Timeline includes latest_policy_trace
 # ------------------------------------------------------------------
+
 
 def test_timeline_includes_latest_policy_trace(tmp_path: Path) -> None:
     """Exported timeline has latest_policy_trace from shadow record."""
@@ -103,6 +106,7 @@ def test_timeline_null_policy_trace_when_missing(tmp_path: Path) -> None:
 # ------------------------------------------------------------------
 # 2. Schema v2 validation
 # ------------------------------------------------------------------
+
 
 @pytest.mark.skipif(not HAS_JSONSCHEMA, reason="jsonschema not installed")
 def test_schema_v2_validates_with_policy_trace(tmp_path: Path) -> None:
@@ -139,6 +143,7 @@ def test_schema_v2_validates_without_policy_trace(tmp_path: Path) -> None:
 # 3. Schema version bumped to 2
 # ------------------------------------------------------------------
 
+
 def test_exported_schema_version_is_2(tmp_path: Path) -> None:
     """Exporter emits schema_version: 2 after PR #19."""
     sess = tmp_path / "sess_v2_check"
@@ -153,6 +158,7 @@ def test_exported_schema_version_is_2(tmp_path: Path) -> None:
 # ------------------------------------------------------------------
 # 4. load_timeline renders policy trace data
 # ------------------------------------------------------------------
+
 
 def test_load_timeline_includes_policy_trace(tmp_path: Path) -> None:
     """load_timeline returns the latest_policy_trace field."""

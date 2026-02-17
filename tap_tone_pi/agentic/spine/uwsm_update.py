@@ -15,14 +15,14 @@ For full specification, see: docs/UWSM_UPDATE_RULES_V1.md
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 from datetime import datetime, timezone
 
 
 # ----------------------------
 # Utilities
 # ----------------------------
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -86,6 +86,7 @@ CAP_BEHAVIORAL = 0.80
 # Public API
 # ----------------------------
 
+
 def ensure_uwsm(uwsm: Optional[dict] = None) -> dict:
     """
     Ensure UWSM has required shape + defaults.
@@ -120,7 +121,9 @@ def ensure_uwsm(uwsm: Optional[dict] = None) -> dict:
     uwsm["dimensions"] = dims
     # Internal scratchpad for hysteresis: last evidence streaks
     uwsm.setdefault("_state", {})
-    uwsm["_state"].setdefault("streaks", {})  # dim -> {"candidate": value, "count": int}
+    uwsm["_state"].setdefault(
+        "streaks", {}
+    )  # dim -> {"candidate": value, "count": int}
     return uwsm
 
 
@@ -157,6 +160,7 @@ def apply_uwsm_updates(
 # ----------------------------
 # Evidence Extraction
 # ----------------------------
+
 
 def _extract_explicit_feedback(events: List[Any], evidence: List[dict]) -> None:
     """Extract explicit user feedback evidence."""
@@ -197,7 +201,10 @@ def _extract_idle_evidence(events: List[Any], evidence: List[dict]) -> None:
 def _extract_undo_evidence(events: List[Any], evidence: List[dict]) -> None:
     """Extract behavioral evidence from undo action spikes."""
     undo_events = [
-        e for e in events if _get(e, "event_type") == "user_action" and _payload(e).get("action") == "undo"
+        e
+        for e in events
+        if _get(e, "event_type") == "user_action"
+        and _payload(e).get("action") == "undo"
     ]
     if len(undo_events) >= 3:
         evidence.append(
@@ -274,11 +281,14 @@ def _emit_representation_evidence(
 
 def _extract_exploration_evidence(events: List[Any], evidence: List[dict]) -> None:
     """Extract exploration style from tool usage patterns."""
-    tool_toggles = sum(1 for e in events if _get(e, "event_type") in ("tool_rendered", "tool_closed"))
+    tool_toggles = sum(
+        1 for e in events if _get(e, "event_type") in ("tool_rendered", "tool_closed")
+    )
     param_changes = sum(
         1
         for e in events
-        if _get(e, "event_type") == "user_action" and _payload(e).get("action") == "parameter_changed"
+        if _get(e, "event_type") == "user_action"
+        and _payload(e).get("action") == "parameter_changed"
     )
 
     if tool_toggles >= 4 and param_changes <= 1:
@@ -303,7 +313,6 @@ def _extract_exploration_evidence(events: List[Any], evidence: List[dict]) -> No
                 "rule_id": "UWSM_EXP_ITERATIVE_PARAM_CHANGES_v1",
             }
         )
-
 
 
 def _extract_evidence(events: List[Any]) -> List[dict]:
@@ -332,6 +341,7 @@ def _extract_evidence(events: List[Any]) -> List[dict]:
 # Evidence Application + Audit
 # ----------------------------
 
+
 def _apply_evidence(uwsm: dict, ev: dict) -> List[dict]:
     dim = ev["dimension"]
     e_type = ev["type"]
@@ -346,10 +356,22 @@ def _apply_evidence(uwsm: dict, ev: dict) -> List[dict]:
 
     # Contradiction: reduce confidence only (do not flip)
     if e_type == "contradiction" and candidate != prev_value:
-        new_conf = _clamp(prev_conf + DELTA_CONTRADICTION * strength, DEFAULT_FLOOR, 1.0)
+        new_conf = _clamp(
+            prev_conf + DELTA_CONTRADICTION * strength, DEFAULT_FLOOR, 1.0
+        )
         d["confidence"] = new_conf
         return [
-            _audit(dim, prev_value, prev_conf, candidate, new_conf, eid, e_type, rule_id, changed=(prev_value != d["value"]))
+            _audit(
+                dim,
+                prev_value,
+                prev_conf,
+                candidate,
+                new_conf,
+                eid,
+                e_type,
+                rule_id,
+                changed=(prev_value != d["value"]),
+            )
         ]
 
     # Explicit and behavioral: increase confidence; potential value change gated by hysteresis
@@ -383,7 +405,17 @@ def _apply_evidence(uwsm: dict, ev: dict) -> List[dict]:
         streaks[dim] = {"candidate": candidate, "count": 0}
 
     return [
-        _audit(dim, prev_value, prev_conf, candidate, new_conf, eid, e_type, rule_id, changed=changed_value)
+        _audit(
+            dim,
+            prev_value,
+            prev_conf,
+            candidate,
+            new_conf,
+            eid,
+            e_type,
+            rule_id,
+            changed=changed_value,
+        )
     ]
 
 
@@ -402,7 +434,10 @@ def _audit(
         "dimension": dim,
         "previous": {"value": prev_value, "confidence": float(prev_conf)},
         "evidence": {"event_id": event_id, "type": e_type, "candidate": candidate},
-        "next": {"value": prev_value if not changed else candidate, "confidence": float(new_conf)},
+        "next": {
+            "value": prev_value if not changed else candidate,
+            "confidence": float(new_conf),
+        },
         "changed": bool(changed),
         "rule_id": rule_id,
         "timestamp": _now_iso(),

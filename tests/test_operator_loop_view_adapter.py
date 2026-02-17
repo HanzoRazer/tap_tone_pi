@@ -8,14 +8,13 @@ Validates:
   - commands_count in shadow record reflects dispatched count
   - Invalid spine_mode defaults to M1
 """
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 
-import pytest
 
 from tap_tone_pi.agentic.spine.view_adapter import NullViewAdapter
 from tap_tone_pi.workflow.operator_loop import OperatorLoop
@@ -26,16 +25,19 @@ from tap_tone_pi.agentic.spine.shadow_record import load_latest_shadow_record
 # helpers
 # ------------------------------------------------------------------
 
+
 def _write_events_with_overload(session_dir: Path) -> None:
     """Write events that trigger OVERLOAD moment (3+ undos in 60s)."""
     events = []
     for i in range(4):
-        events.append({
-            "event_type": "user_action",
-            "occurred_at": f"2026-02-09T10:00:0{i}Z",
-            "source": {"component": "gui"},
-            "payload": {"action": "undo"},
-        })
+        events.append(
+            {
+                "event_type": "user_action",
+                "occurred_at": f"2026-02-09T10:00:0{i}Z",
+                "source": {"component": "gui"},
+                "payload": {"action": "undo"},
+            }
+        )
     (session_dir / "events.jsonl").write_text(
         "\n".join(json.dumps(e) for e in events),
         encoding="utf-8",
@@ -61,6 +63,7 @@ def _write_events_with_finding(session_dir: Path) -> None:
 # ------------------------------------------------------------------
 # 1. Constructor accepts new kwargs
 # ------------------------------------------------------------------
+
 
 def test_operator_loop_accepts_view_adapter(tmp_path: Path) -> None:
     """OperatorLoop constructor accepts view_adapter kwarg."""
@@ -103,6 +106,7 @@ def test_invalid_spine_mode_defaults_to_m1(tmp_path: Path) -> None:
 # ------------------------------------------------------------------
 # 2. Shadow hook uses spine_mode
 # ------------------------------------------------------------------
+
 
 def test_shadow_record_reflects_spine_mode_m0(tmp_path: Path) -> None:
     """Shadow record mode field reflects spine_mode M0."""
@@ -147,6 +151,7 @@ def test_shadow_record_reflects_spine_mode_m1(tmp_path: Path) -> None:
 # 3. M2 + OVERLOAD dispatches reset_view via adapter
 # ------------------------------------------------------------------
 
+
 def test_m2_overload_dispatches_reset_view(tmp_path: Path) -> None:
     """M2 with OVERLOAD moment dispatches reset_view through adapter."""
     adapter = NullViewAdapter()
@@ -165,9 +170,9 @@ def test_m2_overload_dispatches_reset_view(tmp_path: Path) -> None:
 
     # Check adapter received reset_view
     reset_cmds = [c for c in adapter.commands if c["name"] == "reset_view"]
-    assert len(reset_cmds) >= 1, (
-        f"Expected reset_view in adapter commands: {adapter.commands}"
-    )
+    assert (
+        len(reset_cmds) >= 1
+    ), f"Expected reset_view in adapter commands: {adapter.commands}"
 
     # Shadow record should show commands_count > 0
     rec = load_latest_shadow_record(tmp_path)
@@ -179,6 +184,7 @@ def test_m2_overload_dispatches_reset_view(tmp_path: Path) -> None:
 # ------------------------------------------------------------------
 # 4. M1 mode does not dispatch commands even with OVERLOAD
 # ------------------------------------------------------------------
+
 
 def test_m1_overload_does_not_dispatch(tmp_path: Path) -> None:
     """M1 mode should not dispatch view commands even for OVERLOAD."""
@@ -203,6 +209,7 @@ def test_m1_overload_does_not_dispatch(tmp_path: Path) -> None:
 # ------------------------------------------------------------------
 # 5. No events = NONE moment, no commands
 # ------------------------------------------------------------------
+
 
 def test_no_events_no_commands(tmp_path: Path) -> None:
     """No events → NONE moment, zero commands, no adapter interaction."""

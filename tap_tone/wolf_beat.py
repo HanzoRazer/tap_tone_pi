@@ -29,12 +29,13 @@ Usage:
 
     result = analyze_wolf_beat(frequencies, magnitude, phase)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 import numpy as np
-from scipy.signal import find_peaks, peak_widths
+from scipy.signal import find_peaks
 from scipy.optimize import curve_fit
 
 
@@ -42,48 +43,49 @@ from scipy.optimize import curve_fit
 # Data Structures
 # -----------------------------------------------------------------------------
 
+
 @dataclass
 class PeakInfo:
     """Single resonance peak with extracted parameters."""
 
-    freq_hz: float              # Center frequency
-    amplitude: float            # Peak amplitude (linear or dB)
-    phase_deg: float            # Phase at peak
+    freq_hz: float  # Center frequency
+    amplitude: float  # Peak amplitude (linear or dB)
+    phase_deg: float  # Phase at peak
 
     # Linewidth parameters
-    gamma_hz: float             # Half-power bandwidth (FWHM/2)
-    Q: float                    # Quality factor = f / (2*gamma)
+    gamma_hz: float  # Half-power bandwidth (FWHM/2)
+    Q: float  # Quality factor = f / (2*gamma)
 
     # Fit quality
     fit_r_squared: float = 0.0  # Lorentzian fit R^2
 
     # Frequency indices
-    idx: int = 0                # Index in frequency array
-    idx_left: int = 0           # Left -3dB index
-    idx_right: int = 0          # Right -3dB index
+    idx: int = 0  # Index in frequency array
+    idx_left: int = 0  # Left -3dB index
+    idx_right: int = 0  # Right -3dB index
 
 
 @dataclass
 class PeakPair:
     """Candidate split doublet from coupled oscillator."""
 
-    lower: PeakInfo             # Lower frequency peak (omega_-)
-    upper: PeakInfo             # Upper frequency peak (omega_+)
+    lower: PeakInfo  # Lower frequency peak (omega_-)
+    upper: PeakInfo  # Upper frequency peak (omega_+)
 
     # Derived quantities
-    center_freq_hz: float       # (f_+ + f_-) / 2  (approx body mode)
-    delta_f_hz: float           # |f_+ - f_-| = beat frequency
+    center_freq_hz: float  # (f_+ + f_-) / 2  (approx body mode)
+    delta_f_hz: float  # |f_+ - f_-| = beat frequency
 
     # Resolvability
     combined_linewidth_hz: float  # gamma_+ + gamma_-
-    merge_ratio: float            # delta_f / combined_linewidth
-    is_resolvable: bool           # merge_ratio > 1.0
+    merge_ratio: float  # delta_f / combined_linewidth
+    is_resolvable: bool  # merge_ratio > 1.0
 
     # Wolf severity estimate
-    wolf_severity: str = "none"   # none / mild / moderate / severe
+    wolf_severity: str = "none"  # none / mild / moderate / severe
 
     # Coupling estimate (dimensionless)
-    coupling_index: float = 0.0   # Relative coupling strength
+    coupling_index: float = 0.0  # Relative coupling strength
 
 
 @dataclass
@@ -122,7 +124,9 @@ class WolfBeatResult:
                 "center_freq_hz": self.worst_wolf_freq_hz,
                 "beat_freq_hz": self.worst_wolf_beat_hz,
                 "severity": self.worst_wolf_severity,
-            } if self.worst_wolf_freq_hz else None,
+            }
+            if self.worst_wolf_freq_hz
+            else None,
             "peaks": [
                 {
                     "freq_hz": p.freq_hz,
@@ -151,6 +155,7 @@ class WolfBeatResult:
 # -----------------------------------------------------------------------------
 # Peak Detection
 # -----------------------------------------------------------------------------
+
 
 def find_peaks_in_frf(
     frequencies: np.ndarray,
@@ -263,7 +268,9 @@ def extract_linewidth(
     return gamma, Q, idx_left, idx_right
 
 
-def _lorentzian(f: np.ndarray, f0: float, gamma: float, A: float, C: float) -> np.ndarray:
+def _lorentzian(
+    f: np.ndarray, f0: float, gamma: float, A: float, C: float
+) -> np.ndarray:
     """Lorentzian lineshape for fitting."""
     return A / (1 + ((f - f0) / gamma) ** 2) + C
 
@@ -316,7 +323,7 @@ def extract_linewidth_lorentzian(
             p0=[f0, gamma_init, A_init, C_init],
             bounds=(
                 [f0 - gamma_init, 0.1, 0, 0],
-                [f0 + gamma_init, gamma_init * 10, A_init * 2, C_init * 2 + 0.01]
+                [f0 + gamma_init, gamma_init * 10, A_init * 2, C_init * 2 + 0.01],
             ),
             maxfev=1000,
         )
@@ -339,6 +346,7 @@ def extract_linewidth_lorentzian(
 # -----------------------------------------------------------------------------
 # Peak Pair Detection
 # -----------------------------------------------------------------------------
+
 
 def find_peak_pairs(
     peaks: List[PeakInfo],
@@ -382,7 +390,9 @@ def find_peak_pairs(
                 break  # Sorted, so no more valid pairs for this i
 
             # Check amplitude ratio
-            amp_ratio = max(lower.amplitude, upper.amplitude) / (min(lower.amplitude, upper.amplitude) + 1e-12)
+            amp_ratio = max(lower.amplitude, upper.amplitude) / (
+                min(lower.amplitude, upper.amplitude) + 1e-12
+            )
             if amp_ratio > amplitude_ratio_max:
                 continue
 
@@ -446,6 +456,7 @@ def _classify_wolf_severity(merge_ratio: float, delta_f: float) -> str:
 # -----------------------------------------------------------------------------
 # Main Analysis Function
 # -----------------------------------------------------------------------------
+
 
 def analyze_wolf_beat(
     frequencies: np.ndarray,
@@ -560,6 +571,7 @@ def analyze_wolf_beat(
 # Convenience Functions
 # -----------------------------------------------------------------------------
 
+
 def estimate_coupling_from_split(
     delta_f_hz: float,
     center_freq_hz: float,
@@ -621,7 +633,9 @@ def predict_wolf_severity_change(
     if new_merge_ratio < 0.5:
         return f"Peaks would MERGE (ratio {new_merge_ratio:.2f}) - wolf eliminated"
     elif new_merge_ratio < 1.0:
-        return f"Peaks would PARTIALLY MERGE (ratio {new_merge_ratio:.2f}) - wolf reduced"
+        return (
+            f"Peaks would PARTIALLY MERGE (ratio {new_merge_ratio:.2f}) - wolf reduced"
+        )
     elif new_merge_ratio < worst.merge_ratio:
         return f"Wolf REDUCED (ratio {new_merge_ratio:.2f} vs {worst.merge_ratio:.2f})"
     else:
@@ -631,6 +645,7 @@ def predict_wolf_severity_change(
 # -----------------------------------------------------------------------------
 # Dimensionless Avoided-Crossing Model
 # -----------------------------------------------------------------------------
+
 
 @dataclass
 class AvoidedCrossingModel:
@@ -652,10 +667,10 @@ class AvoidedCrossingModel:
         f_beat = (f_b / 2) * |√λ₊ - √λ₋|
     """
 
-    omega_b_hz: float           # Body mode frequency (Hz)
-    coupling_omega: float       # Dimensionless coupling Ω (0 to ~0.2)
-    gamma_b_hz: float = 5.0     # Body mode linewidth (Hz)
-    gamma_s_hz: float = 2.0     # String linewidth (Hz, typically < body)
+    omega_b_hz: float  # Body mode frequency (Hz)
+    coupling_omega: float  # Dimensionless coupling Ω (0 to ~0.2)
+    gamma_b_hz: float = 5.0  # Body mode linewidth (Hz)
+    gamma_s_hz: float = 2.0  # String linewidth (Hz, typically < body)
 
     def eigenvalues(self, xi: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -668,15 +683,15 @@ class AvoidedCrossingModel:
             (lambda_minus, lambda_plus) arrays
         """
         xi = np.asarray(xi)
-        omega_sq = self.coupling_omega ** 2
+        omega_sq = self.coupling_omega**2
 
         # Discriminant
-        term1 = (1 - xi ** 2) ** 2
-        term2 = 4 * omega_sq * xi ** 2
+        term1 = (1 - xi**2) ** 2
+        term2 = 4 * omega_sq * xi**2
         discriminant = np.sqrt(term1 + term2)
 
         # Eigenvalues
-        sum_term = 1 + xi ** 2
+        sum_term = 1 + xi**2
         lambda_minus = (sum_term - discriminant) / 2
         lambda_plus = (sum_term + discriminant) / 2
 

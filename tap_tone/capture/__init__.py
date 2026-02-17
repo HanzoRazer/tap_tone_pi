@@ -1,4 +1,5 @@
 """tap_tone.capture subpackage — audio capture utilities."""
+
 from __future__ import annotations
 
 from .auto_trigger import (

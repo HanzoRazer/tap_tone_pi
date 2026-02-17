@@ -3,10 +3,10 @@
 Verifies that quality rules are correctly applied to AnalysisResult
 and produce the expected verdicts.
 """
+
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from tap_tone_pi.core.analysis import AnalysisResult, Peak
 from tap_tone_pi.core.quality_gate import (
@@ -16,15 +16,14 @@ from tap_tone_pi.core.quality_gate import (
 )
 from tap_tone_pi.core.quality_policy import (
     Verdict,
-    Severity,
     QualityThresholds,
-    DEFAULT_THRESHOLDS,
 )
 
 
 # =============================================================================
 # Fixtures
 # =============================================================================
+
 
 def _make_analysis(
     *,
@@ -61,6 +60,7 @@ def _make_audio(peak_level: float = 0.5) -> np.ndarray:
 # PASS Cases
 # =============================================================================
 
+
 class TestQualityGatePass:
     """Test cases that should produce PASS verdict."""
 
@@ -87,6 +87,7 @@ class TestQualityGatePass:
 # =============================================================================
 # HARD FAIL Cases (Q001-Q005)
 # =============================================================================
+
 
 class TestHardFailRules:
     """Test hard rules that MUST produce FAIL verdict."""
@@ -155,6 +156,7 @@ class TestHardFailRules:
 # =============================================================================
 # SOFT WARN Cases (Q010-Q013)
 # =============================================================================
+
 
 class TestSoftWarnRules:
     """Test soft rules that produce WARN verdict (not FAIL)."""
@@ -230,13 +232,14 @@ class TestSoftWarnRules:
 # Threshold Customization
 # =============================================================================
 
+
 class TestCustomThresholds:
     """Test that custom thresholds are respected."""
 
     def test_custom_rms_silent_threshold(self):
         """Custom rms_silent threshold is applied."""
         analysis = _make_analysis(rms=0.0005)
-        
+
         # Default: should fail (rms < 0.001)
         default_verdict = check_quality(analysis, sample_rate=48000)
         assert default_verdict.verdict == Verdict.FAIL
@@ -277,6 +280,7 @@ class TestCustomThresholds:
 # =============================================================================
 # Verdict Helpers
 # =============================================================================
+
 
 class TestVerdictHelpers:
     """Test format_verdict_summary and can_proceed helpers."""
@@ -343,6 +347,7 @@ class TestVerdictHelpers:
 # QualityVerdict Serialization
 # =============================================================================
 
+
 class TestVerdictSerialization:
     """Test QualityVerdict.to_dict() output."""
 
@@ -382,6 +387,7 @@ class TestVerdictSerialization:
 # =============================================================================
 # Edge Cases
 # =============================================================================
+
 
 class TestEdgeCases:
     """Edge case and boundary condition tests."""

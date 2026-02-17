@@ -3,6 +3,7 @@ Audio and sensor acquisition (sounddevice, serial).
 
 Canonical location for all capture functionality. Migrated from tap_tone/capture.py.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -17,6 +18,7 @@ if TYPE_CHECKING:
 @dataclass(frozen=True)
 class CaptureResult:
     """Result of an audio capture operation."""
+
     sample_rate: int
     audio: np.ndarray  # shape: (n_samples,)
 
@@ -37,13 +39,15 @@ def list_devices() -> list[dict]:
     devices = sd.query_devices()
     out: list[dict] = []
     for i, d in enumerate(devices):
-        out.append({
-            "index": i,
-            "name": d.get("name"),
-            "max_input_channels": d.get("max_input_channels"),
-            "max_output_channels": d.get("max_output_channels"),
-            "default_samplerate": d.get("default_samplerate"),
-        })
+        out.append(
+            {
+                "index": i,
+                "name": d.get("name"),
+                "max_input_channels": d.get("max_input_channels"),
+                "max_output_channels": d.get("max_output_channels"),
+                "default_samplerate": d.get("default_samplerate"),
+            }
+        )
     return out
 
 

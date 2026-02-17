@@ -14,6 +14,7 @@ Usage:
     --out out/RUN/chladni/peaks.json \\
     --min-hz 50 --max-hz 2000 --prominence 0.02
 """
+
 from __future__ import annotations
 
 import argparse

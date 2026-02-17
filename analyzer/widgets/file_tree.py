@@ -4,9 +4,7 @@ File tree widget for navigating viewer pack contents.
 
 from typing import Optional, Dict, Any
 
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QTreeWidget, QTreeWidgetItem, QLabel
-)
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTreeWidget, QTreeWidgetItem, QLabel
 from PyQt6.QtCore import pyqtSignal
 
 
@@ -74,12 +72,20 @@ class FileTreeWidget(QWidget):
             session_meta = metadata.get("session")
             if session_meta:
                 session_item = QTreeWidgetItem(meta_item, ["Session Info"])
-                session_item.setData(0, 256, {"type": "metadata", "subtype": "session", "data": session_meta})
+                session_item.setData(
+                    0,
+                    256,
+                    {"type": "metadata", "subtype": "session", "data": session_meta},
+                )
 
             capture_meta = metadata.get("capture")
             if capture_meta:
                 capture_item = QTreeWidgetItem(meta_item, ["Capture Info"])
-                capture_item.setData(0, 256, {"type": "metadata", "subtype": "capture", "data": capture_meta})
+                capture_item.setData(
+                    0,
+                    256,
+                    {"type": "metadata", "subtype": "capture", "data": capture_meta},
+                )
 
         # Spectra section
         spectra = self._pack.get("spectra", [])
@@ -90,7 +96,9 @@ class FileTreeWidget(QWidget):
             for spec in spectra:
                 name = spec.get("name", "spectrum")
                 item = QTreeWidgetItem(spectra_item, [name])
-                item.setData(0, 256, {"type": "spectrum", "name": name, "data": spec.get("data")})
+                item.setData(
+                    0, 256, {"type": "spectrum", "name": name, "data": spec.get("data")}
+                )
 
         # Peaks section
         peaks_list = self._pack.get("peaks", [])
@@ -100,7 +108,11 @@ class FileTreeWidget(QWidget):
             for peak_file in peaks_list:
                 name = peak_file.get("name", "peaks")
                 item = QTreeWidgetItem(peaks_item, [name])
-                item.setData(0, 256, {"type": "peaks", "name": name, "data": peak_file.get("data")})
+                item.setData(
+                    0,
+                    256,
+                    {"type": "peaks", "name": name, "data": peak_file.get("data")},
+                )
 
         # Derived data section
         derived = self._pack.get("derived", {})
@@ -119,7 +131,9 @@ class FileTreeWidget(QWidget):
             for audio in raw_audio:
                 name = audio.get("name", "audio")
                 item = QTreeWidgetItem(audio_item, [name])
-                item.setData(0, 256, {"type": "audio", "name": name, "path": audio.get("path")})
+                item.setData(
+                    0, 256, {"type": "audio", "name": name, "path": audio.get("path")}
+                )
 
     def _on_item_clicked(self, item: QTreeWidgetItem, column: int):
         """Handle single click on tree item."""

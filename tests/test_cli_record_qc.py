@@ -2,20 +2,17 @@
 
 Verifies that cmd_record emits quality_check.json alongside other artifacts.
 """
+
 from __future__ import annotations
 
 import argparse
 import json
-import sys
 from dataclasses import dataclass
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import numpy as np
-import pytest
 
 from tap_tone_pi.core.analysis import AnalysisResult, Peak
-from tap_tone_pi.core.quality_policy import Verdict
 
 # Import the actual module (not the function shadowed by __init__.py)
 from tap_tone_pi.cli.main import cmd_record
@@ -25,9 +22,11 @@ from tap_tone_pi.cli.main import cmd_record
 # Fixtures
 # =============================================================================
 
+
 @dataclass
 class FakeCaptureResult:
     """Stub for capture result."""
+
     audio: np.ndarray
     sample_rate: int
 
@@ -35,6 +34,7 @@ class FakeCaptureResult:
 @dataclass
 class FakePersistedCapture:
     """Stub for persist_capture return value."""
+
     capture_dir: Path
 
 
@@ -76,6 +76,7 @@ def _args(out_dir: str, label: str = "test_tap") -> argparse.Namespace:
 # =============================================================================
 # Tests
 # =============================================================================
+
 
 class TestCmdRecordQualityCheck:
     """Test that cmd_record emits quality_check.json."""
@@ -135,15 +136,23 @@ class TestCmdRecordQualityCheck:
 
         fake_audio = np.zeros(48000, dtype=np.float32)
         fake_capture = FakeCaptureResult(audio=fake_audio, sample_rate=48000)
-        monkeypatch.setattr("tap_tone_pi.capture.record_audio", lambda **kw: fake_capture)
+        monkeypatch.setattr(
+            "tap_tone_pi.capture.record_audio", lambda **kw: fake_capture
+        )
 
         # Good measurement: high confidence, not clipped, has peaks
         fake_analysis = _make_analysis(confidence=0.9, clipped=False, rms=0.05)
-        monkeypatch.setattr("tap_tone_pi.core.analysis.analyze_tap", lambda *a, **kw: fake_analysis)
+        monkeypatch.setattr(
+            "tap_tone_pi.core.analysis.analyze_tap", lambda *a, **kw: fake_analysis
+        )
 
         fake_persisted = FakePersistedCapture(capture_dir=capture_dir)
-        monkeypatch.setattr("tap_tone_pi.io.storage.persist_capture", lambda **kw: fake_persisted)
-        monkeypatch.setattr("tap_tone_pi.core.user_config.get_saved_device", lambda: None)
+        monkeypatch.setattr(
+            "tap_tone_pi.io.storage.persist_capture", lambda **kw: fake_persisted
+        )
+        monkeypatch.setattr(
+            "tap_tone_pi.core.user_config.get_saved_device", lambda: None
+        )
 
         cmd_record(_args(str(tmp_path / "out")))
 
@@ -151,22 +160,32 @@ class TestCmdRecordQualityCheck:
         assert qc_data["verdict"] == "pass"
         assert qc_data["error_count"] == 0
 
-    def test_quality_check_contains_fail_verdict_on_clipping(self, monkeypatch, tmp_path):
+    def test_quality_check_contains_fail_verdict_on_clipping(
+        self, monkeypatch, tmp_path
+    ):
         """Clipped measurement produces FAIL verdict with Q001 in quality_check.json."""
         capture_dir = tmp_path / "captures" / "capture_20260101T000000Z"
         capture_dir.mkdir(parents=True)
 
         fake_audio = np.zeros(48000, dtype=np.float32)
         fake_capture = FakeCaptureResult(audio=fake_audio, sample_rate=48000)
-        monkeypatch.setattr("tap_tone_pi.capture.record_audio", lambda **kw: fake_capture)
+        monkeypatch.setattr(
+            "tap_tone_pi.capture.record_audio", lambda **kw: fake_capture
+        )
 
         # Clipped measurement
         fake_analysis = _make_analysis(clipped=True)
-        monkeypatch.setattr("tap_tone_pi.core.analysis.analyze_tap", lambda *a, **kw: fake_analysis)
+        monkeypatch.setattr(
+            "tap_tone_pi.core.analysis.analyze_tap", lambda *a, **kw: fake_analysis
+        )
 
         fake_persisted = FakePersistedCapture(capture_dir=capture_dir)
-        monkeypatch.setattr("tap_tone_pi.io.storage.persist_capture", lambda **kw: fake_persisted)
-        monkeypatch.setattr("tap_tone_pi.core.user_config.get_saved_device", lambda: None)
+        monkeypatch.setattr(
+            "tap_tone_pi.io.storage.persist_capture", lambda **kw: fake_persisted
+        )
+        monkeypatch.setattr(
+            "tap_tone_pi.core.user_config.get_saved_device", lambda: None
+        )
 
         cmd_record(_args(str(tmp_path / "out")))
 
@@ -178,22 +197,32 @@ class TestCmdRecordQualityCheck:
         rule_ids = [r["rule_id"] for r in qc_data["triggered_rules"]]
         assert "Q001" in rule_ids
 
-    def test_quality_check_contains_warn_verdict_on_low_confidence(self, monkeypatch, tmp_path):
+    def test_quality_check_contains_warn_verdict_on_low_confidence(
+        self, monkeypatch, tmp_path
+    ):
         """Marginal confidence produces WARN verdict with Q012 in quality_check.json."""
         capture_dir = tmp_path / "captures" / "capture_20260101T000000Z"
         capture_dir.mkdir(parents=True)
 
         fake_audio = np.zeros(48000, dtype=np.float32)
         fake_capture = FakeCaptureResult(audio=fake_audio, sample_rate=48000)
-        monkeypatch.setattr("tap_tone_pi.capture.record_audio", lambda **kw: fake_capture)
+        monkeypatch.setattr(
+            "tap_tone_pi.capture.record_audio", lambda **kw: fake_capture
+        )
 
         # Marginal confidence (0.3 <= conf < 0.5)
         fake_analysis = _make_analysis(confidence=0.4, clipped=False, rms=0.05)
-        monkeypatch.setattr("tap_tone_pi.core.analysis.analyze_tap", lambda *a, **kw: fake_analysis)
+        monkeypatch.setattr(
+            "tap_tone_pi.core.analysis.analyze_tap", lambda *a, **kw: fake_analysis
+        )
 
         fake_persisted = FakePersistedCapture(capture_dir=capture_dir)
-        monkeypatch.setattr("tap_tone_pi.io.storage.persist_capture", lambda **kw: fake_persisted)
-        monkeypatch.setattr("tap_tone_pi.core.user_config.get_saved_device", lambda: None)
+        monkeypatch.setattr(
+            "tap_tone_pi.io.storage.persist_capture", lambda **kw: fake_persisted
+        )
+        monkeypatch.setattr(
+            "tap_tone_pi.core.user_config.get_saved_device", lambda: None
+        )
 
         cmd_record(_args(str(tmp_path / "out")))
 

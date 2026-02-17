@@ -9,7 +9,7 @@ import csv
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Tuple
 
 
 @dataclass
@@ -47,7 +47,9 @@ class WsiCurveData:
             regions.append((start_freq, self.freq_hz[-1]))
         return regions
 
-    def get_problem_frequencies(self, wsi_threshold: float = 0.7) -> List[Dict[str, float]]:
+    def get_problem_frequencies(
+        self, wsi_threshold: float = 0.7
+    ) -> List[Dict[str, float]]:
         problems = []
         for freq, wsi in zip(self.freq_hz, self.wsi):
             if wsi >= wsi_threshold:
@@ -115,10 +117,15 @@ def _parse_csv(file_path):
             coh_mean.append(_parse_float_col(row, col_map, "coh_mean"))
             admissible.append(_parse_bool_col(row, col_map, "admissible"))
     return WsiCurveData(
-        freq_hz=freq_hz, wsi=wsi, loc=loc, grad=grad,
-        phase_disorder=phase_disorder, coh_mean=coh_mean, admissible=admissible,
+        freq_hz=freq_hz,
+        wsi=wsi,
+        loc=loc,
+        grad=grad,
+        phase_disorder=phase_disorder,
+        coh_mean=coh_mean,
+        admissible=admissible,
         point_count=len(freq_hz),
-        freq_range=(min(freq_hz), max(freq_hz)) if freq_hz else (0, 0)
+        freq_range=(min(freq_hz), max(freq_hz)) if freq_hz else (0, 0),
     )
 
 
@@ -130,7 +137,9 @@ def _parse_json(data):
     loc = _get_float_array(data, ["loc", "localization", "location"])
     grad = _get_float_array(data, ["grad", "gradient"])
     phase_disorder = _get_float_array(data, ["phase_disorder", "pd", "disorder"])
-    coh_mean = _get_float_array(data, ["coh_mean", "coherence_mean", "coherence", "coh"])
+    coh_mean = _get_float_array(
+        data, ["coh_mean", "coherence_mean", "coherence", "coh"]
+    )
     admissible = _get_bool_array(data, ["admissible", "valid", "ok"])
     n = len(freq_hz)
     wsi.extend([0.0] * (n - len(wsi)))
@@ -140,9 +149,15 @@ def _parse_json(data):
     coh_mean.extend([0.0] * (n - len(coh_mean)))
     admissible.extend([False] * (n - len(admissible)))
     return WsiCurveData(
-        freq_hz=freq_hz, wsi=wsi, loc=loc, grad=grad,
-        phase_disorder=phase_disorder, coh_mean=coh_mean, admissible=admissible,
-        point_count=n, freq_range=(min(freq_hz), max(freq_hz) ) if freq_hz else (0, 0)
+        freq_hz=freq_hz,
+        wsi=wsi,
+        loc=loc,
+        grad=grad,
+        phase_disorder=phase_disorder,
+        coh_mean=coh_mean,
+        admissible=admissible,
+        point_count=n,
+        freq_range=(min(freq_hz), max(freq_hz)) if freq_hz else (0, 0),
     )
 
 
@@ -167,10 +182,15 @@ def _parse_json_array(arr):
         a = obj.get("admissible") or obj.get("valid")
         admissible.append(bool(a) if a is not None else False)
     return WsiCurveData(
-        freq_hz=freq_hz, wsi=wsi, loc=loc, grad=grad,
-        phase_disorder=phase_disorder, coh_mean=coh_mean, admissible=admissible,
+        freq_hz=freq_hz,
+        wsi=wsi,
+        loc=loc,
+        grad=grad,
+        phase_disorder=phase_disorder,
+        coh_mean=coh_mean,
+        admissible=admissible,
         point_count=len(freq_hz),
-        freq_range=(min(freq_hz), max(freq_hz)) if freq_hz else (0, 0)
+        freq_range=(min(freq_hz), max(freq_hz)) if freq_hz else (0, 0),
     )
 
 

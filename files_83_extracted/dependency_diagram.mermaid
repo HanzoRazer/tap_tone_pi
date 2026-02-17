@@ -6,7 +6,7 @@ graph TB
         direction TB
 
         GUI_B["gui/app.py<br/><i>subprocess calls</i>"]
-        
+
         subgraph PKG1["tap_tone/ (root)<br/>v0.1.0 · 634 LOC"]
             TT_main["main.py"]
             TT_analysis["analysis.py"]
@@ -51,7 +51,7 @@ graph TB
 
     subgraph AFTER["✅ TARGET STATE (Consolidated)"]
         direction TB
-        
+
         GUI_A["gui/app.py<br/><i>direct imports</i>"]
         CLI_A["cli/main.py<br/><code>ttp</code> command"]
 

@@ -4,6 +4,7 @@ Pure function — no Tk dependency, no I/O.  Returns tuple of
 pre-formatted lines suitable for embedding in any renderer
 (GUI text widget, CLI print, etc.).
 """
+
 from __future__ import annotations
 
 from typing import Optional, Sequence
@@ -33,11 +34,13 @@ def format_directive_history(
 
     lines.append("Recent directive events:")
 
-    shown = list(rows)[-max(1, int(limit)):]
+    shown = list(rows)[-max(1, int(limit)) :]
     for r in shown:
         ts = (r.timestamp or "-").strip() if isinstance(r.timestamp, str) else "-"
         et = (r.event_type or "-").strip() if isinstance(r.event_type, str) else "-"
-        did = (r.directive_id or "-").strip() if isinstance(r.directive_id, str) else "-"
+        did = (
+            (r.directive_id or "-").strip() if isinstance(r.directive_id, str) else "-"
+        )
         comp = (r.component or "-").strip() if isinstance(r.component, str) else "-"
         lines.append(f"  {ts}  {et}  directive_id={did}  component={comp}")
 

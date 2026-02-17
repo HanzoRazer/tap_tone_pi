@@ -17,6 +17,7 @@ Usage:
     --tempC 22.0 --rh 45.0 \
     --out out/RUN/chladni/chladni_run.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -54,8 +55,12 @@ def main() -> None:
     ap.add_argument("--tempC", type=float, default=None, help="Temperature (C)")
     ap.add_argument("--rh", type=float, default=None, help="Relative humidity (pct)")
     ap.add_argument("--out", required=True, help="Output chladni_run.json path")
-    ap.add_argument("--tolerance-hz", type=float, default=CHLADNI_FREQ_TOLERANCE_HZ,
-                    help=f"Frequency mismatch tolerance (default: {CHLADNI_FREQ_TOLERANCE_HZ} Hz)")
+    ap.add_argument(
+        "--tolerance-hz",
+        type=float,
+        default=CHLADNI_FREQ_TOLERANCE_HZ,
+        help=f"Frequency mismatch tolerance (default: {CHLADNI_FREQ_TOLERANCE_HZ} Hz)",
+    )
     args = ap.parse_args()
 
     with open(args.peaks_json, "r", encoding="utf-8") as fp:
@@ -63,7 +68,7 @@ def main() -> None:
 
     detected_peaks_hz = peaks.get("peaks_hz", [])
     patterns = []
-    
+
     for img in args.images:
         name = pathlib.Path(img).name
         # Match F0148.png → 148 Hz, F1234.png → 1234 Hz
@@ -81,7 +86,9 @@ def main() -> None:
         # Attach nearest peak and compute delta
         delta = attach_pattern_record(rec, detected_peaks_hz)
         if delta > 0:
-            print(f"Warning: {name} freq_hz={freq} -> nearest_detected={rec['nearest_detected_hz']}, delta={delta:.2f} Hz")
+            print(
+                f"Warning: {name} freq_hz={freq} -> nearest_detected={rec['nearest_detected_hz']}, delta={delta:.2f} Hz"
+            )
         patterns.append(rec)
 
     run = {
@@ -122,7 +129,9 @@ def main() -> None:
     # Heuristic: guess WAV and images from common demo paths (safe no-op if missing)
     wav = run_dir / "capture.wav"
     peaks_json = run_dir / "peaks.json"
-    images = [ip for ip in [run_dir / "F0148.png", run_dir / "F0226.png"] if ip.exists()]
+    images = [
+        ip for ip in [run_dir / "F0148.png", run_dir / "F0226.png"] if ip.exists()
+    ]
     try:
         if wav.exists() and peaks_json.exists() and images:
             man = append_chladni_to_run_manifest(

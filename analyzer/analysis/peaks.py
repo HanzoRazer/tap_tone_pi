@@ -14,7 +14,7 @@ def find_spectrum_peaks(
     min_prominence: float = 0.1,
     min_distance: int = 10,
     min_coherence: float = 0.5,
-    max_peaks: int = 20
+    max_peaks: int = 20,
 ) -> List[Dict[str, float]]:
     """
     Find peaks in spectrum data.
@@ -42,9 +42,7 @@ def find_spectrum_peaks(
 
     # Find peaks using scipy
     peak_indices, properties = scipy_find_peaks(
-        log_mag,
-        prominence=min_prominence,
-        distance=min_distance
+        log_mag, prominence=min_prominence, distance=min_distance
     )
 
     # Build peak list
@@ -53,7 +51,7 @@ def find_spectrum_peaks(
         peak = {
             "freq_hz": float(freq_hz[idx]),
             "magnitude": float(magnitude[idx]),
-            "index": int(idx)
+            "index": int(idx),
         }
 
         # Add coherence if available
@@ -88,7 +86,7 @@ class PeakDetector:
         min_distance: int = 10,
         min_coherence: float = 0.5,
         max_peaks: int = 20,
-        freq_range: Optional[tuple] = None
+        freq_range: Optional[tuple] = None,
     ):
         """
         Initialize peak detector.
@@ -110,7 +108,7 @@ class PeakDetector:
         self,
         freq_hz: np.ndarray,
         magnitude: np.ndarray,
-        coherence: Optional[np.ndarray] = None
+        coherence: Optional[np.ndarray] = None,
     ) -> List[Dict[str, float]]:
         """
         Detect peaks in spectrum data.
@@ -141,7 +139,7 @@ class PeakDetector:
             min_prominence=self.min_prominence,
             min_distance=self.min_distance,
             min_coherence=self.min_coherence,
-            max_peaks=self.max_peaks
+            max_peaks=self.max_peaks,
         )
 
     def identify_modes(self, peaks: List[Dict[str, float]]) -> List[Dict[str, Any]]:
@@ -191,10 +189,7 @@ class PeakDetector:
 
 
 def estimate_q_factor(
-    freq_hz: np.ndarray,
-    magnitude: np.ndarray,
-    peak_freq: float,
-    peak_mag: float
+    freq_hz: np.ndarray, magnitude: np.ndarray, peak_freq: float, peak_mag: float
 ) -> float:
     """
     Estimate Q factor (quality factor) for a peak.

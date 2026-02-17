@@ -12,6 +12,7 @@ Usage:
     # result.audio — mono float32 array
     # result.trigger_metrics — provenance info
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -25,41 +26,43 @@ import numpy as np
 
 # Lazy import for testing without hardware
 if TYPE_CHECKING:
-    import sounddevice as sd
+    pass
 
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class AutoTriggerConfig:
     """Configuration for auto-trigger impulse detection."""
 
     # Detection timing
-    warmup_s: float = 0.5           # Noise floor estimation period
-    tap_timeout_s: float = 8.0      # Max wait for impulse
-    max_retries: int = 3            # Retries before giving up
+    warmup_s: float = 0.5  # Noise floor estimation period
+    tap_timeout_s: float = 8.0  # Max wait for impulse
+    max_retries: int = 3  # Retries before giving up
 
     # Detection thresholds
-    peak_mult: float = 10.0         # Peak must exceed noise * this
-    rms_mult: float = 3.0           # RMS must exceed noise * this
-    debounce_frames: int = 2        # Consecutive trigger frames required
-    ema_alpha: float = 0.05         # Noise floor EMA update rate
+    peak_mult: float = 10.0  # Peak must exceed noise * this
+    rms_mult: float = 3.0  # RMS must exceed noise * this
+    debounce_frames: int = 2  # Consecutive trigger frames required
+    ema_alpha: float = 0.05  # Noise floor EMA update rate
 
     # Capture window
-    pre_ms: float = 50.0            # Pre-roll before trigger (ms)
-    post_ms: float = 1500.0         # Post-roll after trigger (ms)
+    pre_ms: float = 50.0  # Pre-roll before trigger (ms)
+    post_ms: float = 1500.0  # Post-roll after trigger (ms)
 
     # Guards
-    min_impulse_ms: float = 2.0     # Ignore ultra-short glitches
-    reject_clipping: bool = False   # Reject and retry if clipped
-    clip_threshold: float = 0.98    # Peak level considered clipping
+    min_impulse_ms: float = 2.0  # Ignore ultra-short glitches
+    reject_clipping: bool = False  # Reject and retry if clipped
+    clip_threshold: float = 0.98  # Peak level considered clipping
 
 
 # ---------------------------------------------------------------------------
 # Trigger Metrics (Provenance)
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class TriggerMetrics:
@@ -91,18 +94,20 @@ class TriggerMetrics:
 # Result Dataclass (matches tap_tone.capture.CaptureResult pattern)
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class AutoTriggerResult:
     """Result from auto-trigger capture — extends CaptureResult pattern."""
 
     sample_rate: int
-    audio: np.ndarray               # shape: (n_samples,), mono float32 [-1, 1]
+    audio: np.ndarray  # shape: (n_samples,), mono float32 [-1, 1]
     trigger_metrics: TriggerMetrics
 
 
 # ---------------------------------------------------------------------------
 # Ring Buffer
 # ---------------------------------------------------------------------------
+
 
 class RingBuffer:
     """Simple mono ring buffer holding the last N samples."""
@@ -142,6 +147,7 @@ class RingBuffer:
 # Detector
 # ---------------------------------------------------------------------------
 
+
 class AutoTriggerDetector:
     """Maintains a noise floor estimate and decides when a frame triggers."""
 
@@ -161,7 +167,9 @@ class AutoTriggerDetector:
         a = self.cfg.ema_alpha
         self.noise_rms = (1.0 - a) * self.noise_rms + a * max(rms, 1e-9)
 
-    def process_frame(self, x: np.ndarray, fs: int) -> Tuple[bool, Optional[TriggerMetrics]]:
+    def process_frame(
+        self, x: np.ndarray, fs: int
+    ) -> Tuple[bool, Optional[TriggerMetrics]]:
         """
         Process one audio frame.
 
@@ -218,6 +226,7 @@ class AutoTriggerDetector:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _to_mono_float32(indata: np.ndarray) -> np.ndarray:
     """Convert (frames, channels) or (frames,) to mono float32 1D."""
     x = indata
@@ -229,6 +238,7 @@ def _to_mono_float32(indata: np.ndarray) -> np.ndarray:
 # ---------------------------------------------------------------------------
 # Main Capture Function (sounddevice only)
 # ---------------------------------------------------------------------------
+
 
 def capture_one_impulse(
     *,
@@ -309,7 +319,9 @@ def capture_one_impulse(
     ):
         while True:
             if (time.monotonic() - started) > cfg.tap_timeout_s:
-                raise TimeoutError(f"No impulse detected within {cfg.tap_timeout_s:.1f}s")
+                raise TimeoutError(
+                    f"No impulse detected within {cfg.tap_timeout_s:.1f}s"
+                )
 
             try:
                 x = q.get(timeout=0.5)
@@ -344,7 +356,9 @@ def capture_one_impulse(
                 continue
 
             triggered_metrics = metrics
-            _log(f"Impulse detected (SNR≈{metrics.snr_est_db:.1f} dB). Capturing post-roll...")
+            _log(
+                f"Impulse detected (SNR≈{metrics.snr_est_db:.1f} dB). Capturing post-roll..."
+            )
 
             post_audio.append(x)
             post_collected = len(x)
@@ -353,7 +367,11 @@ def capture_one_impulse(
 
     # Assemble final audio
     pre = ring.get()
-    post = np.concatenate(post_audio, axis=0)[:post_n] if post_audio else np.array([], dtype=np.float32)
+    post = (
+        np.concatenate(post_audio, axis=0)[:post_n]
+        if post_audio
+        else np.array([], dtype=np.float32)
+    )
     audio = np.concatenate([pre, post], axis=0).astype(np.float32)
 
     # Replace NaNs (rare but possible)
@@ -369,6 +387,7 @@ def capture_one_impulse(
 # ---------------------------------------------------------------------------
 # Testing Helper (no hardware required)
 # ---------------------------------------------------------------------------
+
 
 def capture_one_impulse_from_stream(
     stream_callback: Callable[[], Optional[np.ndarray]],
@@ -446,7 +465,9 @@ def capture_one_impulse_from_stream(
             continue
 
         triggered_metrics = metrics
-        _log(f"Impulse detected (SNR≈{metrics.snr_est_db:.1f} dB). Capturing post-roll...")
+        _log(
+            f"Impulse detected (SNR≈{metrics.snr_est_db:.1f} dB). Capturing post-roll..."
+        )
 
         post_audio.append(x)
         post_collected = len(x)
@@ -454,7 +475,11 @@ def capture_one_impulse_from_stream(
             break
 
     pre = ring.get()
-    post = np.concatenate(post_audio, axis=0)[:post_n] if post_audio else np.array([], dtype=np.float32)
+    post = (
+        np.concatenate(post_audio, axis=0)[:post_n]
+        if post_audio
+        else np.array([], dtype=np.float32)
+    )
     audio = np.concatenate([pre, post], axis=0).astype(np.float32)
 
     return (audio, triggered_metrics, "success")

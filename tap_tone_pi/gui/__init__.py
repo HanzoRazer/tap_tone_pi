@@ -11,6 +11,7 @@ Usage:
     # or via CLI:
     ttp gui
 """
+
 from .app import App
 
 __all__ = ["App"]

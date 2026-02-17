@@ -56,7 +56,9 @@ def sample_events(
 
 
 def test_tap_tone_pi_agent_event_parses_and_serializes(sample_events):
-    tt = pytest.importorskip("tap_tone_pi.agentic.contracts", reason="tap_tone_pi not importable")
+    tt = pytest.importorskip(
+        "tap_tone_pi.agentic.contracts", reason="tap_tone_pi not importable"
+    )
     AgentEventV1 = getattr(tt, "AgentEventV1")
 
     for e in sample_events:
@@ -70,7 +72,9 @@ def test_tap_tone_pi_agent_event_parses_and_serializes(sample_events):
 
 
 def test_luthiers_toolbox_agent_event_parses_and_serializes(sample_events):
-    lb = pytest.importorskip("app.agentic.contracts", reason="luthiers-toolbox contracts not importable")
+    lb = pytest.importorskip(
+        "app.agentic.contracts", reason="luthiers-toolbox contracts not importable"
+    )
     AgentEventV1 = getattr(lb, "AgentEventV1")
 
     for e in sample_events:
@@ -88,8 +92,12 @@ def test_cross_repo_serialization_key_parity(sample_events):
     If both repos are importable in the same environment, ensure that the serialized
     dicts share the same top-level keys (forward/back compat baseline).
     """
-    tt_mod = pytest.importorskip("tap_tone_pi.agentic.contracts", reason="tap_tone_pi not importable")
-    lb_mod = pytest.importorskip("app.agentic.contracts", reason="luthiers-toolbox not importable")
+    tt_mod = pytest.importorskip(
+        "tap_tone_pi.agentic.contracts", reason="tap_tone_pi not importable"
+    )
+    lb_mod = pytest.importorskip(
+        "app.agentic.contracts", reason="luthiers-toolbox not importable"
+    )
 
     TTEvent = getattr(tt_mod, "AgentEventV1")
     LBEvent = getattr(lb_mod, "AgentEventV1")

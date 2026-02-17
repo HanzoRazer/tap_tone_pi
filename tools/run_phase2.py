@@ -10,6 +10,7 @@ Usage:
 This script sets up the import paths correctly and forwards all arguments
 to scripts/phase2_slice.py.
 """
+
 from __future__ import annotations
 
 import sys

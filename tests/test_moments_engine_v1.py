@@ -27,9 +27,13 @@ MOMENTS_IMPORT_PATH = "tap_tone_pi.agentic.spine.moments"
 
 
 def _import_detector():
-    mod = pytest.importorskip(MOMENTS_IMPORT_PATH, reason=f"{MOMENTS_IMPORT_PATH} not implemented yet")
+    mod = pytest.importorskip(
+        MOMENTS_IMPORT_PATH, reason=f"{MOMENTS_IMPORT_PATH} not implemented yet"
+    )
     detect_moments = getattr(mod, "detect_moments", None)
-    assert callable(detect_moments), "Expected a callable detect_moments(events) in spine.moments"
+    assert callable(
+        detect_moments
+    ), "Expected a callable detect_moments(events) in spine.moments"
     return detect_moments
 
 
@@ -37,7 +41,9 @@ def _moment_names(moments):
     return {m["moment"] for m in moments}
 
 
-def test_first_signal_from_analysis_completed(ev_analysis_started, ev_analysis_completed_basic):
+def test_first_signal_from_analysis_completed(
+    ev_analysis_started, ev_analysis_completed_basic
+):
     detect_moments = _import_detector()
 
     moments = detect_moments([ev_analysis_started, ev_analysis_completed_basic])
@@ -46,14 +52,17 @@ def test_first_signal_from_analysis_completed(ev_analysis_started, ev_analysis_c
     assert ev_analysis_completed_basic["event_id"] in first.get("trigger_events", [])
 
 
-def test_first_signal_prefers_view_rendered(ev_analysis_completed_basic, ev_view_rendered_spectrum):
+def test_first_signal_prefers_view_rendered(
+    ev_analysis_completed_basic, ev_view_rendered_spectrum
+):
     detect_moments = _import_detector()
 
     moments = detect_moments([ev_analysis_completed_basic, ev_view_rendered_spectrum])
     first = next(m for m in moments if m["moment"] == "FIRST_SIGNAL")
     # Prefer view_rendered as trigger if your implementation supports it
-    assert ev_view_rendered_spectrum["event_id"] in first.get("trigger_events", []) or \
-           ev_analysis_completed_basic["event_id"] in first.get("trigger_events", [])
+    assert ev_view_rendered_spectrum["event_id"] in first.get(
+        "trigger_events", []
+    ) or ev_analysis_completed_basic["event_id"] in first.get("trigger_events", [])
 
 
 def test_hesitation_idle_timeout(ev_view_rendered_spectrum, ev_idle_timeout_9s):
@@ -70,7 +79,9 @@ def test_hesitation_repeated_hover(ev_hover_1, ev_hover_2):
     assert "HESITATION" in _moment_names(moments)
 
 
-def test_no_hesitation_if_param_changed(ev_view_rendered_spectrum, ev_parameter_changed):
+def test_no_hesitation_if_param_changed(
+    ev_view_rendered_spectrum, ev_parameter_changed
+):
     detect_moments = _import_detector()
 
     moments = detect_moments([ev_view_rendered_spectrum, ev_parameter_changed])
@@ -119,7 +130,9 @@ def test_error_analysis_failed(ev_analysis_failed):
     assert "ERROR" in _moment_names(moments)
 
 
-def test_priority_error_suppresses_overload(ev_user_feedback_too_much, ev_analysis_failed):
+def test_priority_error_suppresses_overload(
+    ev_user_feedback_too_much, ev_analysis_failed
+):
     detect_moments = _import_detector()
 
     moments = detect_moments([ev_user_feedback_too_much, ev_analysis_failed])
@@ -132,6 +145,7 @@ def test_priority_error_suppresses_overload(ev_user_feedback_too_much, ev_analys
 # ---------------------------------------------------------------------------
 # PR #10 — MOM-004 CONFIDENCE_CLIMB
 # ---------------------------------------------------------------------------
+
 
 def test_confidence_climb_high_ack_rate(ev_confidence_climb_stream):
     """MOM-004: ≥5 shown + ≥80% ack rate → CONFIDENCE_CLIMB."""
@@ -157,6 +171,7 @@ def test_confidence_climb_too_few_shown(ev_too_few_shown):
 # ---------------------------------------------------------------------------
 # PR #10 — MOM-005 TRUST_EROSION
 # ---------------------------------------------------------------------------
+
 
 def test_trust_erosion_high_dismiss_rate(ev_trust_erosion_stream):
     """MOM-005 Path A: ≥60% dismiss rate over ≥5 outcomes → TRUST_EROSION."""
@@ -189,7 +204,9 @@ def test_trust_erosion_suppresses_confidence_climb(ev_trust_erosion_stream):
         assert len(moments) == 1
 
 
-def test_priority_error_suppresses_trust_erosion(ev_trust_erosion_stream, ev_analysis_failed):
+def test_priority_error_suppresses_trust_erosion(
+    ev_trust_erosion_stream, ev_analysis_failed
+):
     """ERROR (priority 1) suppresses TRUST_EROSION (priority 3)."""
     detect_moments = _import_detector()
     moments = detect_moments(ev_trust_erosion_stream + [ev_analysis_failed])

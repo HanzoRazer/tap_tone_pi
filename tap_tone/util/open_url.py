@@ -9,6 +9,7 @@ Usage:
     else:
         print("Could not open browser — try manually.")
 """
+
 from __future__ import annotations
 
 import os

@@ -1,8 +1,8 @@
 # ADR-0003: Artifact Schema for Multi-Channel Data
 
-**Status:** Accepted  
-**Date:** 2025-12-25  
-**Context:** Tap-Tone Measurement Node — Single & Multi-Channel Acquisition  
+**Status:** Accepted
+**Date:** 2025-12-25
+**Context:** Tap-Tone Measurement Node — Single & Multi-Channel Acquisition
 **Decision Drivers:** Reproducibility, forward compatibility, RMOS ingestion, scientific traceability
 
 ---

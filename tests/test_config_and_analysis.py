@@ -1,7 +1,6 @@
 """Quick tests for tap_tone.config and tap_tone.analysis to boost coverage."""
 
 import numpy as np
-import pytest
 
 from tap_tone.config import CaptureConfig, AnalysisConfig
 from tap_tone.analysis import Peak, AnalysisResult, analyze_tap

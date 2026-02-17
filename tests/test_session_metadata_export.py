@@ -3,10 +3,10 @@ Tests for session metadata export functionality (Release A.1 follow-on).
 
 Tests the SessionMetaV1 dataclass and extract_session_metadata() helper.
 """
+
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -103,19 +103,24 @@ class TestExtractSessionMetadata:
         """Extracts fields from metadata.json."""
         # Import here to avoid import errors if export script has missing deps
         import sys
+
         sys.path.insert(0, str(Path(__file__).parent.parent / "scripts" / "phase2"))
         from export_viewer_pack_v1 import extract_session_metadata
 
         # Create metadata.json
-        (tmp_path / "metadata.json").write_text(json.dumps({
-            "specimen_id": "S-0001",
-            "device_id": "tap-pi-01",
-            "fixture_id": "fixture_v3",
-            "mic_id": "sm57_01",
-            "mic_gain_db": 28.0,
-            "sample_rate_hz": 48000,
-            "tap_protocol": "center_tap",
-        }))
+        (tmp_path / "metadata.json").write_text(
+            json.dumps(
+                {
+                    "specimen_id": "S-0001",
+                    "device_id": "tap-pi-01",
+                    "fixture_id": "fixture_v3",
+                    "mic_id": "sm57_01",
+                    "mic_gain_db": 28.0,
+                    "sample_rate_hz": 48000,
+                    "tap_protocol": "center_tap",
+                }
+            )
+        )
 
         result = extract_session_metadata(tmp_path)
 
@@ -127,19 +132,24 @@ class TestExtractSessionMetadata:
     def test_extracts_tap_count_from_grid(self, tmp_path):
         """Extracts tap_count from grid.json."""
         import sys
+
         sys.path.insert(0, str(Path(__file__).parent.parent / "scripts" / "phase2"))
         from export_viewer_pack_v1 import extract_session_metadata
 
         # Create grid.json with 5 points
-        (tmp_path / "grid.json").write_text(json.dumps({
-            "points": [
-                {"id": "A1", "x": 0, "y": 0},
-                {"id": "A2", "x": 1, "y": 0},
-                {"id": "B1", "x": 0, "y": 1},
-                {"id": "B2", "x": 1, "y": 1},
-                {"id": "C1", "x": 0.5, "y": 0.5},
-            ]
-        }))
+        (tmp_path / "grid.json").write_text(
+            json.dumps(
+                {
+                    "points": [
+                        {"id": "A1", "x": 0, "y": 0},
+                        {"id": "A2", "x": 1, "y": 0},
+                        {"id": "B1", "x": 0, "y": 1},
+                        {"id": "B2", "x": 1, "y": 1},
+                        {"id": "C1", "x": 0.5, "y": 0.5},
+                    ]
+                }
+            )
+        )
 
         result = extract_session_metadata(tmp_path)
         assert result["tap_count"] == 5
@@ -147,6 +157,7 @@ class TestExtractSessionMetadata:
     def test_counts_point_folders_if_no_grid(self, tmp_path):
         """Falls back to counting point_* folders."""
         import sys
+
         sys.path.insert(0, str(Path(__file__).parent.parent / "scripts" / "phase2"))
         from export_viewer_pack_v1 import extract_session_metadata
 
@@ -163,16 +174,21 @@ class TestExtractSessionMetadata:
     def test_extracts_sample_rate_from_capture_meta(self, tmp_path):
         """Extracts sample_rate_hz from first capture_meta.json."""
         import sys
+
         sys.path.insert(0, str(Path(__file__).parent.parent / "scripts" / "phase2"))
         from export_viewer_pack_v1 import extract_session_metadata
 
         # Create point with capture_meta
         point_dir = tmp_path / "points" / "point_A1"
         point_dir.mkdir(parents=True)
-        (point_dir / "capture_meta.json").write_text(json.dumps({
-            "sample_rate_hz": 96000,
-            "channels": 2,
-        }))
+        (point_dir / "capture_meta.json").write_text(
+            json.dumps(
+                {
+                    "sample_rate_hz": 96000,
+                    "channels": 2,
+                }
+            )
+        )
 
         result = extract_session_metadata(tmp_path)
         assert result["sample_rate_hz"] == 96000
@@ -180,6 +196,7 @@ class TestExtractSessionMetadata:
     def test_uses_folder_name_as_run_id(self, tmp_path):
         """Uses session folder name as run_id."""
         import sys
+
         sys.path.insert(0, str(Path(__file__).parent.parent / "scripts" / "phase2"))
         from export_viewer_pack_v1 import extract_session_metadata
 
@@ -189,6 +206,7 @@ class TestExtractSessionMetadata:
     def test_handles_missing_files_gracefully(self, tmp_path):
         """Returns empty dict fields for missing files."""
         import sys
+
         sys.path.insert(0, str(Path(__file__).parent.parent / "scripts" / "phase2"))
         from export_viewer_pack_v1 import extract_session_metadata
 
@@ -201,6 +219,7 @@ class TestExtractSessionMetadata:
     def test_handles_malformed_json(self, tmp_path):
         """Handles malformed JSON gracefully."""
         import sys
+
         sys.path.insert(0, str(Path(__file__).parent.parent / "scripts" / "phase2"))
         from export_viewer_pack_v1 import extract_session_metadata
 

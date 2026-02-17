@@ -1,4 +1,5 @@
 """Tests for session_timeline_v1 exporter (PR #16 Seg 1)."""
+
 import json
 from pathlib import Path
 
@@ -97,7 +98,8 @@ def test_export_includes_moment_snapshot(tmp_path: Path):
         }
     }
     (sess / "spine_shadow_latest.json").write_text(
-        json.dumps(shadow), encoding="utf-8",
+        json.dumps(shadow),
+        encoding="utf-8",
     )
 
     out = export_session_timeline(sess)

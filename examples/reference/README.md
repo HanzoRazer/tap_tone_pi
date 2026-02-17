@@ -85,7 +85,7 @@ reference/
 
 ## Note on Interpretation
 
-The instrument **measures** the frequency shift.  
+The instrument **measures** the frequency shift.
 The instrument **does not claim** the cause.
 
 Humidity is the documented variable. The causal link is inferred by the operator based on experimental design, not by the software.

@@ -21,6 +21,7 @@ class AttentionAction(str, Enum):
 
     Ordered by urgency (INSPECT < REVIEW < DECIDE < INTERVENE).
     """
+
     # Low urgency - FYI
     INSPECT = "inspect"
 
@@ -45,6 +46,7 @@ class FocusTarget:
     Targets are abstract references that the UI layer resolves
     to specific views, panels, or highlights.
     """
+
     target_type: str  # e.g., 'run', 'artifact', 'region', 'parameter'
     target_id: str
     highlight_region: Optional[Dict[str, Any]] = None
@@ -53,7 +55,12 @@ class FocusTarget:
 
 def _utc_now() -> str:
     """Get current UTC time as RFC3339 string."""
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 @dataclass(frozen=True)
@@ -78,6 +85,7 @@ class AttentionDirectiveV1:
             confidence=0.85,
         )
     """
+
     # Identity
     directive_id: str
 

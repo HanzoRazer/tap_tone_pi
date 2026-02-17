@@ -4,13 +4,13 @@ Intentional stub: exporter behavior tested in scripts/export tests.
 These CLI tests only verify path resolution, argv construction, guardrails,
 and subprocess wiring without requiring audio hardware or running real exports.
 """
+
 from __future__ import annotations
 
 import argparse
 import subprocess
 from pathlib import Path
 
-import pytest
 
 # Import the command handler and PROJECT_ROOT
 from tap_tone_pi.cli.main import cmd_export_pack, PROJECT_ROOT
@@ -90,8 +90,12 @@ class TestExportPackSubprocessWiring:
 
         # Exporter invoked with correct args (structural parsing, resolved paths)
         assert any("viewer_pack_v1_export.py" in str(x) for x in export_argv)
-        assert Path(_get_argv_value(export_argv, "--session")).resolve(strict=False) == session_dir.resolve(strict=False)
-        assert Path(_get_argv_value(export_argv, "--out")).resolve(strict=False) == out_zip.resolve(strict=False)
+        assert Path(_get_argv_value(export_argv, "--session")).resolve(
+            strict=False
+        ) == session_dir.resolve(strict=False)
+        assert Path(_get_argv_value(export_argv, "--out")).resolve(
+            strict=False
+        ) == out_zip.resolve(strict=False)
 
         # Validator invoked with passthrough flags
         assert any("viewer_pack_validate.py" in str(x) for x in validate_argv)
@@ -128,7 +132,9 @@ class TestExportPackSubprocessWiring:
         assert len(calls) == 1  # Only exporter, no validator
         assert any("viewer_pack_v1_export.py" in str(x) for x in calls[0][0])
 
-    def test_strict_json_without_validate_does_not_invoke_validator(self, monkeypatch, tmp_path):
+    def test_strict_json_without_validate_does_not_invoke_validator(
+        self, monkeypatch, tmp_path
+    ):
         """--strict and --json without --validate invoke only exporter (wiring contract)."""
         calls = []
 
@@ -148,8 +154,8 @@ class TestExportPackSubprocessWiring:
             session=str(session_dir),
             out=str(out_zip),
             validate=False,  # No --validate
-            strict=True,     # --strict set
-            json=True,       # --json set
+            strict=True,  # --strict set
+            json=True,  # --json set
         )
 
         rc = cmd_export_pack(args)
@@ -274,12 +280,15 @@ class TestExportPackGuardrails:
 class TestExportPackPathResolution:
     """Test that session and output paths are resolved correctly."""
 
-    def test_relative_session_resolved_against_project_root(self, monkeypatch, tmp_path):
+    def test_relative_session_resolved_against_project_root(
+        self, monkeypatch, tmp_path
+    ):
         """Relative session paths resolve against PROJECT_ROOT, not CWD.
 
         This test is hermetic: PROJECT_ROOT is patched to tmp_path.
         """
         import sys
+
         calls = []
 
         def fake_call(argv, cwd=None):
@@ -311,7 +320,9 @@ class TestExportPackPathResolution:
         # Session path in argv should be resolved absolute path
         session_in_argv = _get_argv_value(export_argv, "--session")
         assert Path(session_in_argv).is_absolute()
-        assert Path(session_in_argv).resolve(strict=False) == abs_session.resolve(strict=False)
+        assert Path(session_in_argv).resolve(strict=False) == abs_session.resolve(
+            strict=False
+        )
 
         # Subprocess runs with patched PROJECT_ROOT as cwd
         assert Path(export_cwd).resolve(strict=False) == fake_root.resolve(strict=False)
@@ -330,7 +341,9 @@ class TestExportPackPathResolution:
         session_dir.mkdir(parents=True)
         (session_dir / "grid.json").write_text("{}")
 
-        cmd_export_pack(_args(str(session_dir), str(tmp_path / "out.zip"), validate=False))
+        cmd_export_pack(
+            _args(str(session_dir), str(tmp_path / "out.zip"), validate=False)
+        )
 
         _, cwd = calls[0]
         assert cwd == str(PROJECT_ROOT)
@@ -350,13 +363,15 @@ class TestExportPackReturnCodePropagation:
 
         monkeypatch.setattr(subprocess, "call", fake_call)
 
-        rc = cmd_export_pack(_args(
-            str(session_dir),
-            str(tmp_path / "out.zip"),
-            validate=True,
-            strict=True,
-            json=True,
-        ))
+        rc = cmd_export_pack(
+            _args(
+                str(session_dir),
+                str(tmp_path / "out.zip"),
+                validate=True,
+                strict=True,
+                json=True,
+            )
+        )
 
         assert rc == 2
 
@@ -374,13 +389,15 @@ class TestExportPackReturnCodePropagation:
 
         monkeypatch.setattr(subprocess, "call", fake_call)
 
-        rc = cmd_export_pack(_args(
-            str(session_dir),
-            str(tmp_path / "out.zip"),
-            validate=True,
-            strict=True,
-            json=True,
-        ))
+        rc = cmd_export_pack(
+            _args(
+                str(session_dir),
+                str(tmp_path / "out.zip"),
+                validate=True,
+                strict=True,
+                json=True,
+            )
+        )
 
         assert rc == 3
         assert calls["n"] == 2  # Both were called
@@ -408,18 +425,22 @@ class TestExportPackMissingScripts:
         session_dir.mkdir(parents=True)
         (session_dir / "grid.json").write_text("{}")
 
-        rc = cmd_export_pack(_args(
-            str(Path("runs_phase2") / "session_0001"),
-            str(tmp_path / "out.zip"),
-            validate=False,
-        ))
+        rc = cmd_export_pack(
+            _args(
+                str(Path("runs_phase2") / "session_0001"),
+                str(tmp_path / "out.zip"),
+                validate=False,
+            )
+        )
 
         assert rc == 1
         assert len(calls) == 0  # subprocess never called
         captured = capsys.readouterr()
         assert "Exporter script not found" in captured.err
 
-    def test_missing_validator_script_returns_error(self, monkeypatch, tmp_path, capsys):
+    def test_missing_validator_script_returns_error(
+        self, monkeypatch, tmp_path, capsys
+    ):
         """Missing validator script returns error after successful export."""
         import sys
 
@@ -448,11 +469,13 @@ class TestExportPackMissingScripts:
         session_dir.mkdir(parents=True)
         (session_dir / "grid.json").write_text("{}")
 
-        rc = cmd_export_pack(_args(
-            str(Path("runs_phase2") / "session_0001"),
-            str(tmp_path / "out.zip"),
-            validate=True,  # This triggers validator check
-        ))
+        rc = cmd_export_pack(
+            _args(
+                str(Path("runs_phase2") / "session_0001"),
+                str(tmp_path / "out.zip"),
+                validate=True,  # This triggers validator check
+            )
+        )
 
         assert rc == 1
         assert call_count[0] == 1  # Exporter called, then validator check failed

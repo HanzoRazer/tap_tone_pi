@@ -2,11 +2,9 @@
 Statistics panel widget for displaying analysis summaries.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QGroupBox, QFormLayout, QLabel
-)
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QFormLayout, QLabel
 
 
 class StatsPanel(QWidget):
@@ -110,13 +108,13 @@ class StatsPanel(QWidget):
         self.peaks_count_label.setText(str(len(peaks)))
 
         # Find fundamental (lowest frequency peak)
-        sorted_by_freq = sorted(peaks, key=lambda p: p.get('freq_hz', float('inf')))
+        sorted_by_freq = sorted(peaks, key=lambda p: p.get("freq_hz", float("inf")))
         fundamental = sorted_by_freq[0] if sorted_by_freq else None
         if fundamental:
             self.peaks_fundamental_label.setText(f"{fundamental['freq_hz']:.1f} Hz")
 
         # Find strongest peak
-        sorted_by_mag = sorted(peaks, key=lambda p: p.get('magnitude', 0), reverse=True)
+        sorted_by_mag = sorted(peaks, key=lambda p: p.get("magnitude", 0), reverse=True)
         strongest = sorted_by_mag[0] if sorted_by_mag else None
         if strongest:
             self.peaks_highest_label.setText(f"{strongest['freq_hz']:.1f} Hz")
@@ -128,19 +126,19 @@ class StatsPanel(QWidget):
         Args:
             props: Dictionary with stiffness, damping, quality_factor
         """
-        stiffness = props.get('stiffness')
+        stiffness = props.get("stiffness")
         if stiffness is not None:
             self.wood_stiffness_label.setText(f"{stiffness:.2f}")
         else:
             self.wood_stiffness_label.setText("-")
 
-        damping = props.get('damping')
+        damping = props.get("damping")
         if damping is not None:
             self.wood_damping_label.setText(f"{damping:.4f}")
         else:
             self.wood_damping_label.setText("-")
 
-        qf = props.get('quality_factor')
+        qf = props.get("quality_factor")
         if qf is not None:
             self.wood_quality_label.setText(f"{qf:.1f}")
         else:
@@ -153,9 +151,9 @@ class StatsPanel(QWidget):
         Args:
             info: Dictionary with specimen_id, date, device_id
         """
-        self.session_specimen_label.setText(info.get('specimen_id', '-'))
-        self.session_date_label.setText(info.get('date', '-'))
-        self.session_device_label.setText(info.get('device_id', '-'))
+        self.session_specimen_label.setText(info.get("specimen_id", "-"))
+        self.session_date_label.setText(info.get("date", "-"))
+        self.session_device_label.setText(info.get("device_id", "-"))
 
     def clear(self):
         """Clear all statistics."""

@@ -11,6 +11,7 @@ Usage:
 
 This module has NO DSP, NO advisory logic, NO external deps.
 """
+
 from __future__ import annotations
 
 import json
@@ -372,15 +373,9 @@ def scan_session(
         key=lambda f: (severity_rank[f.severity], f.code, f.path or ""),
     )
 
-    fail_count = sum(
-        1 for f in findings_sorted if f.severity == FindingSeverity.FAIL
-    )
-    warn_count = sum(
-        1 for f in findings_sorted if f.severity == FindingSeverity.WARN
-    )
-    info_count = sum(
-        1 for f in findings_sorted if f.severity == FindingSeverity.INFO
-    )
+    fail_count = sum(1 for f in findings_sorted if f.severity == FindingSeverity.FAIL)
+    warn_count = sum(1 for f in findings_sorted if f.severity == FindingSeverity.WARN)
+    info_count = sum(1 for f in findings_sorted if f.severity == FindingSeverity.INFO)
 
     summary = EvidenceSummary(
         attempts_scanned=len(attempt_dirs),
@@ -424,8 +419,7 @@ def render_human(report: EvidenceReport) -> str:
     lines: list[str] = []
     lines.append(f"Evidence check: {report.session_dir}")
     lines.append(
-        f"Type: {report.session_type}  "
-        f"Attempts: {report.summary.attempts_scanned}"
+        f"Type: {report.session_type}  " f"Attempts: {report.summary.attempts_scanned}"
     )
     lines.append(
         f"FAIL={report.summary.fail_count} "

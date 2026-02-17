@@ -6,12 +6,11 @@ Validates:
 3. Parse failure is non-fatal
 4. Color and verbose mode variants
 """
+
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
-import pytest
 
 from tap_tone_pi.agent.render import render_cli_shadow_record
 from tap_tone_pi.agentic.spine.shadow_record import (
@@ -23,6 +22,7 @@ from tap_tone_pi.agentic.spine.shadow_record import (
 # ---------------------------------------------------------------------------
 # Minimal valid shadow record fixture
 # ---------------------------------------------------------------------------
+
 
 def _make_shadow_record(
     *,
@@ -84,6 +84,7 @@ def _make_none_record() -> dict:
 # Test 1 — render_cli_shadow_record produces expected output
 # =========================================================================
 
+
 class TestRenderShadowRecord:
     """render_cli_shadow_record formats the advisory block correctly."""
 
@@ -114,7 +115,9 @@ class TestRenderShadowRecord:
     def test_returns_none_for_no_moment(self):
         rec = _make_none_record()
         output = render_cli_shadow_record(rec)
-        assert output is None, "Should not render when moment is NONE and advisory is None"
+        assert (
+            output is None
+        ), "Should not render when moment is NONE and advisory is None"
 
     def test_returns_none_for_bad_input(self):
         assert render_cli_shadow_record(None) is None
@@ -125,6 +128,7 @@ class TestRenderShadowRecord:
 # =========================================================================
 # Test 2 — color mode
 # =========================================================================
+
 
 class TestColorMode:
     """Color flag controls ANSI escape sequences."""
@@ -150,6 +154,7 @@ class TestColorMode:
 # =========================================================================
 # Test 3 — verbose mode
 # =========================================================================
+
 
 class TestVerboseMode:
     """Verbose flag adds debug fields."""
@@ -187,6 +192,7 @@ class TestVerboseMode:
 # Test 4 — loader integration
 # =========================================================================
 
+
 class TestLoaderIntegration:
     """load_latest_shadow_record reads files correctly."""
 
@@ -223,6 +229,7 @@ class TestLoaderIntegration:
 # =========================================================================
 # Test 5 — writer integration
 # =========================================================================
+
 
 class TestWriterIntegration:
     """write_shadow_record persists correctly."""
@@ -285,6 +292,7 @@ class TestWriterIntegration:
 # Test 6 — error rendering
 # =========================================================================
 
+
 class TestErrorRendering:
     """Error records render a note line instead of advisory."""
 
@@ -327,6 +335,7 @@ class TestErrorRendering:
 # Test 7 — _maybe_render_directive CLI helper
 # =========================================================================
 
+
 class TestMaybeRenderDirective:
     """The CLI helper reads shadow files and renders conditionally."""
 
@@ -348,7 +357,8 @@ class TestMaybeRenderDirective:
 
         rec = _make_shadow_record()
         (tmp_path / "spine_shadow_latest.json").write_text(
-            json.dumps(rec), encoding="utf-8",
+            json.dumps(rec),
+            encoding="utf-8",
         )
 
         args = argparse.Namespace(
@@ -383,7 +393,8 @@ class TestMaybeRenderDirective:
         from tap_tone_pi.cli.main import _maybe_render_directive
 
         (tmp_path / "spine_shadow_latest.json").write_text(
-            "{{{INVALID JSON", encoding="utf-8",
+            "{{{INVALID JSON",
+            encoding="utf-8",
         )
 
         args = argparse.Namespace(

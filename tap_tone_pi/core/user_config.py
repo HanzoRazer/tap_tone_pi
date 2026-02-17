@@ -8,6 +8,7 @@ This enables:
 - Auto-detection of preferred device on subsequent runs
 - Consistent configuration across CLI, GUI, and scripts
 """
+
 from __future__ import annotations
 
 import json
@@ -28,12 +29,18 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 
 def _utc_now() -> str:
     """Get current UTC time as ISO string."""
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 @dataclass
 class AudioDeviceConfig:
     """Validated audio device configuration."""
+
     index: int
     name: str
     sample_rate: int = 48000
@@ -60,6 +67,7 @@ def _dedupe_preserve_order(items: Iterable[str]) -> list[str]:
 @dataclass
 class FtueState:
     """First-time user experience (FTUE) persistence for agent messaging."""
+
     pass_count_lifetime: int = 0
     session_count_lifetime: int = 0
     override_count_lifetime: int = 0
@@ -118,6 +126,7 @@ class FtueState:
 @dataclass
 class UserConfig:
     """Top-level user configuration."""
+
     version: str = "1.1.0"
     audio_device: AudioDeviceConfig | None = None
     default_capture_seconds: float = 2.5

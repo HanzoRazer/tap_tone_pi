@@ -7,6 +7,7 @@ State file: ``<session_dir>/meta/advisory_state.json``
 
 Fail-closed: never raises.
 """
+
 from __future__ import annotations
 
 import json
@@ -34,7 +35,8 @@ def _write_state(session_dir: Path, data: Dict[str, Any]) -> None:
         meta_dir = Path(session_dir) / "meta"
         meta_dir.mkdir(parents=True, exist_ok=True)
         _state_path(session_dir).write_text(
-            json.dumps(data, indent=2), encoding="utf-8",
+            json.dumps(data, indent=2),
+            encoding="utf-8",
         )
     except (ImportError, OSError, ValueError, KeyError, AttributeError):
         pass
@@ -53,20 +55,24 @@ def mark_responded(session_dir: Path, *, directive_id: Optional[str] = None) -> 
     """Persist that the operator responded. Never raises."""
     try:
         payload = _read_state(session_dir)
-        payload.update({
-            "responded": True,
-            "directive_id": directive_id,
-            "timestamp": datetime.now(timezone.utc)
-            .isoformat(timespec="seconds")
-            .replace("+00:00", "Z"),
-        })
+        payload.update(
+            {
+                "responded": True,
+                "directive_id": directive_id,
+                "timestamp": datetime.now(timezone.utc)
+                .isoformat(timespec="seconds")
+                .replace("+00:00", "Z"),
+            }
+        )
         _write_state(session_dir, payload)
     except (ImportError, OSError, ValueError, KeyError, AttributeError):
         pass
 
 
 def get_show_directive_history(
-    session_dir: Path, *, default: Optional[bool] = None,
+    session_dir: Path,
+    *,
+    default: Optional[bool] = None,
 ) -> Optional[bool]:
     """Read persisted UI preference for Directive History panel.
 

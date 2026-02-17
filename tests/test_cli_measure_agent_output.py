@@ -7,6 +7,7 @@ assumptions. They pin behavior to two mutually exclusive user-visible strings:
 
 They only fail if integration wiring breaks — exactly what we want.
 """
+
 import argparse
 from dataclasses import dataclass
 from pathlib import Path

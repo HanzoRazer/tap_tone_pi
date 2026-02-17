@@ -5,6 +5,7 @@ This is the single source of truth for measurement quality criteria.
 
 Policy versioning is independent of app versioning.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -17,6 +18,7 @@ POLICY_VERSION = "1.0.0"
 
 class Verdict(str, Enum):
     """Quality gate verdict."""
+
     PASS = "pass"
     WARN = "warn"
     FAIL = "fail"
@@ -24,6 +26,7 @@ class Verdict(str, Enum):
 
 class Severity(str, Enum):
     """Rule severity level."""
+
     HARD = "hard"  # Must fail, cannot override
     SOFT = "soft"  # Warn, can proceed
 
@@ -31,6 +34,7 @@ class Severity(str, Enum):
 @dataclass(frozen=True)
 class QualityRule:
     """A single quality rule definition."""
+
     rule_id: str
     severity: Severity
     description: str
@@ -139,9 +143,11 @@ RULES_BY_ID: dict[str, QualityRule] = {r.rule_id: r for r in ALL_RULES}
 # Thresholds
 # =============================================================================
 
+
 @dataclass(frozen=True)
 class QualityThresholds:
     """Configurable thresholds for quality rules."""
+
     # Hard thresholds
     rms_silent: float = 0.001
     confidence_fail: float = 0.3
@@ -161,6 +167,7 @@ DEFAULT_THRESHOLDS = QualityThresholds()
 @dataclass
 class TriggeredRule:
     """A rule that was triggered during quality check."""
+
     rule: QualityRule
     message: str  # May include formatted values
 
@@ -176,6 +183,7 @@ class TriggeredRule:
 @dataclass
 class QualityVerdict:
     """Result of a quality check."""
+
     verdict: Verdict
     triggered_rules: List[TriggeredRule] = field(default_factory=list)
     policy_version: str = POLICY_VERSION

@@ -7,6 +7,7 @@ This module keeps ZIP handling consistent across:
 
 All functions are pure where possible; no interpretation logic.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -14,7 +15,7 @@ import json
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterator, Optional, Tuple
+from typing import Any, Dict, Iterator, Optional
 
 
 MANIFEST_FILENAME = "viewer_pack.json"
@@ -23,6 +24,7 @@ MANIFEST_FILENAME = "viewer_pack.json"
 @dataclass(frozen=True)
 class FileEntry:
     """Immutable representation of a file entry from the manifest."""
+
     relpath: str
     sha256: str
     bytes: int
@@ -33,6 +35,7 @@ class FileEntry:
 @dataclass
 class ViewerPackHandle:
     """Container for an opened viewer pack with its manifest and zip handle."""
+
     manifest: Dict[str, Any]
     zip_handle: zipfile.ZipFile
     path: Path
@@ -78,7 +81,9 @@ def load_viewer_pack(zip_path: str | Path) -> ViewerPackHandle:
     return ViewerPackHandle(manifest=manifest, zip_handle=zf, path=path)
 
 
-def canonical_json_bytes(obj: Dict[str, Any], exclude_keys: Optional[set] = None) -> bytes:
+def canonical_json_bytes(
+    obj: Dict[str, Any], exclude_keys: Optional[set] = None
+) -> bytes:
     """Serialize object to canonical JSON bytes for hashing.
 
     Canonical form:

@@ -21,6 +21,7 @@ Exit codes:
     1 = Validation failed (errors in report)
     2 = Usage/argument error
 """
+
 from __future__ import annotations
 
 import argparse
@@ -33,6 +34,7 @@ from typing import List, Optional
 # Schema validation (optional dependency)
 try:
     import jsonschema
+
     HAS_JSONSCHEMA = True
 except ImportError:
     HAS_JSONSCHEMA = False
@@ -53,6 +55,7 @@ from tap_tone.viewer_pack.manifest import (
 @dataclass
 class ValidationResult:
     """Immutable validation result with categorized errors."""
+
     valid: bool
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
@@ -83,7 +86,11 @@ def load_schema(schema_path: Optional[Path]) -> Optional[dict]:
     """Load JSON schema from file."""
     if schema_path is None:
         # Default schema location
-        default_path = Path(__file__).resolve().parents[1] / "contracts" / "viewer_pack_v1.schema.json"
+        default_path = (
+            Path(__file__).resolve().parents[1]
+            / "contracts"
+            / "viewer_pack_v1.schema.json"
+        )
         if default_path.exists():
             schema_path = default_path
         else:
@@ -205,7 +212,9 @@ def validate_viewer_pack(
 
             for kind in required_kinds:
                 if not contents.get(kind, False):
-                    result.add_error(f"Strict mode: required content kind missing: {kind}")
+                    result.add_error(
+                        f"Strict mode: required content kind missing: {kind}"
+                    )
                 else:
                     result.add_pass()
 
@@ -231,7 +240,9 @@ def print_report(result: ValidationResult, zip_path: Path) -> None:
     if result.valid:
         print(f"\n✓ VALID ({result.checks_passed} checks passed)")
     else:
-        print(f"\n✗ INVALID ({result.checks_failed} errors, {result.checks_passed} passed)")
+        print(
+            f"\n✗ INVALID ({result.checks_failed} errors, {result.checks_passed} passed)"
+        )
 
     if result.errors:
         print(f"\nErrors ({len(result.errors)}):")

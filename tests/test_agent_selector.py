@@ -1,5 +1,5 @@
 """Tests for agent selector logic (standalone path)."""
-import pytest
+
 from tap_tone_pi.agent import (
     StandaloneAgentContext as AgentContext,
     ActionId,
@@ -66,7 +66,9 @@ class TestSelectActionsForVerdict:
         actions = select_actions_for_verdict("fail", ["Q001"], ctx)
         # First action should be a fix/retry
         assert actions[0].action_id in (
-            ActionId.RETRY, ActionId.ADJUST_GAIN_DOWN, ActionId.CHECK_DEVICE
+            ActionId.RETRY,
+            ActionId.ADJUST_GAIN_DOWN,
+            ActionId.CHECK_DEVICE,
         )
 
     def test_fail_attempt_3_offers_abort_override(self):
@@ -93,7 +95,7 @@ class TestActionEscalation:
     def test_repeated_q011_escalates_to_gain_down(self):
         ctx = AgentContext()
         ctx.consecutive_rule_hits["Q011"] = 3
-        
+
         actions = select_actions_for_verdict("warn", ["Q011"], ctx)
         # Should suggest lowering gain explicitly
         action_labels = " ".join(a.label.lower() for a in actions)
@@ -108,7 +110,7 @@ class TestActionEscalation:
     def test_repeated_q002_escalates_to_setup(self):
         ctx = AgentContext()
         ctx.consecutive_rule_hits["Q002"] = 2
-        
+
         actions = select_actions_for_verdict("fail", ["Q002"], ctx)
         action_ids = [a.action_id for a in actions]
         # Should suggest setup wizard
@@ -155,14 +157,14 @@ class TestBuildRuleDetail:
         spec = get_rule_spec("Q001")
         ctx = AgentContext()
         ctx.consecutive_rule_hits["Q001"] = 2
-        
+
         detail = build_rule_detail(spec, ctx, include_fix=True)
         assert spec.fallback_fix in detail
 
     def test_uses_first_fix_initially(self):
         spec = get_rule_spec("Q001")
         ctx = AgentContext()
-        
+
         detail = build_rule_detail(spec, ctx, include_fix=True)
         assert spec.first_fix in detail
 
@@ -170,6 +172,7 @@ class TestBuildRuleDetail:
 # =============================================================================
 # PR6: Standalone ExplanationMode Tests
 # =============================================================================
+
 
 class TestStandaloneExplanationMode:
     """PR6 Rule 2: Three-tier explanation via standalone path."""

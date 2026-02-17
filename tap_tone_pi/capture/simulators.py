@@ -18,11 +18,12 @@ Migration:
     # Old paths (deprecated)
     python modes/acquisition/loadcell_sim.py --out ...
     python modes/acquisition/dial_indicator_sim.py --out ...
-    
+
     # New path (v2.0.0+)
     python -m tap_tone_pi.capture.simulators loadcell --out ...
     python -m tap_tone_pi.capture.simulators dial --out ...
 """
+
 from __future__ import annotations
 
 import argparse

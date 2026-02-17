@@ -16,11 +16,16 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from analyzer.loaders.csv_parser import SpectrumCSVParser
-from analyzer.loaders.evidence_types import classify_file, EvidenceFileKind, RendererCategory
+from analyzer.loaders.evidence_types import (
+    classify_file,
+    EvidenceFileKind,
+    RendererCategory,
+)
 
 
 class PackSchema(Enum):
     """Detected pack schema type."""
+
     VIEWER_PACK_V1 = "viewer_pack_v1"
     TOOLBOX_MANIFEST_V1 = "toolbox_evidence_manifest_v1"
     UNKNOWN = "unknown"
@@ -29,6 +34,7 @@ class PackSchema(Enum):
 @dataclass
 class EvidenceFile:
     """Represents a single evidence file in the pack."""
+
     name: str
     path: str
     kind: EvidenceFileKind
@@ -40,6 +46,7 @@ class EvidenceFile:
 @dataclass
 class ViewerPack:
     """Unified viewer pack representation."""
+
     name: str
     source_path: str
     schema: PackSchema
@@ -112,7 +119,7 @@ class ViewerPackLoader:
             Normalized ViewerPack object
         """
         path = Path(path)
-        if path.suffix.lower() == '.zip':
+        if path.suffix.lower() == ".zip":
             return self.load_zip_as_pack(path)
         elif path.is_dir():
             return self.load_folder_as_pack(path)
@@ -140,15 +147,19 @@ class ViewerPackLoader:
         toolbox_manifest = root / "manifest.json"
         if toolbox_manifest.exists():
             try:
-                with open(toolbox_manifest, 'r', encoding='utf-8') as f:
+                with open(toolbox_manifest, "r", encoding="utf-8") as f:
                     manifest = json.load(f)
                     schema_id = manifest.get("schema_id", "")
                     if schema_id == "toolbox_evidence_manifest_v1":
-                        return (PackSchema.TOOLBOX_MANIFEST_V1,
-                                manifest.get("schema_version", "1.0"))
+                        return (
+                            PackSchema.TOOLBOX_MANIFEST_V1,
+                            manifest.get("schema_version", "1.0"),
+                        )
                     elif schema_id == "viewer_pack_v1":
-                        return (PackSchema.VIEWER_PACK_V1,
-                                manifest.get("schema_version", "1.0"))
+                        return (
+                            PackSchema.VIEWER_PACK_V1,
+                            manifest.get("schema_version", "1.0"),
+                        )
             except (json.JSONDecodeError, IOError):
                 pass
 
@@ -183,7 +194,7 @@ class ViewerPackLoader:
             manifest=manifest,
             session_meta=raw.get("metadata", {}).get("session", {}),
             capture_meta=raw.get("metadata", {}).get("capture", {}),
-            derived=raw.get("derived", {})
+            derived=raw.get("derived", {}),
         )
 
         # Process spectra
@@ -194,7 +205,7 @@ class ViewerPackLoader:
                 path=spec.get("name", ""),
                 kind=kind,
                 category=RendererCategory.SPECTRUM_CHART,
-                data=spec.get("data")
+                data=spec.get("data"),
             )
             pack.spectra.append(ef)
             pack.all_files.append(ef)
@@ -206,7 +217,7 @@ class ViewerPackLoader:
                 path=peak.get("name", ""),
                 kind=EvidenceFileKind.PEAKS_JSON,
                 category=RendererCategory.PEAKS_TABLE,
-                data=peak.get("data")
+                data=peak.get("data"),
             )
             pack.peaks.append(ef)
             pack.all_files.append(ef)
@@ -218,7 +229,7 @@ class ViewerPackLoader:
                 name=audio.get("name", ""),
                 path=audio.get("path", ""),
                 kind=kind,
-                category=RendererCategory.AUDIO
+                category=RendererCategory.AUDIO,
             )
             pack.audio.append(ef)
             pack.all_files.append(ef)
@@ -242,7 +253,7 @@ class ViewerPackLoader:
         # Extract to temp directory
         self._temp_dir = Path(tempfile.mkdtemp(prefix="tap_tone_viewer_"))
 
-        with zipfile.ZipFile(zip_path, 'r') as zf:
+        with zipfile.ZipFile(zip_path, "r") as zf:
             zf.extractall(self._temp_dir)
 
         # Find the root folder (might be nested)
@@ -291,9 +302,9 @@ class ViewerPackLoader:
     def _is_pack_root(self, folder: Path) -> bool:
         """Check if folder looks like a pack root."""
         return (
-            (folder / "manifest.json").exists() or
-            (folder / "session_meta.json").exists() or
-            (folder / "spectra").is_dir()
+            (folder / "manifest.json").exists()
+            or (folder / "session_meta.json").exists()
+            or (folder / "spectra").is_dir()
         )
 
     def _load_from_folder(self, root: Path) -> Dict[str, Any]:
@@ -334,10 +345,7 @@ class ViewerPackLoader:
         # Also check for peaks.json at root
         peaks_json = root / "peaks.json"
         if peaks_json.exists():
-            pack["peaks"].append({
-                "name": "peaks",
-                "data": self._load_json(peaks_json)
-            })
+            pack["peaks"].append({"name": "peaks", "data": self._load_json(peaks_json)})
 
         # Load derived data
         derived_dir = root / "derived"
@@ -347,16 +355,15 @@ class ViewerPackLoader:
         # Look for raw audio files
         for audio_ext in [".wav", ".flac", ".mp3"]:
             for audio_file in root.rglob(f"*{audio_ext}"):
-                pack["raw_audio"].append({
-                    "name": audio_file.stem,
-                    "path": str(audio_file)
-                })
+                pack["raw_audio"].append(
+                    {"name": audio_file.stem, "path": str(audio_file)}
+                )
 
         return pack
 
     def _load_json(self, path: Path) -> Dict[str, Any]:
         """Load and parse a JSON file."""
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
 
     def _load_spectra(self, spectra_dir: Path) -> List[Dict[str, Any]]:
@@ -365,17 +372,11 @@ class ViewerPackLoader:
 
         for csv_file in spectra_dir.glob("*.csv"):
             data = self._csv_parser.parse(csv_file)
-            spectra.append({
-                "name": csv_file.stem,
-                "data": data
-            })
+            spectra.append({"name": csv_file.stem, "data": data})
 
         # Also load JSON spectrum files
         for json_file in spectra_dir.glob("*.json"):
-            spectra.append({
-                "name": json_file.stem,
-                "data": self._load_json(json_file)
-            })
+            spectra.append({"name": json_file.stem, "data": self._load_json(json_file)})
 
         return spectra
 
@@ -388,10 +389,7 @@ class ViewerPackLoader:
             # Normalize to list format
             if isinstance(data, dict) and "peaks" in data:
                 data = data["peaks"]
-            peaks.append({
-                "name": json_file.stem,
-                "data": data
-            })
+            peaks.append({"name": json_file.stem, "data": data})
 
         return peaks
 

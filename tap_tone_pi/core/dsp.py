@@ -7,10 +7,11 @@ Migration
 ---------
     # Old import (deprecated)
     from scripts.phase2.dsp import compute_transfer_and_coherence, TFResult
-    
+
     # New import (v2.0.0+)
     from tap_tone_pi.core.dsp import compute_transfer_and_coherence, TFResult
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -41,13 +42,14 @@ def get_dsp_provenance() -> Dict[str, str]:
 @dataclass(frozen=True)
 class TFResult:
     """Transfer function computation result."""
+
     freq_hz: np.ndarray
-    H: np.ndarray           # complex transfer function roving/reference
-    H_mag: np.ndarray       # |H|
-    H_phase_deg: np.ndarray # angle(H) in degrees
-    coherence: np.ndarray   # gamma^2
-    pxx: np.ndarray         # ref PSD
-    pyy: np.ndarray         # rov PSD
+    H: np.ndarray  # complex transfer function roving/reference
+    H_mag: np.ndarray  # |H|
+    H_phase_deg: np.ndarray  # angle(H) in degrees
+    coherence: np.ndarray  # gamma^2
+    pxx: np.ndarray  # ref PSD
+    pyy: np.ndarray  # rov PSD
 
 
 def compute_transfer_and_coherence(
@@ -62,7 +64,7 @@ def compute_transfer_and_coherence(
     fmax_hz: float = 2000.0,
 ) -> TFResult:
     """Compute transfer function and coherence between reference and roving signals.
-    
+
     Args:
         x_ref: Reference channel signal (fixed mic)
         x_rov: Roving channel signal (measurement mic)
@@ -72,7 +74,7 @@ def compute_transfer_and_coherence(
         window: Window function name
         fmin_hz: Minimum frequency to include
         fmax_hz: Maximum frequency to include
-    
+
     Returns:
         TFResult with transfer function, coherence, and spectra
     """
@@ -86,9 +88,31 @@ def compute_transfer_and_coherence(
         noverlap = nperseg // 2
 
     # Cross-spectrum and autospectra
-    f, Pxy = csd(x_rov, x_ref, fs=fs, window=window, nperseg=nperseg, noverlap=noverlap, scaling="density")
-    _, Pxx = welch(x_ref, fs=fs, window=window, nperseg=nperseg, noverlap=noverlap, scaling="density")
-    _, Pyy = welch(x_rov, fs=fs, window=window, nperseg=nperseg, noverlap=noverlap, scaling="density")
+    f, Pxy = csd(
+        x_rov,
+        x_ref,
+        fs=fs,
+        window=window,
+        nperseg=nperseg,
+        noverlap=noverlap,
+        scaling="density",
+    )
+    _, Pxx = welch(
+        x_ref,
+        fs=fs,
+        window=window,
+        nperseg=nperseg,
+        noverlap=noverlap,
+        scaling="density",
+    )
+    _, Pyy = welch(
+        x_rov,
+        fs=fs,
+        window=window,
+        nperseg=nperseg,
+        noverlap=noverlap,
+        scaling="density",
+    )
 
     # Transfer function (roving/reference)
     eps = 1e-18

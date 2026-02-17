@@ -6,6 +6,7 @@ Provides:
 - GridSession: Tracks measurement progress across a grid
 - Factory methods for common grid patterns (rectangular, circular)
 """
+
 from __future__ import annotations
 
 import json
@@ -19,21 +20,28 @@ from typing import Any
 
 def _utc_now() -> str:
     """Get current UTC time as ISO string."""
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 class PointStatus(str, Enum):
     """Status of a measurement point."""
-    PENDING = "pending"      # Not yet measured
-    PASSED = "passed"        # Measurement passed quality gate
-    WARNED = "warned"        # Measurement passed with warnings
-    FAILED = "failed"        # Most recent attempt failed
-    SKIPPED = "skipped"      # Intentionally skipped
+
+    PENDING = "pending"  # Not yet measured
+    PASSED = "passed"  # Measurement passed quality gate
+    WARNED = "warned"  # Measurement passed with warnings
+    FAILED = "failed"  # Most recent attempt failed
+    SKIPPED = "skipped"  # Intentionally skipped
 
 
 @dataclass
 class GridPoint:
     """A single point in the measurement grid."""
+
     id: str
     x: float
     y: float
@@ -69,6 +77,7 @@ class Grid:
         points: List of measurement points
         created_at: When grid was created
     """
+
     grid_id: str
     name: str
     units: str
@@ -168,12 +177,14 @@ class Grid:
         for row in range(rows):
             for col in range(cols):
                 point_id = f"{chr(65 + row)}{col + 1}"  # A1, A2, B1, B2, etc.
-                points.append(GridPoint(
-                    id=point_id,
-                    x=col * spacing,
-                    y=row * spacing,
-                    label=point_id,
-                ))
+                points.append(
+                    GridPoint(
+                        id=point_id,
+                        x=col * spacing,
+                        y=row * spacing,
+                        label=point_id,
+                    )
+                )
 
         return cls(
             grid_id=grid_id or f"rect_{rows}x{cols}",
@@ -259,9 +270,13 @@ class Grid:
         for i in range(num_points):
             point_id = f"L{i + 1}"
             if orientation == "horizontal":
-                points.append(GridPoint(id=point_id, x=i * spacing, y=0, label=point_id))
+                points.append(
+                    GridPoint(id=point_id, x=i * spacing, y=0, label=point_id)
+                )
             else:
-                points.append(GridPoint(id=point_id, x=0, y=i * spacing, label=point_id))
+                points.append(
+                    GridPoint(id=point_id, x=0, y=i * spacing, label=point_id)
+                )
 
         return cls(
             grid_id=grid_id or f"line_{num_points}",
@@ -275,6 +290,7 @@ class Grid:
 @dataclass
 class PointProgress:
     """Progress for a single measurement point."""
+
     point_id: str
     status: PointStatus = PointStatus.PENDING
     attempt_count: int = 0
@@ -315,6 +331,7 @@ class GridSession:
         started_at: When session started
         completed_at: When session completed (all points done)
     """
+
     session_id: str
     grid: Grid
     progress: dict[str, PointProgress] = field(default_factory=dict)
@@ -337,7 +354,8 @@ class GridSession:
     def completed_count(self) -> int:
         """Number of points with successful measurements."""
         return sum(
-            1 for p in self.progress.values()
+            1
+            for p in self.progress.values()
             if p.status in (PointStatus.PASSED, PointStatus.WARNED, PointStatus.SKIPPED)
         )
 
@@ -442,8 +460,7 @@ class GridSession:
         """Create from dict."""
         grid = Grid.from_dict(d["grid"])
         progress = {
-            k: PointProgress.from_dict(v)
-            for k, v in d.get("progress", {}).items()
+            k: PointProgress.from_dict(v) for k, v in d.get("progress", {}).items()
         }
         return cls(
             session_id=d["session_id"],

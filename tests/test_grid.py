@@ -1,7 +1,6 @@
 """Tests for tap_tone_pi.core.grid module (Phase 9)."""
-import json
+
 import pytest
-from pathlib import Path
 
 from tap_tone_pi.core.grid import (
     GridPoint,

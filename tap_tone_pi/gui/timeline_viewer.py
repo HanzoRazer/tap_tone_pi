@@ -11,6 +11,7 @@ Sources (tried in order):
 Fail-closed: any load error is shown as an in-dialog message rather than
 raising.
 """
+
 from __future__ import annotations
 
 import json
@@ -70,6 +71,7 @@ def load_timeline(
 
 
 # ── widget ───────────────────────────────────────────────────────────────
+
 
 class TimelineViewerDialog(tk.Toplevel):
     """Read-only viewer for ``session_timeline_v1.json``.
@@ -144,7 +146,8 @@ class TimelineViewerDialog(tk.Toplevel):
             w.destroy()
 
         self._data = load_timeline(
-            self._base_dir, allow_export=self._allow_export,
+            self._base_dir,
+            allow_export=self._allow_export,
         )
 
         if self._data is None:
@@ -171,23 +174,36 @@ class TimelineViewerDialog(tk.Toplevel):
         assert data is not None
 
         frm = tk.LabelFrame(
-            self._content, text="Session", padx=10, pady=6,
+            self._content,
+            text="Session",
+            padx=10,
+            pady=6,
         )
         frm.pack(fill=tk.X, pady=(0, 6))
 
         pairs: List[tuple[str, str]] = [
             ("Session ID", str(data.get("session_id", "—"))),
-            ("Schema", f'{data.get("schema_id", "?")} v{data.get("schema_version", "?")}'),
+            (
+                "Schema",
+                f'{data.get("schema_id", "?")} v{data.get("schema_version", "?")}',
+            ),
         ]
         for lbl, val in pairs:
             row = tk.Frame(frm)
             row.pack(fill=tk.X, pady=1)
             tk.Label(
-                row, text=f"{lbl}:", font=("Helvetica", 9, "bold"),
-                fg="#555", width=14, anchor=tk.W,
+                row,
+                text=f"{lbl}:",
+                font=("Helvetica", 9, "bold"),
+                fg="#555",
+                width=14,
+                anchor=tk.W,
             ).pack(side=tk.LEFT)
             tk.Label(
-                row, text=val, font=("Helvetica", 9), fg="#333",
+                row,
+                text=val,
+                font=("Helvetica", 9),
+                fg="#333",
             ).pack(side=tk.LEFT)
 
     def _render_moment_section(self) -> None:
@@ -196,14 +212,19 @@ class TimelineViewerDialog(tk.Toplevel):
         moment = data.get("moment_latest")
 
         frm = tk.LabelFrame(
-            self._content, text="Latest Moment", padx=10, pady=6,
+            self._content,
+            text="Latest Moment",
+            padx=10,
+            pady=6,
         )
         frm.pack(fill=tk.X, pady=(0, 6))
 
         if not isinstance(moment, dict) or not moment.get("id"):
             tk.Label(
-                frm, text="No moment recorded.",
-                font=("Helvetica", 9), fg="#888",
+                frm,
+                text="No moment recorded.",
+                font=("Helvetica", 9),
+                fg="#888",
             ).pack(anchor=tk.W)
             return
 
@@ -216,11 +237,18 @@ class TimelineViewerDialog(tk.Toplevel):
             row = tk.Frame(frm)
             row.pack(fill=tk.X, pady=1)
             tk.Label(
-                row, text=f"{lbl}:", font=("Helvetica", 9, "bold"),
-                fg="#555", width=16, anchor=tk.W,
+                row,
+                text=f"{lbl}:",
+                font=("Helvetica", 9, "bold"),
+                fg="#555",
+                width=16,
+                anchor=tk.W,
             ).pack(side=tk.LEFT)
             tk.Label(
-                row, text=val, font=("Helvetica", 9), fg="#333",
+                row,
+                text=val,
+                font=("Helvetica", 9),
+                fg="#333",
             ).pack(side=tk.LEFT)
 
     def _render_policy_trace_section(self) -> None:
@@ -232,7 +260,10 @@ class TimelineViewerDialog(tk.Toplevel):
             return
 
         frm = tk.LabelFrame(
-            self._content, text="Policy Trace", padx=10, pady=6,
+            self._content,
+            text="Policy Trace",
+            padx=10,
+            pady=6,
         )
         frm.pack(fill=tk.X, pady=(0, 6))
 
@@ -250,14 +281,23 @@ class TimelineViewerDialog(tk.Toplevel):
             row = tk.Frame(frm)
             row.pack(fill=tk.X, pady=1)
             tk.Label(
-                row, text=f"{label}:",
-                font=("Helvetica", 9, "bold"), fg="#555",
-                width=22, anchor=tk.W,
+                row,
+                text=f"{label}:",
+                font=("Helvetica", 9, "bold"),
+                fg="#555",
+                width=22,
+                anchor=tk.W,
             ).pack(side=tk.LEFT)
             val = trace[key]
             tk.Label(
-                row, text=_fmt_bool(val) if isinstance(val, bool) else str(val) if val is not None else "—",
-                font=("Helvetica", 9), fg="#333",
+                row,
+                text=_fmt_bool(val)
+                if isinstance(val, bool)
+                else str(val)
+                if val is not None
+                else "—",
+                font=("Helvetica", 9),
+                fg="#333",
             ).pack(side=tk.LEFT)
 
         # M0: would_have_emitted summary
@@ -266,14 +306,20 @@ class TimelineViewerDialog(tk.Toplevel):
             row = tk.Frame(frm)
             row.pack(fill=tk.X, pady=1)
             tk.Label(
-                row, text="Would have emitted:",
-                font=("Helvetica", 9, "bold"), fg="#555",
-                width=22, anchor=tk.W,
+                row,
+                text="Would have emitted:",
+                font=("Helvetica", 9, "bold"),
+                fg="#555",
+                width=22,
+                anchor=tk.W,
             ).pack(side=tk.LEFT)
             tk.Label(
-                row, text=str(whe["summary"]),
-                font=("Helvetica", 9), fg="#333",
-                wraplength=350, justify=tk.LEFT,
+                row,
+                text=str(whe["summary"]),
+                font=("Helvetica", 9),
+                fg="#333",
+                wraplength=350,
+                justify=tk.LEFT,
             ).pack(side=tk.LEFT)
 
     def _render_events_section(self) -> None:
@@ -282,20 +328,28 @@ class TimelineViewerDialog(tk.Toplevel):
         events = data.get("directive_events") or []
 
         frm = tk.LabelFrame(
-            self._content, text="Directive Events", padx=10, pady=6,
+            self._content,
+            text="Directive Events",
+            padx=10,
+            pady=6,
         )
         frm.pack(fill=tk.BOTH, expand=True, pady=(0, 6))
 
         if not events:
             tk.Label(
-                frm, text="No directive events.",
-                font=("Helvetica", 9), fg="#888",
+                frm,
+                text="No directive events.",
+                font=("Helvetica", 9),
+                fg="#888",
             ).pack(anchor=tk.W)
             return
 
         columns = ("timestamp", "event_type", "directive_id", "component")
         tree = ttk.Treeview(
-            frm, columns=columns, show="headings", selectmode="browse",
+            frm,
+            columns=columns,
+            show="headings",
+            selectmode="browse",
             height=min(len(events), 8),
         )
 
@@ -316,12 +370,16 @@ class TimelineViewerDialog(tk.Toplevel):
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         for ev in events:
-            tree.insert("", tk.END, values=(
-                ev.get("timestamp", ""),
-                ev.get("event_type", ""),
-                ev.get("directive_id", ""),
-                ev.get("component", ""),
-            ))
+            tree.insert(
+                "",
+                tk.END,
+                values=(
+                    ev.get("timestamp", ""),
+                    ev.get("event_type", ""),
+                    ev.get("directive_id", ""),
+                    ev.get("component", ""),
+                ),
+            )
 
     def _render_counts_section(self) -> None:
         data = self._data
@@ -329,7 +387,10 @@ class TimelineViewerDialog(tk.Toplevel):
         counts = data.get("counts") or {}
 
         frm = tk.LabelFrame(
-            self._content, text="Counts", padx=10, pady=6,
+            self._content,
+            text="Counts",
+            padx=10,
+            pady=6,
         )
         frm.pack(fill=tk.X, pady=(0, 6))
 
@@ -344,12 +405,16 @@ class TimelineViewerDialog(tk.Toplevel):
             cell = tk.Frame(row)
             cell.pack(side=tk.LEFT, padx=(0, 18))
             tk.Label(
-                cell, text=f"{label}:",
-                font=("Helvetica", 9, "bold"), fg="#555",
+                cell,
+                text=f"{label}:",
+                font=("Helvetica", 9, "bold"),
+                fg="#555",
             ).pack(side=tk.LEFT)
             tk.Label(
-                cell, text=f" {counts.get(key, 0)}",
-                font=("Helvetica", 9), fg="#333",
+                cell,
+                text=f" {counts.get(key, 0)}",
+                font=("Helvetica", 9),
+                fg="#333",
             ).pack(side=tk.LEFT)
 
     def _render_ui_state_section(self) -> None:
@@ -361,7 +426,10 @@ class TimelineViewerDialog(tk.Toplevel):
             return
 
         frm = tk.LabelFrame(
-            self._content, text="UI State", padx=10, pady=6,
+            self._content,
+            text="UI State",
+            padx=10,
+            pady=6,
         )
         frm.pack(fill=tk.X, pady=(0, 6))
 
@@ -376,11 +444,16 @@ class TimelineViewerDialog(tk.Toplevel):
             row = tk.Frame(frm)
             row.pack(fill=tk.X, pady=1)
             tk.Label(
-                row, text=f"{label}:",
-                font=("Helvetica", 9, "bold"), fg="#555",
-                width=24, anchor=tk.W,
+                row,
+                text=f"{label}:",
+                font=("Helvetica", 9, "bold"),
+                fg="#555",
+                width=24,
+                anchor=tk.W,
             ).pack(side=tk.LEFT)
             tk.Label(
-                row, text=_fmt_bool(ui[key]),
-                font=("Helvetica", 9), fg="#333",
+                row,
+                text=_fmt_bool(ui[key]),
+                font=("Helvetica", 9),
+                fg="#333",
             ).pack(side=tk.LEFT)

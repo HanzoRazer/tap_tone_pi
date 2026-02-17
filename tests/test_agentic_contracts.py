@@ -8,13 +8,11 @@ import json
 import tempfile
 from pathlib import Path
 
-import pytest
 
 from tap_tone_pi.agentic import (
     # Contracts
     ToolCapabilityV1,
     CapabilityAction,
-    SafeDefaults,
     AttentionDirectiveV1,
     AttentionAction,
     FocusTarget,
@@ -31,7 +29,6 @@ from tap_tone_pi.agentic import (
     emit_analysis_started,
     emit_analysis_completed,
     emit_analysis_failed,
-    emit_attention_requested,
 )
 from tap_tone_pi.agentic.events import (
     create_wolf_tone_directive,

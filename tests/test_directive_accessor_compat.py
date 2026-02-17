@@ -45,12 +45,17 @@ def test_directive_accessor_works_for_dict_and_dataclass():
         action="REVIEW",
         summary="Potential finding detected near 432 Hz",
         confidence=0.87,
-        focus=FocusDC(target_type="spectrum", target_id="peak@432Hz", highlight_region=None),
+        focus=FocusDC(
+            target_type="spectrum", target_id="peak@432Hz", highlight_region=None
+        ),
     )
 
     for d in (directive_dict, directive_dc):
         assert OperatorLoop._directive_field(d, "action") == "REVIEW"
-        assert OperatorLoop._directive_field(d, "summary") == "Potential finding detected near 432 Hz"
+        assert (
+            OperatorLoop._directive_field(d, "summary")
+            == "Potential finding detected near 432 Hz"
+        )
         assert abs(float(OperatorLoop._directive_field(d, "confidence")) - 0.87) < 1e-9
 
         focus = OperatorLoop._directive_field(d, "focus")

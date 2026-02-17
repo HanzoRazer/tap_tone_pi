@@ -14,6 +14,7 @@ Exit codes:
     2 = Validation failed (errors found)
     3 = Validator internal failure
 """
+
 from __future__ import annotations
 
 import argparse
@@ -31,6 +32,7 @@ from typing import Any, Dict, List, Optional, Set
 @dataclass
 class ValidationIssue:
     """Single validation issue."""
+
     rule: str
     message: str
     path: Optional[str] = None
@@ -40,6 +42,7 @@ class ValidationIssue:
 @dataclass
 class ValidationReport:
     """Complete validation report."""
+
     schema_id: str = "validation_report_v1"
     validated_at_utc: str = ""
     pack_path: str = ""
@@ -49,19 +52,23 @@ class ValidationReport:
     stats: Dict[str, int] = field(default_factory=dict)
 
     def add_error(self, rule: str, message: str, path: Optional[str] = None) -> None:
-        self.errors.append({
-            "rule": rule,
-            "message": message,
-            "path": path,
-        })
+        self.errors.append(
+            {
+                "rule": rule,
+                "message": message,
+                "path": path,
+            }
+        )
         self.passed = False
 
     def add_warning(self, rule: str, message: str, path: Optional[str] = None) -> None:
-        self.warnings.append({
-            "rule": rule,
-            "message": message,
-            "path": path,
-        })
+        self.warnings.append(
+            {
+                "rule": rule,
+                "message": message,
+                "path": path,
+            }
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -102,7 +109,8 @@ def _load_contract_schema(schema_relpath: str) -> Optional[Dict[str, Any]]:
 
 
 def _validate_json_against_schema(
-    doc: Dict[str, Any], schema: Dict[str, Any],
+    doc: Dict[str, Any],
+    schema: Dict[str, Any],
 ) -> Optional[str]:
     """Return None if valid; else return a short error string."""
     try:
@@ -244,10 +252,20 @@ def _validate_wsi(
         rel_path = str(wsi_path.relative_to(pack))
 
         # W-001: Required Columns
-        required_cols = ["freq_hz", "wsi", "loc", "grad", "phase_disorder", "coh_mean", "admissible"]
+        required_cols = [
+            "freq_hz",
+            "wsi",
+            "loc",
+            "grad",
+            "phase_disorder",
+            "coh_mean",
+            "admissible",
+        ]
         for col in required_cols:
             if col not in headers:
-                report.add_error("W-001", f"WSI curve missing required column: {col}", rel_path)
+                report.add_error(
+                    "W-001", f"WSI curve missing required column: {col}", rel_path
+                )
 
         if not all(col in headers for col in required_cols):
             return
@@ -290,7 +308,9 @@ def _validate_wsi(
         stats["wsi_valid"] = 1
 
     except Exception as e:
-        report.add_error("W-001", f"Cannot read WSI curve: {e}", str(wsi_path.relative_to(pack)))
+        report.add_error(
+            "W-001", f"Cannot read WSI curve: {e}", str(wsi_path.relative_to(pack))
+        )
 
 
 def _validate_optional_files(
@@ -310,7 +330,11 @@ def _validate_optional_files(
                 with open(opt_path, "r", encoding="utf-8") as f:
                     json.load(f)
             except json.JSONDecodeError as e:
-                report.add_warning("O-001", f"Optional file is not valid JSON: {e}", str(opt_path.relative_to(pack)))
+                report.add_warning(
+                    "O-001",
+                    f"Optional file is not valid JSON: {e}",
+                    str(opt_path.relative_to(pack)),
+                )
 
 
 def _validate_point_spectrum(
@@ -326,22 +350,34 @@ def _validate_point_spectrum(
     """
     spectrum_path = pack / "spectra" / "points" / pid / "spectrum.csv"
     if not spectrum_path.exists():
-        report.add_error("S-001", f"Spectrum missing for point {pid}", str(spectrum_path.relative_to(pack)))
+        report.add_error(
+            "S-001",
+            f"Spectrum missing for point {pid}",
+            str(spectrum_path.relative_to(pack)),
+        )
         return None
 
     try:
         headers, rows = _read_csv_columns(spectrum_path)
     except Exception as e:
-        report.add_error("S-001", f"Cannot read spectrum for point {pid}: {e}", str(spectrum_path.relative_to(pack)))
+        report.add_error(
+            "S-001",
+            f"Cannot read spectrum for point {pid}: {e}",
+            str(spectrum_path.relative_to(pack)),
+        )
         return None
 
     rel_path = str(spectrum_path.relative_to(pack))
 
     # S-002: Required Columns
     if "freq_hz" not in headers:
-        report.add_error("S-002", f"Spectrum {pid} missing required column: freq_hz", rel_path)
+        report.add_error(
+            "S-002", f"Spectrum {pid} missing required column: freq_hz", rel_path
+        )
     if "H_mag" not in headers:
-        report.add_error("S-002", f"Spectrum {pid} missing required column: H_mag", rel_path)
+        report.add_error(
+            "S-002", f"Spectrum {pid} missing required column: H_mag", rel_path
+        )
 
     if "freq_hz" not in headers or "H_mag" not in headers:
         return None
@@ -355,19 +391,25 @@ def _validate_point_spectrum(
         m = _parse_float(row.get("H_mag", ""))
 
         if f is None:
-            report.add_error("S-002", f"Spectrum {pid}: invalid freq_hz at row {i+2}", rel_path)
+            report.add_error(
+                "S-002", f"Spectrum {pid}: invalid freq_hz at row {i+2}", rel_path
+            )
             parse_errors = True
             continue
 
         freq_hz_values.append(f)
 
         if m is None:
-            report.add_error("S-005", f"Spectrum {pid}: invalid H_mag at row {i+2}", rel_path)
+            report.add_error(
+                "S-005", f"Spectrum {pid}: invalid H_mag at row {i+2}", rel_path
+            )
             parse_errors = True
         else:
             # S-005: Finite Magnitudes
             if not math.isfinite(m):
-                report.add_error("S-005", f"Spectrum {pid}: non-finite H_mag at row {i+2}", rel_path)
+                report.add_error(
+                    "S-005", f"Spectrum {pid}: non-finite H_mag at row {i+2}", rel_path
+                )
                 parse_errors = True
 
     if parse_errors:
@@ -388,7 +430,9 @@ def _validate_point_spectrum(
         seen: Set[float] = set()
         for f in freq_hz_values:
             if f in seen:
-                report.add_error("S-004", f"Spectrum {pid}: duplicate freq_hz value {f}", rel_path)
+                report.add_error(
+                    "S-004", f"Spectrum {pid}: duplicate freq_hz value {f}", rel_path
+                )
                 break
             seen.add(f)
 
@@ -424,7 +468,11 @@ def _validate_point_analysis(
     """Validate analysis for a single point (P-001 to P-003)."""
     analysis_path = pack / "spectra" / "points" / pid / "analysis.json"
     if not analysis_path.exists():
-        report.add_error("P-001", f"Analysis missing for point {pid}", str(analysis_path.relative_to(pack)))
+        report.add_error(
+            "P-001",
+            f"Analysis missing for point {pid}",
+            str(analysis_path.relative_to(pack)),
+        )
         return
 
     try:
@@ -433,14 +481,22 @@ def _validate_point_analysis(
 
         peaks = analysis.get("peaks", [])
         if not isinstance(peaks, list):
-            report.add_error("P-002", f"Analysis {pid}: peaks is not an array", str(analysis_path.relative_to(pack)))
+            report.add_error(
+                "P-002",
+                f"Analysis {pid}: peaks is not an array",
+                str(analysis_path.relative_to(pack)),
+            )
             return
 
         # P-003: Peaks Grid Alignment
         peaks_aligned = True
         for peak in peaks:
             if not isinstance(peak, dict) or "freq_hz" not in peak:
-                report.add_error("P-002", f"Analysis {pid}: peak missing freq_hz", str(analysis_path.relative_to(pack)))
+                report.add_error(
+                    "P-002",
+                    f"Analysis {pid}: peak missing freq_hz",
+                    str(analysis_path.relative_to(pack)),
+                )
                 peaks_aligned = False
                 continue
 
@@ -461,7 +517,11 @@ def _validate_point_analysis(
             stats["peaks_aligned"] += 1
 
     except json.JSONDecodeError as e:
-        report.add_error("P-002", f"Analysis {pid}: invalid JSON: {e}", str(analysis_path.relative_to(pack)))
+        report.add_error(
+            "P-002",
+            f"Analysis {pid}: invalid JSON: {e}",
+            str(analysis_path.relative_to(pack)),
+        )
 
 
 def validate_pack(
@@ -489,25 +549,19 @@ def validate_pack(
     stats = {
         "point_count_manifest": 0,
         "points_checked": 0,
-
         "spectrum_files_expected": 0,
         "spectrum_files_found": 0,
         "spectra_valid": 0,
-
         "analysis_files_expected": 0,
         "analysis_files_found": 0,
         "peaks_aligned": 0,
-
         "audio_files_expected": 0,
         "audio_files_found": 0,
         "audio_present": 0,
-
         "wsi_present": 0,
         "wsi_valid": 0,
-
         "timeline_present": 0,
         "timeline_valid": 0,
-
         "error_count": 0,
         "warning_count": 0,
     }
@@ -523,7 +577,11 @@ def validate_pack(
     # ========================================
     manifest_path = pack / "viewer_pack.json"
     if not manifest_path.exists():
-        report.add_error("M-001", "Manifest viewer_pack.json not found at pack root", "viewer_pack.json")
+        report.add_error(
+            "M-001",
+            "Manifest viewer_pack.json not found at pack root",
+            "viewer_pack.json",
+        )
         return _finalize()
 
     # Load manifest
@@ -531,7 +589,9 @@ def validate_pack(
         with open(manifest_path, "r", encoding="utf-8") as f:
             manifest = json.load(f)
     except json.JSONDecodeError as e:
-        report.add_error("M-001", f"Manifest is not valid JSON: {e}", "viewer_pack.json")
+        report.add_error(
+            "M-001", f"Manifest is not valid JSON: {e}", "viewer_pack.json"
+        )
         return _finalize()
 
     # ========================================
@@ -590,9 +650,17 @@ def validate_pack(
             stats["audio_present"] += 1
         else:
             if audio_required:
-                report.add_error("A-001", f"Audio missing for point {pid}", str(audio_path.relative_to(pack)))
+                report.add_error(
+                    "A-001",
+                    f"Audio missing for point {pid}",
+                    str(audio_path.relative_to(pack)),
+                )
             else:
-                report.add_warning("A-001", f"Audio missing for point {pid}", str(audio_path.relative_to(pack)))
+                report.add_warning(
+                    "A-001",
+                    f"Audio missing for point {pid}",
+                    str(audio_path.relative_to(pack)),
+                )
 
     # ========================================
     # W-xxx: WSI Curve Validation
@@ -617,8 +685,7 @@ def validate_pack(
     ):
         report.add_error(
             "T-002",
-            "CI requires timeline_valid==1 when session_timeline_v1.json "
-            "is present",
+            "CI requires timeline_valid==1 when session_timeline_v1.json " "is present",
         )
 
     return _finalize()
@@ -635,7 +702,9 @@ def write_validation_report(pack_path: Path, report: ValidationReport) -> Path:
         Path to the written validation_report.json file
     """
     out = Path(pack_path) / "validation_report.json"
-    out.write_text(json.dumps(report.to_dict(), indent=2, sort_keys=False), encoding="utf-8")
+    out.write_text(
+        json.dumps(report.to_dict(), indent=2, sort_keys=False), encoding="utf-8"
+    )
     return out
 
 
@@ -652,10 +721,23 @@ Exit codes:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("pack_path", type=Path, help="Path to staged pack directory")
-    parser.add_argument("--report", type=Path, help="Write validation report JSON to this path")
-    parser.add_argument("--audio-required", action="store_true", help="Treat missing audio as ERROR (default: WARN)")
-    parser.add_argument("--peak-tolerance", type=float, default=0.0, help="Peak-to-bin tolerance in Hz (default: 0 = exact)")
-    parser.add_argument("--json", action="store_true", help="Output report as JSON to stdout")
+    parser.add_argument(
+        "--report", type=Path, help="Write validation report JSON to this path"
+    )
+    parser.add_argument(
+        "--audio-required",
+        action="store_true",
+        help="Treat missing audio as ERROR (default: WARN)",
+    )
+    parser.add_argument(
+        "--peak-tolerance",
+        type=float,
+        default=0.0,
+        help="Peak-to-bin tolerance in Hz (default: 0 = exact)",
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="Output report as JSON to stdout"
+    )
 
     args = parser.parse_args()
 

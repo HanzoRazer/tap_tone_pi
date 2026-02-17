@@ -33,6 +33,7 @@ Runs:
 
 No advisory or design logic. Facts only.
 """
+
 from __future__ import annotations
 
 import datetime
@@ -44,7 +45,6 @@ import subprocess
 import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog
-from typing import TYPE_CHECKING
 
 # Resolve project root
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -54,9 +54,11 @@ DATA = ROOT / "data"
 # Optional matplotlib for spectrum visualization
 try:
     import matplotlib
+
     matplotlib.use("TkAgg")
     from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
     from matplotlib.figure import Figure
+
     HAS_MATPLOTLIB = True
 except ImportError:
     HAS_MATPLOTLIB = False
@@ -65,6 +67,7 @@ except ImportError:
 try:
     from tap_tone_pi.core.analysis import analyze_tap, AnalysisResult, Peak
     from tap_tone_pi.io.wav import read_wav_mono
+
     HAS_DIRECT_ANALYSIS = True
 except ImportError:
     HAS_DIRECT_ANALYSIS = False
@@ -73,6 +76,7 @@ except ImportError:
 try:
     from tap_tone_pi.core.quality_gate import check_quality, format_verdict_summary
     from tap_tone_pi.core.quality_policy import Verdict, QualityVerdict, Severity
+
     HAS_QUALITY_GATE = True
 except ImportError:
     HAS_QUALITY_GATE = False
@@ -84,6 +88,7 @@ try:
         TriggerState,
         TriggerResult,
     )
+
     HAS_AUTO_TRIGGER = True
 except ImportError:
     HAS_AUTO_TRIGGER = False
@@ -100,6 +105,7 @@ try:
         PackDiffDialog,
         ToolTip,
     )
+
     HAS_WIDGETS = True
 except ImportError:
     HAS_WIDGETS = False
@@ -112,6 +118,7 @@ try:
         GridMeasureDialog,
     )
     from tap_tone_pi.core.grid import Grid, GridSession, PointStatus
+
     HAS_GRID = True
 except ImportError:
     HAS_GRID = False
@@ -119,6 +126,7 @@ except ImportError:
 # Viewer pack export (Phase 11 enhancement)
 try:
     from tap_tone_pi.gui.export import export_gui_session, ExportResult
+
     HAS_EXPORT = True
 except ImportError:
     HAS_EXPORT = False
@@ -126,6 +134,7 @@ except ImportError:
 # Timeline viewer (PR #18 enhancement)
 try:
     from tap_tone_pi.gui.timeline_viewer import TimelineViewerDialog
+
     HAS_TIMELINE_VIEWER = True
 except ImportError:
     HAS_TIMELINE_VIEWER = False
@@ -133,56 +142,62 @@ except ImportError:
 
 class SpectrumViewer(tk.Toplevel):
     """Matplotlib spectrum viewer window (Phase 6 enhancement)."""
-    
-    def __init__(self, parent: tk.Tk, result: "AnalysisResult", title: str = "Spectrum") -> None:
+
+    def __init__(
+        self, parent: tk.Tk, result: "AnalysisResult", title: str = "Spectrum"
+    ) -> None:
         super().__init__(parent)
         self.title(title)
         self.geometry("800x500")
-        
+
         if not HAS_MATPLOTLIB:
             tk.Label(self, text="matplotlib not installed").pack(pady=20)
             return
-        
+
         # Create figure
         fig = Figure(figsize=(8, 4.5), dpi=100)
         ax = fig.add_subplot(111)
-        
+
         # Plot spectrum
         freq = result.spectrum_freq_hz
         mag = result.spectrum_mag
-        ax.semilogy(freq, mag + 1e-10, 'b-', linewidth=0.5, alpha=0.7)
-        
+        ax.semilogy(freq, mag + 1e-10, "b-", linewidth=0.5, alpha=0.7)
+
         # Mark peaks
         for peak in result.peaks:
-            ax.axvline(peak.freq_hz, color='r', linestyle='--', alpha=0.5, linewidth=0.8)
+            ax.axvline(
+                peak.freq_hz, color="r", linestyle="--", alpha=0.5, linewidth=0.8
+            )
             ax.annotate(
                 f"{peak.freq_hz:.1f} Hz",
                 xy=(peak.freq_hz, peak.magnitude),
                 xytext=(5, 5),
-                textcoords='offset points',
+                textcoords="offset points",
                 fontsize=8,
-                color='red'
+                color="red",
             )
-        
+
         ax.set_xlabel("Frequency (Hz)")
         ax.set_ylabel("Magnitude (log scale)")
         ax.set_xlim(20, 2000)
-        ax.set_title(f"Dominant: {result.dominant_hz:.1f} Hz | Confidence: {result.confidence:.2f}")
+        ax.set_title(
+            f"Dominant: {result.dominant_hz:.1f} Hz | Confidence: {result.confidence:.2f}"
+        )
         ax.grid(True, alpha=0.3)
         fig.tight_layout()
-        
+
         # Embed in Tkinter
         canvas = FigureCanvasTkAgg(fig, master=self)
         canvas.draw()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-        
+
         # Info panel
         info_frame = tk.Frame(self)
         info_frame.pack(fill=tk.X, padx=10, pady=5)
-        
+
         info_text = f"Peaks: {len(result.peaks)} | RMS: {result.rms:.4f} | Clipped: {result.clipped}"
         tk.Label(info_frame, text=info_text, font=("Courier", 10)).pack(side=tk.LEFT)
-        
+
         tk.Button(info_frame, text="Close", command=self.destroy).pack(side=tk.RIGHT)
 
 
@@ -209,7 +224,9 @@ class QualityVerdictViewer(tk.Toplevel):
 
     def _build_verdict_banner(self, main: tk.Frame) -> None:
         """Build the verdict banner with icon."""
-        banner_bg, banner_text, banner_icon = _get_verdict_banner_config(self.verdict.verdict)
+        banner_bg, banner_text, banner_icon = _get_verdict_banner_config(
+            self.verdict.verdict
+        )
         banner_frame = tk.Frame(main, bg=banner_bg)
         banner_frame.pack(fill=tk.X, pady=(0, 15))
         tk.Label(
@@ -257,9 +274,13 @@ class QualityVerdictViewer(tk.Toplevel):
             col = i % 2
             cell = tk.Frame(summary_frame)
             cell.grid(row=row, column=col, sticky="w", padx=10, pady=3)
-            tk.Label(cell, text=f"{label}:", font=("Helvetica", 9, "bold"), fg="#555").pack(side=tk.LEFT)
+            tk.Label(
+                cell, text=f"{label}:", font=("Helvetica", 9, "bold"), fg="#555"
+            ).pack(side=tk.LEFT)
             fg_color = "#d32f2f" if "⚠" in value else "#333"
-            tk.Label(cell, text=f" {value}", font=("Helvetica", 9), fg=fg_color).pack(side=tk.LEFT)
+            tk.Label(cell, text=f" {value}", font=("Helvetica", 9), fg=fg_color).pack(
+                side=tk.LEFT
+            )
 
     def _build_triggered_rules_frame(self, main: tk.Frame) -> None:
         """Build the triggered quality rules frame."""
@@ -272,7 +293,9 @@ class QualityVerdictViewer(tk.Toplevel):
             ).pack(pady=10)
             return
 
-        rules_frame = tk.LabelFrame(main, text="Triggered Quality Rules", padx=8, pady=8)
+        rules_frame = tk.LabelFrame(
+            main, text="Triggered Quality Rules", padx=8, pady=8
+        )
         rules_frame.pack(fill=tk.BOTH, expand=True, pady=5)
 
         canvas = tk.Canvas(rules_frame, height=100, highlightthickness=0)
@@ -340,8 +363,11 @@ class QualityVerdictViewer(tk.Toplevel):
                 if isinstance(_te_moment, dict):
                     _te_moment_id = _te_moment.get("id")
 
-            if _te_moment_id in _TRUST_EROSION_IDS and not is_trust_banner_dismissed(_te_sd):
+            if _te_moment_id in _TRUST_EROSION_IDS and not is_trust_banner_dismissed(
+                _te_sd
+            ):
                 from tap_tone_pi.gui.info_banner import InfoBanner
+
                 _te_banner = InfoBanner(
                     main,
                     text=(
@@ -363,6 +389,7 @@ class QualityVerdictViewer(tk.Toplevel):
         _adv_already_handled = False
         try:
             from tap_tone_pi.gui.advisory_state import has_responded as _adv_responded
+
             if _adv_responded(pathlib.Path(self.session_dir)):
                 _adv_already_handled = True
         except (ImportError, OSError, ValueError, KeyError, AttributeError):
@@ -377,7 +404,10 @@ class QualityVerdictViewer(tk.Toplevel):
         advisory_action = None
 
         try:
-            from tap_tone_pi.agentic.spine.shadow_record import load_latest_shadow_record
+            from tap_tone_pi.agentic.spine.shadow_record import (
+                load_latest_shadow_record,
+            )
+
             rec = load_latest_shadow_record(pathlib.Path(self.session_dir))
             if isinstance(rec, dict):
                 advisory_rec = rec
@@ -389,7 +419,11 @@ class QualityVerdictViewer(tk.Toplevel):
         except (ImportError, OSError, ValueError, KeyError, AttributeError):
             advisory_rec = None
 
-        if advisory_rec is None or not isinstance(advisory_summary, str) or not advisory_summary.strip():
+        if (
+            advisory_rec is None
+            or not isinstance(advisory_summary, str)
+            or not advisory_summary.strip()
+        ):
             return
 
         adv_frame = tk.LabelFrame(main, text="Advisory", padx=10, pady=8)
@@ -400,14 +434,23 @@ class QualityVerdictViewer(tk.Toplevel):
             header = f"[{advisory_action.strip().upper()}] {header}"
 
         tk.Label(
-            adv_frame, text=header, font=("Helvetica", 10, "bold"),
-            fg="#333", wraplength=470, justify=tk.LEFT,
+            adv_frame,
+            text=header,
+            font=("Helvetica", 10, "bold"),
+            fg="#333",
+            wraplength=470,
+            justify=tk.LEFT,
         ).pack(anchor="w")
 
         if isinstance(advisory_detail, str) and advisory_detail.strip():
             tk.Label(
-                adv_frame, text=advisory_detail.strip(), font=("Helvetica", 9),
-                fg="#555", wraplength=470, justify=tk.LEFT, pady=4,
+                adv_frame,
+                text=advisory_detail.strip(),
+                font=("Helvetica", 9),
+                fg="#555",
+                wraplength=470,
+                justify=tk.LEFT,
+                pady=4,
             ).pack(anchor="w")
 
         self._build_advisory_buttons(adv_frame)
@@ -418,19 +461,25 @@ class QualityVerdictViewer(tk.Toplevel):
         btns.pack(fill=tk.X, pady=(6, 0))
 
         status_var = tk.StringVar(value="")
-        tk.Label(btns, textvariable=status_var, font=("Helvetica", 9), fg="#666").pack(side=tk.RIGHT)
+        tk.Label(btns, textvariable=status_var, font=("Helvetica", 9), fg="#666").pack(
+            side=tk.RIGHT
+        )
 
         def _fade_and_hide(frame: tk.Widget, steps: int = 6, delay: int = 60) -> None:
             try:
                 for i in range(1, steps + 1):
                     grey = 0xF9 + int((0xFF - 0xF9) * i / steps)
                     colour = f"#{grey:02x}{grey:02x}{grey:02x}"
-                    frame.after(delay * i, lambda c=colour: (
-                        frame.configure(bg=c) if frame.winfo_exists() else None
-                    ))
-                frame.after(delay * (steps + 1), lambda: (
-                    frame.pack_forget() if frame.winfo_exists() else None
-                ))
+                    frame.after(
+                        delay * i,
+                        lambda c=colour: (
+                            frame.configure(bg=c) if frame.winfo_exists() else None
+                        ),
+                    )
+                frame.after(
+                    delay * (steps + 1),
+                    lambda: (frame.pack_forget() if frame.winfo_exists() else None),
+                )
             except (ImportError, OSError, ValueError, KeyError, AttributeError):
                 try:
                     frame.pack_forget()
@@ -439,7 +488,10 @@ class QualityVerdictViewer(tk.Toplevel):
 
         def _record(outcome: str, ack_btn: tk.Button, dis_btn: tk.Button) -> None:
             try:
-                from tap_tone_pi.gui.directive_outcomes import record_latest_directive_outcome
+                from tap_tone_pi.gui.directive_outcomes import (
+                    record_latest_directive_outcome,
+                )
+
                 ok = record_latest_directive_outcome(
                     session_dir=pathlib.Path(self.session_dir),
                     outcome="ack" if outcome == "ack" else "dismiss",
@@ -451,6 +503,7 @@ class QualityVerdictViewer(tk.Toplevel):
 
             try:
                 from tap_tone_pi.gui.advisory_state import mark_responded
+
                 mark_responded(pathlib.Path(self.session_dir))
             except (ImportError, OSError, ValueError, KeyError, AttributeError):
                 pass
@@ -463,12 +516,24 @@ class QualityVerdictViewer(tk.Toplevel):
             _fade_and_hide(adv_frame)
 
         ack_btn = tk.Button(
-            btns, text="Acknowledge", bg="#4CAF50", fg="white",
-            font=("Helvetica", 9, "bold"), width=14, relief=tk.FLAT, cursor="hand2",
+            btns,
+            text="Acknowledge",
+            bg="#4CAF50",
+            fg="white",
+            font=("Helvetica", 9, "bold"),
+            width=14,
+            relief=tk.FLAT,
+            cursor="hand2",
         )
         dis_btn = tk.Button(
-            btns, text="Dismiss", bg="#9E9E9E", fg="white",
-            font=("Helvetica", 9, "bold"), width=10, relief=tk.FLAT, cursor="hand2",
+            btns,
+            text="Dismiss",
+            bg="#9E9E9E",
+            fg="white",
+            font=("Helvetica", 9, "bold"),
+            width=10,
+            relief=tk.FLAT,
+            cursor="hand2",
         )
         ack_btn.configure(command=lambda: _record("ack", ack_btn, dis_btn))
         dis_btn.configure(command=lambda: _record("dismiss", ack_btn, dis_btn))
@@ -477,6 +542,7 @@ class QualityVerdictViewer(tk.Toplevel):
 
         try:
             from tap_tone_pi.gui.tooltip import Tooltip
+
             Tooltip(ack_btn, "Record that you reviewed and accept this advisory.")
             Tooltip(dis_btn, "Dismiss this advisory without acting on it.")
         except (ImportError, OSError, ValueError, KeyError, AttributeError):
@@ -488,9 +554,13 @@ class QualityVerdictViewer(tk.Toplevel):
             return
         try:
             tk.Button(
-                main, text="📋 Timeline",
-                command=lambda: TimelineViewerDialog(self, pathlib.Path(self.session_dir)),
-                font=("Helvetica", 9), cursor="hand2",
+                main,
+                text="📋 Timeline",
+                command=lambda: TimelineViewerDialog(
+                    self, pathlib.Path(self.session_dir)
+                ),
+                font=("Helvetica", 9),
+                cursor="hand2",
             ).pack(anchor=tk.W, pady=(6, 0))
         except (ImportError, OSError, ValueError, KeyError, AttributeError):
             pass
@@ -507,15 +577,22 @@ class QualityVerdictViewer(tk.Toplevel):
             self._show_directive_history = bool(self._show_history_var.get())
             if self.session_dir is not None:
                 try:
-                    from tap_tone_pi.gui.advisory_state import set_show_directive_history
-                    set_show_directive_history(pathlib.Path(self.session_dir), self._show_directive_history)
+                    from tap_tone_pi.gui.advisory_state import (
+                        set_show_directive_history,
+                    )
+
+                    set_show_directive_history(
+                        pathlib.Path(self.session_dir), self._show_directive_history
+                    )
                 except (ImportError, OSError, ValueError, KeyError, AttributeError):
                     pass
             self._render_directive_history_panel()
 
         tk.Checkbutton(
-            toggle_row, text="Show directive history",
-            variable=self._show_history_var, command=_on_toggle_history,
+            toggle_row,
+            text="Show directive history",
+            variable=self._show_history_var,
+            command=_on_toggle_history,
         ).pack(side=tk.LEFT)
 
     def _build_action_buttons(self, main: tk.Frame) -> None:
@@ -525,36 +602,70 @@ class QualityVerdictViewer(tk.Toplevel):
 
         if self.verdict.verdict == Verdict.PASS:
             tk.Button(
-                btn_frame, text="✓ Accept", command=self._do_accept,
-                bg="#4CAF50", fg="white", font=("Helvetica", 11, "bold"),
-                width=15, relief=tk.FLAT, cursor="hand2",
+                btn_frame,
+                text="✓ Accept",
+                command=self._do_accept,
+                bg="#4CAF50",
+                fg="white",
+                font=("Helvetica", 11, "bold"),
+                width=15,
+                relief=tk.FLAT,
+                cursor="hand2",
             ).pack(side=tk.LEFT, padx=5)
         elif self.verdict.verdict == Verdict.WARN:
             tk.Button(
-                btn_frame, text="Accept with Warnings", command=self._do_accept,
-                bg="#FF9800", fg="white", font=("Helvetica", 10, "bold"),
-                width=20, relief=tk.FLAT, cursor="hand2",
+                btn_frame,
+                text="Accept with Warnings",
+                command=self._do_accept,
+                bg="#FF9800",
+                fg="white",
+                font=("Helvetica", 10, "bold"),
+                width=20,
+                relief=tk.FLAT,
+                cursor="hand2",
             ).pack(side=tk.LEFT, padx=5)
             tk.Button(
-                btn_frame, text="↻ Retry", command=self._do_retry,
-                bg="#607D8B", fg="white", font=("Helvetica", 10),
-                width=10, relief=tk.FLAT, cursor="hand2",
+                btn_frame,
+                text="↻ Retry",
+                command=self._do_retry,
+                bg="#607D8B",
+                fg="white",
+                font=("Helvetica", 10),
+                width=10,
+                relief=tk.FLAT,
+                cursor="hand2",
             ).pack(side=tk.LEFT, padx=5)
         else:  # FAIL
             tk.Button(
-                btn_frame, text="↻ Retry", command=self._do_retry,
-                bg="#2196F3", fg="white", font=("Helvetica", 11, "bold"),
-                width=15, relief=tk.FLAT, cursor="hand2",
+                btn_frame,
+                text="↻ Retry",
+                command=self._do_retry,
+                bg="#2196F3",
+                fg="white",
+                font=("Helvetica", 11, "bold"),
+                width=15,
+                relief=tk.FLAT,
+                cursor="hand2",
             ).pack(side=tk.LEFT, padx=5)
             tk.Button(
-                btn_frame, text="Override...", command=self._do_override,
-                bg="#9E9E9E", fg="white", font=("Helvetica", 10),
-                width=12, relief=tk.FLAT, cursor="hand2",
+                btn_frame,
+                text="Override...",
+                command=self._do_override,
+                bg="#9E9E9E",
+                fg="white",
+                font=("Helvetica", 10),
+                width=12,
+                relief=tk.FLAT,
+                cursor="hand2",
             ).pack(side=tk.LEFT, padx=5)
 
         tk.Button(
-            btn_frame, text="Close", command=self.destroy,
-            font=("Helvetica", 10), width=8, cursor="hand2",
+            btn_frame,
+            text="Close",
+            command=self.destroy,
+            font=("Helvetica", 10),
+            width=8,
+            cursor="hand2",
         ).pack(side=tk.RIGHT, padx=5)
 
     def __init__(
@@ -584,8 +695,10 @@ class QualityVerdictViewer(tk.Toplevel):
         if session_dir is not None:
             try:
                 from tap_tone_pi.gui.advisory_state import get_show_directive_history
+
                 _persisted_dh = get_show_directive_history(
-                    pathlib.Path(session_dir), default=None,
+                    pathlib.Path(session_dir),
+                    default=None,
                 )
             except (ImportError, OSError, ValueError, KeyError, AttributeError):
                 _persisted_dh = None
@@ -663,6 +776,7 @@ class QualityVerdictViewer(tk.Toplevel):
                 from tap_tone_pi.agentic.spine.shadow_record import (
                     load_latest_shadow_record as _dh_load_shadow,
                 )
+
                 _dh_rec = _dh_load_shadow(pathlib.Path(self.session_dir))
                 if isinstance(_dh_rec, dict):
                     _dh_m = _dh_rec.get("moment") or {}
@@ -674,16 +788,22 @@ class QualityVerdictViewer(tk.Toplevel):
                 moment_id = None
 
             rows = load_directive_events(
-                pathlib.Path(self.session_dir), limit=10,
+                pathlib.Path(self.session_dir),
+                limit=10,
             )
             lines = format_directive_history(
-                rows, moment_id=moment_id, limit=10,
+                rows,
+                moment_id=moment_id,
+                limit=10,
             )
             if not lines:
                 return
 
             hist = tk.LabelFrame(
-                self._main, text="Directive History", padx=10, pady=8,
+                self._main,
+                text="Directive History",
+                padx=10,
+                pady=8,
             )
             hist.pack(fill=tk.X, pady=(8, 5))
             self._directive_history_frame = hist
@@ -718,7 +838,7 @@ class QualityVerdictViewer(tk.Toplevel):
             "Override Reason",
             "Enter reason for overriding the failed quality gate:\n\n"
             "(This will be recorded in the audit trail)",
-            parent=self
+            parent=self,
         )
         if reason and reason.strip():
             if self.on_override:
@@ -831,24 +951,30 @@ class App(tk.Tk):
         # --- Quality-gated measurement (Phase 7 - recommended)
         if HAS_QUALITY_GATE and HAS_DIRECT_ANALYSIS:
             # Create custom frame to include auto-trigger checkbox
-            measure_frame = tk.LabelFrame(frm, text="Quality-Gated Measurement (recommended)")
+            measure_frame = tk.LabelFrame(
+                frm, text="Quality-Gated Measurement (recommended)"
+            )
             measure_frame.pack(fill="x", pady=4)
-            
+
             # Standard entry fields
             self.measure_vars: list[tk.StringVar] = []
-            for label, default in [("Duration (s)", "2.5"), ("Sample rate", "48000"), ("Point ID", "point_001")]:
+            for label, default in [
+                ("Duration (s)", "2.5"),
+                ("Sample rate", "48000"),
+                ("Point ID", "point_001"),
+            ]:
                 row = tk.Frame(measure_frame)
                 row.pack(fill="x")
                 tk.Label(row, text=label, width=28, anchor="w").pack(side="left")
                 var = tk.StringVar(value=default)
                 tk.Entry(row, textvariable=var, width=16).pack(side="left")
                 self.measure_vars.append(var)
-            
+
             # Auto-trigger checkbox (Phase 10)
             self.auto_trigger_var = tk.BooleanVar(value=False)
             trigger_row = tk.Frame(measure_frame)
             trigger_row.pack(fill="x", pady=(4, 0))
-            
+
             trigger_cb = tk.Checkbutton(
                 trigger_row,
                 text="Auto-trigger (wait for tap)",
@@ -856,7 +982,7 @@ class App(tk.Tk):
                 command=self._on_auto_trigger_toggle,
             )
             trigger_cb.pack(side="left", padx=4)
-            
+
             # Auto-trigger indicator label (Phase 10)
             self.trigger_status_label = tk.Label(
                 trigger_row,
@@ -865,19 +991,27 @@ class App(tk.Tk):
                 fg="#666",
             )
             self.trigger_status_label.pack(side="left", padx=10)
-            
+
             # Disable if auto-trigger not available
             if not HAS_AUTO_TRIGGER:
                 trigger_cb.configure(state=tk.DISABLED)
-                self.trigger_status_label.configure(text="(sounddevice required)", fg="#999")
-            
-            tk.Button(measure_frame, text="Run", command=lambda: self.do_quality_measure(self.measure_vars)).pack(pady=3)
+                self.trigger_status_label.configure(
+                    text="(sounddevice required)", fg="#999"
+                )
+
+            tk.Button(
+                measure_frame,
+                text="Run",
+                command=lambda: self.do_quality_measure(self.measure_vars),
+            ).pack(pady=3)
 
         # --- Tap-tone live
-        self.tap_live_vars = group(frm, "Tap-tone (live)", [
-            ("Duration (s)", "4"),
-            ("Sample rate", "44100")
-        ], self.do_tap_live)
+        self.tap_live_vars = group(
+            frm,
+            "Tap-tone (live)",
+            [("Duration (s)", "4"), ("Sample rate", "44100")],
+            self.do_tap_live,
+        )
 
         # --- Tap-tone offline
         self.wav_path = tk.StringVar(value=str((DATA / "sample_tap.wav").as_posix()))
@@ -885,32 +1019,51 @@ class App(tk.Tk):
 
         # --- MOE single (with entry vars for live capture)
         self.moe_vars: dict[str, tk.StringVar] = {}
-        group_with_binds(frm, "Bending → MOE (single)", [
-            ("method", "Method (3point/4point)", "3point"),
-            ("span", "Span mm", "400"),
-            ("width", "Width mm", "20"),
-            ("thickness", "Thickness mm", "3.0"),
-            ("force", "Force N", "5.0"),
-            ("deflection", "Deflection mm", "0.62"),
-            ("density", "Density g/cm^3 (optional)", ""),
-        ], self.moe_vars, self.do_moe_single)
+        group_with_binds(
+            frm,
+            "Bending → MOE (single)",
+            [
+                ("method", "Method (3point/4point)", "3point"),
+                ("span", "Span mm", "400"),
+                ("width", "Width mm", "20"),
+                ("thickness", "Thickness mm", "3.0"),
+                ("force", "Force N", "5.0"),
+                ("deflection", "Deflection mm", "0.62"),
+                ("density", "Density g/cm^3 (optional)", ""),
+            ],
+            self.moe_vars,
+            self.do_moe_single,
+        )
 
         # --- MOE batch
-        self.csv_path = tk.StringVar(value=str((ROOT / "data/deflection_runs.csv").as_posix()))
+        self.csv_path = tk.StringVar(
+            value=str((ROOT / "data/deflection_runs.csv").as_posix())
+        )
         group_file(frm, "Bending → MOE (batch CSV)", self.csv_path, self.do_moe_batch)
 
         # --- Provenance hash
-        self.prov_path = tk.StringVar(value=str((ROOT / "data/grain_field.png").as_posix()))
-        group_file(frm, "Provenance import (hash only)", self.prov_path, self.do_provenance)
+        self.prov_path = tk.StringVar(
+            value=str((ROOT / "data/grain_field.png").as_posix())
+        )
+        group_file(
+            frm, "Provenance import (hash only)", self.prov_path, self.do_provenance
+        )
 
         # --- Load cell capture
         self.load_cfg = tk.StringVar(
             value=str((ROOT / "config/devices/loadcell_example.json").as_posix())
         )
-        group_file(frm, "Load cell capture (serial) → load_series.json", self.load_cfg, self.do_loadcell)
+        group_file(
+            frm,
+            "Load cell capture (serial) → load_series.json",
+            self.load_cfg,
+            self.do_loadcell,
+        )
 
         # --- Dial indicator capture
-        self.dial_port = tk.StringVar(value="COM3" if os.name == "nt" else "/dev/ttyUSB0")
+        self.dial_port = tk.StringVar(
+            value="COM3" if os.name == "nt" else "/dev/ttyUSB0"
+        )
         group_entry(frm, "Dial indicator serial port", self.dial_port, self.do_dial)
 
         # --- Manifest
@@ -918,7 +1071,7 @@ class App(tk.Tk):
             frm,
             text="Emit manifest.json (hash everything in out/<RunID>)",
             command=self.do_manifest,
-            width=50
+            width=50,
         ).pack(pady=6)
 
         # --- Chladni Wizard
@@ -926,7 +1079,7 @@ class App(tk.Tk):
             frm,
             text="Chladni Wizard (WAV → peaks → images → run + manifest)",
             command=self.do_chladni_wizard,
-            width=50
+            width=50,
         ).pack(pady=4)
 
     def _create_menu(self) -> None:
@@ -988,7 +1141,9 @@ class App(tk.Tk):
                 accelerator="Ctrl+T",
             )
             tools_menu.add_separator()
-        tools_menu.add_command(label="Chladni Wizard...", command=self.do_chladni_wizard)
+        tools_menu.add_command(
+            label="Chladni Wizard...", command=self.do_chladni_wizard
+        )
 
         # Help menu
         help_menu = tk.Menu(menubar, tearoff=0)
@@ -1019,7 +1174,7 @@ class App(tk.Tk):
             "Version 2.1.0\n\n"
             "Acoustic measurement and quality control\n"
             "for lutherie applications.\n\n"
-            "Grid + Quality Gate"
+            "Grid + Quality Gate",
         )
 
     def _bind_shortcuts(self) -> None:
@@ -1058,7 +1213,7 @@ class App(tk.Tk):
 
     def _on_auto_trigger_toggle(self) -> None:
         """Handle auto-trigger checkbox toggle (Phase 10)."""
-        if hasattr(self, 'trigger_status_label'):
+        if hasattr(self, "trigger_status_label"):
             if self.auto_trigger_var.get():
                 self.trigger_status_label.configure(
                     text="Will wait for tap onset",
@@ -1069,7 +1224,7 @@ class App(tk.Tk):
 
     def _update_trigger_listening_state(self, listening: bool) -> None:
         """Update visual state for listening mode (Phase 10)."""
-        if hasattr(self, 'trigger_status_label'):
+        if hasattr(self, "trigger_status_label"):
             if listening:
                 self.trigger_status_label.configure(
                     text="🎤 Listening for tap...",
@@ -1144,12 +1299,16 @@ class App(tk.Tk):
         run_id = self.run_id.get().strip()
 
         # Check if session has any measurements
-        point_dirs = [d for d in session_dir.iterdir() if d.is_dir() and not d.name.startswith(("_", "."))]
+        point_dirs = [
+            d
+            for d in session_dir.iterdir()
+            if d.is_dir() and not d.name.startswith(("_", "."))
+        ]
         if not point_dirs:
             messagebox.showwarning(
                 "No Measurements",
                 f"No measurement points found in session:\n{session_dir}\n\n"
-                "Run a measurement first, then export."
+                "Run a measurement first, then export.",
             )
             return
 
@@ -1158,7 +1317,7 @@ class App(tk.Tk):
             "Export Viewer Pack",
             f"Export session '{run_id}' as viewer pack ZIP?\n\n"
             f"Found {len(point_dirs)} measurement point(s).\n\n"
-            "The ZIP will be created in the output folder."
+            "The ZIP will be created in the output folder.",
         )
         if not result:
             return
@@ -1171,10 +1330,12 @@ class App(tk.Tk):
             export_result = export_gui_session(session_dir, as_zip=True)
 
             if export_result.success:
-                self._set_status(f"Exported: {export_result.output_path.name}", "success")
+                self._set_status(
+                    f"Exported: {export_result.output_path.name}", "success"
+                )
 
                 # Show success with warnings if any
-                msg = f"Viewer pack exported successfully!\n\n"
+                msg = "Viewer pack exported successfully!\n\n"
                 msg += f"Points: {export_result.point_count}\n"
                 msg += f"Output: {export_result.output_path}"
 
@@ -1192,11 +1353,16 @@ class App(tk.Tk):
                     self._open_output_folder()
             else:
                 self._set_status(f"Export failed: {export_result.error}", "error")
-                messagebox.showerror("Export Failed", f"Could not export viewer pack:\n\n{export_result.error}")
+                messagebox.showerror(
+                    "Export Failed",
+                    f"Could not export viewer pack:\n\n{export_result.error}",
+                )
 
         except Exception as e:
             self._set_status(f"Export error: {e}", "error")
-            messagebox.showerror("Export Error", f"Unexpected error during export:\n\n{e}")
+            messagebox.showerror(
+                "Export Error", f"Unexpected error during export:\n\n{e}"
+            )
 
     def do_grid_editor(self) -> None:
         """Open the grid editor dialog (Phase 9)."""
@@ -1221,7 +1387,9 @@ class App(tk.Tk):
 
         # Check if quality gate is available
         if not HAS_QUALITY_GATE or not HAS_DIRECT_ANALYSIS:
-            messagebox.showerror("Error", "Quality gate modules required for grid measurement")
+            messagebox.showerror(
+                "Error", "Quality gate modules required for grid measurement"
+            )
             return
 
         # Ask user to select or create a grid
@@ -1230,7 +1398,7 @@ class App(tk.Tk):
             "Do you want to create a new grid?\n\n"
             "Yes = Create new grid\n"
             "No = Load existing grid\n"
-            "Cancel = Cancel"
+            "Cancel = Cancel",
         )
 
         if choice is None:
@@ -1238,6 +1406,7 @@ class App(tk.Tk):
 
         grid = None
         if choice:  # Create new grid
+
             def on_grid_created(g: Grid):
                 nonlocal grid
                 grid = g
@@ -1281,10 +1450,13 @@ class App(tk.Tk):
             # Save session
             session_path = self.outdir() / f"session_{s.session_id}.json"
             s.save(session_path)
-            self._set_status(f"Grid session complete: {s.completed_count}/{s.total_points}", "success")
+            self._set_status(
+                f"Grid session complete: {s.completed_count}/{s.total_points}",
+                "success",
+            )
             messagebox.showinfo(
                 "Session Complete",
-                f"All {s.total_points} points measured!\n\nSession saved to:\n{session_path}"
+                f"All {s.total_points} points measured!\n\nSession saved to:\n{session_path}",
             )
 
         # Open the measurement dialog
@@ -1297,7 +1469,9 @@ class App(tk.Tk):
             on_complete=on_complete,
         )
 
-    def _do_grid_point_measure(self, session: "GridSession", point_id: str, measure_dlg) -> None:
+    def _do_grid_point_measure(
+        self, session: "GridSession", point_id: str, measure_dlg
+    ) -> None:
         """Perform measurement for a single grid point."""
         from tap_tone_pi.capture import record_audio
         from tap_tone_pi.core.user_config import get_saved_device
@@ -1318,44 +1492,54 @@ class App(tk.Tk):
         point_dir.mkdir(parents=True, exist_ok=True)
 
         # Find next attempt number
-        existing = [d for d in point_dir.iterdir() if d.name.startswith("attempt_")] if point_dir.exists() else []
+        existing = (
+            [d for d in point_dir.iterdir() if d.name.startswith("attempt_")]
+            if point_dir.exists()
+            else []
+        )
         attempt_num = len(existing) + 1
         attempt_dir = point_dir / f"attempt_{attempt_num:03d}"
         attempt_dir.mkdir(parents=True, exist_ok=True)
 
         try:
             # Check if auto-trigger is enabled (Phase 10)
-            use_auto_trigger = hasattr(self, 'auto_trigger_var') and self.auto_trigger_var.get() and HAS_AUTO_TRIGGER
-            
+            use_auto_trigger = (
+                hasattr(self, "auto_trigger_var")
+                and self.auto_trigger_var.get()
+                and HAS_AUTO_TRIGGER
+            )
+
             if use_auto_trigger:
                 self._set_status(f"Listening for tap ({point_id})...", "progress")
                 self._update_trigger_listening_state(True)
                 self.update()
-                
+
                 trigger_result = record_audio_triggered(
                     device=device,
                     sample_rate=sample_rate,
                     post_trigger_seconds=duration,
                     timeout_seconds=30.0,
                 )
-                
+
                 self._update_trigger_listening_state(False)
-                
+
                 if not trigger_result.triggered:
                     if trigger_result.state == TriggerState.TIMEOUT:
                         session.mark_failed(point_id)
-                        self._set_status(f"Timeout waiting for tap on {point_id}", "error")
+                        self._set_status(
+                            f"Timeout waiting for tap on {point_id}", "error"
+                        )
                         measure_dlg.update_point_result(point_id, "failed", None)
                     return
-                
+
                 self._set_status(f"Tap captured ({point_id})", "success")
                 self.update()
-                
+
                 class _CapResult:
                     def __init__(self, audio, sr):
                         self.audio = audio
                         self.sample_rate = sr
-                
+
                 cap = _CapResult(trigger_result.audio, trigger_result.sample_rate)
             else:
                 self._set_status(f"Capturing {point_id}...", "progress")
@@ -1380,25 +1564,34 @@ class App(tk.Tk):
 
             # Save audio and analysis
             from tap_tone_pi.io.wav import write_wav_int16
+
             write_wav_int16(attempt_dir / "audio.wav", cap.audio, cap.sample_rate)
 
             with open(attempt_dir / "analysis.json", "w") as f:
-                json.dump({
-                    "dominant_hz": result.dominant_hz,
-                    "rms": float(result.rms),
-                    "confidence": float(result.confidence),
-                    "clipped": result.clipped,
-                }, f, indent=2)
+                json.dump(
+                    {
+                        "dominant_hz": result.dominant_hz,
+                        "rms": float(result.rms),
+                        "confidence": float(result.confidence),
+                        "clipped": result.clipped,
+                    },
+                    f,
+                    indent=2,
+                )
 
             # Update session based on verdict
             if verdict.verdict == Verdict.PASS:
                 session.mark_passed(point_id, result.dominant_hz)
                 status = "passed"
-                self._set_status(f"{point_id}: PASSED ({result.dominant_hz:.1f} Hz)", "success")
+                self._set_status(
+                    f"{point_id}: PASSED ({result.dominant_hz:.1f} Hz)", "success"
+                )
             elif verdict.verdict == Verdict.WARN:
                 session.mark_warned(point_id, result.dominant_hz)
                 status = "warned"
-                self._set_status(f"{point_id}: WARNING ({result.dominant_hz:.1f} Hz)", "warning")
+                self._set_status(
+                    f"{point_id}: WARNING ({result.dominant_hz:.1f} Hz)", "warning"
+                )
             else:
                 session.mark_failed(point_id)
                 status = "failed"
@@ -1441,12 +1634,25 @@ class App(tk.Tk):
         point_dir = outdir / point_id
         point_dir.mkdir(parents=True, exist_ok=True)
 
-        existing = [d for d in point_dir.iterdir() if d.name.startswith("attempt_")] if point_dir.exists() else []
+        existing = (
+            [d for d in point_dir.iterdir() if d.name.startswith("attempt_")]
+            if point_dir.exists()
+            else []
+        )
         attempt_num = len(existing) + 1
         attempt_dir = point_dir / f"attempt_{attempt_num:03d}"
         attempt_dir.mkdir(parents=True, exist_ok=True)
 
-        return outdir, duration, sample_rate, point_id, device, point_dir, attempt_num, attempt_dir
+        return (
+            outdir,
+            duration,
+            sample_rate,
+            point_id,
+            device,
+            point_dir,
+            attempt_num,
+            attempt_dir,
+        )
 
     def _capture_with_auto_trigger(
         self,
@@ -1477,17 +1683,25 @@ class App(tk.Tk):
                 if progress_dlg:
                     progress_dlg.destroy()
                 if trigger_result.state == TriggerState.TIMEOUT:
-                    self._set_status(f"Timeout waiting for tap", "error")
-                    messagebox.showwarning("Timeout", "No tap detected within 30 seconds.")
+                    self._set_status("Timeout waiting for tap", "error")
+                    messagebox.showwarning(
+                        "Timeout", "No tap detected within 30 seconds."
+                    )
                 else:
-                    self._set_status(f"Auto-trigger failed: {trigger_result.error}", "error")
-                    messagebox.showerror("Error", f"Auto-trigger failed: {trigger_result.error}")
+                    self._set_status(
+                        f"Auto-trigger failed: {trigger_result.error}", "error"
+                    )
+                    messagebox.showerror(
+                        "Error", f"Auto-trigger failed: {trigger_result.error}"
+                    )
                 return None
 
             snr = trigger_result.trigger_rms / max(trigger_result.baseline_rms, 1e-6)
             self._set_status(f"Tap detected! (SNR: {snr:.1f}x)", "success")
             if progress_dlg:
-                progress_dlg.set_stage(1, f"✓ Tap captured ({trigger_result.duration_seconds:.1f}s)")
+                progress_dlg.set_stage(
+                    1, f"✓ Tap captured ({trigger_result.duration_seconds:.1f}s)"
+                )
                 self.update()
 
             class _CapResult:
@@ -1543,13 +1757,20 @@ class App(tk.Tk):
 
         analysis_path = attempt_dir / "analysis.json"
         with open(analysis_path, "w") as f:
-            json.dump({
-                "dominant_hz": result.dominant_hz,
-                "rms": float(result.rms),
-                "confidence": float(result.confidence),
-                "clipped": result.clipped,
-                "peaks": [{"freq_hz": p.freq_hz, "magnitude": float(p.magnitude)} for p in result.peaks[:20]],
-            }, f, indent=2)
+            json.dump(
+                {
+                    "dominant_hz": result.dominant_hz,
+                    "rms": float(result.rms),
+                    "confidence": float(result.confidence),
+                    "clipped": result.clipped,
+                    "peaks": [
+                        {"freq_hz": p.freq_hz, "magnitude": float(p.magnitude)}
+                        for p in result.peaks[:20]
+                    ],
+                },
+                f,
+                indent=2,
+            )
 
         quality_path = attempt_dir / "quality_check.json"
         with open(quality_path, "w") as f:
@@ -1566,6 +1787,7 @@ class App(tk.Tk):
         entry_vars: list,
     ) -> None:
         """Show the quality verdict viewer dialog."""
+
         def on_accept():
             self._set_status(f"{point_id} accepted", "success")
             messagebox.showinfo("Accepted", f"Measurement saved to:\n{attempt_dir}")
@@ -1578,9 +1800,20 @@ class App(tk.Tk):
         def on_override(reason: str):
             override_path = attempt_dir / "override.json"
             with open(override_path, "w") as f:
-                json.dump({"reason": reason, "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()}, f, indent=2)
+                json.dump(
+                    {
+                        "reason": reason,
+                        "timestamp": datetime.datetime.now(
+                            datetime.timezone.utc
+                        ).isoformat(),
+                    },
+                    f,
+                    indent=2,
+                )
             self._set_status(f"{point_id} overridden", "warning")
-            messagebox.showinfo("Overridden", f"Measurement overridden and saved to:\n{attempt_dir}")
+            messagebox.showinfo(
+                "Overridden", f"Measurement overridden and saved to:\n{attempt_dir}"
+            )
 
         QualityVerdictViewer(
             self,
@@ -1590,9 +1823,8 @@ class App(tk.Tk):
             on_retry=on_retry,
             on_override=on_override,
             session_dir=outdir,
-            title=f"Quality Gate: {point_id} (attempt {attempt_num})"
+            title=f"Quality Gate: {point_id} (attempt {attempt_num})",
         )
-
 
     def do_quality_measure(self, entry_vars: list[tk.StringVar]) -> None:
         """Run quality-gated measurement (Phase 7 + Phase 8 enhancements)."""
@@ -1600,14 +1832,21 @@ class App(tk.Tk):
             messagebox.showerror("Error", "Quality gate modules not available")
             return
 
-        outdir, duration, sample_rate, point_id, device, point_dir, attempt_num, attempt_dir = \
-            self._setup_quality_measure(entry_vars)
+        (
+            outdir,
+            duration,
+            sample_rate,
+            point_id,
+            device,
+            point_dir,
+            attempt_num,
+            attempt_dir,
+        ) = self._setup_quality_measure(entry_vars)
 
         progress_dlg = None
         if HAS_WIDGETS:
             progress_dlg = CaptureProgressDialog(
-                self,
-                title=f"Capturing: {point_id} (attempt {attempt_num})"
+                self, title=f"Capturing: {point_id} (attempt {attempt_num})"
             )
 
         try:
@@ -1618,14 +1857,22 @@ class App(tk.Tk):
                 self.update()
 
             # Stage 1: Capture
-            use_auto_trigger = hasattr(self, 'auto_trigger_var') and self.auto_trigger_var.get() and HAS_AUTO_TRIGGER
+            use_auto_trigger = (
+                hasattr(self, "auto_trigger_var")
+                and self.auto_trigger_var.get()
+                and HAS_AUTO_TRIGGER
+            )
 
             if use_auto_trigger:
-                cap = self._capture_with_auto_trigger(point_id, device, sample_rate, duration, progress_dlg)
+                cap = self._capture_with_auto_trigger(
+                    point_id, device, sample_rate, duration, progress_dlg
+                )
                 if cap is None:
                     return
             else:
-                cap = self._capture_fixed_duration(point_id, device, sample_rate, duration, progress_dlg)
+                cap = self._capture_fixed_duration(
+                    point_id, device, sample_rate, duration, progress_dlg
+                )
 
             # Stage 2: Analyze
             self._set_status(f"Analyzing {point_id}...", "progress")
@@ -1655,14 +1902,22 @@ class App(tk.Tk):
 
             # Update status based on verdict
             if verdict.verdict == Verdict.PASS:
-                self._set_status(f"{point_id}: PASSED ({result.dominant_hz:.1f} Hz)", "success")
+                self._set_status(
+                    f"{point_id}: PASSED ({result.dominant_hz:.1f} Hz)", "success"
+                )
             elif verdict.verdict == Verdict.WARN:
                 self._set_status(f"{point_id}: WARNING - review required", "warning")
             else:
                 self._set_status(f"{point_id}: FAILED - retry or override", "error")
 
             self._show_quality_verdict_viewer(
-                point_id, attempt_num, attempt_dir, outdir, verdict, result, entry_vars,
+                point_id,
+                attempt_num,
+                attempt_dir,
+                outdir,
+                verdict,
+                result,
+                entry_vars,
             )
 
         except Exception as e:
@@ -1686,24 +1941,27 @@ class App(tk.Tk):
 
     def do_tap_offline(self, path_var: tk.StringVar) -> None:
         """Run offline tap-tone analysis on a WAV file.
-        
+
         Phase 6 Enhancement: Uses direct Python imports when available,
         with inline matplotlib spectrum visualization.
         """
         wav_path = pathlib.Path(path_var.get())
         outdir = self.outdir()
-        
+
         if HAS_DIRECT_ANALYSIS and HAS_MATPLOTLIB:
             # Direct analysis with spectrum viewer (Phase 6)
             try:
                 audio, sr = read_wav_mono(wav_path)
                 result = analyze_tap(audio, sr)
-                
+
                 # Save JSON result
                 out_json = outdir / "tap_tone_offline.json"
                 result_dict = {
                     "dominant_hz": result.dominant_hz,
-                    "peaks": [{"freq_hz": p.freq_hz, "magnitude": p.magnitude} for p in result.peaks],
+                    "peaks": [
+                        {"freq_hz": p.freq_hz, "magnitude": p.magnitude}
+                        for p in result.peaks
+                    ],
                     "clipped": result.clipped,
                     "rms": result.rms,
                     "confidence": result.confidence,
@@ -1711,11 +1969,11 @@ class App(tk.Tk):
                 }
                 with open(out_json, "w") as f:
                     json.dump(result_dict, f, indent=2)
-                
+
                 # Show spectrum viewer
                 SpectrumViewer(self, result, title=f"Spectrum: {wav_path.name}")
                 messagebox.showinfo("Done", f"Analysis saved to:\n{out_json}")
-                
+
             except Exception as e:
                 messagebox.showerror("Error", f"Analysis failed: {e}")
         else:
@@ -1729,7 +1987,7 @@ class App(tk.Tk):
 
     def do_moe_single(self, var_dict: dict[str, tk.StringVar]) -> None:
         """Calculate MOE from single measurement.
-        
+
         BUG FIX: Now reads .get() at callback time, not construction time.
         """
         outdir = self.outdir()
@@ -1741,7 +1999,7 @@ class App(tk.Tk):
         force = var_dict["force"].get()
         deflection = var_dict["deflection"].get()
         density = var_dict["density"].get()
-        
+
         cmd = (
             f"python modes/bending_stiffness/deflection_to_moe.py "
             f"--method {method} --span {span} --width {width} "
@@ -1797,9 +2055,12 @@ class App(tk.Tk):
                 artifacts += ["--artifact", p.as_posix()]
         rig = ["--rig", "operator=Shop"]
         cmd = [
-            "python", "modes/_shared/emit_manifest.py",
-            "--out", (outdir / "manifest.json").as_posix(),
-            *artifacts, *rig
+            "python",
+            "modes/_shared/emit_manifest.py",
+            "--out",
+            (outdir / "manifest.json").as_posix(),
+            *artifacts,
+            *rig,
         ]
         run(" ".join(shlex.quote(c) for c in cmd))
 
@@ -1841,7 +2102,7 @@ class App(tk.Tk):
             # 1) Pick WAV
             wav_path = filedialog.askopenfilename(
                 title="Select Chladni sweep WAV",
-                filetypes=[("WAV files", "*.wav"), ("All files", "*.*")]
+                filetypes=[("WAV files", "*.wav"), ("All files", "*.*")],
             )
             if not wav_path:
                 return
@@ -1850,10 +2111,19 @@ class App(tk.Tk):
 
             # 2) Run peaks_from_wav.py
             cmd_peaks = [
-                sys.executable, "-m", "tap_tone_pi.chladni.peaks_from_wav",
-                "--wav", wav_path,
-                "--out", peaks_json.as_posix(),
-                "--min-hz", "50", "--max-hz", "2000", "--prominence", "0.02"
+                sys.executable,
+                "-m",
+                "tap_tone_pi.chladni.peaks_from_wav",
+                "--wav",
+                wav_path,
+                "--out",
+                peaks_json.as_posix(),
+                "--min-hz",
+                "50",
+                "--max-hz",
+                "2000",
+                "--prominence",
+                "0.02",
             ]
             subprocess.check_call(cmd_peaks, cwd=str(ROOT))
 
@@ -1862,30 +2132,35 @@ class App(tk.Tk):
                 title="Select Chladni pattern images (name like F0148.png)",
                 filetypes=[
                     ("Images", "*.png;*.jpg;*.jpeg;*.PNG;*.JPG;*.JPEG"),
-                    ("All files", "*.*")
-                ]
+                    ("All files", "*.*"),
+                ],
             )
             if not img_paths:
                 messagebox.showwarning(
                     "No images selected",
-                    "Peaks were extracted, but no images were chosen."
+                    "Peaks were extracted, but no images were chosen.",
                 )
                 return
 
             # 4) Plate ID + Env
             default_plate = f"{self.run_id.get()}_PLATE"
-            plate_id = simpledialog.askstring(
-                "Plate ID", "Enter plate ID:", initialvalue=default_plate
-            ) or default_plate
-            
+            plate_id = (
+                simpledialog.askstring(
+                    "Plate ID", "Enter plate ID:", initialvalue=default_plate
+                )
+                or default_plate
+            )
+
             try:
                 temp_str = simpledialog.askstring(
-                    "Temperature (C)", "Enter temperature C (optional):", initialvalue=""
+                    "Temperature (C)",
+                    "Enter temperature C (optional):",
+                    initialvalue="",
                 )
                 temp_c = float(temp_str) if temp_str else None
             except (TypeError, ValueError):
                 temp_c = None
-            
+
             try:
                 rh_str = simpledialog.askstring(
                     "RH (%)", "Enter relative humidity % (optional):", initialvalue=""
@@ -1898,10 +2173,15 @@ class App(tk.Tk):
 
             # 5) Run index_patterns.py
             cmd_idx = [
-                sys.executable, "-m", "tap_tone_pi.chladni.index_patterns",
-                "--peaks-json", peaks_json.as_posix(),
-                "--plate-id", plate_id,
-                "--out", chladni_run_json.as_posix(),
+                sys.executable,
+                "-m",
+                "tap_tone_pi.chladni.index_patterns",
+                "--peaks-json",
+                peaks_json.as_posix(),
+                "--plate-id",
+                plate_id,
+                "--out",
+                chladni_run_json.as_posix(),
                 "--images",
             ]
             cmd_idx += [pathlib.Path(p).as_posix() for p in img_paths]
@@ -1915,9 +2195,12 @@ class App(tk.Tk):
             # 6) Emit manifest
             manifest_json = run_dir / "manifest.json"
             art_args = [
-                "--artifact", peaks_json.as_posix(),
-                "--artifact", chladni_run_json.as_posix(),
-                "--artifact", pathlib.Path(wav_path).as_posix(),
+                "--artifact",
+                peaks_json.as_posix(),
+                "--artifact",
+                chladni_run_json.as_posix(),
+                "--artifact",
+                pathlib.Path(wav_path).as_posix(),
             ]
             for p in img_paths:
                 art_args += ["--artifact", pathlib.Path(p).as_posix()]
@@ -1926,40 +2209,44 @@ class App(tk.Tk):
             notes = ["--notes", f"Chladni v1 wizard (run={self.outdir().name})"]
 
             cmd_manifest = [
-                sys.executable, "modes/_shared/emit_manifest.py",
-                "--out", manifest_json.as_posix(),
-                *art_args, *rig_kvs, *notes
+                sys.executable,
+                "modes/_shared/emit_manifest.py",
+                "--out",
+                manifest_json.as_posix(),
+                *art_args,
+                *rig_kvs,
+                *notes,
             ]
             subprocess.check_call(cmd_manifest, cwd=str(ROOT))
 
             messagebox.showinfo(
                 "Chladni v1",
-                f"Peaks: {peaks_json}\nRun: {chladni_run_json}\nManifest: {manifest_json}"
+                f"Peaks: {peaks_json}\nRun: {chladni_run_json}\nManifest: {manifest_json}",
             )
 
         except subprocess.CalledProcessError as e:
-            messagebox.showerror("Chladni wizard failed", f"Step failed with exit code {e.returncode}")
+            messagebox.showerror(
+                "Chladni wizard failed", f"Step failed with exit code {e.returncode}"
+            )
         except Exception as ex:
             messagebox.showerror("Chladni wizard error", str(ex))
 
 
 # --- Helper functions for building form groups ---
 
+
 def group(
-    parent: tk.Widget,
-    title: str,
-    fields: list[tuple[str, str]],
-    callback
+    parent: tk.Widget, title: str, fields: list[tuple[str, str]], callback
 ) -> list[tk.StringVar]:
     """
     Create a labeled frame with entry fields and a Run button.
-    
+
     Returns the list of StringVars so they can be read at callback time.
     The callback receives this list and should call .get() on each var.
     """
     f = tk.LabelFrame(parent, text=title)
     f.pack(fill="x", pady=4)
-    
+
     entry_vars: list[tk.StringVar] = []
     for label, default in fields:
         row = tk.Frame(f)
@@ -1968,7 +2255,7 @@ def group(
         var = tk.StringVar(value=default)
         tk.Entry(row, textvariable=var, width=16).pack(side="left")
         entry_vars.append(var)
-    
+
     # Pass the list of vars to callback - caller reads .get() at call time
     tk.Button(f, text="Run", command=lambda: callback(entry_vars)).pack(pady=3)
     return entry_vars
@@ -1979,14 +2266,14 @@ def group_with_binds(
     title: str,
     fields: list[tuple[str, str, str]],  # (key, label, default)
     var_dict: dict[str, tk.StringVar],
-    callback
+    callback,
 ) -> None:
     """
     Create a labeled frame with named entry fields.
-    
+
     BUG FIX: Stores StringVar objects in var_dict, not their values.
     The callback receives var_dict and should call var.get() at call time.
-    
+
     Args:
         fields: List of (key, label, default) tuples
         var_dict: Dictionary to populate with key -> StringVar mappings
@@ -1994,7 +2281,7 @@ def group_with_binds(
     """
     f = tk.LabelFrame(parent, text=title)
     f.pack(fill="x", pady=4)
-    
+
     for key, label, default in fields:
         row = tk.Frame(f)
         row.pack(fill="x")
@@ -2003,46 +2290,36 @@ def group_with_binds(
         tk.Entry(row, textvariable=var, width=16).pack(side="left")
         # Store the StringVar, not its current value
         var_dict[key] = var
-    
+
     tk.Button(f, text="Run", command=lambda: callback(var_dict)).pack(pady=3)
 
 
-def group_file(
-    parent: tk.Widget,
-    title: str,
-    path_var: tk.StringVar,
-    callback
-) -> None:
+def group_file(parent: tk.Widget, title: str, path_var: tk.StringVar, callback) -> None:
     """Create a labeled frame with file path entry and browse button."""
     f = tk.LabelFrame(parent, text=title)
     f.pack(fill="x", pady=4)
-    
+
     row = tk.Frame(f)
     row.pack(fill="x")
     tk.Entry(row, textvariable=path_var, width=48).pack(side="left")
     tk.Button(
         row,
         text="Browse",
-        command=lambda: path_var.set(filedialog.askopenfilename() or path_var.get())
+        command=lambda: path_var.set(filedialog.askopenfilename() or path_var.get()),
     ).pack(side="left", padx=6)
-    
+
     tk.Button(f, text="Run", command=lambda: callback(path_var)).pack(pady=3)
 
 
-def group_entry(
-    parent: tk.Widget,
-    title: str,
-    var: tk.StringVar,
-    callback
-) -> None:
+def group_entry(parent: tk.Widget, title: str, var: tk.StringVar, callback) -> None:
     """Create a labeled frame with a single entry field."""
     f = tk.LabelFrame(parent, text=title)
     f.pack(fill="x", pady=4)
-    
+
     row = tk.Frame(f)
     row.pack(fill="x")
     tk.Entry(row, textvariable=var, width=32).pack(side="left")
-    
+
     tk.Button(f, text="Run", command=lambda: callback(var)).pack(pady=3)
 
 

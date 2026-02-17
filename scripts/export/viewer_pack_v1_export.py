@@ -19,6 +19,7 @@ Mapping (Phase 2 session → viewer_pack_v1):
     session/derived/wsi_curve.csv        → wolf/wsi_curve.csv
     session/plots/*                      → plots/*
 """
+
 from __future__ import annotations
 
 import argparse
@@ -28,7 +29,7 @@ import json
 import shutil
 import tempfile
 import zipfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -68,6 +69,7 @@ MIME_MAP = {
 # Data classes
 # ============================================================================
 
+
 @dataclass
 class FileEntry:
     relpath: str
@@ -100,23 +102,24 @@ class ExportResult:
 # Layer A: Discovery
 # ============================================================================
 
+
 def detect_phase(session_dir: Path) -> str:
     """Detect if session is phase1, phase2, or unknown."""
     has_points = (session_dir / "points").is_dir()
     has_derived = (session_dir / "derived").is_dir()
-    
+
     if has_points and has_derived:
         return "phase2"
-    
+
     # Phase 1: has audio.wav + analysis.json at root or capture_* subdirs
     if (session_dir / "audio.wav").exists():
         return "phase1"
-    
+
     # Check for capture_* subdirs (phase1 session)
     capture_dirs = list(session_dir.glob("capture_*"))
     if capture_dirs and (capture_dirs[0] / "audio.wav").exists():
         return "phase1"
-    
+
     return "unknown"
 
 
@@ -125,14 +128,14 @@ def enumerate_points(session_dir: Path) -> List[str]:
     points_dir = session_dir / "points"
     if not points_dir.is_dir():
         return []
-    
+
     point_ids = []
     for p in sorted(points_dir.iterdir()):
         if p.is_dir() and p.name.startswith("point_"):
             # point_A1 → A1
             point_id = p.name.replace("point_", "", 1)
             point_ids.append(point_id)
-    
+
     return point_ids
 
 
@@ -193,7 +196,11 @@ def extract_session_metadata(session_dir: Path) -> Dict[str, Any]:
     if "tap_count" not in meta or meta["tap_count"] is None:
         points_dir = session_dir / "points"
         if points_dir.exists():
-            point_count = sum(1 for p in points_dir.iterdir() if p.is_dir() and p.name.startswith("point_"))
+            point_count = sum(
+                1
+                for p in points_dir.iterdir()
+                if p.is_dir() and p.name.startswith("point_")
+            )
             meta["tap_count"] = point_count
 
     # Try first capture_meta.json for sample rate if not in metadata.json
@@ -220,6 +227,7 @@ def extract_session_metadata(session_dir: Path) -> Dict[str, Any]:
 # ============================================================================
 # Layer B: Copy + Structure
 # ============================================================================
+
 
 def _copy_file(src: Path, dst: Path) -> Optional[Path]:
     """Copy file if exists, return dst path or None."""
@@ -271,15 +279,17 @@ def _get_kind(relpath: str, filename: str) -> str:
         return "transfer_function"  # ODS = transfer_function
     if filename == "README.txt":
         return "provenance"
-    
+
     # Direct filename match
     if filename in KIND_MAP:
         return KIND_MAP[filename]
-    
+
     return "unknown"
 
 
-def build_pack_tree_phase2(session_dir: Path, pack_dir: Path) -> tuple[List[FileEntry], PackContents, List[str]]:
+def build_pack_tree_phase2(
+    session_dir: Path, pack_dir: Path
+) -> tuple[List[FileEntry], PackContents, List[str]]:
     """
     Build viewer pack tree from Phase 2 session.
     Returns (file_entries, contents_flags, point_ids).
@@ -287,7 +297,7 @@ def build_pack_tree_phase2(session_dir: Path, pack_dir: Path) -> tuple[List[File
     entries: List[FileEntry] = []
     contents = PackContents()
     point_ids = enumerate_points(session_dir)
-    
+
     # --- Meta files ---
     for fname in ["grid.json", "metadata.json"]:
         src = session_dir / fname
@@ -312,41 +322,41 @@ def build_pack_tree_phase2(session_dir: Path, pack_dir: Path) -> tuple[List[File
     )
     session_meta_path = write_session_meta(pack_dir, session_meta)
     entries.append(_make_entry(session_meta_path, "meta/session_meta.json"))
-    
+
     # --- Per-point files ---
     for pid in point_ids:
         point_src = session_dir / "points" / f"point_{pid}"
-        
+
         # audio.wav → audio/points/PID.wav
         src = point_src / "audio.wav"
         dst_relpath = f"audio/points/{pid}.wav"
         if _copy_file(src, pack_dir / dst_relpath):
             entries.append(_make_entry(pack_dir / dst_relpath, dst_relpath))
             contents.audio = True
-        
+
         # spectrum.csv → spectra/points/PID/spectrum.csv
         src = point_src / "spectrum.csv"
         dst_relpath = f"spectra/points/{pid}/spectrum.csv"
         if _copy_file(src, pack_dir / dst_relpath):
             entries.append(_make_entry(pack_dir / dst_relpath, dst_relpath))
             contents.spectra = True
-        
+
         # analysis.json → spectra/points/PID/analysis.json
         src = point_src / "analysis.json"
         dst_relpath = f"spectra/points/{pid}/analysis.json"
         if _copy_file(src, pack_dir / dst_relpath):
             entries.append(_make_entry(pack_dir / dst_relpath, dst_relpath))
-        
+
         # capture_meta.json → provenance/points/PID/capture_meta.json
         src = point_src / "capture_meta.json"
         dst_relpath = f"provenance/points/{pid}/capture_meta.json"
         if _copy_file(src, pack_dir / dst_relpath):
             entries.append(_make_entry(pack_dir / dst_relpath, dst_relpath))
             contents.provenance = True
-    
+
     # --- Derived artifacts ---
     derived_dir = session_dir / "derived"
-    
+
     # ods_snapshot.json
     src = derived_dir / "ods_snapshot.json"
     dst_relpath = "ods/ods_snapshot.json"
@@ -354,20 +364,20 @@ def build_pack_tree_phase2(session_dir: Path, pack_dir: Path) -> tuple[List[File
         entries.append(_make_entry(pack_dir / dst_relpath, dst_relpath))
         contents.ods = True
         contents.coherence = True  # ODS includes coherence
-    
+
     # wolf_candidates.json
     src = derived_dir / "wolf_candidates.json"
     dst_relpath = "wolf/wolf_candidates.json"
     if _copy_file(src, pack_dir / dst_relpath):
         entries.append(_make_entry(pack_dir / dst_relpath, dst_relpath))
         contents.wolf = True
-    
+
     # wsi_curve.csv
     src = derived_dir / "wsi_curve.csv"
     dst_relpath = "wolf/wsi_curve.csv"
     if _copy_file(src, pack_dir / dst_relpath):
         entries.append(_make_entry(pack_dir / dst_relpath, dst_relpath))
-    
+
     # --- Plots ---
     plots_dir = session_dir / "plots"
     if plots_dir.is_dir():
@@ -376,12 +386,13 @@ def build_pack_tree_phase2(session_dir: Path, pack_dir: Path) -> tuple[List[File
             if _copy_file(plot_file, pack_dir / dst_relpath):
                 entries.append(_make_entry(pack_dir / dst_relpath, dst_relpath))
                 contents.plots = True
-    
+
     # ------------------------------------------------------------------
     # PR #17: session_timeline_v1.json (read-only, fail-closed)
     # ------------------------------------------------------------------
     try:
         from tap_tone_pi.core.session_timeline import export_session_timeline
+
         tl_path = export_session_timeline(session_dir)
         if tl_path is not None and tl_path.is_file():
             dst_relpath = "meta/session_timeline_v1.json"
@@ -409,6 +420,7 @@ def _make_entry(path: Path, relpath: str) -> FileEntry:
 # Layer C: Hashing + Manifest
 # ============================================================================
 
+
 def compute_bundle_hash(entries: List[FileEntry]) -> str:
     """
     Compute deterministic bundle hash from all file entries.
@@ -434,7 +446,7 @@ def build_manifest(
     points: List[str],
 ) -> Dict[str, Any]:
     """Build the manifest.json structure."""
-    
+
     manifest = {
         "schema_version": SCHEMA_VERSION,
         "schema_id": SCHEMA_ID,
@@ -465,10 +477,10 @@ def build_manifest(
         ],
         "bundle_sha256": "",  # Filled below
     }
-    
+
     # Compute bundle hash (excluding bundle_sha256 itself)
     manifest["bundle_sha256"] = compute_bundle_hash(entries)
-    
+
     return manifest
 
 
@@ -493,6 +505,7 @@ def write_readme(pack_dir: Path, session_name: str, points: List[str]) -> Path:
 # Main Export Function
 # ============================================================================
 
+
 def export_viewer_pack(
     session_dir: Path,
     out_path: Path,
@@ -501,37 +514,39 @@ def export_viewer_pack(
 ) -> ExportResult:
     """
     Export a Phase 2 session to viewer_pack_v1 format.
-    
+
     Args:
         session_dir: Path to session directory (e.g., runs_phase2/session_...)
         out_path: Output path for .zip file
         keep_unzipped: If True, also keep the unzipped directory
-    
+
     Returns:
         ExportResult with manifest and stats
     """
     session_dir = Path(session_dir).resolve()
     out_path = Path(out_path).resolve()
-    
+
     # Validate
     validate_session(session_dir)
     detected_phase = detect_phase(session_dir)
-    
+
     if detected_phase != "phase2":
-        raise NotImplementedError(f"Only phase2 export implemented; got {detected_phase}")
-    
+        raise NotImplementedError(
+            f"Only phase2 export implemented; got {detected_phase}"
+        )
+
     # Build pack in temp directory
     with tempfile.TemporaryDirectory() as tmpdir:
         pack_dir = Path(tmpdir) / "viewer_pack_v1"
         pack_dir.mkdir()
-        
+
         # Layer B: Copy files
         entries, contents, points = build_pack_tree_phase2(session_dir, pack_dir)
-        
+
         # Write README
         readme_path = write_readme(pack_dir, session_dir.name, points)
         entries.append(_make_entry(readme_path, "README.txt"))
-        
+
         # Layer C: Build manifest
         manifest = build_manifest(
             session_name=session_dir.name,
@@ -540,17 +555,17 @@ def export_viewer_pack(
             contents=contents,
             points=points,
         )
-        
+
         # Write manifest
         manifest_path = pack_dir / "manifest.json"
         manifest_path.write_text(
             json.dumps(manifest, indent=2, sort_keys=False),
             encoding="utf-8",
         )
-        
+
         # Add manifest to entries (but don't re-hash bundle)
         manifest_entry = _make_entry(manifest_path, "manifest.json")
-        
+
         # Create zip
         out_path.parent.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -558,14 +573,14 @@ def export_viewer_pack(
                 if file.is_file():
                     arcname = file.relative_to(pack_dir).as_posix()
                     zf.write(file, arcname)
-        
+
         # Optionally keep unzipped copy
         if keep_unzipped:
             unzipped_dir = out_path.with_suffix("")
             if unzipped_dir.exists():
                 shutil.rmtree(unzipped_dir)
             shutil.copytree(pack_dir, unzipped_dir)
-    
+
     return ExportResult(
         pack_path=out_path,
         manifest=manifest,
@@ -577,6 +592,7 @@ def export_viewer_pack(
 # ============================================================================
 # CLI
 # ============================================================================
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -605,28 +621,30 @@ def main() -> None:
         action="store_true",
         help="Validate session without exporting",
     )
-    
+
     args = parser.parse_args()
-    
+
     if args.dry_run:
         validate_session(args.session)
         phase = detect_phase(args.session)
         points = enumerate_points(args.session)
         print(f"Session: {args.session}")
         print(f"Phase:   {phase}")
-        print(f"Points:  {len(points)} ({', '.join(points[:5])}{'...' if len(points) > 5 else ''})")
+        print(
+            f"Points:  {len(points)} ({', '.join(points[:5])}{'...' if len(points) > 5 else ''})"
+        )
         print("Validation passed.")
         return
-    
+
     if args.out is None:
         parser.error("--out is required unless --dry-run")
-    
+
     result = export_viewer_pack(
         args.session,
         args.out,
         keep_unzipped=args.keep_unzipped,
     )
-    
+
     print(f"Exported: {result.pack_path}")
     print(f"Points:   {len(result.points)}")
     print(f"Files:    {result.files_copied}")

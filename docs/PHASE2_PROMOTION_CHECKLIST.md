@@ -1,6 +1,6 @@
 # Phase-2 → Analyzer Promotion Checklist (v1)
 
-Owner(s): feature lead + schema owner  
+Owner(s): feature lead + schema owner
 Target path: `scripts/phase2/<feature>/` → `modes/<feature>/` (frozen)
 
 ## Required (all must pass)

@@ -3,6 +3,7 @@ Persistent artifact storage for tap tone sessions.
 
 Canonical location for capture persistence. Migrated from tap_tone/storage.py.
 """
+
 from __future__ import annotations
 
 import datetime
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
 @dataclass(frozen=True)
 class PersistedCapture:
     """Result of persisting a capture to disk."""
+
     capture_dir: Path
     audio_path: Path
     analysis_path: Path
@@ -50,7 +52,9 @@ def analysis_to_json_dict(result: "AnalysisResult") -> dict:
     """Convert AnalysisResult to JSON-serializable dict."""
     return {
         "dominant_hz": result.dominant_hz,
-        "peaks": [{"freq_hz": p.freq_hz, "magnitude": p.magnitude} for p in result.peaks],
+        "peaks": [
+            {"freq_hz": p.freq_hz, "magnitude": p.magnitude} for p in result.peaks
+        ],
         "clipped": result.clipped,
         "rms": result.rms,
         "confidence": result.confidence,
@@ -114,16 +118,21 @@ def persist_capture(
     spectrum_path.write_text("".join(lines), encoding="utf-8")
 
     # Append-only session log
-    _append_jsonl(session_log_path, {
-        "ts_utc": ts,
-        "label": label,
-        "capture_dir": str(cap_dir),
-        "dominant_hz": analysis.dominant_hz,
-        "peaks": [{"freq_hz": p.freq_hz, "magnitude": p.magnitude} for p in analysis.peaks],
-        "confidence": analysis.confidence,
-        "clipped": analysis.clipped,
-        "rms": analysis.rms,
-    })
+    _append_jsonl(
+        session_log_path,
+        {
+            "ts_utc": ts,
+            "label": label,
+            "capture_dir": str(cap_dir),
+            "dominant_hz": analysis.dominant_hz,
+            "peaks": [
+                {"freq_hz": p.freq_hz, "magnitude": p.magnitude} for p in analysis.peaks
+            ],
+            "confidence": analysis.confidence,
+            "clipped": analysis.clipped,
+            "rms": analysis.rms,
+        },
+    )
 
     return PersistedCapture(
         capture_dir=cap_dir,

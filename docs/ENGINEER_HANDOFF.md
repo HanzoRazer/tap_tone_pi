@@ -1,7 +1,7 @@
 # Engineer Handoff — Tap Tone Pi
 
-> **Executive Summary**: Acoustic measurement instrumentation for luthiers.  
-> **Scope**: Facts-only measurement (peaks, spectra, coherence, MOE). No design advice.  
+> **Executive Summary**: Acoustic measurement instrumentation for luthiers.
+> **Scope**: Facts-only measurement (peaks, spectra, coherence, MOE). No design advice.
 > **Target**: Raspberry Pi 4/5 + USB measurement mic (UMIK-1 class).
 
 ---
@@ -383,7 +383,7 @@ def main() -> None:
     ap.add_argument("--wav", required=True)
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
-    
+
     x, meta = read_wav_mono(Path(args.wav))
     # ... process ...
     # ... write output ...

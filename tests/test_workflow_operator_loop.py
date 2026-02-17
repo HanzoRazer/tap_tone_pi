@@ -3,12 +3,11 @@
 Tests OperatorLoop state transitions, retry logic, and override behavior.
 Uses monkeypatch to stub hardware-dependent functions.
 """
+
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from pathlib import Path
-from unittest.mock import Mock
 
 import numpy as np
 import pytest
@@ -48,9 +47,11 @@ _Q001_FAKE = QualityRule(
     message="Audio clipped during capture",
 )
 
+
 @dataclass
 class FakeCaptureResult:
     """Stub for capture result."""
+
     audio: np.ndarray
     sample_rate: int
 
@@ -105,7 +106,7 @@ def _fake_check_quality_warn(analysis, sample_rate, audio=None, thresholds=None)
                 rule=_Q010_FAKE,
                 message="Confidence is low",
             )
-        ]
+        ],
     )
 
 
@@ -118,7 +119,7 @@ def _fake_check_quality_fail(analysis, sample_rate, audio=None, thresholds=None)
                 rule=_Q001_FAKE,
                 message="Audio clipped during capture",
             )
-        ]
+        ],
     )
 
 
@@ -126,6 +127,7 @@ def _fake_check_quality_fail(analysis, sample_rate, audio=None, thresholds=None)
 def patch_all_passing(monkeypatch):
     """Patch all hardware functions with passing stubs."""
     import tap_tone_pi.workflow.operator_loop as ol_module
+
     monkeypatch.setattr(ol_module, "list_devices", _fake_device_list)
     monkeypatch.setattr(ol_module, "record_audio", _fake_record_audio)
     monkeypatch.setattr(ol_module, "analyze_tap", _fake_analyze_tap)
@@ -136,6 +138,7 @@ def patch_all_passing(monkeypatch):
 def patch_with_warn(monkeypatch):
     """Patch with WARN verdict."""
     import tap_tone_pi.workflow.operator_loop as ol_module
+
     monkeypatch.setattr(ol_module, "list_devices", _fake_device_list)
     monkeypatch.setattr(ol_module, "record_audio", _fake_record_audio)
     monkeypatch.setattr(ol_module, "analyze_tap", _fake_analyze_tap)
@@ -146,6 +149,7 @@ def patch_with_warn(monkeypatch):
 def patch_with_fail(monkeypatch):
     """Patch with FAIL verdict."""
     import tap_tone_pi.workflow.operator_loop as ol_module
+
     monkeypatch.setattr(ol_module, "list_devices", _fake_device_list)
     monkeypatch.setattr(ol_module, "record_audio", _fake_record_audio)
     monkeypatch.setattr(ol_module, "analyze_tap", _fake_analyze_tap)
@@ -155,6 +159,7 @@ def patch_with_fail(monkeypatch):
 # =============================================================================
 # OperatorLoop Initialization Tests
 # =============================================================================
+
 
 class TestOperatorLoopInit:
     """Test OperatorLoop initialization."""
@@ -178,6 +183,7 @@ class TestOperatorLoopInit:
 # Preflight Tests
 # =============================================================================
 
+
 class TestPreflight:
     """Test preflight checks."""
 
@@ -193,6 +199,7 @@ class TestPreflight:
     def test_preflight_no_devices(self, tmp_path, monkeypatch):
         """preflight() fails when no devices available."""
         import tap_tone_pi.workflow.operator_loop as ol_module
+
         monkeypatch.setattr(ol_module, "list_devices", lambda: [])
 
         loop = OperatorLoop(session_dir=tmp_path)
@@ -206,6 +213,7 @@ class TestPreflight:
 # =============================================================================
 # run_single Tests (PASS Path)
 # =============================================================================
+
 
 class TestRunSinglePassPath:
     """Test run_single() when quality passes."""
@@ -276,6 +284,7 @@ class TestRunSinglePassPath:
 # run_single Tests (WARN Path)
 # =============================================================================
 
+
 class TestRunSingleWarnPath:
     """Test run_single() when quality warns."""
 
@@ -298,6 +307,7 @@ class TestRunSingleWarnPath:
 # =============================================================================
 # run_single Tests (FAIL Path)
 # =============================================================================
+
 
 class TestRunSingleFailPath:
     """Test run_single() when quality fails."""
@@ -332,6 +342,7 @@ class TestRunSingleFailPath:
 # =============================================================================
 # Retry Tests
 # =============================================================================
+
 
 class TestRetryBehavior:
     """Test retry behavior for failed attempts."""
@@ -373,6 +384,7 @@ class TestRetryBehavior:
 # =============================================================================
 # Override Tests
 # =============================================================================
+
 
 class TestOverrideBehavior:
     """Test operator override for failed attempts."""
@@ -432,6 +444,7 @@ class TestOverrideBehavior:
 # State Tracking Tests
 # =============================================================================
 
+
 class TestStateTracking:
     """Test state tracking via callback."""
 
@@ -457,6 +470,7 @@ class TestStateTracking:
 # =============================================================================
 # LoopResult Tests
 # =============================================================================
+
 
 class TestLoopResult:
     """Test LoopResult dataclass."""

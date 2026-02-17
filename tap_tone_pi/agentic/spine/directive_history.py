@@ -6,6 +6,7 @@ types and returns normalised rows for CLI / GUI rendering.
 Fail-closed: missing files, malformed lines, and unexpected schemas
 are silently skipped — never raises.
 """
+
 from __future__ import annotations
 
 import json

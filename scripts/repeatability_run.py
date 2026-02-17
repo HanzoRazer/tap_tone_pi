@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import asdict
 from pathlib import Path
 from statistics import mean, pstdev
 from typing import Any
@@ -15,7 +14,9 @@ from tap_tone.storage import persist_capture
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Run N repeatability takes and summarize variance.")
+    ap = argparse.ArgumentParser(
+        description="Run N repeatability takes and summarize variance."
+    )
     ap.add_argument("--device", type=int, required=True)
     ap.add_argument("--out", type=str, required=True)
     ap.add_argument("--label", type=str, default=None)
@@ -49,7 +50,8 @@ def main() -> None:
             seconds=cap_cfg.seconds,
         )
         res = analyze_tap(
-            cap.audio, cap.sample_rate,
+            cap.audio,
+            cap.sample_rate,
             highpass_hz=an_cfg.highpass_hz,
             peak_min_hz=an_cfg.peak_min_hz,
             peak_max_hz=an_cfg.peak_max_hz,
@@ -69,18 +71,25 @@ def main() -> None:
         if res.dominant_hz is not None:
             doms.append(float(res.dominant_hz))
 
-        results.append({
-            "take": i,
-            "label": label_take,
-            "capture_dir": str(persisted.capture_dir),
-            "dominant_hz": res.dominant_hz,
-            "rms": res.rms,
-            "clipped": res.clipped,
-            "confidence": res.confidence,
-            "peaks": [{"freq_hz": p.freq_hz, "magnitude": p.magnitude} for p in res.peaks[:8]],
-        })
+        results.append(
+            {
+                "take": i,
+                "label": label_take,
+                "capture_dir": str(persisted.capture_dir),
+                "dominant_hz": res.dominant_hz,
+                "rms": res.rms,
+                "clipped": res.clipped,
+                "confidence": res.confidence,
+                "peaks": [
+                    {"freq_hz": p.freq_hz, "magnitude": p.magnitude}
+                    for p in res.peaks[:8]
+                ],
+            }
+        )
 
-        print(f"[{i:02d}/{args.takes}] dominant={res.dominant_hz} rms={res.rms:.6f} clipped={res.clipped} conf={res.confidence:.2f}")
+        print(
+            f"[{i:02d}/{args.takes}] dominant={res.dominant_hz} rms={res.rms:.6f} clipped={res.clipped} conf={res.confidence:.2f}"
+        )
 
     summary = {
         "takes": args.takes,
@@ -94,7 +103,9 @@ def main() -> None:
     }
 
     takes_path = out_root / "takes.json"
-    takes_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+    takes_path.write_text(
+        json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8"
+    )
     print(f"[OK] Wrote {takes_path}")
 
 

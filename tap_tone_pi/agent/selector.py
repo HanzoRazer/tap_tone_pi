@@ -8,6 +8,7 @@ PR6 additions:
 - Workflow-sensitive hint gating (record=minimal, phase2=compact)
 - Expanded escalation mappings (Q010, Q003)
 """
+
 from __future__ import annotations
 
 from enum import Enum
@@ -20,6 +21,7 @@ from .message_spec import RuleSpec, get_rule_spec
 # EXPLANATION MODE (PR6)
 # =============================================================================
 
+
 class ExplanationMode(str, Enum):
     """Three-tier explanation verbosity.
 
@@ -27,6 +29,7 @@ class ExplanationMode(str, Enum):
     SHORT: One-sentence explanation + immediate fix (seen before, low repetition).
     COMPACT: No explanation — "Same issue recurring, focus on fix" (heavy repetition).
     """
+
     FULL = "full"
     SHORT = "short"
     COMPACT = "compact"
@@ -90,9 +93,10 @@ def should_show_learning_hint_standalone(
 # RULE ORDERING
 # =============================================================================
 
+
 def order_rules(rule_ids: list[str]) -> list[str]:
     """Order rules by priority for display.
-    
+
     Priority:
     1. HARD rules first (Q001–Q005)
     2. Within HARD: likely-fixable causes first (clipping, silent, device)
@@ -100,14 +104,14 @@ def order_rules(rule_ids: list[str]) -> list[str]:
     """
     hard_priority = ["Q001", "Q002", "Q005", "Q003", "Q004"]
     soft_priority = ["Q010", "Q011", "Q012", "Q013"]
-    
+
     def sort_key(rule_id: str) -> tuple[int, int]:
         if rule_id in hard_priority:
             return (0, hard_priority.index(rule_id))
         elif rule_id in soft_priority:
             return (1, soft_priority.index(rule_id))
         return (2, 0)  # Unknown rules last
-    
+
     return sorted(rule_ids, key=sort_key)
 
 
@@ -115,32 +119,33 @@ def order_rules(rule_ids: list[str]) -> list[str]:
 # ACTION SELECTION
 # =============================================================================
 
+
 def select_actions_for_verdict(
     verdict: str,
     triggered_rules: list[str],
     context: AgentContext,
 ) -> list[SuggestedAction]:
     """Select appropriate actions based on verdict and context.
-    
+
     Rules:
     - FAIL: Retry + fix hint → abort/override on later attempts
     - WARN: Accept primary for experienced users, retry for novice
     - PASS: Always advance
     """
     actions: list[SuggestedAction] = []
-    
+
     if verdict == "pass":
-        actions.append(SuggestedAction(
-            ActionId.ADVANCE, "Next point", "Proceed in workflow"
-        ))
+        actions.append(
+            SuggestedAction(ActionId.ADVANCE, "Next point", "Proceed in workflow")
+        )
         return actions
-    
+
     if verdict == "fail":
         return _select_fail_actions(triggered_rules, context)
-    
+
     if verdict == "warn":
         return _select_warn_actions(triggered_rules, context)
-    
+
     return actions
 
 
@@ -151,32 +156,36 @@ def _select_fail_actions(
     """Select actions for FAIL verdict with escalation."""
     actions: list[SuggestedAction] = []
     ordered_rules = order_rules(triggered_rules)
-    
+
     # Get the primary rule's actions
     if ordered_rules:
         primary_spec = get_rule_spec(ordered_rules[0])
         if primary_spec:
             # Check for repeat-trigger escalation
             consecutive = context.consecutive_rule_hits.get(ordered_rules[0], 0)
-            
+
             if consecutive >= 2:
                 # Escalate to more specific fix
                 actions.extend(_escalate_actions(primary_spec, consecutive))
             else:
                 # Use default actions from spec
                 actions.extend(primary_spec.agent_actions[:2])
-    
+
     # On attempt 3+, promote abort/override
     if context.attempt_num >= 3:
         if not any(a.action_id == ActionId.ABORT for a in actions):
-            actions.append(SuggestedAction(
-                ActionId.ABORT, "Abort", "Stop and troubleshoot"
-            ))
-        actions.append(SuggestedAction(
-            ActionId.OVERRIDE, "Override (requires reason)",
-            "Log exception explicitly", requires_input=True
-        ))
-    
+            actions.append(
+                SuggestedAction(ActionId.ABORT, "Abort", "Stop and troubleshoot")
+            )
+        actions.append(
+            SuggestedAction(
+                ActionId.OVERRIDE,
+                "Override (requires reason)",
+                "Log exception explicitly",
+                requires_input=True,
+            )
+        )
+
     return actions
 
 
@@ -186,80 +195,83 @@ def _select_warn_actions(
 ) -> list[SuggestedAction]:
     """Select actions for WARN verdict based on user stage."""
     actions: list[SuggestedAction] = []
-    
+
     # Novice/first_run: recommend retry first
     if context.user_stage in (UserStage.FIRST_RUN, UserStage.NOVICE):
-        actions.append(SuggestedAction(
-            ActionId.RETRY, "Retry", "Try for cleaner capture"
-        ))
-        actions.append(SuggestedAction(
-            ActionId.ACCEPT, "Accept with warning", "Proceed with warning noted"
-        ))
+        actions.append(
+            SuggestedAction(ActionId.RETRY, "Retry", "Try for cleaner capture")
+        )
+        actions.append(
+            SuggestedAction(
+                ActionId.ACCEPT, "Accept with warning", "Proceed with warning noted"
+            )
+        )
     else:
         # Regular/expert: accept is primary
-        actions.append(SuggestedAction(
-            ActionId.ACCEPT, "Accept", "Proceed with warning noted"
-        ))
-        actions.append(SuggestedAction(
-            ActionId.RETRY, "Retry", "Try for cleaner capture"
-        ))
-    
+        actions.append(
+            SuggestedAction(ActionId.ACCEPT, "Accept", "Proceed with warning noted")
+        )
+        actions.append(
+            SuggestedAction(ActionId.RETRY, "Retry", "Try for cleaner capture")
+        )
+
     return actions
 
 
 def _escalate_actions(spec: RuleSpec, consecutive_hits: int) -> list[SuggestedAction]:
     """Escalate actions for repeated rule triggers."""
     escalated: list[SuggestedAction] = []
-    
+
     # Map rule IDs to escalated actions (expanded in PR6)
     escalation_map: dict[str, SuggestedAction] = {
         "Q001": SuggestedAction(
             ActionId.ADJUST_GAIN_DOWN,
             "Lower gain (repeated clipping)",
-            "Clipping persists—reduce input gain"
+            "Clipping persists—reduce input gain",
         ),
         "Q002": SuggestedAction(
             ActionId.RUN_SETUP,
             "Run setup wizard (repeated silence)",
-            "Likely wrong device—reconfigure"
+            "Likely wrong device—reconfigure",
         ),
         "Q003": SuggestedAction(
             ActionId.CHECK_ENVIRONMENT,
             "Retap with firmer coupling; confirm mic placement",
-            f"No peaks {consecutive_hits}× in a row—coupling or environment issue"
+            f"No peaks {consecutive_hits}× in a row—coupling or environment issue",
         ),
         "Q011": SuggestedAction(
             ActionId.ADJUST_GAIN_DOWN,
             "Lower gain (repeated near-clipping)",
-            f"Near-clipping {consecutive_hits}× in a row"
+            f"Near-clipping {consecutive_hits}× in a row",
         ),
         "Q010": SuggestedAction(
             ActionId.ADJUST_GAIN_UP,
             "Move mic closer and increase gain",
-            f"Quiet signal {consecutive_hits}× in a row—need stronger input"
+            f"Quiet signal {consecutive_hits}× in a row—need stronger input",
         ),
         "Q004": SuggestedAction(
             ActionId.CHECK_ENVIRONMENT,
             "Check environment (repeated low confidence)",
-            "Noise or coupling issue"
+            "Noise or coupling issue",
         ),
     }
-    
+
     escalated_action = escalation_map.get(spec.rule_id)
     if escalated_action:
         escalated.append(escalated_action)
-    
+
     # Always include retry as fallback
-    escalated.append(SuggestedAction(
-        ActionId.RETRY, "Retry", "Attempt again after adjustment"
-    ))
-    
+    escalated.append(
+        SuggestedAction(ActionId.RETRY, "Retry", "Attempt again after adjustment")
+    )
+
     return escalated
 
 
 # =============================================================================
 # EXPLANATION BUILDING
 # =============================================================================
+
 
 def build_rule_detail(
     spec: RuleSpec,

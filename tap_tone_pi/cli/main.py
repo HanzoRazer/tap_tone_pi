@@ -21,6 +21,7 @@ Usage:
     ttp last                 # Show most recent session
     ttp sessions             # List all sessions
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,7 +30,6 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Callable
 
 
 # Resolve project root for session directories
@@ -73,6 +73,7 @@ def cmd_devices(_args: argparse.Namespace) -> int:
 # -------------------------------------------------------------------------
 # Directive Co-Render Helper (PR #3)
 # -------------------------------------------------------------------------
+
 
 def _maybe_render_directive(
     args: argparse.Namespace,
@@ -180,12 +181,13 @@ def cmd_record(args: argparse.Namespace) -> int:
     qc_tmp.replace(qc_path)
 
     # Console QC summary (keeps headless workflows friendly)
-    if getattr(args, 'agent', False):
+    if getattr(args, "agent", False):
         from tap_tone_pi.agent.messages import (
             AgentContext,
             build_agent_message,
             render_agent_message_cli,
         )
+
         ctx = AgentContext(
             workflow="record",
             point_id=args.label,
@@ -195,13 +197,17 @@ def cmd_record(args: argparse.Namespace) -> int:
             sample_rate=cap.sample_rate,
             policy_version=getattr(qc, "policy_version", None),
             user_stage="novice",
-            show_details=getattr(args, 'expert', False),
-            expert_mode=getattr(args, 'expert', False),
+            show_details=getattr(args, "expert", False),
+            expert_mode=getattr(args, "expert", False),
         )
         msg = build_agent_message(ctx, qc)
         print(render_agent_message_cli(msg))
     else:
-        rules = ",".join([tr.rule.rule_id for tr in qc.triggered_rules]) if qc.triggered_rules else "none"
+        rules = (
+            ",".join([tr.rule.rule_id for tr in qc.triggered_rules])
+            if qc.triggered_rules
+            else "none"
+        )
         print(f"QC: {qc.verdict.value.upper()} rules={rules}")
     print(f"Wrote: {persisted.capture_dir}")
     return 0
@@ -263,7 +269,7 @@ def cmd_quick(args: argparse.Namespace) -> int:
         print("  (Tip: run 'ttp setup' to save your preferred device)")
 
     # Capture
-    print(f"Recording 2.5s...")
+    print("Recording 2.5s...")
     cap = record_audio(device=device, sample_rate=sample_rate, channels=1, seconds=2.5)
 
     # Analyze
@@ -277,12 +283,21 @@ def cmd_quick(args: argparse.Namespace) -> int:
     if args.plot:
         try:
             import matplotlib.pyplot as plt
+
             plt.figure(figsize=(10, 4))
-            plt.semilogy(res.spectrum_freq_hz, res.spectrum_mag + 1e-10, 'b-', linewidth=0.5)
+            plt.semilogy(
+                res.spectrum_freq_hz, res.spectrum_mag + 1e-10, "b-", linewidth=0.5
+            )
             for peak in res.peaks[:5]:
-                plt.axvline(peak.freq_hz, color='r', linestyle='--', alpha=0.5)
-                plt.annotate(f"{peak.freq_hz:.0f} Hz", (peak.freq_hz, peak.magnitude),
-                            xytext=(5, 5), textcoords='offset points', fontsize=8, color='red')
+                plt.axvline(peak.freq_hz, color="r", linestyle="--", alpha=0.5)
+                plt.annotate(
+                    f"{peak.freq_hz:.0f} Hz",
+                    (peak.freq_hz, peak.magnitude),
+                    xytext=(5, 5),
+                    textcoords="offset points",
+                    fontsize=8,
+                    color="red",
+                )
             plt.xlabel("Frequency (Hz)")
             plt.ylabel("Magnitude")
             plt.xlim(20, 2000)
@@ -327,12 +342,14 @@ def _make_measure_state_callback(args: argparse.Namespace):
         if state == LoopState.PREFLIGHT:
             print("Preflight checks...")
         elif state == LoopState.READY:
-            print(f"Ready for capture: {data.get('point_id')} (attempt {data.get('attempt')})")
+            print(
+                f"Ready for capture: {data.get('point_id')} (attempt {data.get('attempt')})"
+            )
         elif state == LoopState.LISTENING:
-            timeout = data.get('timeout', 30)
+            timeout = data.get("timeout", 30)
             print(f"Listening for tap... (timeout: {timeout:.0f}s)")
         elif state == LoopState.CAPTURING:
-            if data.get('triggered'):
+            if data.get("triggered"):
                 print("Tap detected! Recording...")
             else:
                 print(f"Recording {args.seconds}s...")
@@ -340,6 +357,7 @@ def _make_measure_state_callback(args: argparse.Namespace):
             print("Analyzing...")
         elif state == LoopState.GATING:
             print("Checking quality...")
+
     return on_state
 
 
@@ -348,7 +366,9 @@ def _show_analysis_summary(result) -> None:
     if not result.analysis:
         return
     print(f"\nDominant: {result.analysis.dominant_hz or 'n/a'} Hz")
-    print(f"RMS: {result.analysis.rms:.4f}  Confidence: {result.analysis.confidence:.2f}")
+    print(
+        f"RMS: {result.analysis.rms:.4f}  Confidence: {result.analysis.confidence:.2f}"
+    )
     if result.analysis.peaks:
         print("Top peaks:")
         for pk in result.analysis.peaks[:5]:
@@ -399,7 +419,7 @@ def _handle_verdict_display(
             override_count_lifetime=cfg.ftue.override_count_lifetime,
             seen_rule_ids=tuple(cfg.ftue.seen_rule_ids),
             show_details=True,
-            expert_mode=getattr(args, 'expert', False),
+            expert_mode=getattr(args, "expert", False),
         )
         print("\n" + format_verdict_summary_agent(ctx, result.verdict))
     else:
@@ -422,17 +442,17 @@ def _handle_measure_error(attempt_num: int, max_attempts: int, error: str) -> tu
 
 def _handle_pass_verdict(loop, result) -> int:
     """Handle PASS verdict, return exit code."""
-    print(f"\nMeasurement ACCEPTED.")
+    print("\nMeasurement ACCEPTED.")
     print(f"Saved to: {loop.store.get_attempt_dir(result.attempt)}")
     return 0
 
 
 def _handle_warn_verdict(loop, result) -> tuple:
     """Handle WARN verdict, return (accepted, exit_code)."""
-    print(f"\nMeasurement has warnings.")
+    print("\nMeasurement has warnings.")
     accept = input("Accept anyway? [Y/n]: ").strip().lower()
     if accept not in ("n", "no"):
-        print(f"Measurement ACCEPTED (with warnings).")
+        print("Measurement ACCEPTED (with warnings).")
         print(f"Saved to: {loop.store.get_attempt_dir(result.attempt)}")
         return True, 0
     return False, None
@@ -448,7 +468,7 @@ def _handle_fail_verdict(
     save_config_fn,
 ) -> tuple:
     """Handle FAIL verdict, return (should_continue, exit_code)."""
-    print(f"\nMeasurement FAILED quality gate.")
+    print("\nMeasurement FAILED quality gate.")
 
     if attempt_num < max_attempts:
         retry = input("Retry? [Y/n]: ").strip().lower()
@@ -465,7 +485,9 @@ def _handle_fail_verdict(
             return False, 1
         return True, None
     else:
-        override = input("Max attempts reached. Override with reason? [leave blank to fail]: ").strip()
+        override = input(
+            "Max attempts reached. Override with reason? [leave blank to fail]: "
+        ).strip()
         if override:
             loop.override_failed(point_id, override)
             cfg.ftue.override_count_lifetime += 1
@@ -474,7 +496,6 @@ def _handle_fail_verdict(
             return False, 0
         print("Measurement FAILED.")
         return False, 1
-
 
 
 def cmd_measure(args: argparse.Namespace) -> int:
@@ -491,7 +512,9 @@ def cmd_measure(args: argparse.Namespace) -> int:
 
     # ---- FTUE: load once per measure session ----
     cfg = load_config() or UserConfig()
-    cfg.ftue = update_ftue_from_verdict(cfg.ftue, verdict=None, policy_version=None, increment_session=True)
+    cfg.ftue = update_ftue_from_verdict(
+        cfg.ftue, verdict=None, policy_version=None, increment_session=True
+    )
     save_config(cfg)
 
     # Resolve device
@@ -513,15 +536,18 @@ def cmd_measure(args: argparse.Namespace) -> int:
         return _list_directive_events_cli(session_dir, args)
 
     # Create operator loop
-    loop = OperatorLoop(session_dir=session_dir, callback=_make_measure_state_callback(args))
+    loop = OperatorLoop(
+        session_dir=session_dir, callback=_make_measure_state_callback(args)
+    )
 
     max_attempts = args.max_attempts
     point_id = args.point or "point_001"
 
     # PR7: single source of session history
     session_tracker = None
-    if getattr(args, 'agent', False):
+    if getattr(args, "agent", False):
         from tap_tone_pi.agent.messages import SessionTracker
+
         session_tracker = SessionTracker()
 
     for attempt_num in range(1, max_attempts + 1):
@@ -532,12 +558,14 @@ def cmd_measure(args: argparse.Namespace) -> int:
             device=device,
             sample_rate=sample_rate,
             duration=args.seconds,
-            auto_trigger=getattr(args, 'auto_trigger', False),
-            auto_trigger_timeout=getattr(args, 'trigger_timeout', 30.0),
+            auto_trigger=getattr(args, "auto_trigger", False),
+            auto_trigger_timeout=getattr(args, "trigger_timeout", 30.0),
         )
 
         if result.error:
-            should_continue, exit_code = _handle_measure_error(attempt_num, max_attempts, result.error)
+            should_continue, exit_code = _handle_measure_error(
+                attempt_num, max_attempts, result.error
+            )
             if not should_continue:
                 return exit_code
             continue
@@ -545,8 +573,17 @@ def cmd_measure(args: argparse.Namespace) -> int:
         _show_analysis_summary(result)
 
         _handle_verdict_display(
-            result, args, cfg, session_tracker, point_id, attempt_num,
-            max_attempts, device, sample_rate, save_config, update_ftue_from_verdict,
+            result,
+            args,
+            cfg,
+            session_tracker,
+            point_id,
+            attempt_num,
+            max_attempts,
+            device,
+            sample_rate,
+            save_config,
+            update_ftue_from_verdict,
         )
 
         _maybe_render_directive(args, session_dir)
@@ -562,7 +599,13 @@ def cmd_measure(args: argparse.Namespace) -> int:
 
         else:  # FAIL
             should_continue, exit_code = _handle_fail_verdict(
-                loop, result, point_id, attempt_num, max_attempts, cfg, save_config,
+                loop,
+                result,
+                point_id,
+                attempt_num,
+                max_attempts,
+                cfg,
+                save_config,
             )
             if not should_continue:
                 return exit_code
@@ -583,7 +626,7 @@ def cmd_last(args: argparse.Namespace) -> int:
 
     print(f"\nLatest session: {latest}")
     print(f"  Modified: {mtime.strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"  Contents:")
+    print("  Contents:")
 
     total_size = 0
     for f in sorted(latest.rglob("*")):
@@ -615,7 +658,7 @@ def cmd_sessions(args: argparse.Namespace) -> int:
 
     # Limit if specified
     if args.limit:
-        sessions = sessions[:args.limit]
+        sessions = sessions[: args.limit]
 
     print(f"\n{'#':>3}  {'Type':<10}  {'Date':<20}  {'Path'}")
     print("-" * 80)
@@ -637,8 +680,14 @@ def cmd_sessions(args: argparse.Namespace) -> int:
         point_count = _count_session_points(session)
         points_str = f" ({point_count} pts)" if point_count else ""
 
-        rel_path = session.relative_to(PROJECT_ROOT) if session.is_relative_to(PROJECT_ROOT) else session
-        print(f"{i:3d}  {stype:<10}  {mtime.strftime('%Y-%m-%d %H:%M'):<20}  {rel_path}{points_str}")
+        rel_path = (
+            session.relative_to(PROJECT_ROOT)
+            if session.is_relative_to(PROJECT_ROOT)
+            else session
+        )
+        print(
+            f"{i:3d}  {stype:<10}  {mtime.strftime('%Y-%m-%d %H:%M'):<20}  {rel_path}{points_str}"
+        )
 
     print()
     return 0
@@ -699,9 +748,13 @@ def cmd_chladni(args: argparse.Namespace) -> int:
 
     if args.subcommand == "peaks":
         argv = [
-            sys.executable, "-m", "tap_tone_pi.chladni.peaks_from_wav",
-            "--wav", args.wav,
-            "--out", args.out,
+            sys.executable,
+            "-m",
+            "tap_tone_pi.chladni.peaks_from_wav",
+            "--wav",
+            args.wav,
+            "--out",
+            args.out,
         ]
         if args.min_hz:
             argv.extend(["--min-hz", str(args.min_hz)])
@@ -709,11 +762,17 @@ def cmd_chladni(args: argparse.Namespace) -> int:
             argv.extend(["--max-hz", str(args.max_hz)])
     elif args.subcommand == "index":
         argv = [
-            sys.executable, "-m", "tap_tone_pi.chladni.index_patterns",
-            "--peaks-json", args.peaks_json,
-            "--plate-id", args.plate_id,
-            "--out", args.out,
-            "--images", *args.images,
+            sys.executable,
+            "-m",
+            "tap_tone_pi.chladni.index_patterns",
+            "--peaks-json",
+            args.peaks_json,
+            "--plate-id",
+            args.plate_id,
+            "--out",
+            args.out,
+            "--images",
+            *args.images,
         ]
     else:
         print(f"Unknown chladni subcommand: {args.subcommand}", file=sys.stderr)
@@ -727,14 +786,23 @@ def cmd_bending(args: argparse.Namespace) -> int:
     import subprocess
 
     argv = [
-        sys.executable, "-m", "tap_tone_pi.bending.merge_and_moe",
-        "--load", args.load,
-        "--disp", args.disp,
-        "--out-dir", args.out_dir,
-        "--method", args.method,
-        "--span", str(args.span),
-        "--width", str(args.width),
-        "--thickness", str(args.thickness),
+        sys.executable,
+        "-m",
+        "tap_tone_pi.bending.merge_and_moe",
+        "--load",
+        args.load,
+        "--disp",
+        args.disp,
+        "--out-dir",
+        args.out_dir,
+        "--method",
+        args.method,
+        "--span",
+        str(args.span),
+        "--width",
+        str(args.width),
+        "--thickness",
+        str(args.thickness),
     ]
     if args.rate:
         argv.extend(["--rate", str(args.rate)])
@@ -858,13 +926,16 @@ def cmd_completion(args: argparse.Namespace) -> int:
 
 # --- Helper functions ---
 
+
 def _print_summary(label: str | None, res) -> None:
     """Print analysis summary to console."""
     print("")
     if label:
         print(f"Label: {label}")
     print(f"Dominant: {res.dominant_hz if res.dominant_hz else 'n/a'} Hz")
-    print(f"RMS: {res.rms:.6f}   Clipped: {res.clipped}   Confidence: {res.confidence:.2f}")
+    print(
+        f"RMS: {res.rms:.6f}   Clipped: {res.clipped}   Confidence: {res.confidence:.2f}"
+    )
     if res.peaks:
         print("Top peaks:")
         for p in res.peaks[:8]:
@@ -917,6 +988,7 @@ def _format_size(size: int) -> str:
 def _open_path(path: Path) -> None:
     """Open a path in the system file manager."""
     import subprocess
+
     if sys.platform == "darwin":
         subprocess.run(["open", str(path)])
     elif sys.platform == "win32":
@@ -927,19 +999,19 @@ def _open_path(path: Path) -> None:
 
 def _bash_completion() -> str:
     """Generate bash completion script."""
-    return '''
+    return """
 _ttp_completions() {
     local commands="setup devices measure record live quick gold-run gui phase2 chladni bending export-pack evidence-check last sessions completion"
     COMPREPLY=($(compgen -W "$commands" -- "${COMP_WORDS[COMP_CWORD]}"))
 }
 complete -F _ttp_completions ttp
 complete -F _ttp_completions tap-tone
-'''
+"""
 
 
 def _zsh_completion() -> str:
     """Generate zsh completion script."""
-    return '''
+    return """
 #compdef ttp tap-tone
 
 _ttp() {
@@ -965,12 +1037,12 @@ _ttp() {
 }
 
 compdef _ttp ttp tap-tone
-'''
+"""
 
 
 def _fish_completion() -> str:
     """Generate fish completion script."""
-    return '''
+    return """
 complete -c ttp -f -n "__fish_use_subcommand" -a setup -d "Hardware setup wizard (run first!)"
 complete -c ttp -f -n "__fish_use_subcommand" -a devices -d "List audio devices"
 complete -c ttp -f -n "__fish_use_subcommand" -a measure -d "Quality-gated measurement (recommended)"
@@ -989,22 +1061,26 @@ complete -c ttp -f -n "__fish_use_subcommand" -a sessions -d "List all sessions"
 complete -c ttp -f -n "__fish_use_subcommand" -a completion -d "Generate shell completion"
 
 complete -c tap-tone -w ttp
-'''
+"""
 
 
 def build_parser() -> argparse.ArgumentParser:
     """Build the unified CLI argument parser."""
     p = argparse.ArgumentParser(
-        prog="ttp",
-        description="Tap Tone Pi — Acoustic measurement instrument (v2.0.0)"
+        prog="ttp", description="Tap Tone Pi — Acoustic measurement instrument (v2.0.0)"
     )
     sub = p.add_subparsers(dest="cmd", required=True)
 
     # setup (wizard) - run first!
     from tap_tone_pi.cli.wizard import run_wizard
+
     p_setup = sub.add_parser("setup", help="Hardware setup wizard (run first!)")
-    p_setup.add_argument("--reset", action="store_true", help="Clear saved config and re-run")
-    p_setup.add_argument("--show", action="store_true", help="Show current saved config")
+    p_setup.add_argument(
+        "--reset", action="store_true", help="Clear saved config and re-run"
+    )
+    p_setup.add_argument(
+        "--show", action="store_true", help="Show current saved config"
+    )
     p_setup.set_defaults(fn=run_wizard)
 
     # devices
@@ -1019,12 +1095,24 @@ def build_parser() -> argparse.ArgumentParser:
     p_rec.add_argument("--seconds", type=float, default=2.5)
     p_rec.add_argument("--out", type=str, required=True, help="Output directory")
     p_rec.add_argument("--label", type=str, default=None, help="Tap point label")
-    p_rec.add_argument("--agent", action="store_true", help="Use agent-formatted QC output")
-    p_rec.add_argument("--expert", action="store_true", help="More detailed agent output")
-    p_rec.add_argument("--agent-directives", action="store_true", dest="agent_directives",
-                       help="Print advisory directive summary from spine shadow outputs (if available)")
-    p_rec.add_argument("--verbose-directives", action="store_true", dest="verbose_directives",
-                       help="Include directive debug details (trigger counts, ids). Requires --agent-directives")
+    p_rec.add_argument(
+        "--agent", action="store_true", help="Use agent-formatted QC output"
+    )
+    p_rec.add_argument(
+        "--expert", action="store_true", help="More detailed agent output"
+    )
+    p_rec.add_argument(
+        "--agent-directives",
+        action="store_true",
+        dest="agent_directives",
+        help="Print advisory directive summary from spine shadow outputs (if available)",
+    )
+    p_rec.add_argument(
+        "--verbose-directives",
+        action="store_true",
+        dest="verbose_directives",
+        help="Include directive debug details (trigger counts, ids). Requires --agent-directives",
+    )
     p_rec.set_defaults(fn=cmd_record)
 
     # live
@@ -1038,32 +1126,71 @@ def build_parser() -> argparse.ArgumentParser:
     p_live.set_defaults(fn=cmd_live)
 
     # quick (NEW!)
-    p_quick = sub.add_parser("quick", help="Zero-config quick capture (auto-detect device)")
+    p_quick = sub.add_parser(
+        "quick", help="Zero-config quick capture (auto-detect device)"
+    )
     p_quick.add_argument("--plot", action="store_true", help="Show spectrum plot")
     p_quick.set_defaults(fn=cmd_quick)
 
     # measure (NEW! - quality-gated)
-    p_meas = sub.add_parser("measure", help="Quality-gated measurement with operator loop")
+    p_meas = sub.add_parser(
+        "measure", help="Quality-gated measurement with operator loop"
+    )
     p_meas.add_argument("--device", type=int, default=None, help="Input device index")
     p_meas.add_argument("--sample-rate", type=int, default=48000, help="Sample rate Hz")
     p_meas.add_argument("--seconds", type=float, default=2.5, help="Capture duration")
-    p_meas.add_argument("--out", type=str, required=True, help="Session output directory")
-    p_meas.add_argument("--point", type=str, default=None, help="Point ID (default: point_001)")
-    p_meas.add_argument("--max-attempts", type=int, default=3, help="Max retry attempts")
-    p_meas.add_argument("--agent", action="store_true", help="Use agent-formatted workflow output")
-    p_meas.add_argument("--expert", action="store_true", help="More detailed agent output")
-    p_meas.add_argument("--auto-trigger", action="store_true", dest="auto_trigger",
-                       help="Wait for tap onset before recording (Phase 10)")
-    p_meas.add_argument("--trigger-timeout", type=float, default=30.0,
-                       help="Auto-trigger timeout in seconds (default: 30)")
-    p_meas.add_argument("--agent-directives", action="store_true", dest="agent_directives",
-                       help="Print advisory directive summary from spine shadow outputs (if available)")
-    p_meas.add_argument("--verbose-directives", action="store_true", dest="verbose_directives",
-                       help="Include directive debug details (trigger counts, ids). Requires --agent-directives")
-    p_meas.add_argument("--list-directive-events", action="store_true", dest="list_directive_events",
-                       help="List recent directive outcome events (reads events.jsonl, no spine execution).")
-    p_meas.add_argument("--directive-events-limit", type=int, default=10, dest="directive_events_limit",
-                       help="Max number of directive events to show (default: 10). Requires --list-directive-events.")
+    p_meas.add_argument(
+        "--out", type=str, required=True, help="Session output directory"
+    )
+    p_meas.add_argument(
+        "--point", type=str, default=None, help="Point ID (default: point_001)"
+    )
+    p_meas.add_argument(
+        "--max-attempts", type=int, default=3, help="Max retry attempts"
+    )
+    p_meas.add_argument(
+        "--agent", action="store_true", help="Use agent-formatted workflow output"
+    )
+    p_meas.add_argument(
+        "--expert", action="store_true", help="More detailed agent output"
+    )
+    p_meas.add_argument(
+        "--auto-trigger",
+        action="store_true",
+        dest="auto_trigger",
+        help="Wait for tap onset before recording (Phase 10)",
+    )
+    p_meas.add_argument(
+        "--trigger-timeout",
+        type=float,
+        default=30.0,
+        help="Auto-trigger timeout in seconds (default: 30)",
+    )
+    p_meas.add_argument(
+        "--agent-directives",
+        action="store_true",
+        dest="agent_directives",
+        help="Print advisory directive summary from spine shadow outputs (if available)",
+    )
+    p_meas.add_argument(
+        "--verbose-directives",
+        action="store_true",
+        dest="verbose_directives",
+        help="Include directive debug details (trigger counts, ids). Requires --agent-directives",
+    )
+    p_meas.add_argument(
+        "--list-directive-events",
+        action="store_true",
+        dest="list_directive_events",
+        help="List recent directive outcome events (reads events.jsonl, no spine execution).",
+    )
+    p_meas.add_argument(
+        "--directive-events-limit",
+        type=int,
+        default=10,
+        dest="directive_events_limit",
+        help="Max number of directive events to show (default: 10). Requires --list-directive-events.",
+    )
     p_meas.set_defaults(fn=cmd_measure)
 
     # gold-run
@@ -1117,7 +1244,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_bend.add_argument("--method", default="3point", choices=["3point", "4point"])
     p_bend.add_argument("--span", type=float, required=True, help="Span in mm")
     p_bend.add_argument("--width", type=float, required=True, help="Width in mm")
-    p_bend.add_argument("--thickness", type=float, required=True, help="Thickness in mm")
+    p_bend.add_argument(
+        "--thickness", type=float, required=True, help="Thickness in mm"
+    )
     p_bend.add_argument("--rate", type=float, default=50, help="Resample rate Hz")
     p_bend.set_defaults(fn=cmd_bending)
 
@@ -1201,11 +1330,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Export session directive timeline (read-only)",
     )
     p_est.add_argument(
-        "--session", required=True,
+        "--session",
+        required=True,
         help="Path to session directory",
     )
     p_est.add_argument(
-        "--out", default=None,
+        "--out",
+        default=None,
         help="Optional output path (default: <session>/meta/session_timeline_v1.json)",
     )
     p_est.set_defaults(fn=cmd_export_session_timeline)

@@ -59,7 +59,9 @@ def read_wav_mono_or_stereo(wav_path: Path) -> tuple[int, np.ndarray]:
 
     # decode PCM (supports 16-bit only here; keep simple)
     if sampwidth != 2:
-        raise ValueError(f"Unsupported WAV sample width {sampwidth*8} bits. Expected 16-bit PCM.")
+        raise ValueError(
+            f"Unsupported WAV sample width {sampwidth*8} bits. Expected 16-bit PCM."
+        )
     x = np.frombuffer(frames, dtype=np.int16).astype(np.float32) / 32767.0
     if ch > 1:
         x = x.reshape(-1, ch)
@@ -125,11 +127,26 @@ def save_two_line_plot(
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Plot coherence/phase (+ optional spectrum/waveform) to PNGs.")
+    ap = argparse.ArgumentParser(
+        description="Plot coherence/phase (+ optional spectrum/waveform) to PNGs."
+    )
     ap.add_argument("--capture-dir", required=True, help="Path to capture_<ts>/ folder")
-    ap.add_argument("--max-hz", type=float, default=2000.0, help="Max frequency to plot for spectrum/coh/phase")
-    ap.add_argument("--plot-spectrum", action="store_true", help="Plot spectrum.png if spectrum.csv exists")
-    ap.add_argument("--plot-waveform", action="store_true", help="Plot waveform.png if audio.wav exists")
+    ap.add_argument(
+        "--max-hz",
+        type=float,
+        default=2000.0,
+        help="Max frequency to plot for spectrum/coh/phase",
+    )
+    ap.add_argument(
+        "--plot-spectrum",
+        action="store_true",
+        help="Plot spectrum.png if spectrum.csv exists",
+    )
+    ap.add_argument(
+        "--plot-waveform",
+        action="store_true",
+        help="Plot waveform.png if audio.wav exists",
+    )
     args = ap.parse_args()
 
     cap_dir = Path(args.capture_dir).expanduser().resolve()

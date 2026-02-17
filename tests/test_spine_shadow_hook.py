@@ -7,18 +7,20 @@ Validates:
 4. Commands are always zero (no actuation)
 5. Graceful failure when events.jsonl is corrupted
 """
+
 from __future__ import annotations
 
-import json
-from pathlib import Path
 
 import numpy as np
 import pytest
 
-from tap_tone_pi.workflow.operator_loop import OperatorLoop, LoopState
-from tap_tone_pi.workflow.attempt import AttemptStatus
+from tap_tone_pi.workflow.operator_loop import OperatorLoop
 from tap_tone_pi.core.quality_policy import (
-    QualityVerdict, Verdict, TriggeredRule, Severity, QualityRule,
+    QualityVerdict,
+    Verdict,
+    TriggeredRule,
+    Severity,
+    QualityRule,
 )
 from tap_tone_pi.core.analysis import AnalysisResult, Peak
 from tap_tone_pi.agentic.spine.shadow_record import (
@@ -94,9 +96,11 @@ def _fake_analyze_tap_raise(audio, sample_rate, **kwargs):
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def patch_passing(monkeypatch):
     import tap_tone_pi.workflow.operator_loop as ol
+
     monkeypatch.setattr(ol, "list_devices", _fake_device_list)
     monkeypatch.setattr(ol, "record_audio", _fake_record_audio)
     monkeypatch.setattr(ol, "analyze_tap", _fake_analyze_tap)
@@ -106,6 +110,7 @@ def patch_passing(monkeypatch):
 @pytest.fixture
 def patch_failing(monkeypatch):
     import tap_tone_pi.workflow.operator_loop as ol
+
     monkeypatch.setattr(ol, "list_devices", _fake_device_list)
     monkeypatch.setattr(ol, "record_audio", _fake_record_audio)
     monkeypatch.setattr(ol, "analyze_tap", _fake_analyze_tap)
@@ -115,6 +120,7 @@ def patch_failing(monkeypatch):
 @pytest.fixture
 def patch_analysis_error(monkeypatch):
     import tap_tone_pi.workflow.operator_loop as ol
+
     monkeypatch.setattr(ol, "list_devices", _fake_device_list)
     monkeypatch.setattr(ol, "record_audio", _fake_record_audio)
     monkeypatch.setattr(ol, "analyze_tap", _fake_analyze_tap_raise)
@@ -124,6 +130,7 @@ def patch_analysis_error(monkeypatch):
 # =========================================================================
 # Test 1 — spine_shadow.jsonl is created after run_single()
 # =========================================================================
+
 
 class TestShadowFileCreated:
     """spine_shadow.jsonl must exist after a successful run_single()."""
@@ -139,7 +146,12 @@ class TestShadowFileCreated:
         loop = OperatorLoop(session_dir=tmp_path)
         loop.run_single("pt_01", device=0, sample_rate=48000, duration=2.5)
 
-        lines = (tmp_path / "spine_shadow.jsonl").read_text(encoding="utf-8").strip().splitlines()
+        lines = (
+            (tmp_path / "spine_shadow.jsonl")
+            .read_text(encoding="utf-8")
+            .strip()
+            .splitlines()
+        )
         assert len(lines) >= 1, f"Expected >=1 shadow line, got {len(lines)}"
 
     def test_shadow_latest_exists_after_pass(self, tmp_path, patch_passing):
@@ -156,7 +168,9 @@ class TestShadowFileCreated:
         shadow_path = tmp_path / "spine_shadow.jsonl"
         assert shadow_path.exists(), "spine_shadow.jsonl not created after FAIL"
 
-    def test_shadow_jsonl_exists_after_analysis_error(self, tmp_path, patch_analysis_error):
+    def test_shadow_jsonl_exists_after_analysis_error(
+        self, tmp_path, patch_analysis_error
+    ):
         """Shadow hook runs even when analysis raises — error record is written."""
         loop = OperatorLoop(session_dir=tmp_path)
         result = loop.run_single("pt_01", device=0, sample_rate=48000, duration=2.5)
@@ -171,6 +185,7 @@ class TestShadowFileCreated:
 # =========================================================================
 # Test 2 — no user-visible behavior changes
 # =========================================================================
+
 
 class TestNoBehavioralChange:
     """Verdicts and attempt states must be unchanged by shadow hook."""
@@ -207,6 +222,7 @@ class TestNoBehavioralChange:
 # Test 3 — M0 never produces commands
 # =========================================================================
 
+
 class TestM1NoCommands:
     """Shadow records must always have commands_count == 0 and mode M1."""
 
@@ -239,6 +255,7 @@ class TestM1NoCommands:
 # Test 4 — shadow record validates against schema
 # =========================================================================
 
+
 class TestShadowRecordValidity:
     """Every shadow record must pass the v1 shape validator."""
 
@@ -260,9 +277,16 @@ class TestShadowRecordValidity:
         assert rec is not None
 
         required = {
-            "schema_id", "schema_version", "timestamp",
-            "session_id", "run_id", "mode",
-            "moment", "advisory", "commands", "error",
+            "schema_id",
+            "schema_version",
+            "timestamp",
+            "session_id",
+            "run_id",
+            "mode",
+            "moment",
+            "advisory",
+            "commands",
+            "error",
         }
         assert required.issubset(rec.keys()), f"Missing keys: {required - rec.keys()}"
 
@@ -279,6 +303,7 @@ class TestShadowRecordValidity:
 # =========================================================================
 # Test 5 — graceful failure (corrupted events.jsonl)
 # =========================================================================
+
 
 class TestGracefulFailure:
     """Shadow hook must never crash the measurement workflow."""
@@ -308,6 +333,7 @@ class TestGracefulFailure:
         class _NoopWriter:
             def write(self, evt):
                 pass
+
         loop._event_writer = _NoopWriter()
 
         result = loop.run_single("pt_01", device=0, sample_rate=48000, duration=2.5)
@@ -322,12 +348,15 @@ class TestGracefulFailure:
 
         shadow = tmp_path / "spine_shadow.jsonl"
         lines = shadow.read_text(encoding="utf-8").strip().splitlines()
-        assert len(lines) >= 2, f"Expected >=2 shadow lines for 2 attempts, got {len(lines)}"
+        assert (
+            len(lines) >= 2
+        ), f"Expected >=2 shadow lines for 2 attempts, got {len(lines)}"
 
 
 # =========================================================================
 # Test 6 — M1 advisory populates advisory fields
 # =========================================================================
+
 
 class TestM1AdvisoryPopulation:
     """M1 policy produces real advisory content in shadow records."""
@@ -342,9 +371,9 @@ class TestM1AdvisoryPopulation:
         # A PASS run emits analysis_completed which triggers a moment;
         # M1 should produce a directive (advisory != None)
         if rec["moment"]["id"] != "NONE":
-            assert rec["advisory"] is not None, (
-                "M1 should populate advisory when a moment is detected"
-            )
+            assert (
+                rec["advisory"] is not None
+            ), "M1 should populate advisory when a moment is detected"
 
     def test_advisory_has_action(self, tmp_path, patch_passing):
         """Advisory action must be a known policy action string."""
@@ -354,11 +383,19 @@ class TestM1AdvisoryPopulation:
         rec = load_latest_shadow_record(tmp_path)
         assert rec is not None
         if rec["advisory"] is not None:
-            allowed = {"INSPECT", "REVIEW", "COMPARE", "DECIDE", "CONFIRM",
-                       "INTERVENE", "ABORT", "NONE"}
-            assert rec["advisory"]["action"] in allowed, (
-                f"Unexpected action: {rec['advisory']['action']}"
-            )
+            allowed = {
+                "INSPECT",
+                "REVIEW",
+                "COMPARE",
+                "DECIDE",
+                "CONFIRM",
+                "INTERVENE",
+                "ABORT",
+                "NONE",
+            }
+            assert (
+                rec["advisory"]["action"] in allowed
+            ), f"Unexpected action: {rec['advisory']['action']}"
 
     def test_advisory_has_summary(self, tmp_path, patch_passing):
         """Advisory summary must be a non-empty string."""

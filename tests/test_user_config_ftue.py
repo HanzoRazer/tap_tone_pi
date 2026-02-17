@@ -2,10 +2,9 @@
 
 PR4 hardening: ensures FTUE never bricks core config, bounded lists, PASS-only increments.
 """
+
 from __future__ import annotations
 
-import json
-import pytest
 from pathlib import Path
 
 from tap_tone_pi.core.user_config import (
@@ -54,13 +53,15 @@ class TestFtueStateFromDict:
         assert ftue.last_seen_policy_version is None
 
     def test_valid_dict_parses_correctly(self):
-        ftue = FtueState.from_dict({
-            "pass_count_lifetime": 5,
-            "session_count_lifetime": 10,
-            "seen_rule_ids": ["rule_a", "rule_b"],
-            "last_seen_policy_version": "1.0.0",
-            "updated_at": "2026-01-15T12:00:00Z",
-        })
+        ftue = FtueState.from_dict(
+            {
+                "pass_count_lifetime": 5,
+                "session_count_lifetime": 10,
+                "seen_rule_ids": ["rule_a", "rule_b"],
+                "last_seen_policy_version": "1.0.0",
+                "updated_at": "2026-01-15T12:00:00Z",
+            }
+        )
         assert ftue.pass_count_lifetime == 5
         assert ftue.session_count_lifetime == 10
         assert ftue.seen_rule_ids == ["rule_a", "rule_b"]
@@ -72,9 +73,7 @@ class TestFtueStateBoundedList:
     """seen_rule_ids is capped to SEEN_RULES_CAP."""
 
     def test_dedupe_preserves_order(self):
-        ftue = FtueState.from_dict({
-            "seen_rule_ids": ["a", "b", "a", "c", "b", "d"]
-        })
+        ftue = FtueState.from_dict({"seen_rule_ids": ["a", "b", "a", "c", "b", "d"]})
         assert ftue.seen_rule_ids == ["a", "b", "c", "d"]
 
     def test_bounded_to_cap(self):
@@ -97,7 +96,7 @@ class TestUserConfigFtueRoundtrip:
     def test_ftue_in_from_dict(self):
         d = {
             "version": "1.1.0",
-            "ftue": {"pass_count_lifetime": 12, "session_count_lifetime": 3}
+            "ftue": {"pass_count_lifetime": 12, "session_count_lifetime": 3},
         }
         cfg = UserConfig.from_dict(d)
         assert cfg.ftue.pass_count_lifetime == 12
@@ -243,12 +242,11 @@ class TestUpdateFtueFromVerdict:
             QualityVerdict,
             Verdict,
         )
+
         # Need a non-None verdict to record policy version
         verdict = QualityVerdict(verdict=Verdict.PASS)
         ftue = FtueState()
-        ftue = update_ftue_from_verdict(
-            ftue, verdict=verdict, policy_version="3.0.0"
-        )
+        ftue = update_ftue_from_verdict(ftue, verdict=verdict, policy_version="3.0.0")
         assert ftue.last_seen_policy_version == "3.0.0"
 
     def test_seen_rule_ids_bounded_in_update(self):

@@ -20,7 +20,7 @@ def generate_spectrum_data(
     freq_range: tuple = (10, 2000),
     num_points: int = 1000,
     noise_level: float = 0.05,
-    coherence_base: float = 0.92
+    coherence_base: float = 0.92,
 ) -> dict:
     """
     Generate realistic spectrum data for a wood sample.
@@ -39,7 +39,9 @@ def generate_spectrum_data(
     freq_hz = np.linspace(freq_range[0], freq_range[1], num_points)
 
     # Start with noise floor
-    magnitude = np.ones(num_points) * noise_level * np.random.uniform(0.5, 1.5, num_points)
+    magnitude = (
+        np.ones(num_points) * noise_level * np.random.uniform(0.5, 1.5, num_points)
+    )
 
     # Add resonance peaks
     mode_freqs = []
@@ -70,7 +72,7 @@ def generate_spectrum_data(
     coherence = np.ones(num_points) * coherence_base
     for mode_freq in mode_freqs:
         # Boost coherence near peaks
-        peak_boost = 0.08 * np.exp(-((freq_hz - mode_freq) / 50) ** 2)
+        peak_boost = 0.08 * np.exp(-(((freq_hz - mode_freq) / 50) ** 2))
         coherence += peak_boost
 
     # Add some noise to coherence
@@ -89,7 +91,7 @@ def generate_spectrum_data(
         "H_mag": magnitude.tolist(),
         "coherence": coherence.tolist(),
         "phase_deg": phase.tolist(),
-        "mode_frequencies": mode_freqs
+        "mode_frequencies": mode_freqs,
     }
 
 
@@ -104,13 +106,15 @@ def generate_peaks_data(spectrum_data: dict) -> list:
         # Find closest index
         idx = np.argmin(np.abs(freq_hz - mode_freq))
 
-        peaks.append({
-            "freq_hz": float(freq_hz[idx]),
-            "magnitude": float(magnitude[idx]),
-            "coherence": float(coherence[idx]),
-            "mode": f"Mode {i+1}" if i > 0 else "Fundamental",
-            "q_factor": float(np.random.uniform(30, 100))
-        })
+        peaks.append(
+            {
+                "freq_hz": float(freq_hz[idx]),
+                "magnitude": float(magnitude[idx]),
+                "coherence": float(coherence[idx]),
+                "mode": f"Mode {i+1}" if i > 0 else "Fundamental",
+                "q_factor": float(np.random.uniform(30, 100)),
+            }
+        )
 
     return peaks
 
@@ -122,17 +126,13 @@ def generate_session_meta(specimen_name: str = "Sitka Spruce #42") -> dict:
         "specimen_id": specimen_name,
         "species": "Sitka Spruce",
         "grade": "Master",
-        "dimensions_mm": {
-            "length": 520,
-            "width": 180,
-            "thickness": 3.2
-        },
+        "dimensions_mm": {"length": 520, "width": 180, "thickness": 3.2},
         "weight_g": 82.5,
         "moisture_content_pct": 6.8,
         "created_at_utc": datetime.utcnow().isoformat() + "Z",
         "device_id": "tap_tone_pi_v1",
         "operator": "Sample Generator",
-        "notes": "Synthetic test data for analyzer development"
+        "notes": "Synthetic test data for analyzer development",
     }
 
 
@@ -145,19 +145,9 @@ def generate_capture_meta() -> dict:
         "channels": 2,
         "tap_count": 10,
         "averaging_method": "linear",
-        "excitation": {
-            "type": "impulse",
-            "tool": "wooden_dowel",
-            "location": "center"
-        },
-        "microphone": {
-            "type": "condenser",
-            "position_mm": [100, 0, 50]
-        },
-        "environment": {
-            "temp_c": 22.5,
-            "humidity_rh": 45
-        }
+        "excitation": {"type": "impulse", "tool": "wooden_dowel", "location": "center"},
+        "microphone": {"type": "condenser", "position_mm": [100, 0, 50]},
+        "environment": {"temp_c": 22.5, "humidity_rh": 45},
     }
 
 
@@ -174,13 +164,9 @@ def generate_transfer_function_json(spectrum_data: dict) -> dict:
         "phase": spectrum_data["phase_deg"],
         "coherence": spectrum_data["coherence"],
         "metadata": {
-            "units": {
-                "frequency": "Hz",
-                "magnitude": "linear",
-                "phase": "degrees"
-            },
-            "averaging": "10 averages"
-        }
+            "units": {"frequency": "Hz", "magnitude": "linear", "phase": "degrees"},
+            "averaging": "10 averages",
+        },
     }
 
 
@@ -199,12 +185,11 @@ def generate_wsi_curve_data(spectrum_data: dict, peaks: list) -> dict:
     wsi = np.zeros(num_points)
 
     # Add some problem zones
-    problem_freqs = [np.random.uniform(150, 250),
-                     np.random.uniform(350, 450)]
+    problem_freqs = [np.random.uniform(150, 250), np.random.uniform(350, 450)]
 
     for prob_freq in problem_freqs:
         # Create a peak in WSI at problem frequency
-        wsi += 0.8 * np.exp(-((freq_hz - prob_freq) / 30) ** 2)
+        wsi += 0.8 * np.exp(-(((freq_hz - prob_freq) / 30) ** 2))
 
     # Add baseline variation
     wsi += np.random.uniform(0.05, 0.2, num_points)
@@ -237,9 +222,12 @@ def generate_wsi_curve_data(spectrum_data: dict, peaks: list) -> dict:
         "coh_mean": coh_mean.tolist(),
         "admissible": admissible,
         "problem_frequencies": [
-            {"freq_hz": float(f), "severity": "high" if np.random.random() > 0.5 else "medium"}
+            {
+                "freq_hz": float(f),
+                "severity": "high" if np.random.random() > 0.5 else "medium",
+            }
             for f in problem_freqs
-        ]
+        ],
     }
 
 
@@ -261,8 +249,9 @@ def generate_derived_data(peaks: list, session_meta: dict) -> dict:
 
     # Estimate stiffness (Young's modulus) from fundamental frequency
     # E ≈ (2 * L * f)^2 * ρ / (1.875^4 * t^2) for cantilever beam
-    stiffness_gpa = ((2 * length_m * fundamental) ** 2 * density /
-                     (1.875 ** 4 * thickness_m ** 2)) / 1e9
+    stiffness_gpa = (
+        (2 * length_m * fundamental) ** 2 * density / (1.875**4 * thickness_m**2)
+    ) / 1e9
 
     # Sound radiation coefficient
     radiation_coeff = np.sqrt(stiffness_gpa * 1e9 / density) / 1000
@@ -273,13 +262,17 @@ def generate_derived_data(peaks: list, session_meta: dict) -> dict:
             "estimated_stiffness_gpa": round(stiffness_gpa, 2),
             "radiation_coefficient": round(radiation_coeff, 2),
             "fundamental_hz": round(fundamental, 1),
-            "quality_grade": "A" if radiation_coeff > 12 else "B" if radiation_coeff > 10 else "C"
+            "quality_grade": "A"
+            if radiation_coeff > 12
+            else "B"
+            if radiation_coeff > 10
+            else "C",
         },
         "mode_analysis": {
             "num_modes_detected": len(peaks),
             "mode_spacing_quality": "regular" if len(peaks) > 3 else "sparse",
-            "highest_coherence": max(p["coherence"] for p in peaks) if peaks else 0
-        }
+            "highest_coherence": max(p["coherence"] for p in peaks) if peaks else 0,
+        },
     }
 
 
@@ -290,8 +283,7 @@ def create_sample_pack(output_dir: Path, specimen_name: str = "Sitka Spruce #42"
 
     # Generate data
     spectrum = generate_spectrum_data(
-        fundamental_freq=np.random.uniform(150, 220),
-        num_modes=np.random.randint(6, 10)
+        fundamental_freq=np.random.uniform(150, 220), num_modes=np.random.randint(6, 10)
     )
     peaks = generate_peaks_data(spectrum)
     session_meta = generate_session_meta(specimen_name)
@@ -318,14 +310,11 @@ def create_sample_pack(output_dir: Path, specimen_name: str = "Sitka Spruce #42"
         "contents": {
             "spectra": [
                 "spectra/transfer_function.csv",
-                "spectra/transfer_function.json"
+                "spectra/transfer_function.json",
             ],
             "peaks": ["peaks/detected_peaks.json"],
-            "derived": [
-                "derived/wood_properties.json",
-                "derived/wsi_curve.json"
-            ]
-        }
+            "derived": ["derived/wood_properties.json", "derived/wsi_curve.json"],
+        },
     }
     with open(output_dir / "manifest.json", "w") as f:
         json.dump(manifest, f, indent=2)
@@ -342,12 +331,14 @@ def create_sample_pack(output_dir: Path, specimen_name: str = "Sitka Spruce #42"
         writer = csv.writer(f)
         writer.writerow(["freq_hz", "H_mag", "coherence", "phase_deg"])
         for i in range(len(spectrum["freq_hz"])):
-            writer.writerow([
-                f"{spectrum['freq_hz'][i]:.2f}",
-                f"{spectrum['H_mag'][i]:.6f}",
-                f"{spectrum['coherence'][i]:.4f}",
-                f"{spectrum['phase_deg'][i]:.2f}"
-            ])
+            writer.writerow(
+                [
+                    f"{spectrum['freq_hz'][i]:.2f}",
+                    f"{spectrum['H_mag'][i]:.6f}",
+                    f"{spectrum['coherence'][i]:.4f}",
+                    f"{spectrum['phase_deg'][i]:.2f}",
+                ]
+            )
 
     # Write transfer function JSON (alternative format)
     with open(spectra_dir / "transfer_function.json", "w") as f:
@@ -368,17 +359,29 @@ def create_sample_pack(output_dir: Path, specimen_name: str = "Sitka Spruce #42"
     # Write WSI curve CSV
     with open(derived_dir / "wsi_curve.csv", "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["freq_hz", "wsi", "loc", "grad", "phase_disorder", "coh_mean", "admissible"])
+        writer.writerow(
+            [
+                "freq_hz",
+                "wsi",
+                "loc",
+                "grad",
+                "phase_disorder",
+                "coh_mean",
+                "admissible",
+            ]
+        )
         for i in range(len(wsi_curve["freq_hz"])):
-            writer.writerow([
-                f"{wsi_curve['freq_hz'][i]:.2f}",
-                f"{wsi_curve['wsi'][i]:.4f}",
-                f"{wsi_curve['loc'][i]:.4f}",
-                f"{wsi_curve['grad'][i]:.4f}",
-                f"{wsi_curve['phase_disorder'][i]:.4f}",
-                f"{wsi_curve['coh_mean'][i]:.4f}",
-                str(wsi_curve['admissible'][i]).lower()
-            ])
+            writer.writerow(
+                [
+                    f"{wsi_curve['freq_hz'][i]:.2f}",
+                    f"{wsi_curve['wsi'][i]:.4f}",
+                    f"{wsi_curve['loc'][i]:.4f}",
+                    f"{wsi_curve['grad'][i]:.4f}",
+                    f"{wsi_curve['phase_disorder'][i]:.4f}",
+                    f"{wsi_curve['coh_mean'][i]:.4f}",
+                    str(wsi_curve["admissible"][i]).lower(),
+                ]
+            )
 
     print(f"Created sample pack at: {output_dir}")
     return output_dir
@@ -387,7 +390,6 @@ def create_sample_pack(output_dir: Path, specimen_name: str = "Sitka Spruce #42"
 def create_sample_zip(output_path: Path, specimen_name: str = "Sitka Spruce #42"):
     """Create a sample viewer pack as a ZIP file."""
     import tempfile
-    import shutil
 
     # Create in temp directory first
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -396,7 +398,7 @@ def create_sample_zip(output_path: Path, specimen_name: str = "Sitka Spruce #42"
 
         # Create ZIP
         output_path = Path(output_path)
-        with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+        with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
             for file in pack_dir.rglob("*"):
                 if file.is_file():
                     arcname = file.relative_to(pack_dir)

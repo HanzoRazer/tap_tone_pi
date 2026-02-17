@@ -2,6 +2,7 @@
 
 Controls how much detail the agent shows based on user experience level.
 """
+
 from __future__ import annotations
 
 from .types import UserStage
@@ -27,7 +28,7 @@ FTUE_HINTS: dict[UserStage, list[str]] = {
 
 def get_ftue_hint(stage: UserStage, attempt_num: int = 1) -> str | None:
     """Select an appropriate learning hint for the user stage.
-    
+
     Rotates through hints based on attempt number to avoid repetition.
     """
     hints = FTUE_HINTS.get(stage, [])
@@ -39,6 +40,7 @@ def get_ftue_hint(stage: UserStage, attempt_num: int = 1) -> str | None:
 # =============================================================================
 # PROGRESSIVE DISCLOSURE RULES
 # =============================================================================
+
 
 def max_rules_to_show(stage: UserStage) -> int:
     """How many rule explanations to show at once."""
@@ -81,31 +83,32 @@ def show_metrics(stage: UserStage) -> bool:
 # STAGE INFERENCE
 # =============================================================================
 
+
 def infer_user_stage(
     total_sessions: int = 0,
     total_passes: int = 0,
     explicit_stage: UserStage | None = None,
 ) -> UserStage:
     """Infer user stage from usage history.
-    
+
     Args:
         total_sessions: Number of sessions the user has started
         total_passes: Number of PASS verdicts ever achieved
         explicit_stage: If set, overrides inference (e.g., --expert flag)
-    
+
     Returns:
         UserStage for progressive disclosure
     """
     # Explicit override wins
     if explicit_stage is not None:
         return explicit_stage
-    
+
     # Never had a PASS → first run experience
     if total_passes == 0:
         return UserStage.FIRST_RUN
-    
+
     # Low usage → novice
     if total_sessions <= 5 or total_passes <= 20:
         return UserStage.NOVICE
-    
+
     return UserStage.REGULAR

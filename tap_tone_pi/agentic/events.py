@@ -26,6 +26,7 @@ from .contracts import (
 # Event ID Generation
 # -----------------------------------------------------------------------------
 
+
 def _generate_event_id() -> str:
     """Generate a unique event ID."""
     return f"evt_{uuid.uuid4().hex[:12]}"
@@ -39,6 +40,7 @@ def _generate_directive_id() -> str:
 # -----------------------------------------------------------------------------
 # Event Emission
 # -----------------------------------------------------------------------------
+
 
 def emit_event(
     event_type: EventType,
@@ -99,6 +101,7 @@ def _append_event_to_log(event: AgentEventV1, log_path: Path) -> None:
 # JSONL Event Writer
 # -----------------------------------------------------------------------------
 
+
 class JsonlEventWriter:
     """Append-only JSONL writer for AgentEventV1 events.
 
@@ -126,6 +129,7 @@ class JsonlEventWriter:
 # -----------------------------------------------------------------------------
 # Convenience Emitters
 # -----------------------------------------------------------------------------
+
 
 def emit_analysis_started(
     component: str,
@@ -299,6 +303,7 @@ def emit_attention_dismissed(
 # -----------------------------------------------------------------------------
 # Attention Directive Helpers
 # -----------------------------------------------------------------------------
+
 
 def create_wolf_tone_directive(
     freq_hz: float,

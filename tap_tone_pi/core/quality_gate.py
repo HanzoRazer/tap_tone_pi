@@ -3,6 +3,7 @@
 Applies quality policy rules to analysis results and returns a verdict.
 This is the enforcement layer — policy is defined in quality_policy.py.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -59,38 +60,48 @@ def check_quality(
 
     # Q001: Clipping
     if analysis.clipped:
-        triggered.append(TriggeredRule(
-            rule=Q001_CLIPPED,
-            message=Q001_CLIPPED.message,
-        ))
+        triggered.append(
+            TriggeredRule(
+                rule=Q001_CLIPPED,
+                message=Q001_CLIPPED.message,
+            )
+        )
 
     # Q002: Silent (no signal)
     if analysis.rms < thresholds.rms_silent:
-        triggered.append(TriggeredRule(
-            rule=Q002_SILENT,
-            message=Q002_SILENT.message,
-        ))
+        triggered.append(
+            TriggeredRule(
+                rule=Q002_SILENT,
+                message=Q002_SILENT.message,
+            )
+        )
 
     # Q003: No peaks / no dominant frequency
     if analysis.dominant_hz is None:
-        triggered.append(TriggeredRule(
-            rule=Q003_NO_PEAKS,
-            message=Q003_NO_PEAKS.message,
-        ))
+        triggered.append(
+            TriggeredRule(
+                rule=Q003_NO_PEAKS,
+                message=Q003_NO_PEAKS.message,
+            )
+        )
 
     # Q004: Low confidence
     if analysis.confidence < thresholds.confidence_fail:
-        triggered.append(TriggeredRule(
-            rule=Q004_LOW_CONFIDENCE,
-            message=Q004_LOW_CONFIDENCE.message,
-        ))
+        triggered.append(
+            TriggeredRule(
+                rule=Q004_LOW_CONFIDENCE,
+                message=Q004_LOW_CONFIDENCE.message,
+            )
+        )
 
     # Q005: Invalid sample rate
     if sample_rate not in thresholds.valid_sample_rates:
-        triggered.append(TriggeredRule(
-            rule=Q005_INVALID_SAMPLE_RATE,
-            message=Q005_INVALID_SAMPLE_RATE.message,
-        ))
+        triggered.append(
+            TriggeredRule(
+                rule=Q005_INVALID_SAMPLE_RATE,
+                message=Q005_INVALID_SAMPLE_RATE.message,
+            )
+        )
 
     # =========================================================================
     # SOFT RULES — Trigger = WARN (only if no FAIL)
@@ -98,32 +109,48 @@ def check_quality(
 
     # Q010: Quiet signal (but not silent)
     if analysis.rms >= thresholds.rms_silent and analysis.rms < thresholds.rms_quiet:
-        triggered.append(TriggeredRule(
-            rule=Q010_QUIET,
-            message=Q010_QUIET.message,
-        ))
+        triggered.append(
+            TriggeredRule(
+                rule=Q010_QUIET,
+                message=Q010_QUIET.message,
+            )
+        )
 
     # Q011: Near clipping
-    if peak_level is not None and peak_level > thresholds.peak_near_clipping and not analysis.clipped:
-        triggered.append(TriggeredRule(
-            rule=Q011_NEAR_CLIPPING,
-            message=Q011_NEAR_CLIPPING.message,
-        ))
+    if (
+        peak_level is not None
+        and peak_level > thresholds.peak_near_clipping
+        and not analysis.clipped
+    ):
+        triggered.append(
+            TriggeredRule(
+                rule=Q011_NEAR_CLIPPING,
+                message=Q011_NEAR_CLIPPING.message,
+            )
+        )
 
     # Q012: Marginal confidence (but above fail threshold)
-    if thresholds.confidence_fail <= analysis.confidence < thresholds.confidence_marginal:
-        triggered.append(TriggeredRule(
-            rule=Q012_MARGINAL_CONFIDENCE,
-            message=Q012_MARGINAL_CONFIDENCE.message,
-        ))
+    if (
+        thresholds.confidence_fail
+        <= analysis.confidence
+        < thresholds.confidence_marginal
+    ):
+        triggered.append(
+            TriggeredRule(
+                rule=Q012_MARGINAL_CONFIDENCE,
+                message=Q012_MARGINAL_CONFIDENCE.message,
+            )
+        )
 
     # Q013: Few peaks
     peak_count = len(analysis.peaks) if analysis.peaks else 0
     if 0 < peak_count < thresholds.min_peaks_expected:
-        triggered.append(TriggeredRule(
-            rule=Q013_FEW_PEAKS,
-            message=Q013_FEW_PEAKS.message.format(peak_count=peak_count),
-        ))
+        triggered.append(
+            TriggeredRule(
+                rule=Q013_FEW_PEAKS,
+                message=Q013_FEW_PEAKS.message.format(peak_count=peak_count),
+            )
+        )
 
     # =========================================================================
     # Determine final verdict

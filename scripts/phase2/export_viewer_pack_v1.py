@@ -88,7 +88,11 @@ def extract_session_metadata(session_dir: Path) -> Dict[str, Any]:
     if "tap_count" not in meta or meta["tap_count"] is None:
         points_dir = session_dir / "points"
         if points_dir.exists():
-            point_count = sum(1 for p in points_dir.iterdir() if p.is_dir() and p.name.startswith("point_"))
+            point_count = sum(
+                1
+                for p in points_dir.iterdir()
+                if p.is_dir() and p.name.startswith("point_")
+            )
             meta["tap_count"] = point_count
 
     # Try first capture_meta.json for sample rate if not in metadata.json
@@ -134,7 +138,10 @@ KIND_BY_RELPATH_RULES: List[Tuple[re.Pattern, str]] = [
     (re.compile(r"^spectra/points/.+/spectrum\.csv$", re.I), "spectrum_csv"),
     (re.compile(r"^spectra/points/.+/analysis\.json$", re.I), "analysis_peaks"),
     (re.compile(r"^coherence/.+\.json$", re.I), "coherence"),
-    (re.compile(r"^ods/.+\.json$", re.I), "transfer_function"),  # ODS = transfer_function
+    (
+        re.compile(r"^ods/.+\.json$", re.I),
+        "transfer_function",
+    ),  # ODS = transfer_function
     (re.compile(r"^wolf/.+candidates\.json$", re.I), "wolf_candidates"),
     (re.compile(r"^wolf/wsi_curve\.csv$", re.I), "wsi_curve"),
     (re.compile(r"^provenance/.+\.json$", re.I), "provenance"),
@@ -156,7 +163,12 @@ def sha256_bytes(b: bytes) -> str:
 
 
 def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def detect_kind(relpath: str) -> str:
@@ -199,38 +211,43 @@ def write_text(dst: Path, text: str) -> None:
 
 
 def build_readme(session_dir: Path) -> str:
-    return "\n".join([
-        "Tap Tone Viewer Pack v1",
-        "",
-        f"Source session: {session_dir.name}",
-        "Contents:",
-        "- audio/points/*.wav (2-ch: ch0 reference, ch1 roving)",
-        "- spectra/points/*/spectrum.csv (freq_hz,H_mag,coherence,phase_deg)",
-        "- spectra/points/*/analysis.json (summary/peaks metadata)",
-        "- meta/grid.json + meta/metadata.json",
-        "- ods/, wolf/, plots/ as available",
-        "",
-        "Viewer rule: dispatch by manifest.files[].kind",
-        ""
-    ])
+    return "\n".join(
+        [
+            "Tap Tone Viewer Pack v1",
+            "",
+            f"Source session: {session_dir.name}",
+            "Contents:",
+            "- audio/points/*.wav (2-ch: ch0 reference, ch1 roving)",
+            "- spectra/points/*/spectrum.csv (freq_hz,H_mag,coherence,phase_deg)",
+            "- spectra/points/*/analysis.json (summary/peaks metadata)",
+            "- meta/grid.json + meta/metadata.json",
+            "- ods/, wolf/, plots/ as available",
+            "",
+            "Viewer rule: dispatch by manifest.files[].kind",
+            "",
+        ]
+    )
 
 
 # -------------------------------------------------------------------------
 # Export helpers
 # -------------------------------------------------------------------------
 
+
 def _add_readme(pack_root: Path, session_dir: Path, files: List[FileEntry]) -> None:
     """Add README.txt to pack."""
     readme_text = build_readme(session_dir)
     readme_path = pack_root / "README.txt"
     write_text(readme_path, readme_text)
-    files.append(FileEntry(
-        relpath="README.txt",
-        sha256=sha256_file(readme_path),
-        bytes=readme_path.stat().st_size,
-        mime="text/plain",
-        kind="provenance",
-    ))
+    files.append(
+        FileEntry(
+            relpath="README.txt",
+            sha256=sha256_file(readme_path),
+            bytes=readme_path.stat().st_size,
+            mime="text/plain",
+            kind="provenance",
+        )
+    )
 
 
 def _add_session_meta(
@@ -263,13 +280,15 @@ def _add_session_meta(
         ambient_notes=extracted.get("ambient_notes"),
     )
     session_meta_path = write_session_meta(pack_root, session_meta)
-    files.append(FileEntry(
-        relpath="meta/session_meta.json",
-        sha256=sha256_file(session_meta_path),
-        bytes=session_meta_path.stat().st_size,
-        mime="application/json",
-        kind="session_meta",
-    ))
+    files.append(
+        FileEntry(
+            relpath="meta/session_meta.json",
+            sha256=sha256_file(session_meta_path),
+            bytes=session_meta_path.stat().st_size,
+            mime="application/json",
+            kind="session_meta",
+        )
+    )
 
 
 def _add_points(
@@ -345,6 +364,7 @@ def _add_timeline(session_dir: Path, add_file_fn) -> None:
     """Add session timeline (PR #17, fail-closed)."""
     try:
         from tap_tone_pi.core.session_timeline import export_session_timeline
+
         tl_path = export_session_timeline(session_dir)
         if tl_path is not None and tl_path.is_file():
             add_file_fn(tl_path, "meta/session_timeline_v1.json")
@@ -442,6 +462,7 @@ def _zip_pack(pack_root: Path, out_dir: Path, session_dir: Path) -> Path:
 # Main export function
 # -------------------------------------------------------------------------
 
+
 def export_viewer_pack(
     session_dir: Path,
     out_dir: Path,
@@ -483,7 +504,9 @@ def export_viewer_pack(
     # Build and write manifest
     manifest = _build_manifest(files, session_dir, point_ids)
     manifest_path = pack_root / "manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
+    )
 
     # Validate
     _validate_and_gate(pack_root, manifest_path)
@@ -501,7 +524,9 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    ap.add_argument("--session-dir", required=True, help="runs_phase2/session_*/ directory")
+    ap.add_argument(
+        "--session-dir", required=True, help="runs_phase2/session_*/ directory"
+    )
     ap.add_argument("--out", required=True, help="output directory for pack or zip")
     ap.add_argument("--zip", action="store_true", help="emit a .zip bundle")
     args = ap.parse_args()

@@ -1,10 +1,11 @@
 """Tests for pre-export viewer_pack_v1 validator."""
+
 from __future__ import annotations
 import json
 from pathlib import Path
 import pytest
 
-from tap_tone.validate.viewer_pack_v1 import validate_pack, ValidationReport
+from tap_tone.validate.viewer_pack_v1 import validate_pack
 
 
 @pytest.fixture
@@ -178,7 +179,9 @@ def test_peak_with_tolerance_passes(valid_pack: Path):
     # With 0.5 Hz tolerance, this should pass
     report = validate_pack(valid_pack, peak_tolerance_hz=0.5)
     # Should not have P-003 error for this peak
-    p003_errors = [e for e in report.errors if e["rule"] == "P-003" and "100.3" in e["message"]]
+    p003_errors = [
+        e for e in report.errors if e["rule"] == "P-003" and "100.3" in e["message"]
+    ]
     assert len(p003_errors) == 0
 
 
@@ -232,7 +235,9 @@ def test_wsi_missing_column_fails(valid_pack: Path):
     (wolf_dir / "wsi_curve.csv").write_text(wsi_csv, encoding="utf-8")
 
     report = validate_pack(valid_pack)
-    assert any(e["rule"] == "W-001" and "admissible" in e["message"] for e in report.errors)
+    assert any(
+        e["rule"] == "W-001" and "admissible" in e["message"] for e in report.errors
+    )
 
 
 def test_wsi_invalid_admissible_fails(valid_pack: Path):
@@ -266,6 +271,7 @@ def test_report_to_dict(valid_pack: Path):
 # T-001: Session Timeline validation
 # ------------------------------------------------------------------
 
+
 def _write_valid_timeline(pack: Path) -> None:
     """Write a minimally valid session_timeline_v1.json."""
     meta = pack / "meta"
@@ -297,7 +303,8 @@ def _write_valid_timeline(pack: Path) -> None:
         "latest_policy_trace": None,
     }
     (meta / "session_timeline_v1.json").write_text(
-        json.dumps(payload), encoding="utf-8",
+        json.dumps(payload),
+        encoding="utf-8",
     )
 
 
@@ -339,7 +346,8 @@ def test_timeline_not_json_object_fails(valid_pack: Path):
     meta = valid_pack / "meta"
     meta.mkdir(parents=True, exist_ok=True)
     (meta / "session_timeline_v1.json").write_text(
-        '"just a string"', encoding="utf-8",
+        '"just a string"',
+        encoding="utf-8",
     )
 
     report = validate_pack(valid_pack)
@@ -352,7 +360,8 @@ def test_timeline_invalid_json_fails(valid_pack: Path):
     meta = valid_pack / "meta"
     meta.mkdir(parents=True, exist_ok=True)
     (meta / "session_timeline_v1.json").write_text(
-        "{broken json", encoding="utf-8",
+        "{broken json",
+        encoding="utf-8",
     )
 
     report = validate_pack(valid_pack)
@@ -366,6 +375,7 @@ def test_missing_timeline_schema_is_error_in_ci(valid_pack: Path, monkeypatch):
     monkeypatch.setenv("CI", "true")
 
     import tap_tone.validate.viewer_pack_v1 as vp
+
     monkeypatch.setattr(vp, "_load_contract_schema", lambda _p: None)
 
     report = vp.validate_pack(valid_pack)
@@ -381,9 +391,9 @@ def test_ci_requires_timeline_valid_when_present(valid_pack: Path, monkeypatch):
     # Valid timeline + schema available → should pass with timeline_valid==1
     report = validate_pack(valid_pack)
     # If schema is loadable, timeline_valid should be 1 and T-002 should not fire
-    schema_missing = any(
-        w["rule"] == "T-000" for w in report.warnings
-    ) or any(e["rule"] == "T-000" for e in report.errors)
+    schema_missing = any(w["rule"] == "T-000" for w in report.warnings) or any(
+        e["rule"] == "T-000" for e in report.errors
+    )
     if not schema_missing:
         assert report.stats.get("timeline_valid") == 1
         assert not any(e["rule"] == "T-002" for e in report.errors)
@@ -401,9 +411,9 @@ def test_ci_fires_t002_when_timeline_invalid(valid_pack: Path, monkeypatch):
     p.write_text(json.dumps(doc), encoding="utf-8")
 
     report = validate_pack(valid_pack)
-    schema_missing = any(
-        w["rule"] == "T-000" for w in report.warnings
-    ) or any(e["rule"] == "T-000" for e in report.errors)
+    schema_missing = any(w["rule"] == "T-000" for w in report.warnings) or any(
+        e["rule"] == "T-000" for e in report.errors
+    )
     if not schema_missing:
         assert not report.passed
         assert any(e["rule"] == "T-001" for e in report.errors)
