@@ -2,12 +2,120 @@
 
 This repo is an **instrumentation toolchain**. The primary success criteria are:
 - measurement defensibility (evidence preserved)
-- deterministic derived results (same input → same output)
+- deterministic derived results (same input -> same output)
 - clear boundaries (no interpretive claims baked into the tool)
 
 Please read:
 - `docs/MEASUREMENT_BOUNDARY.md`
-- `docs/ADR-0001-measurement-scope.md` … ADRs relevant to your area
+- `docs/ADR-0001-measurement-scope.md` and other ADRs relevant to your area
+
+---
+
+## Table of Contents
+
+- [Development Setup](#development-setup)
+- [Code Style](#code-style)
+- [Testing](#testing)
+- [Branching](#branching)
+- [Pull Requests](#pull-requests)
+- [Architecture Guidelines](#architecture-guidelines)
+- [Measurement-Only Rule](#measurement-only-rule)
+
+---
+
+## Development Setup
+
+### Prerequisites
+
+- Python 3.11 or higher
+- Git
+- A microphone (for testing audio capture)
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/HanzoRazer/tap_tone_pi.git
+   cd tap_tone_pi
+   ```
+
+2. Create a virtual environment:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scriptsctivate
+   ```
+
+3. Install in development mode:
+   ```bash
+   pip install -e ".[dev]"
+   ```
+
+4. Verify installation:
+   ```bash
+   ttp --help
+   python -m pytest tests/ -v --tb=short
+   ```
+
+---
+
+## Code Style
+
+### Formatting and Linting
+
+We use Ruff for formatting and linting:
+
+```bash
+# Check formatting
+ruff format --check .
+
+# Format code
+ruff format .
+
+# Run linter
+ruff check .
+
+# Auto-fix linting issues
+ruff check --fix .
+```
+
+### Type Hints
+
+All public functions should have type hints.
+
+### Docstrings
+
+Use Google-style docstrings with Args, Returns, and Raises sections.
+
+### General Principles
+
+- prefer explicit dataclasses/models for run artifacts
+- keep "evidence writing" separate from "derived writing"
+- avoid hidden state, avoid silent fallbacks
+- deterministic processing: document any randomness (and seed it)
+
+---
+
+## Testing
+
+### Running Tests
+
+```bash
+# Run all tests
+python -m pytest tests/ -v
+
+# Run specific test file
+python -m pytest tests/test_core_errors.py -v
+
+# Run with coverage
+python -m pytest tests/ --cov=tap_tone_pi --cov-report=html
+```
+
+### Writing Tests
+
+1. Create test files in `tests/` with names starting with `test_`
+2. Use pytest fixtures for common setup
+3. Mock external dependencies (sounddevice, file I/O)
+4. Test both success and failure paths
 
 ---
 
@@ -20,25 +128,50 @@ Suggested branches:
 
 ---
 
-## Pull requests
+## Pull Requests
 
 PRs should include:
 - purpose + scope
 - test/validation steps run
 - any output shape changes called out explicitly
 
-### Required checks (project intent)
-If you change Phase 2 code (`scripts/phase2*`):
+### Commit Messages
+
+Use conventional commit format: `type(scope): short description`
+
+Types: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `chore`
+
+### Required Checks
+
+If you change Phase 2 code:
 - update docs if behavior/CLI/output changed
 - update schemas under `contracts/` if JSON output shapes changed
 
-If you add new outputs:
-- add a schema (or extend existing)
-- add a validation step (script or CI gate)
+---
+
+## Architecture Guidelines
+
+### Error Handling
+
+Use the custom exception hierarchy in `tap_tone_pi.core.errors`:
+- DeviceError, DeviceNotFoundError, DeviceOpenError
+- CaptureError, CaptureTimeoutError
+- ValidationError, AnalysisError, QualityError
+
+Include helpful suggestions in error messages.
+
+### Lazy Imports
+
+Heavy dependencies (numpy, sounddevice) should be imported inside functions,
+not at module level, to improve CLI startup time.
+
+### Validation Early
+
+Validate inputs at function entry before doing work.
 
 ---
 
-## "Measurement-only" rule
+## Measurement-Only Rule
 
 This repo must not:
 - assert tone quality labels
@@ -55,33 +188,10 @@ explicitly marked as advisory with provenance and uncertainty.
 
 ---
 
-## How to validate locally
+## Additional Resources
 
-Minimum expectations before PR:
-1) CLI help runs:
-```bash
-python scripts/phase2_slice.py --help
-```
+- [API Documentation](docs/API.md) - API reference
+- [Quick Start Guide](docs/QUICK_START.md) - Getting started
+- [Measurement Boundary](docs/MEASUREMENT_BOUNDARY.md) - Scope and limitations
 
-2) A Phase 2 analyze pass on an existing CAPDIR (if available):
-
-```bash
-python scripts/phase2_slice.py analyze --capdir <CAPDIR> --freqs 100,150,185,220,280
-```
-
-3) Schema validation (when schemas exist):
-
-* validate `grid.json`, `metadata.json`, `capture_meta.json`, `derived/*.json`
-
-(If a validation script exists, use it. Otherwise, ensure outputs match the contracts.)
-
----
-
-## Code style
-
-Keep it simple:
-
-* prefer explicit dataclasses/models for run artifacts
-* keep "evidence writing" separate from "derived writing"
-* avoid hidden state, avoid silent fallbacks
-* deterministic processing: document any randomness (and seed it)
+Thank you for contributing!
