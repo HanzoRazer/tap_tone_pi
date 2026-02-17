@@ -133,6 +133,8 @@ def _generate_spectrum_csv(audio_path: Path, analysis_path: Path, output_path: P
 
         # FFT
         n = len(audio)
+        if n == 0 or sr == 0:
+            return False  # Can't compute spectrum for empty/invalid audio
         freqs = rfftfreq(n, 1.0 / sr)
         spectrum = np.abs(rfft(audio)) / n
 

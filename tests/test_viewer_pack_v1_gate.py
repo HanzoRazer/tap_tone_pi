@@ -69,12 +69,20 @@ def temp_output_dir() -> Generator[Path, None, None]:
 # Helpers
 # ---------------------------------------------------------------------------
 
+def _get_subprocess_env() -> dict:
+    """Get environment with PYTHONPATH set to repo root."""
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(REPO_ROOT)
+    return env
+
+
 def run_validator(pack_path: Path) -> subprocess.CompletedProcess:
     """Run the validator CLI on a pack (dir or zip)."""
     return subprocess.run(
         [sys.executable, str(VALIDATOR_CLI), "--pack", str(pack_path)],
         capture_output=True,
         text=True,
+        env=_get_subprocess_env(),
     )
 
 
@@ -89,6 +97,7 @@ def run_exporter(session_dir: Path, output_dir: Path) -> subprocess.CompletedPro
         ],
         capture_output=True,
         text=True,
+        env=_get_subprocess_env(),
     )
 
 

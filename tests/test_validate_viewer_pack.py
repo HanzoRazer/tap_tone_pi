@@ -6,26 +6,21 @@ Runs validator against both golden sessions; fails fast if validation breaks.
 """
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
-# ---------------------------------------------------------------------------
-# Preflight: these tests shell out to scripts that import tap_tone_pi modules.
-# Require editable install (pip install -e .) for subprocess imports to work.
-# ---------------------------------------------------------------------------
-try:
-    import tap_tone_pi  # noqa: F401
-except ImportError:
-    pytest.skip(
-        "Editable install required for viewer pack validation tests. "
-        "Run: pip install -e .",
-        allow_module_level=True,
-    )
-
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def _get_subprocess_env() -> dict:
+    """Get environment with PYTHONPATH set to repo root."""
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(ROOT)
+    return env
 SESSIONS_DIR = ROOT / "runs_phase2"
 VALIDATOR = ROOT / "scripts" / "phase2" / "validate_viewer_pack_v1.py"
 EXPORTER = ROOT / "scripts" / "phase2" / "export_viewer_pack_v1.py"
@@ -56,6 +51,7 @@ def exported_packs(tmp_path_factory) -> dict[str, Path]:
             [sys.executable, str(EXPORTER), "--session-dir", str(session_dir), "--out", str(out_dir)],
             capture_output=True,
             text=True,
+            env=_get_subprocess_env(),
         )
         if result.returncode != 0:
             pytest.fail(f"Export failed for {session_dir.name}:\n{result.stderr}")
@@ -86,6 +82,7 @@ class TestValidatorCLI:
             [sys.executable, str(VALIDATOR), "--pack", str(pack_dir)],
             capture_output=True,
             text=True,
+            env=_get_subprocess_env(),
         )
         assert result.returncode == 0, f"Validator failed:\n{result.stderr}\n{result.stdout}"
         assert "OK" in result.stdout
@@ -106,6 +103,7 @@ class TestValidatorCLI:
             [sys.executable, str(EXPORTER), "--session-dir", str(session_dir), "--out", str(zip_out), "--zip"],
             capture_output=True,
             text=True,
+            env=_get_subprocess_env(),
         )
         if result.returncode != 0:
             pytest.fail(f"Zip export failed:\n{result.stderr}")
@@ -118,6 +116,7 @@ class TestValidatorCLI:
             [sys.executable, str(VALIDATOR), "--pack", str(zips[0])],
             capture_output=True,
             text=True,
+            env=_get_subprocess_env(),
         )
         assert result.returncode == 0, f"Validator failed on zip:\n{result.stderr}\n{result.stdout}"
         assert "OK" in result.stdout
@@ -135,6 +134,7 @@ class TestValidatorRejectsCorruption:
             [sys.executable, str(VALIDATOR), "--pack", str(empty_dir)],
             capture_output=True,
             text=True,
+            env=_get_subprocess_env(),
         )
         assert result.returncode != 0
         assert "FAIL" in result.stderr
@@ -162,6 +162,7 @@ class TestValidatorRejectsCorruption:
             [sys.executable, str(VALIDATOR), "--pack", str(dst)],
             capture_output=True,
             text=True,
+            env=_get_subprocess_env(),
         )
         assert result.returncode == 2
         assert "schema_version" in result.stderr
@@ -187,6 +188,7 @@ class TestValidatorRejectsCorruption:
             [sys.executable, str(VALIDATOR), "--pack", str(dst)],
             capture_output=True,
             text=True,
+            env=_get_subprocess_env(),
         )
         assert result.returncode == 2
         assert "unexpected" in result.stderr.lower()
@@ -211,6 +213,7 @@ class TestValidatorRejectsCorruption:
             [sys.executable, str(VALIDATOR), "--pack", str(dst)],
             capture_output=True,
             text=True,
+            env=_get_subprocess_env(),
         )
         assert result.returncode == 2
         assert "sha256 mismatch" in result.stderr or "FAIL" in result.stderr
