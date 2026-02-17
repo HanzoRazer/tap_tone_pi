@@ -158,16 +158,23 @@ These issues affect edge cases, reduce accuracy, or create maintenance burden.
 
 ---
 
-### M4. Hardcoded 5 Hz Tolerance in Pattern Matching
+### M4. Hardcoded 5 Hz Tolerance in Pattern Matching ✅
 
-**File:** `tap_tone_pi/chladni/index_patterns.py` line 24
+**File:** `tap_tone_pi/chladni/policy.py` (was index_patterns.py line 24)
 
 **Problem:** Fixed 5 Hz tolerance for frequency matching is inappropriate across the spectrum:
 - At 50 Hz: 5 Hz = 10% = too loose
 - At 500 Hz: 5 Hz = 1% = reasonable
 - At 5000 Hz: 5 Hz = 0.1% = too tight
 
-**Fix:** Use relative tolerance (e.g., 2% of center frequency) or semitone-based matching.
+**Fix:** Implemented frequency-relative tolerance with configurable modes:
+- `ToleranceMode.RELATIVE`: tolerance = freq × pct (default 2%)
+- `ToleranceMode.SEMITONE`: tolerance = freq × (2^(cents/1200) - 1)
+- `ToleranceMode.FIXED`: legacy absolute Hz mode
+
+Environment variables: `CHLADNI_TOLERANCE_MODE`, `CHLADNI_TOLERANCE_PCT`, `CHLADNI_TOLERANCE_CENTS`
+
+**See:** `tap_tone_pi/chladni/policy.py:ToleranceConfig.compute_tolerance_hz()`
 
 ---
 
@@ -187,16 +194,27 @@ These issues affect edge cases, reduce accuracy, or create maintenance burden.
 
 ---
 
-### M7. Arbitrary Comparison Threshold
+### M7. Arbitrary Comparison Threshold ✅
 
-**File:** `tap_tone_pi/core/session_diff.py` line 50
+**File:** `tap_tone_pi/core/session_diff.py` (was line 50, now `SignificanceConfig`)
 
-**Problem:** Hardcoded threshold (e.g., 5 Hz) for "significant difference" without:
+**Problem:** Hardcoded threshold (e.g., 1 Hz) for "significant difference" without:
 - Scaling by frequency
 - Accounting for measurement uncertainty
 - User configurability
 
-**Fix:** Use uncertainty-based thresholds: significant if |Δf| > 2×√(u₁² + u₂²)
+**Fix:** Implemented uncertainty-based significance testing following GUM principles:
+```
+Significant if: |Δf| > k × √(u_a² + u_b²)
+where k = coverage factor (default 2 for ~95% confidence)
+```
+
+Fallback hierarchy:
+1. If uncertainties available: use combined uncertainty
+2. Otherwise: relative threshold (default 0.5% of mean frequency)
+3. Minimum: 0.5 Hz (FFT resolution floor)
+
+**See:** `tap_tone_pi/core/session_diff.py:SignificanceConfig.is_significant()`
 
 ---
 
@@ -289,11 +307,11 @@ These issues affect code quality, documentation, or non-critical paths.
 | P1 | M1 | Linear fit validation | 1 hour | ✅ Complete |
 | P1 | M2 | Percentile bounds | 30 min | ✅ Complete |
 | P1 | M3 | Auto-trigger settling | 1 hour | ✅ Complete |
-| P1 | M4 | Relative freq tolerance | 30 min | 🔴 Not started |
-| P1 | M7 | Uncertainty-based diff | 1 hour | 🔴 Not started |
+| P1 | M4 | Relative freq tolerance | 30 min | ✅ Complete |
+| P1 | M7 | Uncertainty-based diff | 1 hour | ✅ Complete |
 | P2 | All | Minor issues | 4 hours total | 🔴 Not started |
 
-**Completed: 2026-02-17** — All 4 CRITICAL and 3 MODERATE fixes implemented. 1199 tests passing.
+**Completed: 2026-02-17** — All 4 CRITICAL and 5 MODERATE fixes implemented. 1201 tests passing.
 
 ---
 

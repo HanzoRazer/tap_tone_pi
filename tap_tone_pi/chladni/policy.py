@@ -1,5 +1,8 @@
 """Chladni frequency mismatch policy — tolerance checks and enrichment.
 
+Canonical location: tap_tone_pi.chladni.policy
+(Migrated from: modes/chladni/policy.py)
+
 Frequency Mismatch Policy (G.2):
   - Warn + keep if delta_hz > 0
   - FAIL if delta_hz > computed tolerance
@@ -31,7 +34,7 @@ import math
 import os
 from dataclasses import dataclass
 from enum import Enum
-from typing import Literal
+from typing import Any
 
 
 class ToleranceMode(str, Enum):
@@ -89,7 +92,7 @@ class ToleranceConfig:
         else:  # FIXED mode (legacy)
             return self.fixed_hz
 
-    def tolerance_info(self, freq_hz: float) -> dict:
+    def tolerance_info(self, freq_hz: float) -> dict[str, Any]:
         """Return tolerance details for debugging/logging."""
         tol_hz = self.compute_tolerance_hz(freq_hz)
         tol_pct = (tol_hz / freq_hz * 100.0) if freq_hz > 0 else 0.0
@@ -258,3 +261,14 @@ def finalize_run(
 def compute_tolerance_hz(freq_hz: float, config: ToleranceConfig | None = None) -> float:
     """Compute tolerance in Hz for a given frequency using global config."""
     return (config or TOLERANCE_CONFIG).compute_tolerance_hz(freq_hz)
+
+
+__all__ = [
+    "ToleranceMode",
+    "ToleranceConfig",
+    "TOLERANCE_CONFIG",
+    "CHLADNI_FREQ_TOLERANCE_HZ",
+    "attach_pattern_record",
+    "finalize_run",
+    "compute_tolerance_hz",
+]
