@@ -4,6 +4,39 @@ This module provides the primary analyze_tap() function for extracting
 frequency peaks from impulse response audio.
 
     from tap_tone_pi.core.analysis import analyze_tap, Peak, AnalysisResult
+
+Design Decisions (m2, m3 audit fixes):
+
+Window Function (Hanning) - m2:
+    We use the Hanning (Hann) window for FFT analysis. This choice balances:
+    - Frequency resolution: Good main lobe width (4 bins at -3dB)
+    - Spectral leakage: Moderate sidelobe suppression (-31 dB first sidelobe)
+    - Amplitude accuracy: Less scalloping loss than Blackman (~1.4 dB vs ~1.1 dB)
+
+    Trade-offs vs alternatives:
+    - Blackman: Better sidelobe suppression (-58 dB) but wider main lobe (6 bins).
+      Use for: closely-spaced modes where leakage is a concern.
+    - Hamming: Slightly narrower main lobe but worse first sidelobe (-43 dB).
+      Use for: applications where frequency resolution is critical.
+    - Rectangular (no window): Best frequency resolution but worst leakage.
+      Use for: transient analysis where time resolution matters.
+
+    For tap tone modal analysis, Hanning provides the best compromise between
+    resolving closely-spaced resonances and rejecting broadband noise leakage.
+
+Filter Order (Butterworth order=4) - m3:
+    The highpass filter uses order=4 Butterworth for DC/rumble removal:
+    - Rolloff: 24 dB/octave (80 dB/decade) - sufficient attenuation below 20 Hz
+    - Phase: Minimally nonlinear phase via filtfilt (zero-phase filtering)
+    - Group delay: Acceptable for impulsive signals (~2-3ms at cutoff)
+
+    Higher orders (6, 8) would improve stopband rejection but:
+    - Increase computational cost
+    - Worsen transient response (overshoot, ringing)
+    - More phase distortion before filtfilt correction
+
+    For modal analysis of tonewoods, order=4 provides adequate rumble rejection
+    while preserving the attack transient needed for accurate frequency estimation.
 """
 
 from __future__ import annotations
@@ -336,7 +369,7 @@ def analyze_tap(
     x = audio.astype(np.float32)
 
     # Health metrics
-    clipped = bool(np.any(np.abs(x) >= 0.999))
+    clipped = bool(np.any(np.abs(x) >= 0.995))  # m6 fix: commercial standard
     rms = float(np.sqrt(np.mean(x * x)))
 
     # DC removal + high-pass

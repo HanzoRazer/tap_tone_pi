@@ -27,6 +27,24 @@ def _utc_now() -> str:
         .replace("+00:00", "Z")
     )
 
+def _row_to_letters(row: int) -> str:
+    """Convert row index to spreadsheet-style letter ID.
+
+    m4 Audit Fix: Grid ID breaks at 26 rows.
+    Generates Excel-style column letters: A-Z, AA-AZ, BA-BZ, etc.
+
+    Args:
+        row: Zero-based row index
+
+    Returns:
+        Letter ID (A, B, ... Z, AA, AB, ... AZ, BA, ...)
+    """
+    result = []
+    n = row + 1
+    while n > 0:
+        n, remainder = divmod(n - 1, 26)
+        result.append(chr(65 + remainder))
+    return "".join(reversed(result))
 
 class PointStatus(str, Enum):
     """Status of a measurement point."""
@@ -176,7 +194,8 @@ class Grid:
         points = []
         for row in range(rows):
             for col in range(cols):
-                point_id = f"{chr(65 + row)}{col + 1}"  # A1, A2, B1, B2, etc.
+                row_letter = _row_to_letters(row)  # m4 fix: extended letter IDs
+                point_id = f"{row_letter}{col + 1}"  # A1, A2, ..., AA1, etc.
                 points.append(
                     GridPoint(
                         id=point_id,

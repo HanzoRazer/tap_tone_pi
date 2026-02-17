@@ -336,9 +336,15 @@ These issues affect code quality, documentation, or non-critical paths.
 | P1 | M6 | Sample rate consistency | 1 hour | ✅ Complete |
 | P1 | M7 | Uncertainty-based diff | 1 hour | ✅ Complete |
 | P1 | M8 | Float comparison tolerance | 30 min | ✅ Complete |
-| P2 | All | Minor issues | 4 hours total | 🔴 Not started |
+| P2 | m1 | Centralize config constants | 30 min | ✅ Complete |
+| P2 | m2 | Document window function | 15 min | ✅ Complete |
+| P2 | m3 | Document filter order | 15 min | ✅ Complete |
+| P2 | m4 | Grid ID extended rows | 30 min | ✅ Complete |
+| P2 | m5 | Retry decorator tests | 30 min | ✅ Complete |
+| P2 | m6 | Clipping threshold fix | 15 min | ✅ Complete |
+| P2 | m7 | Type hints (partial) | ongoing | 🟡 In progress |
 
-**Completed: 2026-02-17** — All 4 CRITICAL and 8 MODERATE fixes implemented. 1402 tests passing.
+**Completed: 2026-02-17** — All 4 CRITICAL, 8 MODERATE, and 6 of 7 MINOR fixes implemented. 1423 tests passing.
 
 ---
 
