@@ -11,6 +11,16 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from tap_tone_pi.core.errors import (
+    DeviceError,
+    DeviceNotFoundError,
+    DeviceOpenError,
+    CaptureError,
+    ValidationError,
+    handle_device_error,
+    with_retry,
+)
+
 if TYPE_CHECKING:
     pass
 
@@ -33,10 +43,20 @@ def list_devices() -> list[dict]:
         - max_input_channels: Number of input channels
         - max_output_channels: Number of output channels
         - default_samplerate: Default sample rate
+
+    Raises:
+        DeviceError: If unable to query audio devices
     """
     import sounddevice as sd
 
-    devices = sd.query_devices()
+    try:
+        devices = sd.query_devices()
+    except Exception as e:
+        raise DeviceError(
+            f"Failed to query audio devices: {e}",
+            suggestion="Check that audio drivers are installed correctly",
+        ) from e
+
     out: list[dict] = []
     for i, d in enumerate(devices):
         out.append(
@@ -49,6 +69,39 @@ def list_devices() -> list[dict]:
             }
         )
     return out
+
+
+def _validate_device(device: int | None) -> None:
+    """Validate that device exists and has input channels.
+
+    Args:
+        device: Device index to validate (None means system default)
+
+    Raises:
+        DeviceNotFoundError: If device doesn't exist
+        DeviceOpenError: If device has no input channels
+    """
+    if device is None:
+        return  # Use system default
+
+    devices = list_devices()
+    device_info = None
+    for d in devices:
+        if d["index"] == device:
+            device_info = d
+            break
+
+    if device_info is None:
+        raise DeviceNotFoundError(
+            f"Device index {device} not found",
+            suggestion="Run 'ttp devices' to see available devices",
+        )
+
+    if device_info.get("max_input_channels", 0) <= 0:
+        raise DeviceOpenError(
+            f"Device '{device_info.get('name', device)}' has no input channels",
+            suggestion="Select a device with input capabilities (microphone)",
+        )
 
 
 def record_audio(
@@ -72,18 +125,34 @@ def record_audio(
         CaptureResult with audio data and sample rate
 
     Raises:
-        ValueError: If channels != 1 or seconds <= 0
+        ValidationError: If channels != 1 or seconds <= 0
+        DeviceNotFoundError: If specified device doesn't exist
+        DeviceOpenError: If device can't be opened
+        CaptureError: If recording fails
     """
     import sounddevice as sd
 
+    # Validate inputs
     if channels != 1:
-        raise ValueError("This implementation expects mono (channels=1).")
+        raise ValidationError(
+            "This implementation expects mono (channels=1).",
+            suggestion="Use channels=1 for tap tone analysis",
+        )
     if seconds <= 0:
-        raise ValueError("seconds must be > 0")
+        raise ValidationError(
+            f"Duration must be positive, got {seconds}",
+            suggestion="Typical recording duration is 2-3 seconds",
+        )
 
-    sd.default.samplerate = sample_rate
-    if device is not None:
-        sd.default.device = (device, None)
+    # Validate device before attempting to record
+    _validate_device(device)
+
+    try:
+        sd.default.samplerate = sample_rate
+        if device is not None:
+            sd.default.device = (device, None)
+    except Exception as e:
+        raise handle_device_error(e, device_id=device) from e
 
     n_samples = int(sample_rate * seconds)
 
@@ -109,16 +178,23 @@ def record_audio(
         countdown_thread.start()
 
     # Record float32 in [-1, 1]
-    audio = sd.rec(frames=n_samples, channels=channels, dtype="float32", blocking=True)
+    try:
+        audio = sd.rec(frames=n_samples, channels=channels, dtype="float32", blocking=True)
+    except Exception as e:
+        raise CaptureError(
+            f"Recording failed: {e}",
+            suggestion="Check microphone connection and permissions",
+        ) from e
+    finally:
+        # Clean up countdown display
+        if show_countdown and stop_countdown is not None:
+            import sys
+
+            stop_countdown.set()
+            sys.stdout.write("\rRecording... done!   \n")
+            sys.stdout.flush()
+
     audio = audio.reshape(-1)  # mono
-
-    # Clean up countdown display
-    if show_countdown and stop_countdown is not None:
-        import sys
-
-        stop_countdown.set()
-        sys.stdout.write("\rRecording... done!   \n")
-        sys.stdout.flush()
 
     # Replace NaNs (rare but possible)
     audio = np.nan_to_num(audio, nan=0.0)
@@ -137,7 +213,10 @@ def auto_detect_device() -> int | None:
     Returns:
         Device index or None for system default
     """
-    devices = list_devices()
+    try:
+        devices = list_devices()
+    except DeviceError:
+        return None  # Fall back to system default
 
     # Priority 1: USB devices (likely measurement microphones)
     for d in devices:
@@ -174,6 +253,12 @@ __all__ = [
     "list_devices",
     "record_audio",
     "auto_detect_device",
+    # Errors
+    "DeviceError",
+    "DeviceNotFoundError",
+    "DeviceOpenError",
+    "CaptureError",
+    "ValidationError",
     # Auto-trigger
     "TriggerState",
     "TriggerConfig",
