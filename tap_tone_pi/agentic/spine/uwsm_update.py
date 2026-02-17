@@ -158,20 +158,8 @@ def apply_uwsm_updates(
 # Evidence Extraction
 # ----------------------------
 
-def _extract_evidence(events: List[Any]) -> List[dict]:
-    """
-    Convert raw events into a list of evidence dicts:
-      {
-        "dimension": str,
-        "type": "explicit"|"behavioral"|"contradiction",
-        "value": <candidate value>,
-        "event_id": str,
-        "signal_strength": float
-      }
-    """
-    evidence: List[dict] = []
-
-    # --- Explicit: user feedback "too_much" ---
+def _extract_explicit_feedback(events: List[Any], evidence: List[dict]) -> None:
+    """Extract explicit user feedback evidence."""
     for e in events:
         if _get(e, "event_type") == "user_feedback":
             fb = _payload(e).get("feedback")
@@ -187,7 +175,9 @@ def _extract_evidence(events: List[Any]) -> List[dict]:
                     }
                 )
 
-    # --- Behavioral: idle_timeout => higher cognitive load sensitivity ---
+
+def _extract_idle_evidence(events: List[Any], evidence: List[dict]) -> None:
+    """Extract behavioral evidence from idle timeouts."""
     for e in events:
         if _get(e, "event_type") == "idle_timeout":
             idle_s = float(_payload(e).get("idle_seconds", 0) or 0)
@@ -203,7 +193,9 @@ def _extract_evidence(events: List[Any]) -> List[dict]:
                     }
                 )
 
-    # --- Behavioral: undo spike => cautious risk posture ---
+
+def _extract_undo_evidence(events: List[Any], evidence: List[dict]) -> None:
+    """Extract behavioral evidence from undo action spikes."""
     undo_events = [
         e for e in events if _get(e, "event_type") == "user_action" and _payload(e).get("action") == "undo"
     ]
@@ -219,8 +211,9 @@ def _extract_evidence(events: List[Any]) -> List[dict]:
             }
         )
 
-    # --- Behavioral: representation preference from view switching ---
-    # table_view => numeric; zoom/isolate => visual; open_explanation => narrative; many switches => mixed
+
+def _extract_representation_evidence(events: List[Any], evidence: List[dict]) -> None:
+    """Extract representation preference from view switching patterns."""
     rep_votes = {"visual": 0, "numeric": 0, "narrative": 0}
     view_switch_count = 0
 
@@ -230,7 +223,6 @@ def _extract_evidence(events: List[Any]) -> List[dict]:
         p = _payload(e)
         action = p.get("action")
         if action == "view_rendered":
-            # doesn't imply preference alone
             continue
         if action == "view_changed":
             view_switch_count += 1
@@ -244,7 +236,16 @@ def _extract_evidence(events: List[Any]) -> List[dict]:
         if action in ("open_explanation", "why_clicked"):
             rep_votes["narrative"] += 1
 
-    # If lots of switching, lean mixed
+    _emit_representation_evidence(events, evidence, rep_votes, view_switch_count)
+
+
+def _emit_representation_evidence(
+    events: List[Any],
+    evidence: List[dict],
+    rep_votes: dict,
+    view_switch_count: int,
+) -> None:
+    """Emit representation evidence based on votes and switching count."""
     if view_switch_count >= 3:
         evidence.append(
             {
@@ -257,7 +258,6 @@ def _extract_evidence(events: List[Any]) -> List[dict]:
             }
         )
     else:
-        # Pick highest vote if any
         best = max(rep_votes.items(), key=lambda kv: kv[1])[0]
         if rep_votes[best] > 0:
             evidence.append(
@@ -271,8 +271,9 @@ def _extract_evidence(events: List[Any]) -> List[dict]:
                 }
             )
 
-    # --- Exploration style: dabble vs iterative vs deep_focus (minimal heuristic) ---
-    # Many tool render/close events => dabble; repeated parameter_changed => iterative
+
+def _extract_exploration_evidence(events: List[Any], evidence: List[dict]) -> None:
+    """Extract exploration style from tool usage patterns."""
     tool_toggles = sum(1 for e in events if _get(e, "event_type") in ("tool_rendered", "tool_closed"))
     param_changes = sum(
         1
@@ -302,6 +303,27 @@ def _extract_evidence(events: List[Any]) -> List[dict]:
                 "rule_id": "UWSM_EXP_ITERATIVE_PARAM_CHANGES_v1",
             }
         )
+
+
+
+def _extract_evidence(events: List[Any]) -> List[dict]:
+    """
+    Convert raw events into a list of evidence dicts:
+      {
+        "dimension": str,
+        "type": "explicit"|"behavioral"|"contradiction",
+        "value": <candidate value>,
+        "event_id": str,
+        "signal_strength": float
+      }
+    """
+    evidence: List[dict] = []
+
+    _extract_explicit_feedback(events, evidence)
+    _extract_idle_evidence(events, evidence)
+    _extract_undo_evidence(events, evidence)
+    _extract_representation_evidence(events, evidence)
+    _extract_exploration_evidence(events, evidence)
 
     return evidence
 
