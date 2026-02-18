@@ -1,62 +1,54 @@
 """
 tap_tone_pi.design — Plate thickness design and coupled-system analysis.
 
-This module provides tools for determining optimal plate thickness when both
-top and back are acoustically active, using orthotropic plate theory and
-coupled oscillator models.
+This module provides tools for determining optimal plate thickness using
+orthotropic plate theory and coupled oscillator models.
 
 Core Concepts:
     Orthotropic Plate:
-        - E_L: Longitudinal (long-grain) modulus — dominates thickness selection
-        - E_C: Cross-grain modulus — controls anisotropy and bracing decisions
+        - E_L: Longitudinal (long-grain) modulus
+        - E_C: Cross-grain modulus
         - R_anis = E_L/E_C: Orthotropic ratio (typically 10-20 for tonewoods)
 
-    Modal Frequency Scaling:
-        - f ∝ h × √(E/ρ)  — thicker or stiffer = higher frequency
-        - Stiffness Index: SI = E × h³
+    Coupled Oscillator Models:
 
-    3-Oscillator Coupled Model:
-        - Top plate (mass + stiffness)
-        - Back plate (mass + stiffness)
-        - Air cavity (Helmholtz resonator)
-        - Solves eigenvalue problem: det(K - ω²M) = 0
+        2-Oscillator (rigid back):
+            - Top plate (mass + stiffness)
+            - Air cavity (Helmholtz resonator)
+            - Use when back stiffness >> top stiffness (laminate, archtop)
+            - Closed-form eigenvalue solution
 
-    Chladni-to-Box Mapping:
-        - Transfer coefficient γ = √(α/β)
-        - Maps free-plate Chladni frequencies to assembled-box modes
+        3-Oscillator (active back):
+            - Top plate + Back plate + Air cavity
+            - Use for traditional flat-top guitars
+            - Numerical eigenvalue solution
 
 Modules:
     thickness_calculator: Orthotropic plate solver + 3-oscillator model
-    calibration: Body style calibration tables (η, γ, α, β coefficients)
-
-Usage:
-    # Simple thickness calculation
-    python -m tap_tone_pi.design.thickness_calculator \\
-        --target-freq 86 --material mahogany --body jumbo
-
-    # Full 3-oscillator analysis
-    python -m tap_tone_pi.design.thickness_calculator \\
-        --mode coupled --body jumbo \\
-        --top-EL 12.5 --top-EC 0.8 --top-h 2.8 \\
-        --back-EL 10.2 --back-EC 0.65 --back-h 2.9
-
-References:
-    - Gore & Gilet, "Contemporary Acoustic Guitar Design and Build"
-    - Fletcher & Rossing, "The Physics of Musical Instruments"
-    - David Hurd, "Left-Brain Lutherie"
+    coupled_2osc: 2-oscillator model for rigid back designs
+    calibration: Body style calibration tables
 """
 
 from .thickness_calculator import (
-    # Core functions
+    plate_modal_frequency,
     thickness_for_target_frequency,
-    coupled_eigenfrequencies,
+    helmholtz_frequency,
     chladni_to_box_frequency,
-    # Result classes
+    box_to_chladni_frequency,
+    coupled_eigenfrequencies,
     PlateThicknessResult,
     CoupledSystemResult,
-    # Analysis functions
     analyze_plate,
     analyze_coupled_system,
+)
+
+from .coupled_2osc import (
+    coupled_2osc_eigenfrequencies,
+    back_activity_ratio,
+    minimum_back_thickness_for_rigid,
+    Coupled2OscResult,
+    analyze_coupled_2osc,
+    format_2osc_report,
 )
 
 from .calibration import (
@@ -70,9 +62,19 @@ from .calibration import (
 
 __all__ = [
     # Core functions
+    "plate_modal_frequency",
     "thickness_for_target_frequency",
-    "coupled_eigenfrequencies",
+    "helmholtz_frequency",
     "chladni_to_box_frequency",
+    "box_to_chladni_frequency",
+    "coupled_eigenfrequencies",
+    # 2-oscillator model
+    "coupled_2osc_eigenfrequencies",
+    "back_activity_ratio",
+    "minimum_back_thickness_for_rigid",
+    "Coupled2OscResult",
+    "analyze_coupled_2osc",
+    "format_2osc_report",
     # Result classes
     "PlateThicknessResult",
     "CoupledSystemResult",
