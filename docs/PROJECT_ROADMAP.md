@@ -1,6 +1,6 @@
 # Tap Tone Pi — Project Roadmap
 
-**Last Updated:** 2026-02-17
+**Last Updated:** 2026-02-18
 
 This document consolidates all development phases and tracks progress toward making Tap Tone Pi a professional-grade audio analyzer.
 
@@ -14,7 +14,9 @@ This document consolidates all development phases and tracks progress toward mak
 | Product Features (v2.1-v2.2) | ✅ Complete | Agent layer, GUI polish, auto-trigger, session browser |
 | Phase 1: CLI UX | ✅ Complete | Error handling, preflight, API docs |
 | Phase 2: Test Hardening | ✅ Complete | Unit tests, retry logic, validators |
-| **Phase 3: Analyzer Value** | ✅ Complete | Self-calibration, uncertainty, signal generator, rub & buzz |
+| **Codebase Audit 2026** | ✅ Complete | 4 CRITICAL, 8 MODERATE, 7 MINOR physics fixes |
+| **Advanced Physics Design** | ✅ Complete | Inverse solver, γ calibration, Rayleigh-Ritz |
+| **Phase 3: Analyzer Value** | 🔶 Partial | 3.6-3.8 complete; 3.1-3.5 pending |
 
 ---
 
@@ -148,7 +150,107 @@ This document consolidates all development phases and tracks progress toward mak
 
 ---
 
-## Completed: Phase 3 — Analyzer Product Improvements
+## Completed: Codebase Audit 2026 (2026-02-17)
+
+**Goal:** Fix physics calculation errors and numerical issues identified in production review
+
+**See:** [CODEBASE_AUDIT_2026.md](CODEBASE_AUDIT_2026.md) for full details
+
+### CRITICAL Fixes (4) — All Complete ✅
+
+| ID | Issue | Impact | Fix |
+|----|-------|--------|-----|
+| C1 | MOE missing Timoshenko shear | 8-15% overestimation | Added shear correction for L/h < 25 |
+| C2 | FFT confidence not physics-based | False confidence | SNR + coherence + spectral flatness |
+| C3 | No TF uncertainty propagation | No quality assessment | σ_H/|H| = √[(1-γ²)/(2nγ²)] |
+| C4 | Hardcoded epsilon (1e-18) | Numerical instability | Adaptive dtype-aware epsilon |
+
+### MODERATE Fixes (8) — All Complete ✅
+
+| ID | Issue | Fix |
+|----|-------|-----|
+| M1 | Linear fit no validation | Min 3 points, condition < 10⁴ |
+| M2 | Brittle percentile | Bounds [0.1, 99.9], fallback |
+| M3 | Auto-trigger no settling | 50ms settling time |
+| M4 | Hardcoded 5 Hz tolerance | Frequency-relative tolerance |
+| M5 | No Phase 1/2 cross-validation | Mode-linking function |
+| M6 | Sample rate not enforced | AudioContainer with validation |
+| M7 | Arbitrary diff threshold | GUM-compliant significance |
+| M8 | Float comparison tolerance | Domain-specific tolerances |
+
+### MINOR Fixes (7) — All Complete ✅
+
+| ID | Issue | Fix |
+|----|-------|-----|
+| m1 | Scattered constants | Centralized config |
+| m2 | Undocumented window | Docstring added |
+| m3 | Unjustified filter order | Documented 24 dB/octave |
+| m4 | Grid ID breaks at 26 | Extended AA, AB pattern |
+| m5 | Untested retry decorator | Full branch coverage |
+| m6 | Conservative clipping | 0.995 threshold |
+| m7 | Missing type hints | All public API annotated |
+
+### New Features from Audit
+
+| Feature | Description |
+|---------|-------------|
+| Gore-Style Stiffness Index | SI = E × h³, instrument presets, cross-validation |
+| QA/QC Lab Specification | 9-section GUM-compliant lab report |
+| Phase Cross-Validation | P1 ↔ P2 mode correlation |
+| AudioContainer | Immutable signal + sample_rate bundle |
+
+**Tests Added:** 88 new tests (Gore: 53, QA Lab: 35)
+
+---
+
+## Completed: Advanced Physics Design Module (2026-02-18)
+
+**Goal:** Physics-driven design tools for plate thickness optimization
+
+### Inverse Thickness Solver ✅
+
+Given target frequencies, solve for optimal plate thickness.
+
+| Component | Description |
+|-----------|-------------|
+|  enum | SIMPLE (closed-form) vs RAYLEIGH_RITZ (variational) |
+|  | Min/max bounds, discretization steps |
+|  | Single-target optimization |
+|  | Multi-target weighted optimization |
+|  | Material property container |
+|  | Joint material + thickness selection |
+
+**Note:** Rayleigh-Ritz with simply-supported BC gives ~3× lower frequencies than free plate formula (physically correct).
+
+### γ Calibration Tool ✅
+
+Derive transfer coefficient γ = f_box / f_free from measurements.
+
+| Component | Description |
+|-----------|-------------|
+|  | (f_free, f_box) pair with uncertainty |
+|  | Multi-mode per-specimen container |
+|  | Multi-specimen statistical engine |
+|  | Quick single-specimen calibration |
+|  | Fleet calibration |
+
+**Statistics:** Mean γ, std dev, 95% CI, per-mode and per-specimen breakdown
+
+### Previously Completed Physics Modules
+
+| Module | Description |
+|--------|-------------|
+| α/β formulation | Body/air coupling parameters |
+| Rayleigh-Ritz solver | Variational eigenvalue solver |
+| 2-oscillator coupled model | Plate + cavity coupling |
+| 3-oscillator coupled model | Top + back + air |
+| Calibration tables | Material property database |
+
+**Tests Added:** 53 new tests (inverse solver: 29, γ calibration: 24)
+
+---
+
+## In Progress: Phase 3 — Analyzer Product Improvements
 
 **Goal:** Close gaps with commercial analyzers to increase value proposition
 
@@ -168,17 +270,24 @@ Based on [ANALYZER_COMPARISON.md](ANALYZER_COMPARISON.md), these improvements ca
 
 **Value Add:** Moves from "uncalibrated" to "user-calibrated" — closes ~50% of accuracy gap
 
-### 3.2 Measurement Uncertainty Reporting — P0
+### 3.2 Measurement Uncertainty Reporting — P0 (🔶 Partial)
 **Gap:** Results show single values without confidence information
 **Solution:** Add uncertainty quantification to all measurements
 
 | Task | Status | Description |
 |------|--------|-------------|
+| TF uncertainty propagation | ✅ Complete | σ_H/|H| = √[(1-γ²)/(2nγ²)] — Audit C3 |
+| Physics-based confidence | ✅ Complete | SNR + coherence + spectral flatness — Audit C2 |
+| Adaptive numerical precision | ✅ Complete | dtype-aware epsilon — Audit C4 |
+| GUM-compliant diff comparison | ✅ Complete | |Δf| > k×√(u_a² + u_b²) — Audit M7 |
 | Statistics module | ⬜ Pending | Mean, std dev, confidence intervals |
 | Repeatability metrics | ⬜ Pending | Track measurement-to-measurement variation |
 | Uncertainty flags | ⬜ Pending | Flag high-uncertainty measurements |
 | JSON schema update | ⬜ Pending | Add uncertainty fields to analysis.json |
 | CLI display | ⬜ Pending | Show ±uncertainty in output |
+
+**Completed:** Core uncertainty propagation from Codebase Audit 2026 (C2, C3, C4, M7)
+**Remaining:** Statistics module, repeatability metrics, CLI integration
 
 **Value Add:** Professional credibility, identifies questionable measurements
 
@@ -336,7 +445,11 @@ For applications requiring these specifications, commercial analyzers remain app
 | GUI export | 11 | ✅ |
 | Moment detection | 8 | ✅ |
 | Rub & Buzz | 27 | ✅ |
-| **Total** | **988+** | ✅ |
+| **Codebase Audit fixes** | **88** | ✅ |
+| **Gore Stiffness + QA Lab** | **88** | ✅ |
+| **Inverse Solver** | **29** | ✅ |
+| **γ Calibration** | **24** | ✅ |
+| **Total** | **1573+** | ✅ |
 
 ---
 
@@ -347,3 +460,5 @@ For applications requiring these specifications, commercial analyzers remain app
 - [QUICK_START.md](QUICK_START.md) — Getting started guide
 - [MEASUREMENT_BOUNDARY.md](MEASUREMENT_BOUNDARY.md) — Scope and limitations
 - [CHANGELOG.md](../CHANGELOG.md) — Version history
+- [CODEBASE_AUDIT_2026.md](CODEBASE_AUDIT_2026.md) — Technical debt fixes (CRITICAL/MODERATE/MINOR)
+- [Critical Design Review_tap-tone-pi.md](../Critical%20Design%20Review_tap-tone-pi.md) — 9-category design review
