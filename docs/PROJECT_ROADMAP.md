@@ -329,11 +329,11 @@ Based on [ANALYZER_COMPARISON.md](ANALYZER_COMPARISON.md), these improvements ca
 | Mask regions | ✅ Complete | `limits/masks.py` — FrequencyMask, exclude regions from testing |
 | Pass/fail with margin | ✅ Complete | `limits/testing.py` — check_against_limits(), PASS/WARN/FAIL verdict |
 | Template library | ✅ Complete | `limits/presets.py` — tonewood_tap, speaker_response, noise_floor |
+| CLI integration | ✅ Complete | `cli/limits_integration.py` — `--limits`, `--limits-preset`, `--limits-fail` flags |
 | Limit editor | ⬜ Pending | Draw/import limit curves (GUI) |
-| CLI integration | ⬜ Pending | `--limits` flag for measurements |
 
-**Completed:** Core limit/mask testing engine with 36 unit tests passing
-**Remaining:** GUI editor, CLI integration
+**Completed:** Core limit/mask testing engine + CLI integration with 60 unit tests passing
+**Remaining:** GUI editor only
 
 ### 3.6 Application Notes — P2 ✅
 **Gap:** Users don't know how to apply the analyzer to their problems

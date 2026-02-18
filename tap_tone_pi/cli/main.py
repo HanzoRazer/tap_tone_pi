@@ -146,6 +146,11 @@ def cmd_record(args: argparse.Namespace) -> int:
         validate_sample_rate,
         validate_duration,
     )
+    from tap_tone_pi.cli.limits_integration import (
+        load_limits_config,
+        run_limit_test,
+        handle_limit_test_result,
+    )
     from tap_tone_pi.core.analysis import analyze_tap
     from tap_tone_pi.core.config import AnalysisConfig, CaptureConfig
     from tap_tone_pi.core.quality_gate import check_quality
@@ -252,6 +257,24 @@ def cmd_record(args: argparse.Namespace) -> int:
         )
         print(f"QC: {qc.verdict.value.upper()} rules={rules}")
     print(f"Wrote: {persisted.capture_dir}")
+
+    # Run limit test if limits specified
+    limits_config = load_limits_config(args)
+    if limits_config:
+        passed, output = run_limit_test(
+            res,
+            limits_config,
+            verbose=True,
+            as_json=getattr(args, "limits_json", False),
+        )
+        exit_code = handle_limit_test_result(
+            passed,
+            output,
+            fail_on_violation=getattr(args, "limits_fail", False),
+        )
+        if exit_code != 0:
+            return exit_code
+
     return 0
 
 
@@ -294,6 +317,11 @@ def cmd_live(args: argparse.Namespace) -> int:
 def cmd_quick(args: argparse.Namespace) -> int:
     """Zero-config quick capture: auto-detect device, capture, analyze, display."""
     from tap_tone_pi.capture import auto_detect_device, record_audio
+    from tap_tone_pi.cli.limits_integration import (
+        load_limits_config,
+        run_limit_test,
+        handle_limit_test_result,
+    )
     from tap_tone_pi.core.analysis import analyze_tap
     from tap_tone_pi.core.user_config import get_saved_device
 
@@ -355,6 +383,23 @@ def cmd_quick(args: argparse.Namespace) -> int:
             plt.show()
         except ImportError:
             print("(matplotlib not installed, skipping plot)")
+
+    # Run limit test if limits specified
+    limits_config = load_limits_config(args)
+    if limits_config:
+        passed, output = run_limit_test(
+            res,
+            limits_config,
+            verbose=True,
+            as_json=getattr(args, "limits_json", False),
+        )
+        exit_code = handle_limit_test_result(
+            passed,
+            output,
+            fail_on_violation=getattr(args, "limits_fail", False),
+        )
+        if exit_code != 0:
+            return exit_code
 
     return 0
 
@@ -548,6 +593,11 @@ def _handle_fail_verdict(
 
 def cmd_measure(args: argparse.Namespace) -> int:
     """Quality-gated measurement with operator loop."""
+    from tap_tone_pi.cli.limits_integration import (
+        load_limits_config,
+        run_limit_test,
+        handle_limit_test_result,
+    )
     from tap_tone_pi.core.user_config import (
         get_saved_device,
         load_config,
@@ -642,11 +692,44 @@ def cmd_measure(args: argparse.Namespace) -> int:
         _maybe_render_directive(args, session_dir)
 
         if result.verdict.verdict == Verdict.PASS:
-            return _handle_pass_verdict(loop, result)
+            exit_code = _handle_pass_verdict(loop, result)
+            # Run limit test if specified
+            limits_config = load_limits_config(args)
+            if limits_config and result.analysis:
+                passed, output = run_limit_test(
+                    result.analysis,
+                    limits_config,
+                    verbose=True,
+                    as_json=getattr(args, "limits_json", False),
+                )
+                limit_exit = handle_limit_test_result(
+                    passed,
+                    output,
+                    fail_on_violation=getattr(args, "limits_fail", False),
+                )
+                if limit_exit != 0:
+                    return limit_exit
+            return exit_code
 
         elif result.verdict.verdict == Verdict.WARN:
             accepted, exit_code = _handle_warn_verdict(loop, result)
             if accepted:
+                # Run limit test if specified
+                limits_config = load_limits_config(args)
+                if limits_config and result.analysis:
+                    passed, output = run_limit_test(
+                        result.analysis,
+                        limits_config,
+                        verbose=True,
+                        as_json=getattr(args, "limits_json", False),
+                    )
+                    limit_exit = handle_limit_test_result(
+                        passed,
+                        output,
+                        fail_on_violation=getattr(args, "limits_fail", False),
+                    )
+                    if limit_exit != 0:
+                        return limit_exit
                 return exit_code
             # else: continue to retry
 
@@ -1504,8 +1587,14 @@ uploads to ToolBox for analysis.
 
     # verify (Phase 3 P1)
     from tap_tone_pi.cli.verify import add_verify_subcommand
+    from tap_tone_pi.cli.limits_integration import add_limits_args
 
     add_verify_subcommand(sub)
+
+    # Add limits args to record, measure, quick commands
+    add_limits_args(p_rec)
+    add_limits_args(p_meas)
+    add_limits_args(p_quick)
 
     return p
 
