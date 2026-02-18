@@ -256,17 +256,18 @@ Derive transfer coefficient γ = f_box / f_free from measurements.
 
 Based on [ANALYZER_COMPARISON.md](ANALYZER_COMPARISON.md), these improvements can be implemented in software to significantly increase the analyzer's value.
 
-### 3.1 Self-Calibration Workflow — P0 (Highest Priority)
+### 3.1 Self-Calibration Workflow — P0 ✅ COMPLETED
 **Gap:** No way to verify or compensate for measurement chain accuracy
 **Solution:** Add loopback self-test and reference tone calibration
 
 | Task | Status | Description |
 |------|--------|-------------|
-| Loopback test module | ⬜ Pending | Output → input system response measurement |
-| Reference tone verification | ⬜ Pending | 1 kHz known amplitude verification |
-| Compensation curves | ⬜ Pending | Per-device calibration storage |
-| Calibration expiry | ⬜ Pending | Warn when calibration is stale |
-| CLI command | ⬜ Pending | `ttp calibrate` command |
+| Loopback test module | ✅ Complete | Output → input system response measurement (`calibration/loopback.py`) |
+| Reference tone verification | ✅ Complete | 1 kHz known amplitude verification (`calibration/reference_tone.py`) |
+| Compensation curves | ✅ Complete | Per-device calibration storage (`calibration/compensation.py`) |
+| Calibration expiry | ✅ Complete | 30-day expiry with VALID/STALE status (`calibration/storage.py`) |
+| CLI command | ✅ Complete | `ttp calibrate` command (`cli/calibrate.py`) |
+| Hardware loopback support | ✅ Complete | `play_and_record()` function (`capture/__init__.py`) |
 
 **Value Add:** Moves from "uncalibrated" to "user-calibrated" — closes ~50% of accuracy gap
 

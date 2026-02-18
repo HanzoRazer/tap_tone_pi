@@ -237,6 +237,118 @@ def auto_detect_device() -> int | None:
     return None
 
 
+
+
+def _validate_output_device(device: int | None) -> None:
+    """Validate that device exists and has output channels.
+
+    Args:
+        device: Device index to validate (None means system default)
+
+    Raises:
+        DeviceNotFoundError: If device doesn't exist
+        DeviceOpenError: If device has no output channels
+    """
+    if device is None:
+        return  # Use system default
+
+    devices = list_devices()
+    device_info = None
+    for d in devices:
+        if d["index"] == device:
+            device_info = d
+            break
+
+    if device_info is None:
+        raise DeviceNotFoundError(
+            f"Output device index {device} not found",
+            suggestion="Run 'ttp devices' to see available devices",
+        )
+
+    if device_info.get("max_output_channels", 0) <= 0:
+        raise DeviceOpenError(
+            f"Device '{device_info.get('name', device)}' has no output channels",
+            suggestion="Select a device with output capabilities (speakers/headphones)",
+        )
+
+
+def play_and_record(
+    output_signal: Any,
+    *,
+    input_device: int | None = None,
+    output_device: int | None = None,
+    sample_rate: int = 48000,
+) -> Any:
+    """Play audio and record simultaneously for loopback calibration.
+
+    This function plays an output signal through the output device while
+    simultaneously recording from the input device. Essential for measuring
+    system frequency response in calibration workflows.
+
+    Args:
+        output_signal: Audio signal to play (numpy array, float32, mono)
+        input_device: Input device index (None for system default)
+        output_device: Output device index (None for system default)
+        sample_rate: Sample rate in Hz
+
+    Returns:
+        Recorded audio as numpy array (float32, mono)
+
+    Raises:
+        DeviceNotFoundError: If specified device doesn't exist
+        DeviceOpenError: If device can't be opened
+        CaptureError: If playback/recording fails
+
+    Example:
+        >>> from tap_tone_pi.calibration.loopback import generate_sweep, LoopbackConfig
+        >>> sweep = generate_sweep(LoopbackConfig())
+        >>> captured = play_and_record(sweep, sample_rate=48000)
+        >>> # captured contains the loopback recording
+    """
+    import numpy as np
+    import sounddevice as sd
+
+    # Validate input signal
+    if not isinstance(output_signal, np.ndarray):
+        output_signal = np.asarray(output_signal, dtype=np.float32)
+
+    if output_signal.ndim > 1:
+        output_signal = output_signal.reshape(-1)
+
+    output_signal = output_signal.astype(np.float32)
+
+    # Validate devices
+    _validate_device(input_device)
+    _validate_output_device(output_device)
+
+    try:
+        # Use sounddevice.playrec for simultaneous play+record
+        # Device tuple: (input_device, output_device)
+        recorded = sd.playrec(
+            output_signal.reshape(-1, 1),  # Shape: (n_samples, 1) for mono output
+            samplerate=sample_rate,
+            channels=1,  # Record mono
+            input_mapping=[1],  # First input channel
+            output_mapping=[1],  # First output channel
+            device=(input_device, output_device),
+            dtype="float32",
+            blocking=True,
+        )
+    except Exception as e:
+        raise CaptureError(
+            f"Play and record failed: {e}",
+            suggestion="Check that both input and output devices are connected and not in use",
+        ) from e
+
+    # Flatten to 1D mono array
+    recorded = recorded.reshape(-1)
+
+    # Replace NaNs (rare but possible)
+    recorded = np.nan_to_num(recorded, nan=0.0)
+
+    return recorded
+
+
 def _get_auto_trigger_exports() -> dict[str, Any]:
     """Lazy load auto-trigger support to improve startup time."""
     from tap_tone_pi.core.auto_trigger import (
@@ -277,6 +389,7 @@ __all__ = [
     "list_devices",
     "record_audio",
     "auto_detect_device",
+    "play_and_record",
     # Errors
     "DeviceError",
     "DeviceNotFoundError",
