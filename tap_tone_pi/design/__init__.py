@@ -17,12 +17,16 @@ Core Concepts:
     Advanced Physics:
         Alpha/Beta formulation: Physical model for gamma = sqrt(alpha/beta)
         Rayleigh-Ritz: Variational method for accurate mode shapes
+        Gamma Calibration: Derive γ from measured Chladni/box frequencies
+        Inverse Solver: Find thickness for target frequencies
 
 Modules:
     thickness_calculator: Orthotropic plate solver + 3-oscillator model
     coupled_2osc: 2-oscillator model for rigid back designs
     alpha_beta: Physical alpha/beta formulation for gamma calculation
     rayleigh_ritz: Rayleigh-Ritz variational mode solver
+    gamma_calibration: Calibrate γ from measurement data
+    inverse_solver: Inverse thickness optimization
     calibration: Body style calibration tables
 """
 
@@ -85,6 +89,36 @@ from .calibration import (
     list_materials,
 )
 
+from .gamma_calibration import (
+    # Data classes
+    ModeMeasurement,
+    SpecimenData,
+    GammaCalibrationResult,
+    # Calibration engine
+    GammaCalibration,
+    # Convenience functions
+    calibrate_gamma_from_pairs,
+    calibrate_gamma_multi_specimen,
+    format_gamma_calibration_report,
+)
+
+from .inverse_solver import (
+    # Enums and constraints
+    ForwardModel,
+    ThicknessConstraints,
+    FrequencyTarget,
+    # Result class
+    InverseSolverResult,
+    # Simple solver
+    solve_for_thickness,
+    # Advanced solver
+    InverseDesignProblem,
+    # Material selection
+    MaterialCandidate,
+    solve_for_material_and_thickness,
+    format_inverse_solver_report,
+)
+
 __all__ = [
     # Core functions
     "plate_modal_frequency",
@@ -119,6 +153,24 @@ __all__ = [
     "RayleighRitzMode",
     "RayleighRitzResult",
     "format_rayleigh_ritz_report",
+    # Gamma Calibration
+    "ModeMeasurement",
+    "SpecimenData",
+    "GammaCalibrationResult",
+    "GammaCalibration",
+    "calibrate_gamma_from_pairs",
+    "calibrate_gamma_multi_specimen",
+    "format_gamma_calibration_report",
+    # Inverse Solver
+    "ForwardModel",
+    "ThicknessConstraints",
+    "FrequencyTarget",
+    "InverseSolverResult",
+    "solve_for_thickness",
+    "InverseDesignProblem",
+    "MaterialCandidate",
+    "solve_for_material_and_thickness",
+    "format_inverse_solver_report",
     # Result classes
     "PlateThicknessResult",
     "CoupledSystemResult",
