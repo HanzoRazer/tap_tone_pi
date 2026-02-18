@@ -319,19 +319,21 @@ Based on [ANALYZER_COMPARISON.md](ANALYZER_COMPARISON.md), these improvements ca
 
 **Completed:** Full signal generator with WAV export, 24 unit tests passing
 
-### 3.5 Limit/Mask Testing — P1
+### 3.5 Limit/Mask Testing — P1 (🔶 Partial)
 **Gap:** Quality gates exist but no visual limit curves
 **Solution:** Add graphical limit testing
 
 | Task | Status | Description |
 |------|--------|-------------|
-| Limit curve format | ⬜ Pending | JSON schema for upper/lower limits |
-| Limit editor | ⬜ Pending | Draw/import limit curves |
-| Pass/fail with margin | ⬜ Pending | Calculate margin to limit |
-| Template library | ⬜ Pending | Common test templates |
+| Limit curve format | ✅ Complete | `limits/curves.py` — LimitCurve, LimitPoint, JSON serialization |
+| Mask regions | ✅ Complete | `limits/masks.py` — FrequencyMask, exclude regions from testing |
+| Pass/fail with margin | ✅ Complete | `limits/testing.py` — check_against_limits(), PASS/WARN/FAIL verdict |
+| Template library | ✅ Complete | `limits/presets.py` — tonewood_tap, speaker_response, noise_floor |
+| Limit editor | ⬜ Pending | Draw/import limit curves (GUI) |
 | CLI integration | ⬜ Pending | `--limits` flag for measurements |
 
-**Value Add:** Production QC capability, visual pass/fail
+**Completed:** Core limit/mask testing engine with 36 unit tests passing
+**Remaining:** GUI editor, CLI integration
 
 ### 3.6 Application Notes — P2 ✅
 **Gap:** Users don't know how to apply the analyzer to their problems
