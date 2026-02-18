@@ -291,33 +291,33 @@ Based on [ANALYZER_COMPARISON.md](ANALYZER_COMPARISON.md), these improvements ca
 
 **Value Add:** Professional credibility, identifies questionable measurements
 
-### 3.3 Verification Test Suite — P1
+### 3.3 Verification Test Suite — P1 (✅ Complete)
 **Gap:** No way to prove the analyzer is working correctly
 **Solution:** Built-in verification tests with known results
 
 | Task | Status | Description |
 |------|--------|-------------|
-| Synthetic test signals | ⬜ Pending | Known sine, multi-tone, noise signals |
-| Expected vs actual | ⬜ Pending | Comparison framework |
-| Pass/fail report | ⬜ Pending | Verification report generation |
-| CLI command | ⬜ Pending | `ttp verify` command |
+| Synthetic test signals | ✅ Complete | `signal_gen/` — sine, sweep, chirp, noise, impulse, multitone, comb |
+| Expected vs actual | ✅ Complete | `verify/tests.py` — frequency, amplitude, peak, noise, THD, latency |
+| Pass/fail report | ✅ Complete | `verify/report.py` — JSON export, colored CLI output |
+| CLI command | ✅ Complete | `cli/verify.py` — `ttp verify`, `--quick`, `--verbose`, `--output` |
 
-**Value Add:** Confidence in results, troubleshooting aid
+**Completed:** Full verification suite with 10 built-in tests, 51 unit tests passing
 
-### 3.4 Signal Generator Module — P1
+### 3.4 Signal Generator Module — P1 (✅ Complete)
 **Gap:** Cannot perform stimulus-response testing without external generator
 **Solution:** Add integrated signal generator
 
 | Task | Status | Description |
 |------|--------|-------------|
-| Waveform generators | ⬜ Pending | Sine, square, triangle, noise |
-| Sweep generator | ⬜ Pending | Linear and logarithmic sweeps |
-| Multi-tone generator | ⬜ Pending | For IMD testing |
-| Chirp generator | ⬜ Pending | For impulse response |
-| CLI command | ⬜ Pending | `ttp generate` command |
+| Waveform generators | ✅ Complete | `signal_gen/generators.py` — sine, square, triangle, noise |
+| Sweep generator | ✅ Complete | Linear (`linear`) and logarithmic (`logarithmic`) sweeps |
+| Multi-tone generator | ✅ Complete | `generate_multitone()` for IMD testing |
+| Chirp generator | ✅ Complete | `generate_chirp()` for impulse response |
+| CLI command | ✅ Complete | `cli/generate.py` — `ttp generate sine/sweep/noise/impulse/multitone/comb` |
 | GUI integration | ⬜ Pending | Generator controls in GUI |
 
-**Value Add:** Enables closed-loop testing, frequency response sweeps
+**Completed:** Full signal generator with WAV export, 24 unit tests passing
 
 ### 3.5 Limit/Mask Testing — P1
 **Gap:** Quality gates exist but no visual limit curves
