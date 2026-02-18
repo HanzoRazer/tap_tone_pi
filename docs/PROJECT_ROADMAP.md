@@ -271,7 +271,7 @@ Based on [ANALYZER_COMPARISON.md](ANALYZER_COMPARISON.md), these improvements ca
 
 **Value Add:** Moves from "uncalibrated" to "user-calibrated" — closes ~50% of accuracy gap
 
-### 3.2 Measurement Uncertainty Reporting — P0 (🔶 Partial)
+### 3.2 Measurement Uncertainty Reporting — P0 (✅ Complete)
 **Gap:** Results show single values without confidence information
 **Solution:** Add uncertainty quantification to all measurements
 
@@ -281,14 +281,13 @@ Based on [ANALYZER_COMPARISON.md](ANALYZER_COMPARISON.md), these improvements ca
 | Physics-based confidence | ✅ Complete | SNR + coherence + spectral flatness — Audit C2 |
 | Adaptive numerical precision | ✅ Complete | dtype-aware epsilon — Audit C4 |
 | GUM-compliant diff comparison | ✅ Complete | |Δf| > k×√(u_a² + u_b²) — Audit M7 |
-| Statistics module | ⬜ Pending | Mean, std dev, confidence intervals |
-| Repeatability metrics | ⬜ Pending | Track measurement-to-measurement variation |
-| Uncertainty flags | ⬜ Pending | Flag high-uncertainty measurements |
-| JSON schema update | ⬜ Pending | Add uncertainty fields to analysis.json |
-| CLI display | ⬜ Pending | Show ±uncertainty in output |
+| Statistics module | ✅ Complete | `core/statistics.py` — Type A uncertainty, repeatability, propagation |
+| Repeatability metrics | ✅ Complete | `compute_repeatability()` — CV%, repeatability limit (ISO 5725-2) |
+| Uncertainty flags | ✅ Complete | `core/uncertainty_flags.py` — Quality assessment with severity levels |
+| JSON schema update | ✅ Complete | `TypeAResult`, `RepeatabilityMetrics`, `QualityAssessment` dataclasses |
+| CLI display | ✅ Complete | `core/format_uncertainty.py` — ±uncertainty formatting utilities |
 
-**Completed:** Core uncertainty propagation from Codebase Audit 2026 (C2, C3, C4, M7)
-**Remaining:** Statistics module, repeatability metrics, CLI integration
+**Completed:** Full GUM-compliant uncertainty quantification with quality flags
 
 **Value Add:** Professional credibility, identifies questionable measurements
 
