@@ -11,21 +11,18 @@ Core Concepts:
         - R_anis = E_L/E_C: Orthotropic ratio (typically 10-20 for tonewoods)
 
     Coupled Oscillator Models:
+        2-Oscillator (rigid back): Top + Air (closed-form)
+        3-Oscillator (active back): Top + Air + Back (eigenvalue)
 
-        2-Oscillator (rigid back):
-            - Top plate (mass + stiffness)
-            - Air cavity (Helmholtz resonator)
-            - Use when back stiffness >> top stiffness (laminate, archtop)
-            - Closed-form eigenvalue solution
-
-        3-Oscillator (active back):
-            - Top plate + Back plate + Air cavity
-            - Use for traditional flat-top guitars
-            - Numerical eigenvalue solution
+    Advanced Physics:
+        Alpha/Beta formulation: Physical model for gamma = sqrt(alpha/beta)
+        Rayleigh-Ritz: Variational method for accurate mode shapes
 
 Modules:
     thickness_calculator: Orthotropic plate solver + 3-oscillator model
     coupled_2osc: 2-oscillator model for rigid back designs
+    alpha_beta: Physical alpha/beta formulation for gamma calculation
+    rayleigh_ritz: Rayleigh-Ritz variational mode solver
     calibration: Body style calibration tables
 """
 
@@ -49,6 +46,34 @@ from .coupled_2osc import (
     Coupled2OscResult,
     analyze_coupled_2osc,
     format_2osc_report,
+)
+
+from .alpha_beta import (
+    # Core alpha/beta functions
+    compute_alpha,
+    compute_beta,
+    compute_gamma,
+    # Component calculations
+    plate_bending_stiffness,
+    brace_stiffness,
+    brace_mass,
+    air_virtual_mass,
+    air_virtual_mass_cavity,
+    # High-level analysis
+    AlphaBetaResult,
+    analyze_alpha_beta,
+    format_alpha_beta_report,
+)
+
+from .rayleigh_ritz import (
+    # Plate model
+    OrthotropicPlate,
+    BoundaryCondition,
+    # Solver
+    solve_rayleigh_ritz,
+    RayleighRitzMode,
+    RayleighRitzResult,
+    format_rayleigh_ritz_report,
 )
 
 from .calibration import (
@@ -75,6 +100,25 @@ __all__ = [
     "Coupled2OscResult",
     "analyze_coupled_2osc",
     "format_2osc_report",
+    # Alpha/Beta formulation
+    "compute_alpha",
+    "compute_beta",
+    "compute_gamma",
+    "plate_bending_stiffness",
+    "brace_stiffness",
+    "brace_mass",
+    "air_virtual_mass",
+    "air_virtual_mass_cavity",
+    "AlphaBetaResult",
+    "analyze_alpha_beta",
+    "format_alpha_beta_report",
+    # Rayleigh-Ritz
+    "OrthotropicPlate",
+    "BoundaryCondition",
+    "solve_rayleigh_ritz",
+    "RayleighRitzMode",
+    "RayleighRitzResult",
+    "format_rayleigh_ritz_report",
     # Result classes
     "PlateThicknessResult",
     "CoupledSystemResult",
