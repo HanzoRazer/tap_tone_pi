@@ -349,7 +349,7 @@ def play_and_record(
 
 def _get_auto_trigger_exports() -> dict[str, Any]:
     """Lazy load auto-trigger support to improve startup time.
-    
+
     Returns empty dict if sounddevice/PortAudio not available.
     """
     try:

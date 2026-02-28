@@ -14,6 +14,7 @@ Usage:
 
 try:
     from .app import App
+
     __all__ = ["App"]
 except (ImportError, OSError):
     # GUI requires optional dependencies (sounddevice, PortAudio, etc.)

@@ -32,6 +32,7 @@ try:
         TriggerState,
         TriggerResult,
     )
+
     HAS_AUTO_TRIGGER = True
 except (ImportError, OSError, AttributeError):
     # AttributeError: symbols not exported if sounddevice unavailable
