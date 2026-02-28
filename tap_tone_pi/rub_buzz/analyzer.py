@@ -46,7 +46,7 @@ class RubBuzzAnalyzer:
         """
         self.detection_config = detection_config or DetectionConfig()
         self.sweep_config = sweep_config or SweepConfig()
-        self.sample_rate = meta.sample_rate
+        self.sample_rate = sample_rate
 
     def analyze(
         self,
@@ -137,7 +137,7 @@ class RubBuzzAnalyzer:
         # read_wav_mono returns float32 in [-1, 1] and handles stereo
         signal = signal.astype(np.float64)
 
-        # Update sample rate
+        # Update sample rate from file metadata
         self.sample_rate = meta.sample_rate
 
         return self.analyze(signal, pass_threshold)

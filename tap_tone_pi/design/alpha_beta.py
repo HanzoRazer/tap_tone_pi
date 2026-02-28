@@ -37,7 +37,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Any
 
 # Air properties at standard conditions
 AIR_DENSITY_KG_M3 = 1.2
@@ -180,7 +180,7 @@ def compute_alpha(
     # Bracing (optional)
     brace_stiffness_total: float = 0.0,  # N/m - from brace_stiffness()
     brace_count: int = 0,  # number of braces (for empirical factor)
-) -> Tuple[float, Dict[str, float]]:
+) -> Tuple[float, Dict[str, Any]]:
     """
     Compute α (stiffness ratio) for a plate assembled into a body.
 
@@ -395,7 +395,7 @@ def compute_beta(
     brace_mass_total: float = 0.0,  # kg - from brace_mass()
     # Air properties
     rho_air: float = AIR_DENSITY_KG_M3,
-) -> Tuple[float, Dict[str, float]]:
+) -> Tuple[float, Dict[str, Any]]:
     """
     Compute β (mass ratio) for a plate assembled into a body.
 

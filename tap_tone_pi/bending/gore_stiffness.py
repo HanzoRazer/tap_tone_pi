@@ -43,7 +43,7 @@ import math
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 
 # =============================================================================
@@ -742,6 +742,7 @@ def main() -> None:
         ap.error("--h_mm is required")
 
     # Determine mode
+    result: Union[OrthotropicResult, SingleDirectionResult]
     if args.ortho or (args.E_L_GPa is not None and args.E_C_GPa is not None):
         # Orthotropic mode
         if args.E_L_GPa is None or args.E_C_GPa is None:

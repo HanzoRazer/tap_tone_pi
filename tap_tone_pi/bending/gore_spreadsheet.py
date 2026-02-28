@@ -253,7 +253,7 @@ def cross_validate_modulus(
     Returns:
         CrossValidationResult with agreement assessment
     """
-    warnings = []
+    warnings: List[str] = []
     predicted_freq = None
     freq_delta_pct = None
 
@@ -415,7 +415,7 @@ class BuildSpreadsheet:
     orthotropic_summary: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        d = {
+        d: Dict[str, Any] = {
             "schema_id": self.schema_id,
             "schema_version": self.schema_version,
             "created_utc": self.created_utc,
@@ -611,8 +611,8 @@ def build_spreadsheet_entry(
     Returns:
         Populated BuildSpreadsheetEntry
     """
-    warnings = []
-    provenance = {}
+    warnings: List[str] = []
+    provenance: Dict[str, Any] = {}
 
     entry = BuildSpreadsheetEntry(
         specimen_id=specimen_id,

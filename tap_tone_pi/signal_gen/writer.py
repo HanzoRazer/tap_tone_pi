@@ -234,7 +234,7 @@ def read_wav(filepath: Union[str, Path]) -> tuple[np.ndarray, int]:
         # 32-bit (could be int or float)
         try:
             data = np.frombuffer(raw_data, dtype=np.float32)
-            signal = data
+            signal = data.astype(np.float32)  # Ensure consistent ndarray type
         except ValueError:
             data = np.frombuffer(raw_data, dtype=np.int32)
             signal = data.astype(np.float32) / 2147483648.0

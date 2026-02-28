@@ -409,25 +409,25 @@ def pairwise_comparison(
             raw_p_values.append(p_raw)
 
     # Apply correction
-    raw_p_values = np.array(raw_p_values)
+    raw_p_arr = np.array(raw_p_values)
 
     if correction == "bonferroni":
-        adjusted_p = np.minimum(raw_p_values * n_pairs, 1.0)
+        adjusted_p = np.minimum(raw_p_arr * n_pairs, 1.0)
     elif correction == "sidak":
-        adjusted_p = 1 - (1 - raw_p_values) ** n_pairs
+        adjusted_p = 1 - (1 - raw_p_arr) ** n_pairs
     elif correction == "holm":
         # Holm-Bonferroni step-down
-        sorted_idx = np.argsort(raw_p_values)
+        sorted_idx = np.argsort(raw_p_arr)
         adjusted_p = np.zeros(n_pairs)
         for rank, idx in enumerate(sorted_idx):
-            adjusted_p[idx] = min(raw_p_values[idx] * (n_pairs - rank), 1.0)
+            adjusted_p[idx] = min(raw_p_arr[idx] * (n_pairs - rank), 1.0)
         # Enforce monotonicity
         for rank in range(1, n_pairs):
             idx = sorted_idx[rank]
             prev_idx = sorted_idx[rank - 1]
             adjusted_p[idx] = max(adjusted_p[idx], adjusted_p[prev_idx])
     else:
-        adjusted_p = raw_p_values
+        adjusted_p = raw_p_arr
 
     # Build final results
     final_pairwise = []

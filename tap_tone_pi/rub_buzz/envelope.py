@@ -4,8 +4,8 @@ Envelope tracking for transient defect detection.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import List, Tuple
+from dataclasses import dataclass, field
+from typing import List, Optional, Tuple
 
 import numpy as np
 from scipy import signal as scipy_signal
@@ -21,26 +21,28 @@ class TransientEvent:
     peak_amplitude: float
     rise_rate: float  # Amplitude units per sample
     duration_samples: int
+    _duration_s: Optional[float] = field(default=None, repr=False)
+    _sample_rate: Optional[int] = field(default=None, repr=False)
 
     @property
     def duration_s(self) -> float:
         """Duration in seconds (requires sample_rate)."""
-        # This is set externally
-        return getattr(self, "_duration_s", self.duration_samples / 48000)
+        if self._duration_s is not None:
+            return self._duration_s
+        return self.duration_samples / 48000
 
     def with_sample_rate(self, sample_rate: int) -> "TransientEvent":
         """Return copy with sample rate for time calculations."""
-        event = TransientEvent(
+        return TransientEvent(
             start_sample=self.start_sample,
             end_sample=self.end_sample,
             peak_sample=self.peak_sample,
             peak_amplitude=self.peak_amplitude,
             rise_rate=self.rise_rate,
             duration_samples=self.duration_samples,
+            _duration_s=self.duration_samples / sample_rate,
+            _sample_rate=sample_rate,
         )
-        event._duration_s = self.duration_samples / sample_rate
-        event._sample_rate = sample_rate
-        return event
 
     def to_dict(self) -> dict:
         """Convert to dictionary."""
@@ -200,7 +202,7 @@ def detect_transients(
     merge_samples = int(merge_gap_ms * sample_rate / 1000)
 
     # Merge close transients
-    merged_regions = []
+    merged_regions: List[Tuple[int, int]] = []
     for start, end in transient_regions:
         if merged_regions and start - merged_regions[-1][1] < merge_samples:
             # Merge with previous

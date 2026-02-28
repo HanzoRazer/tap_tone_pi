@@ -374,7 +374,7 @@ def suggest_tap_rejection(
     # Rank by quality (worst first)
     ranked = sorted(metrics_list, key=lambda m: m.overall_score)
 
-    rejections = []
+    rejections: List[int] = []
     for m in ranked:
         if len(rejections) >= max_reject:
             break
@@ -419,7 +419,7 @@ def quality_summary_report(
             all_issues.append((m.tap_index, issue))
 
     # Most common issues
-    issue_types = {}
+    issue_types: Dict[str, int] = {}
     for _, issue in all_issues:
         issue_types[issue] = issue_types.get(issue, 0) + 1
 

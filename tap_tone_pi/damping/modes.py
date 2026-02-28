@@ -338,15 +338,15 @@ def _check_stabilization(
             "damping_std": float("inf"),
         }
 
-    freq_estimates = np.array(freq_estimates)
-    damping_estimates = np.array(damping_estimates)
+    freq_arr = np.array(freq_estimates)
+    damp_arr = np.array(damping_estimates)
 
     # Count stable occurrences
     stability_count = 0
-    ref_freq = np.median(freq_estimates)
-    ref_damp = np.median(damping_estimates)
+    ref_freq = np.median(freq_arr)
+    ref_damp = np.median(damp_arr)
 
-    for f, d in zip(freq_estimates, damping_estimates):
+    for f, d in zip(freq_arr, damp_arr):
         freq_stable = abs(f - ref_freq) / ref_freq < freq_tol
         damp_stable = abs(d - ref_damp) / (ref_damp + 1e-6) < damp_tol
         if freq_stable and damp_stable:
@@ -354,10 +354,10 @@ def _check_stabilization(
 
     return {
         "stability_count": stability_count,
-        "frequency_std": float(np.std(freq_estimates)),
-        "damping_std": float(np.std(damping_estimates)),
-        "frequency_estimates": freq_estimates.tolist(),
-        "damping_estimates": damping_estimates.tolist(),
+        "frequency_std": float(np.std(freq_arr)),
+        "damping_std": float(np.std(damp_arr)),
+        "frequency_estimates": freq_arr.tolist(),
+        "damping_estimates": damp_arr.tolist(),
     }
 
 

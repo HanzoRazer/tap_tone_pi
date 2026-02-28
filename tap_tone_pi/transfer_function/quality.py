@@ -27,7 +27,7 @@ Phase Uncertainty:
 """
 
 from dataclasses import dataclass
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional, Union
 import numpy as np
 
 
@@ -435,20 +435,21 @@ def coherence_diagnostic(
     problem_freqs = frequencies[problem_mask]
     n_problems = len(problem_freqs)
 
-    diagnosis = {
+    likely_causes: List[str] = []
+    diagnosis: Dict[str, Any] = {
         "n_problem_frequencies": n_problems,
         "problem_fraction": float(np.mean(problem_mask)),
         "problem_frequencies": problem_freqs,
-        "likely_causes": [],
+        "likely_causes": likely_causes,
     }
 
     if n_problems == 0:
-        diagnosis["likely_causes"].append("No significant coherence problems")
+        likely_causes.append("No significant coherence problems")
         return diagnosis
 
     # Check for broadband low coherence
     if np.mean(problem_mask) > 0.5:
-        diagnosis["likely_causes"].append(
+        likely_causes.append(
             "Broadband low coherence: Check excitation level, "
             "sensor placement, or external noise"
         )
@@ -458,7 +459,7 @@ def coherence_diagnostic(
         spacings = np.diff(problem_freqs)
         if np.std(spacings) / (np.mean(spacings) + 1e-6) < 0.2:
             avg_spacing = np.mean(spacings)
-            diagnosis["likely_causes"].append(
+            likely_causes.append(
                 f"Periodic low coherence at ~{avg_spacing:.1f} Hz spacing: "
                 "May indicate harmonic distortion or leakage"
             )
@@ -466,7 +467,7 @@ def coherence_diagnostic(
     # Check for low-frequency problems
     low_freq_problems = problem_freqs[problem_freqs < 100]
     if len(low_freq_problems) > len(problem_freqs) * 0.3:
-        diagnosis["likely_causes"].append(
+        likely_causes.append(
             "Low coherence concentrated at low frequencies: "
             "Check for DC offset, mechanical coupling, or insufficient excitation"
         )
@@ -475,20 +476,20 @@ def coherence_diagnostic(
     nyquist = frequencies[-1]
     high_freq_problems = problem_freqs[problem_freqs > nyquist * 0.8]
     if len(high_freq_problems) > len(problem_freqs) * 0.3:
-        diagnosis["likely_causes"].append(
+        likely_causes.append(
             "Low coherence at high frequencies: "
             "May indicate aliasing, sensor bandwidth limits, or insufficient energy"
         )
 
     # Check for notch patterns (anti-resonances)
     if 0.1 < np.mean(problem_mask) < 0.3:
-        diagnosis["likely_causes"].append(
+        likely_causes.append(
             "Isolated low-coherence frequencies: "
             "May be structural anti-resonances or force spectrum notches"
         )
 
     if len(diagnosis["likely_causes"]) == 0:
-        diagnosis["likely_causes"].append(
+        likely_causes.append(
             "Inconclusive pattern: Review measurement setup systematically"
         )
 

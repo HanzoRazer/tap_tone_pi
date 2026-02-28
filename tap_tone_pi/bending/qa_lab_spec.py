@@ -228,7 +228,7 @@ class ModalAnalysis:
     modal_overlap_warning: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
-        d = {
+        d: Dict[str, Any] = {
             "n_modes_identified": self.n_modes_identified,
             "dominant_mode_freq_hz": self.dominant_mode_freq_hz,
             "dominant_mode_damping": self.dominant_mode_damping,
