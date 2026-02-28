@@ -41,3 +41,13 @@
 These are UX improvements, not blocking core functionality.
 
 ---
+
+## Feature Gap: Per-Point Thickness/Density Tracking (Noted 2026-02-28)
+
+**See:** [FEATURE_GAP_THICKNESS_TRACKING.md](FEATURE_GAP_THICKNESS_TRACKING.md)
+
+**Summary:** The `TuningPoint` dataclass tracks mass, frequency, and deflection but not thickness. Since thickness changes at each thinning step, density and stiffness cannot be auto-calculated per measurement point.
+
+**Priority:** P3 (Enhancement)
+
+---
