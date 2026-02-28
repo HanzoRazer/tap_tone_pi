@@ -1,7 +1,7 @@
 # Feature Gap: Per-Point Thickness/Density Tracking
 
-**Noted:** 2026-02-28  
-**Status:** Proposed Enhancement (P3)  
+**Noted:** 2026-02-28
+**Status:** Proposed Enhancement (P3)
 **Related:** ADR-0004 (Acoustic vs Structural Boundary)
 
 ---

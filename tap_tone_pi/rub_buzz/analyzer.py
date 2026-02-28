@@ -46,7 +46,7 @@ class RubBuzzAnalyzer:
         """
         self.detection_config = detection_config or DetectionConfig()
         self.sweep_config = sweep_config or SweepConfig()
-        self.sample_rate = sample_rate
+        self.sample_rate = meta.sample_rate
 
     def analyze(
         self,
@@ -132,13 +132,13 @@ class RubBuzzAnalyzer:
         from tap_tone_pi.io.wav import read_wav_mono
 
         filepath = Path(filepath)
-        sample_rate, signal = read_wav_mono(filepath)
+        signal, meta = read_wav_mono(filepath)
 
         # read_wav_mono returns float32 in [-1, 1] and handles stereo
         signal = signal.astype(np.float64)
 
         # Update sample rate
-        self.sample_rate = sample_rate
+        self.sample_rate = meta.sample_rate
 
         return self.analyze(signal, pass_threshold)
 
