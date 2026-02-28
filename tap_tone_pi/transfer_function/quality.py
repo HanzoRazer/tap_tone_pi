@@ -27,7 +27,7 @@ Phase Uncertainty:
 """
 
 from dataclasses import dataclass
-from typing import Tuple, Dict, Any, Optional
+from typing import Dict, Any, Optional
 import numpy as np
 
 
@@ -192,6 +192,104 @@ class QualityAssessment:
     metrics: dict
 
 
+def _grade_coherence(mean_coh: float, min_coh: float) -> str:
+    """Grade coherence quality from A to F."""
+    if mean_coh >= 0.95 and min_coh >= 0.80:
+        return "A"
+    if mean_coh >= 0.85 and min_coh >= 0.60:
+        return "B"
+    if mean_coh >= 0.75 and min_coh >= 0.40:
+        return "C"
+    if mean_coh >= 0.60:
+        return "D"
+    return "F"
+
+
+def _grade_snr(mean_snr_db: float, min_snr_db: float) -> str:
+    """Grade signal-to-noise ratio from A to F."""
+    if mean_snr_db >= 20 and min_snr_db >= 10:
+        return "A"
+    if mean_snr_db >= 15 and min_snr_db >= 5:
+        return "B"
+    if mean_snr_db >= 10 and min_snr_db >= 0:
+        return "C"
+    if mean_snr_db >= 5:
+        return "D"
+    return "F"
+
+
+def _compute_overall_grade(
+    coherence_grade: str,
+    snr_grade: str,
+    averaging_adequate: bool,
+) -> str:
+    """Compute weighted overall letter grade from component grades."""
+    grade_values = {"A": 4, "B": 3, "C": 2, "D": 1, "F": 0}
+    overall_score = (
+        0.5 * grade_values[coherence_grade]
+        + 0.3 * grade_values[snr_grade]
+        + 0.2 * (4 if averaging_adequate else 1)
+    )
+    if overall_score >= 3.5:
+        return "A"
+    if overall_score >= 2.5:
+        return "B"
+    if overall_score >= 1.5:
+        return "C"
+    if overall_score >= 0.5:
+        return "D"
+    return "F"
+
+
+def _build_quality_recommendations(
+    *,
+    averaging_adequate: bool,
+    n_averages: int,
+    median_coh: float,
+    target_error: float,
+    min_coh: float,
+    coherent_fraction: float,
+    coherence_threshold: float,
+    mean_snr_db: float,
+    mask: np.ndarray,
+    coherence: np.ndarray,
+    frequencies: np.ndarray,
+) -> list:
+    """Build actionable quality recommendations based on metrics."""
+    recommendations = []
+
+    if not averaging_adequate:
+        needed = required_averages_for_error(median_coh, target_error)
+        recommendations.append(
+            f"Increase averaging from {n_averages} to {needed} for {target_error*100:.0f}% error target"
+        )
+
+    if min_coh < 0.6:
+        problem_mask = mask & (coherence < 0.6)
+        if np.any(problem_mask):
+            problem_freqs = frequencies[problem_mask]
+            recommendations.append(
+                f"Low coherence at frequencies around: {problem_freqs[:3]} Hz. "
+                "Check for leakage, nonlinearity, or external noise."
+            )
+
+    if coherent_fraction < 0.8:
+        recommendations.append(
+            f"Only {coherent_fraction*100:.0f}% of frequencies have \u03b3\u00b2 > {coherence_threshold}. "
+            "Consider reviewing measurement setup."
+        )
+
+    if mean_snr_db < 10:
+        recommendations.append(
+            f"Mean SNR is {mean_snr_db:.1f} dB. Increase excitation level or reduce noise."
+        )
+
+    if not recommendations:
+        recommendations.append("Measurement quality is acceptable for most applications.")
+
+    return recommendations
+
+
 def validate_measurement_quality(
     coherence: np.ndarray,
     frequencies: np.ndarray,
@@ -260,84 +358,28 @@ def validate_measurement_quality(
     mean_error = float(np.mean(rel_error))
     max_error = float(np.max(rel_error))
 
-    # Coherence grading
-    if mean_coh >= 0.95 and min_coh >= 0.80:
-        coherence_grade = "A"
-    elif mean_coh >= 0.85 and min_coh >= 0.60:
-        coherence_grade = "B"
-    elif mean_coh >= 0.75 and min_coh >= 0.40:
-        coherence_grade = "C"
-    elif mean_coh >= 0.60:
-        coherence_grade = "D"
-    else:
-        coherence_grade = "F"
-
-    # SNR grading
-    if mean_snr_db >= 20 and min_snr_db >= 10:
-        snr_grade = "A"
-    elif mean_snr_db >= 15 and min_snr_db >= 5:
-        snr_grade = "B"
-    elif mean_snr_db >= 10 and min_snr_db >= 0:
-        snr_grade = "C"
-    elif mean_snr_db >= 5:
-        snr_grade = "D"
-    else:
-        snr_grade = "F"
-
-    # Averaging adequacy
+    # Grading
+    coherence_grade = _grade_coherence(mean_coh, min_coh)
+    snr_grade = _grade_snr(mean_snr_db, min_snr_db)
     averaging_adequate = max_error <= target_error
-
-    # Overall grade (weighted combination)
-    grade_values = {"A": 4, "B": 3, "C": 2, "D": 1, "F": 0}
-    overall_score = (
-        0.5 * grade_values[coherence_grade] +
-        0.3 * grade_values[snr_grade] +
-        0.2 * (4 if averaging_adequate else 1)
+    overall_grade = _compute_overall_grade(
+        coherence_grade, snr_grade, averaging_adequate,
     )
 
-    if overall_score >= 3.5:
-        overall_grade = "A"
-    elif overall_score >= 2.5:
-        overall_grade = "B"
-    elif overall_score >= 1.5:
-        overall_grade = "C"
-    elif overall_score >= 0.5:
-        overall_grade = "D"
-    else:
-        overall_grade = "F"
-
     # Recommendations
-    recommendations = []
-
-    if not averaging_adequate:
-        needed = required_averages_for_error(median_coh, target_error)
-        recommendations.append(
-            f"Increase averaging from {n_averages} to {needed} for {target_error*100:.0f}% error target"
-        )
-
-    if min_coh < 0.6:
-        # Find problem frequencies
-        problem_mask = mask & (coherence < 0.6)
-        if np.any(problem_mask):
-            problem_freqs = frequencies[problem_mask]
-            recommendations.append(
-                f"Low coherence at frequencies around: {problem_freqs[:3]} Hz. "
-                "Check for leakage, nonlinearity, or external noise."
-            )
-
-    if coherent_fraction < 0.8:
-        recommendations.append(
-            f"Only {coherent_fraction*100:.0f}% of frequencies have γ² > {coherence_threshold}. "
-            "Consider reviewing measurement setup."
-        )
-
-    if mean_snr_db < 10:
-        recommendations.append(
-            f"Mean SNR is {mean_snr_db:.1f} dB. Increase excitation level or reduce noise."
-        )
-
-    if len(recommendations) == 0:
-        recommendations.append("Measurement quality is acceptable for most applications.")
+    recommendations = _build_quality_recommendations(
+        averaging_adequate=averaging_adequate,
+        n_averages=n_averages,
+        median_coh=median_coh,
+        target_error=target_error,
+        min_coh=min_coh,
+        coherent_fraction=coherent_fraction,
+        coherence_threshold=coherence_threshold,
+        mean_snr_db=mean_snr_db,
+        mask=mask,
+        coherence=coherence,
+        frequencies=frequencies,
+    )
 
     metrics = {
         "mean_coherence": mean_coh,
@@ -398,9 +440,6 @@ def coherence_diagnostic(
     if n_problems == 0:
         diagnosis["likely_causes"].append("No significant coherence problems")
         return diagnosis
-
-    # Look for patterns
-    freq_spacing = np.diff(frequencies)[0] if len(frequencies) > 1 else 1.0
 
     # Check for broadband low coherence
     if np.mean(problem_mask) > 0.5:

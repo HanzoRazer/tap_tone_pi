@@ -426,8 +426,6 @@ def _compute_mac_matrix(
 
     Updates the mac_values dict in each ModeIdentificationResult.
     """
-    n_modes = len(modes)
-
     for i, mode_i in enumerate(modes):
         mode_i.mac_values = {}
 

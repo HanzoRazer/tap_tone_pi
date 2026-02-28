@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Any
 from enum import Enum
 import numpy as np
 from scipy import stats
@@ -158,7 +158,6 @@ def create_type_a_source(
     if n < 2:
         raise ValueError("Type A requires at least 2 observations")
 
-    mean_val = np.mean(observations)
     std_dev = np.std(observations, ddof=1)  # Sample standard deviation
     standard_uncertainty = std_dev / np.sqrt(n)  # Standard error of mean
 
