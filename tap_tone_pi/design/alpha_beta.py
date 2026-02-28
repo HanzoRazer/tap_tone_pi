@@ -36,8 +36,8 @@ References:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Dict, Tuple
 
 # Air properties at standard conditions
 AIR_DENSITY_KG_M3 = 1.2
@@ -589,23 +589,23 @@ def format_alpha_beta_report(result: AlphaBetaResult) -> str:
     lines.append("Alpha/Beta Physical Analysis")
     lines.append("=" * 65)
 
-    lines.append(f"\nStiffness Factor (alpha):")
+    lines.append("\nStiffness Factor (alpha):")
     lines.append(f"  alpha = {result.alpha:.4f} (+{result.stiffness_increase_pct:.1f}% stiffness)")
     lines.append(f"    boundary factor : {result.alpha_info['alpha_boundary']:.3f}")
     lines.append(f"    bracing factor  : {result.alpha_info['alpha_braces']:.3f}")
     lines.append(f"    brace count     : {result.alpha_info['brace_count']}")
     lines.append(f"    boundary type   : {result.alpha_info['boundary']}")
 
-    lines.append(f"\nMass Factor (beta):")
+    lines.append("\nMass Factor (beta):")
     lines.append(f"  beta = {result.beta:.4f} (+{result.mass_increase_pct:.1f}% mass)")
     lines.append(f"    m_plate : {result.beta_info['m_plate_kg']*1000:.1f} g")
     lines.append(f"    m_air   : {result.beta_info['m_air_kg']*1000:.1f} g")
     lines.append(f"    m_braces: {result.beta_info['m_braces_kg']*1000:.1f} g")
 
-    lines.append(f"\nTransfer Coefficient:")
+    lines.append("\nTransfer Coefficient:")
     lines.append(f"  gamma = sqrt(alpha/beta) = {result.gamma:.4f}")
 
-    lines.append(f"\nFrequency Prediction:")
+    lines.append("\nFrequency Prediction:")
     lines.append(f"  f_free = {result.f_free_Hz:.1f} Hz (Chladni)")
     lines.append(f"  f_box  = {result.f_box_Hz:.1f} Hz (predicted)")
     lines.append(f"  shift  = {result.frequency_shift_pct:+.1f}%")

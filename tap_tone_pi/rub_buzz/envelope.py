@@ -4,8 +4,8 @@ Envelope tracking for transient defect detection.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from dataclasses import dataclass
+from typing import List, Tuple
 
 import numpy as np
 from scipy import signal as scipy_signal

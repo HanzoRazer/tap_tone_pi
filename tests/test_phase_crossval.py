@@ -11,10 +11,8 @@ import pytest
 from tap_tone_pi.core.phase_crossval import (
     Phase1Peak,
     Phase2Mode,
-    ModeMatch,
     MatchStatus,
     ConfidenceLevel,
-    CrossValidationResult,
     compute_tolerance_hz,
     match_phases,
     load_p1_peaks_from_json,

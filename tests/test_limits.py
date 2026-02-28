@@ -12,12 +12,10 @@ from tap_tone_pi.limits import (
     LimitCurve,
     LimitType,
     create_limit_curve,
-    interpolate_limit,
     create_flat_limit,
     create_sloped_limit,
     MaskRegion,
     FrequencyMask,
-    create_mask_region,
     apply_mask,
     LimitTestResult,
     LimitViolation,
@@ -27,7 +25,6 @@ from tap_tone_pi.limits import (
     get_preset_names,
     load_preset,
     save_preset,
-    BUILTIN_PRESETS,
 )
 from tap_tone_pi.limits.masks import (
     create_ac_hum_mask,
@@ -456,7 +453,7 @@ class TestLimitPresets:
 
         assert isinstance(limits, list)
         assert len(limits) > 0
-        assert all(isinstance(l, LimitCurve) for l in limits)
+        assert all(isinstance(lim, LimitCurve) for lim in limits)
 
     def test_load_unknown_preset_raises(self):
         """Test loading unknown preset raises error."""

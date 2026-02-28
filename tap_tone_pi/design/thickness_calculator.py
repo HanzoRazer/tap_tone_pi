@@ -52,9 +52,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 from .calibration import (
-    BodyStyle,
     BodyCalibration,
-    MaterialPreset,
     get_body_calibration,
     get_material_preset,
     list_body_styles,
@@ -730,16 +728,16 @@ def format_plate_report(result: PlateThicknessResult) -> str:
     lines.append(f"  Wave c_L   : {result.wave_speed_L_m_s:.0f} m/s")
     lines.append(f"  Wave c_C   : {result.wave_speed_C_m_s:.0f} m/s")
 
-    lines.append(f"\nGeometry:")
+    lines.append("\nGeometry:")
     lines.append(f"  Length     : {result.length_mm:.1f} mm (along grain)")
     lines.append(f"  Width      : {result.width_mm:.1f} mm (across grain)")
 
     if result.current_h_mm:
-        lines.append(f"\nCurrent State:")
+        lines.append("\nCurrent State:")
         lines.append(f"  Thickness  : {result.current_h_mm:.3f} mm")
         lines.append(f"  Frequency  : {result.current_f_Hz:.1f} Hz")
 
-    lines.append(f"\nTarget:")
+    lines.append("\nTarget:")
     lines.append(f"  Frequency  : {result.target_f_Hz:.1f} Hz")
     lines.append(f"  Thickness  : {result.recommended_h_mm:.3f} mm")
 
@@ -749,10 +747,10 @@ def format_plate_report(result: PlateThicknessResult) -> str:
         elif result.delta_h_mm < 0:
             lines.append(f"\n  >> Need {-result.delta_h_mm:.3f} mm more material")
         else:
-            lines.append(f"\n  >> Already at target thickness")
+            lines.append("\n  >> Already at target thickness")
 
     if result.warnings:
-        lines.append(f"\nWarnings:")
+        lines.append("\nWarnings:")
         for w in result.warnings:
             lines.append(f"  * {w}")
 
@@ -769,16 +767,16 @@ def format_coupled_report(result: CoupledSystemResult) -> str:
 
     lines.append(f"\nBody Style: {result.body_style}")
 
-    lines.append(f"\nPlate Thicknesses:")
+    lines.append("\nPlate Thicknesses:")
     lines.append(f"  Top        : {result.top_h_mm:.2f} mm")
     lines.append(f"  Back       : {result.back_h_mm:.2f} mm")
 
-    lines.append(f"\nUncoupled Component Frequencies:")
+    lines.append("\nUncoupled Component Frequencies:")
     lines.append(f"  Top (in box)    : {result.f_top_box_Hz:.1f} Hz")
     lines.append(f"  Back (in box)   : {result.f_back_box_Hz:.1f} Hz")
     lines.append(f"  Helmholtz       : {result.f_helmholtz_Hz:.1f} Hz")
 
-    lines.append(f"\nCoupled Eigenfrequencies:")
+    lines.append("\nCoupled Eigenfrequencies:")
     lines.append(f"  f1 = {result.f1_Hz:6.1f} Hz  -  {result.mode1_description}")
     lines.append(f"  f2 = {result.f2_Hz:6.1f} Hz  -  {result.mode2_description}")
     lines.append(f"  f3 = {result.f3_Hz:6.1f} Hz  -  {result.mode3_description}")
@@ -792,7 +790,7 @@ def format_coupled_report(result: CoupledSystemResult) -> str:
     lines.append(f"\n{result.recommendation}")
 
     if result.warnings:
-        lines.append(f"\nWarnings:")
+        lines.append("\nWarnings:")
         for w in result.warnings:
             lines.append(f"  * {w}")
 
@@ -805,8 +803,13 @@ def format_coupled_report(result: CoupledSystemResult) -> str:
 # =============================================================================
 
 
-def main() -> None:
-    """CLI entry point."""
+# =============================================================================
+# CLI Helpers — extracted from main() for complexity reduction
+# =============================================================================
+
+
+def _build_argument_parser() -> argparse.ArgumentParser:
+    """Construct the argparse parser for the thickness calculator CLI."""
     ap = argparse.ArgumentParser(
         description="Plate thickness and coupled-system calculator",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -879,133 +882,185 @@ Examples:
     ap.add_argument("--json", type=str, help="Output JSON file path")
     ap.add_argument("--quiet", action="store_true", help="Suppress console output")
 
+    return ap
+
+
+def _print_material_presets() -> None:
+    """Print available material presets to stdout."""
+    print("\nAvailable Material Presets:")
+    print("=" * 65)
+    for mat in list_materials():
+        print(f"\n{mat['name']} ({mat['species']}):")
+        print(f"  E_L: {mat['E_L_GPa']:.1f} GPa, E_C: {mat['E_C_GPa']:.2f} GPa")
+        print(f"  Density: {mat['density_kg_m3']:.0f} kg/m³, R_anis: {mat['R_anis']:.1f}")
+        print(f"  Use: {mat['typical_use']}")
+        if mat['notes']:
+            print(f"  Notes: {mat['notes']}")
+    print()
+
+
+def _print_body_presets() -> None:
+    """Print available body style presets to stdout."""
+    print("\nAvailable Body Styles:")
+    print("=" * 65)
+    for body in list_body_styles():
+        print(f"\n{body['style']}:")
+        print(f"  {body['description']}")
+        print(f"  Volume: {body['volume_liters']:.1f} L")
+        print(f"  Target monopole: {body['f_monopole_target']:.0f} Hz")
+        if body['notes']:
+            print(f"  Notes: {body['notes']}")
+    print()
+
+
+def _resolve_material_properties(
+    ap: argparse.ArgumentParser,
+    args: argparse.Namespace,
+    prefix: str = "",
+) -> Tuple[float, float, float]:
+    """Resolve E_L, E_C, rho from CLI args + optional preset.
+
+    Args:
+        ap: ArgumentParser (for error messages)
+        args: Parsed namespace
+        prefix: "" for plate mode, "top_" or "back_" for coupled mode
+
+    Returns:
+        (E_L, E_C, rho) in GPa, GPa, kg/m³
+    """
+    material_key = f"{prefix}material" if prefix else "material"
+    EL_key = f"{prefix}EL" if prefix else "EL"
+    EC_key = f"{prefix}EC" if prefix else "EC"
+    rho_key = f"{prefix}rho" if prefix else "rho"
+
+    material_name = getattr(args, material_key, None)
+    E_L = getattr(args, EL_key, None)
+    E_C = getattr(args, EC_key, None)
+    rho = getattr(args, rho_key, None)
+
+    if material_name:
+        mat = get_material_preset(material_name)
+        if not mat:
+            ap.error(f"Unknown material: {material_name}")
+        E_L = E_L or mat.E_L_GPa
+        E_C = E_C or mat.E_C_GPa
+        rho = rho or mat.density_kg_m3
+
+    if not all([E_L, E_C, rho]):
+        label = prefix.rstrip("_").title() + " " if prefix else ""
+        ap.error(
+            f"{label}Material properties required: "
+            f"--{prefix.replace('_', '-')}EL, --{prefix.replace('_', '-')}EC, "
+            f"--{prefix.replace('_', '-')}rho (or --{prefix.replace('_', '-')}material)"
+        )
+
+    return E_L, E_C, rho  # type: ignore[return-value]
+
+
+def _run_coupled_mode(
+    ap: argparse.ArgumentParser,
+    args: argparse.Namespace,
+) -> Any:
+    """Execute coupled 3-oscillator analysis from CLI args.
+
+    Returns:
+        Result object from analyze_coupled_system.
+    """
+    if not args.body:
+        ap.error("--body is required for coupled mode")
+
+    body = get_body_calibration(args.body)
+    if not body:
+        ap.error(f"Unknown body style: {args.body}")
+
+    top_EL, top_EC, top_rho = _resolve_material_properties(ap, args, prefix="top_")
+
+    if not args.top_h:
+        ap.error("Top plate thickness required: --top-h")
+
+    back_EL, back_EC, back_rho = _resolve_material_properties(ap, args, prefix="back_")
+
+    if not args.back_h:
+        ap.error("Back plate thickness required: --back-h")
+
+    result = analyze_coupled_system(
+        body=body,
+        top_E_L_GPa=top_EL,
+        top_E_C_GPa=top_EC,
+        top_rho=top_rho,
+        top_h_mm=args.top_h,
+        back_E_L_GPa=back_EL,
+        back_E_C_GPa=back_EC,
+        back_rho=back_rho,
+        back_h_mm=args.back_h,
+        target_monopole_Hz=args.target_freq,
+    )
+
+    if not args.quiet:
+        print(format_coupled_report(result))
+
+    return result
+
+
+def _run_plate_mode(
+    ap: argparse.ArgumentParser,
+    args: argparse.Namespace,
+) -> Any:
+    """Execute single-plate analysis from CLI args.
+
+    Returns:
+        Result object from analyze_plate.
+    """
+    E_L, E_C, rho = _resolve_material_properties(ap, args)
+
+    if not args.length or not args.width:
+        ap.error("Geometry required: --length, --width")
+
+    if not args.target_freq:
+        ap.error("Target frequency required: --target-freq")
+
+    result = analyze_plate(
+        E_L_GPa=E_L,
+        E_C_GPa=E_C,
+        density_kg_m3=rho,
+        length_mm=args.length,
+        width_mm=args.width,
+        target_f_Hz=args.target_freq,
+        current_h_mm=args.current_h,
+        eta=args.eta,
+        material_name=getattr(args, 'material', None) or "custom",
+    )
+
+    if not args.quiet:
+        print(format_plate_report(result))
+
+    return result
+
+
+# =============================================================================
+# CLI Entry Point
+# =============================================================================
+
+
+def main() -> None:
+    """CLI entry point."""
+    ap = _build_argument_parser()
     args = ap.parse_args()
 
     # List modes
     if args.list_materials:
-        print("\nAvailable Material Presets:")
-        print("=" * 65)
-        for mat in list_materials():
-            print(f"\n{mat['name']} ({mat['species']}):")
-            print(f"  E_L: {mat['E_L_GPa']:.1f} GPa, E_C: {mat['E_C_GPa']:.2f} GPa")
-            print(f"  Density: {mat['density_kg_m3']:.0f} kg/m³, R_anis: {mat['R_anis']:.1f}")
-            print(f"  Use: {mat['typical_use']}")
-            if mat['notes']:
-                print(f"  Notes: {mat['notes']}")
-        print()
+        _print_material_presets()
         return
 
     if args.list_bodies:
-        print("\nAvailable Body Styles:")
-        print("=" * 65)
-        for body in list_body_styles():
-            print(f"\n{body['style']}:")
-            print(f"  {body['description']}")
-            print(f"  Volume: {body['volume_liters']:.1f} L")
-            print(f"  Target monopole: {body['f_monopole_target']:.0f} Hz")
-            if body['notes']:
-                print(f"  Notes: {body['notes']}")
-        print()
+        _print_body_presets()
         return
 
-    # Coupled mode
+    # Run analysis
     if args.mode == "coupled":
-        # Get body calibration
-        if not args.body:
-            ap.error("--body is required for coupled mode")
-
-        body = get_body_calibration(args.body)
-        if not body:
-            ap.error(f"Unknown body style: {args.body}")
-
-        # Get top properties
-        if args.top_material:
-            top_mat = get_material_preset(args.top_material)
-            if not top_mat:
-                ap.error(f"Unknown material: {args.top_material}")
-            top_EL = args.top_EL or top_mat.E_L_GPa
-            top_EC = args.top_EC or top_mat.E_C_GPa
-            top_rho = args.top_rho or top_mat.density_kg_m3
-        else:
-            top_EL = args.top_EL
-            top_EC = args.top_EC
-            top_rho = args.top_rho
-
-        if not all([top_EL, top_EC, top_rho, args.top_h]):
-            ap.error("Top plate properties required: --top-EL, --top-EC, --top-rho, --top-h")
-
-        # Get back properties
-        if args.back_material:
-            back_mat = get_material_preset(args.back_material)
-            if not back_mat:
-                ap.error(f"Unknown material: {args.back_material}")
-            back_EL = args.back_EL or back_mat.E_L_GPa
-            back_EC = args.back_EC or back_mat.E_C_GPa
-            back_rho = args.back_rho or back_mat.density_kg_m3
-        else:
-            back_EL = args.back_EL
-            back_EC = args.back_EC
-            back_rho = args.back_rho
-
-        if not all([back_EL, back_EC, back_rho, args.back_h]):
-            ap.error("Back plate properties required: --back-EL, --back-EC, --back-rho, --back-h")
-
-        result = analyze_coupled_system(
-            body=body,
-            top_E_L_GPa=top_EL,
-            top_E_C_GPa=top_EC,
-            top_rho=top_rho,
-            top_h_mm=args.top_h,
-            back_E_L_GPa=back_EL,
-            back_E_C_GPa=back_EC,
-            back_rho=back_rho,
-            back_h_mm=args.back_h,
-            target_monopole_Hz=args.target_freq,
-        )
-
-        if not args.quiet:
-            print(format_coupled_report(result))
-
-    # Plate mode
+        result = _run_coupled_mode(ap, args)
     else:
-        # Get material properties
-        E_L = args.EL
-        E_C = args.EC
-        rho = args.rho
-        mat_name = "custom"
-
-        if args.material:
-            mat = get_material_preset(args.material)
-            if not mat:
-                ap.error(f"Unknown material: {args.material}")
-            E_L = args.EL or mat.E_L_GPa
-            E_C = args.EC or mat.E_C_GPa
-            rho = args.rho or mat.density_kg_m3
-            mat_name = mat.name
-
-        if not all([E_L, E_C, rho]):
-            ap.error("Material properties required: --EL, --EC, --rho (or --material)")
-
-        if not args.length or not args.width:
-            ap.error("Geometry required: --length, --width")
-
-        if not args.target_freq:
-            ap.error("Target frequency required: --target-freq")
-
-        result = analyze_plate(
-            E_L_GPa=E_L,
-            E_C_GPa=E_C,
-            density_kg_m3=rho,
-            length_mm=args.length,
-            width_mm=args.width,
-            target_f_Hz=args.target_freq,
-            current_h_mm=args.current_h,
-            eta=args.eta,
-            material_name=mat_name,
-        )
-
-        if not args.quiet:
-            print(format_plate_report(result))
+        result = _run_plate_mode(ap, args)
 
     # JSON output
     if args.json:

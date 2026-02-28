@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any
 
 
 class DefectType(Enum):
@@ -176,7 +176,6 @@ class SweepConfig:
 
     def get_freq_at_time(self, time_s: float) -> float:
         """Calculate instantaneous frequency at given time."""
-        import math
 
         # Adjust for pre-silence
         t = time_s - self.pre_silence_s

@@ -26,7 +26,7 @@ from typing import Any
 
 import numpy as np
 
-from tap_tone_pi.io.wav import read_wav_mono, read_wav_2ch, WavMeta
+from tap_tone_pi.io.wav import read_wav_mono, read_wav_2ch
 
 
 class SampleRateMismatchError(ValueError):

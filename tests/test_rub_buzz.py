@@ -18,13 +18,9 @@ from tap_tone_pi.rub_buzz import (
     compute_envelope,
     envelope_derivative,
     detect_transients,
-    TransientEvent,
-    # Detector
     detect_rub_buzz,
     analyze_harmonics,
     compute_thd_plus_noise,
-    HarmonicAnalysis,
-    # Analyzer
     RubBuzzAnalyzer,
     analyze_sweep_response,
     quick_rub_buzz_check,

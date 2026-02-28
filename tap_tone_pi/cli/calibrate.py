@@ -11,9 +11,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import sys
 from datetime import datetime
-from typing import Optional
 
 
 def cmd_calibrate_status(args: argparse.Namespace) -> int:
@@ -61,7 +59,7 @@ def cmd_calibrate_status(args: argparse.Namespace) -> int:
 
         # Loopback test
         if data.loopback_completed:
-            print(f"\nLoopback Test: PASSED")
+            print("\nLoopback Test: PASSED")
             if data.loopback_latency_ms:
                 print(f"  Latency: {data.loopback_latency_ms:.1f} ms")
             if data.loopback_snr_db:
@@ -69,15 +67,15 @@ def cmd_calibrate_status(args: argparse.Namespace) -> int:
             if data.frequency_response:
                 print(f"  Frequency response: {len(data.frequency_response)} points")
         else:
-            print(f"\nLoopback Test: NOT COMPLETED")
+            print("\nLoopback Test: NOT COMPLETED")
 
         # Reference tone test
         if data.reference_tone_completed:
-            print(f"\nReference Tone Test: PASSED")
+            print("\nReference Tone Test: PASSED")
             if data.amplitude_error_db is not None:
                 print(f"  Amplitude error: {data.amplitude_error_db:+.2f} dB")
         else:
-            print(f"\nReference Tone Test: NOT COMPLETED")
+            print("\nReference Tone Test: NOT COMPLETED")
 
         # Stale warning
         if is_calibration_stale(data):
@@ -156,7 +154,7 @@ def cmd_calibrate_loopback(args: argparse.Namespace) -> int:
         duration_s=args.duration or 2.0,
     )
 
-    print(f"\nRunning loopback test...")
+    print("\nRunning loopback test...")
     print(f"  Duration: {config.duration_s}s")
     print(f"  Frequency range: {config.freq_start_hz}-{config.freq_end_hz} Hz")
 
@@ -183,7 +181,7 @@ def cmd_calibrate_loopback(args: argparse.Namespace) -> int:
         print(f"\n\033[91mLoopback test FAILED: {result.error_message}\033[0m")
         return 1
 
-    print(f"\n\033[92mLoopback test PASSED\033[0m")
+    print("\n\033[92mLoopback test PASSED\033[0m")
     print(f"  Latency: {result.latency_ms:.1f} ms")
     print(f"  SNR: {result.snr_db:.1f} dB")
     print(f"  Frequency response: {len(result.frequency_response)} points")
@@ -285,7 +283,7 @@ def cmd_calibrate_verify(args: argparse.Namespace) -> int:
         amplitude_dbfs=args.level or -20.0,
     )
 
-    print(f"\nRunning reference tone test...")
+    print("\nRunning reference tone test...")
     print(f"  Frequency: {config.frequency_hz} Hz")
     print(f"  Level: {config.amplitude_dbfs} dBFS")
     print(f"  Duration: {config.duration_s}s")
@@ -313,7 +311,7 @@ def cmd_calibrate_verify(args: argparse.Namespace) -> int:
         print(f"\n\033[91mReference tone test FAILED: {result.error_message}\033[0m")
         return 1
 
-    print(f"\n\033[92mReference tone test PASSED\033[0m")
+    print("\n\033[92mReference tone test PASSED\033[0m")
     print(f"  Amplitude error: {result.amplitude_error_db:+.2f} dB")
     print(f"  Frequency error: {result.frequency_error_hz:+.2f} Hz")
     print(f"  THD: {result.thd_db:.1f} dB ({result.thd_percent:.3f}%)")

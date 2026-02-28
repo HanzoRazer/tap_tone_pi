@@ -17,7 +17,7 @@ Important considerations:
 - Consider the measurement uncertainty context
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Tuple, Optional, Dict, Any
 import numpy as np
 from scipy import stats
@@ -388,7 +388,7 @@ def pairwise_comparison(
     for i in range(k):
         for j in range(i + 1, k):
             # Two-sample t-test (Welch's)
-            t_stat, p_raw = stats.ttest_ind(groups[i], groups[j], equal_var=False)
+            _t_stat, p_raw = stats.ttest_ind(groups[i], groups[j], equal_var=False)
             d = cohens_d(groups[i], groups[j])
             mean_diff = np.mean(groups[i]) - np.mean(groups[j])
 
@@ -424,7 +424,7 @@ def pairwise_comparison(
 
     # Build final results
     final_pairwise = []
-    for k_pair, (result, p_adj) in enumerate(zip(pairwise_results, adjusted_p)):
+    for result, p_adj in zip(pairwise_results, adjusted_p):
         final_pairwise.append(PairwiseResult(
             group_i=result["i"],
             group_j=result["j"],

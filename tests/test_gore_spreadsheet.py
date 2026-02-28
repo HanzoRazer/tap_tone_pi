@@ -4,9 +4,6 @@ Tests for Gore-style build spreadsheet integration.
 """
 
 import json
-import math
-import tempfile
-from pathlib import Path
 
 import pytest
 
@@ -18,10 +15,6 @@ from tap_tone_pi.bending.gore_spreadsheet import (
     generate_spreadsheet,
     export_csv,
     BuildSpreadsheetEntry,
-    BuildSpreadsheet,
-    CrossValidationResult,
-    LAMBDA_FREE_FREE_N1,
-    DEFAULT_CROSSVAL_THRESHOLD_PCT,
 )
 
 

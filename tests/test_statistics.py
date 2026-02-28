@@ -7,8 +7,6 @@ from tap_tone_pi.core.statistics import (
     COVERAGE_FACTOR_95,
     COVERAGE_FACTOR_99,
     COVERAGE_FACTOR_68,
-    TypeAResult,
-    RepeatabilityMetrics,
     UncertaintyBudget,
     compute_type_a_uncertainty,
     compute_repeatability,

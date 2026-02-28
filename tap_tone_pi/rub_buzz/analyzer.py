@@ -5,21 +5,19 @@ High-level Rub & Buzz analysis workflow.
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import numpy as np
 
 from .schemas import (
     DefectType,
-    DefectEvent,
     RubBuzzResult,
     DetectionConfig,
     SweepConfig,
 )
 from .detector import detect_rub_buzz, compute_thd_plus_noise
-from .envelope import compute_envelope, detect_transients
+from .envelope import detect_transients
 
 
 class RubBuzzAnalyzer:

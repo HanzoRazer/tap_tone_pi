@@ -5,7 +5,7 @@ Formatting utilities for uncertainty reporting.
 from __future__ import annotations
 
 import math
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 
 from .budget import UncertaintyBudget
 

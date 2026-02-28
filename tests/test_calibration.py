@@ -2,13 +2,8 @@
 Tests for calibration module (Phase 3 P0).
 """
 
-import json
-import tempfile
-from pathlib import Path
 from datetime import datetime, timedelta
-from unittest.mock import patch, MagicMock
 import numpy as np
-import pytest
 
 from tap_tone_pi.calibration import (
     CalibrationData,
@@ -23,7 +18,6 @@ from tap_tone_pi.calibration import (
 from tap_tone_pi.calibration.storage import (
     FrequencyResponsePoint,
     list_calibrated_devices,
-    get_calibration_summary,
 )
 from tap_tone_pi.calibration.loopback import (
     LoopbackConfig,
@@ -36,7 +30,6 @@ from tap_tone_pi.calibration.loopback import (
 )
 from tap_tone_pi.calibration.reference_tone import (
     ReferenceToneConfig,
-    ReferenceToneResult,
     generate_reference_tone,
     measure_amplitude_dbfs,
     find_fundamental_frequency,
@@ -291,7 +284,7 @@ class TestLoopback:
         """Test frequency response computation."""
         sample_rate = 48000
         n_samples = 48000
-        t = np.linspace(0, 1.0, n_samples, dtype=np.float32)
+        _t = np.linspace(0, 1.0, n_samples, dtype=np.float32)  # noqa: F841
 
         # Reference: white noise
         reference = np.random.randn(n_samples).astype(np.float32)

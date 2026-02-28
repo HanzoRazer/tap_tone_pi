@@ -10,7 +10,7 @@ Tests cover:
 
 import pytest
 import numpy as np
-from numpy.testing import assert_allclose, assert_array_less
+from numpy.testing import assert_allclose
 
 
 # ============================================================================
@@ -313,8 +313,8 @@ class TestMultiTap:
         values = np.array([100.0, 100.1, 99.9, 100.2, 115.0])  # Last is outlier
         outliers = detect_outliers_chauvenet(values)
 
-        assert outliers[-1] == True  # Last value is outlier
-        assert outliers[0] == False  # First value is not
+        assert outliers[-1] is True  # Last value is outlier
+        assert outliers[0] is False  # First value is not
 
     def test_mad_robust_to_asymmetry(self):
         """Test MAD outlier detection is robust."""
@@ -324,7 +324,7 @@ class TestMultiTap:
         outliers = detect_outliers_mad(values, threshold=3.5)
 
         # 110.0 is clearly an outlier
-        assert outliers[-1] == True
+        assert outliers[-1] is True
         assert np.sum(outliers) == 1
 
     def test_weighted_average_inverse_variance(self):
@@ -357,7 +357,7 @@ class TestMultiTap:
         values = np.array([100.0, 100.1, 99.9, 100.0, 100.05, 99.95])
         converged, cv, msg = check_convergence(values, min_samples=5, cv_threshold=0.02)
 
-        assert converged == True
+        assert converged is True
         assert cv < 0.02
 
     def test_analyze_multi_tap_full(self):
@@ -392,7 +392,7 @@ class TestMultiTap:
 
         result = compare_specimens(spruce, maple)
 
-        assert result.statistically_different == True
+        assert result.statistically_different is True
         assert result.p_value < 0.05
         assert result.effect_interpretation in ["medium", "large"]
 
@@ -425,7 +425,6 @@ class TestIntegration:
     def test_damping_with_uncertainty(self):
         """Test damping extraction includes proper uncertainty."""
         from tap_tone_pi.damping import extract_damping_crossvalidated
-        from tap_tone_pi.uncertainty import create_type_a_source
 
         # Create test signal
         f_n = 100.0
@@ -454,7 +453,6 @@ class TestIntegration:
         """Test complete measurement pipeline."""
         from tap_tone_pi.transfer_function import estimate_transfer_function
         from tap_tone_pi.damping import identify_modes, extract_damping_crossvalidated
-        from tap_tone_pi.uncertainty import combine_with_gum, create_type_a_source
 
         # Simulate measurement
         sample_rate = 10000

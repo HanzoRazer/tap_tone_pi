@@ -236,6 +236,208 @@ class OperatorLoop:
 
         return True, f"Found {len(input_devices)} input device(s)"
 
+    def _do_capture(
+        self,
+        attempt: Attempt,
+        *,
+        device: int | None,
+        sample_rate: int,
+        duration: float,
+        channels: int,
+        auto_trigger: bool,
+        auto_trigger_timeout: float,
+    ) -> CaptureResult | LoopResult:
+        """Execute audio capture (auto-trigger or fixed-duration).
+
+        Returns CaptureResult on success, or LoopResult on failure.
+        Side-effect: sets ``attempt.status`` and ``attempt.captured_*`` fields.
+        """
+        if auto_trigger:
+            self._emit(LoopState.LISTENING, {"timeout": auto_trigger_timeout})
+            try:
+                trigger_result: TriggerResult = record_audio_triggered(
+                    device=device,
+                    sample_rate=sample_rate,
+                    post_trigger_seconds=duration,
+                    timeout_seconds=auto_trigger_timeout,
+                )
+                if not trigger_result.triggered:
+                    if trigger_result.state == TriggerState.TIMEOUT:
+                        attempt.status = AttemptStatus.FAILED
+                        self.store.save_attempt(attempt)
+                        return LoopResult(
+                            attempt=attempt,
+                            error="Auto-trigger timeout - no tap detected",
+                        )
+                    else:
+                        attempt.status = AttemptStatus.FAILED
+                        self.store.save_attempt(attempt)
+                        return LoopResult(
+                            attempt=attempt,
+                            error=f"Auto-trigger failed: {trigger_result.error}",
+                        )
+                cap_result = CaptureResult(
+                    sample_rate=trigger_result.sample_rate,
+                    audio=trigger_result.audio,
+                )
+                cap_result._actual_duration = trigger_result.duration_seconds  # type: ignore[attr-defined]
+            except Exception as e:
+                attempt.status = AttemptStatus.FAILED
+                self.store.save_attempt(attempt)
+                return LoopResult(
+                    attempt=attempt, error=f"Auto-trigger capture failed: {e}"
+                )
+        else:
+            self._emit(LoopState.CAPTURING)
+            try:
+                cap_result = record_audio(
+                    device=device,
+                    sample_rate=sample_rate,
+                    channels=channels,
+                    seconds=duration,
+                )
+                cap_result._actual_duration = duration  # type: ignore[attr-defined]
+            except Exception as e:
+                attempt.status = AttemptStatus.FAILED
+                self.store.save_attempt(attempt)
+                return LoopResult(attempt=attempt, error=f"Capture failed: {e}")
+
+        if auto_trigger:
+            self._emit(LoopState.CAPTURING, {"triggered": True})
+        return cap_result
+
+    def _do_analyze_and_gate(
+        self,
+        attempt: Attempt,
+        attempt_dir: Path,
+        cap_result: CaptureResult,
+    ) -> tuple[AnalysisResult, QualityVerdict] | LoopResult:
+        """Run DSP analysis + quality gate.  Returns (analysis, verdict) or LoopResult."""
+        self._emit(LoopState.ANALYZING)
+
+        evt = emit_analysis_started(
+            component="operator_loop",
+            run_id=attempt.attempt_id,
+            correlation_id=attempt.attempt_id,
+        )
+        evt.privacy_layer = 0
+        self._event_writer.write(evt)
+
+        try:
+            analysis = analyze_tap(cap_result.audio, cap_result.sample_rate)
+        except Exception as e:
+            evt = emit_analysis_failed(
+                component="operator_loop",
+                run_id=attempt.attempt_id,
+                error=str(e),
+                correlation_id=attempt.attempt_id,
+            )
+            evt.privacy_layer = 0
+            self._event_writer.write(evt)
+            attempt.status = AttemptStatus.FAILED
+            self.store.save_attempt(attempt)
+            return LoopResult(
+                attempt=attempt,
+                audio=cap_result.audio,
+                error=f"Analysis failed: {e}",
+            )
+
+        # Mark analyzed
+        attempt.mark_analyzed(
+            dominant_hz=analysis.dominant_hz,
+            rms=analysis.rms,
+            confidence=analysis.confidence,
+            peak_count=len(analysis.peaks) if analysis.peaks else 0,
+            clipped=analysis.clipped,
+        )
+
+        # Save analysis
+        analysis_path = attempt_dir / "analysis.json"
+        with open(analysis_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "dominant_hz": analysis.dominant_hz,
+                    "rms": float(analysis.rms),
+                    "confidence": float(analysis.confidence),
+                    "clipped": analysis.clipped,
+                    "peak_count": len(analysis.peaks) if analysis.peaks else 0,
+                    "peaks": [
+                        {"freq_hz": p.freq_hz, "magnitude": float(p.magnitude)}
+                        for p in (analysis.peaks or [])[:20]
+                    ],
+                },
+                f,
+                indent=2,
+            )
+        attempt.analysis_path = "analysis.json"
+
+        evt = emit_artifact_created(
+            component="operator_loop",
+            run_id=attempt.attempt_id,
+            artifact_name="analysis.json",
+            artifact_type="analysis",
+            correlation_id=attempt.attempt_id,
+        )
+        evt.privacy_layer = 0
+        self._event_writer.write(evt)
+
+        # --- GATING ---
+        self._emit(LoopState.GATING)
+        verdict = check_quality(
+            analysis=analysis,
+            sample_rate=cap_result.sample_rate,
+            audio=cap_result.audio,
+        )
+
+        attempt.mark_gated(verdict)
+
+        quality_path = attempt_dir / "quality_check.json"
+        with open(quality_path, "w", encoding="utf-8") as f:
+            json.dump(verdict.to_dict(), f, indent=2)
+        attempt.quality_check_path = "quality_check.json"
+
+        evt = emit_artifact_created(
+            component="operator_loop",
+            run_id=attempt.attempt_id,
+            artifact_name="quality_check.json",
+            artifact_type="quality_check",
+            correlation_id=attempt.attempt_id,
+        )
+        evt.privacy_layer = 0
+        self._event_writer.write(evt)
+
+        evt = emit_analysis_completed(
+            component="operator_loop",
+            run_id=attempt.attempt_id,
+            artifacts_created=["audio.wav", "analysis.json", "quality_check.json"],
+            metrics={
+                "verdict": verdict.verdict.value,
+                "confidence": float(analysis.confidence),
+                "peak_count": len(analysis.peaks) if analysis.peaks else 0,
+            },
+            correlation_id=attempt.attempt_id,
+        )
+        evt.privacy_layer = 0
+        self._event_writer.write(evt)
+
+        if verdict.verdict in (Verdict.FAIL, Verdict.WARN):
+            options = (
+                ["retry", "override", "abort"]
+                if verdict.verdict == Verdict.FAIL
+                else ["accept", "retry"]
+            )
+            evt = emit_decision_required(
+                component="operator_loop",
+                run_id=attempt.attempt_id,
+                decision_type="quality_gate",
+                options=options,
+                correlation_id=attempt.attempt_id,
+            )
+            evt.privacy_layer = 0
+            self._event_writer.write(evt)
+
+        return analysis, verdict
+
     def run_single(
         self,
         point_id: str,
@@ -287,65 +489,21 @@ class OperatorLoop:
         )
 
         # --- CAPTURING ---
-        if auto_trigger:
-            # Auto-trigger mode: wait for tap onset
-            self._emit(LoopState.LISTENING, {"timeout": auto_trigger_timeout})
-            try:
-                trigger_result: TriggerResult = record_audio_triggered(
-                    device=device,
-                    sample_rate=sample_rate,
-                    post_trigger_seconds=duration,
-                    timeout_seconds=auto_trigger_timeout,
-                )
-                if not trigger_result.triggered:
-                    if trigger_result.state == TriggerState.TIMEOUT:
-                        attempt.status = AttemptStatus.FAILED
-                        self.store.save_attempt(attempt)
-                        return LoopResult(
-                            attempt=attempt,
-                            error="Auto-trigger timeout - no tap detected",
-                        )
-                    else:
-                        attempt.status = AttemptStatus.FAILED
-                        self.store.save_attempt(attempt)
-                        return LoopResult(
-                            attempt=attempt,
-                            error=f"Auto-trigger failed: {trigger_result.error}",
-                        )
+        cap_or_error = self._do_capture(
+            attempt,
+            device=device,
+            sample_rate=sample_rate,
+            duration=duration,
+            channels=channels,
+            auto_trigger=auto_trigger,
+            auto_trigger_timeout=auto_trigger_timeout,
+        )
+        if isinstance(cap_or_error, LoopResult):
+            return cap_or_error
+        cap_result = cap_or_error
+        actual_duration: float = getattr(cap_result, "_actual_duration", duration)
 
-                # Convert to CaptureResult for downstream compatibility
-                cap_result = CaptureResult(
-                    sample_rate=trigger_result.sample_rate,
-                    audio=trigger_result.audio,
-                )
-                actual_duration = trigger_result.duration_seconds
-            except Exception as e:
-                attempt.status = AttemptStatus.FAILED
-                self.store.save_attempt(attempt)
-                return LoopResult(
-                    attempt=attempt, error=f"Auto-trigger capture failed: {e}"
-                )
-        else:
-            # Fixed-duration mode
-            self._emit(LoopState.CAPTURING)
-            try:
-                cap_result: CaptureResult = record_audio(
-                    device=device,
-                    sample_rate=sample_rate,
-                    channels=channels,
-                    seconds=duration,
-                )
-                actual_duration = duration
-            except Exception as e:
-                attempt.status = AttemptStatus.FAILED
-                self.store.save_attempt(attempt)
-                return LoopResult(attempt=attempt, error=f"Capture failed: {e}")
-
-        # Emit CAPTURING state after trigger (if auto-trigger was used)
-        if auto_trigger:
-            self._emit(LoopState.CAPTURING, {"triggered": True})
-
-        # Mark captured
+        # Mark captured + save audio
         attempt.mark_captured(
             device_index=device or 0,
             device_name=device_name,
@@ -353,12 +511,10 @@ class OperatorLoop:
             duration_seconds=actual_duration,
         )
 
-        # Save audio
         audio_path = attempt_dir / "audio.wav"
         write_wav_int16(audio_path, cap_result.audio, cap_result.sample_rate)
         attempt.audio_path = "audio.wav"
 
-        # Event: audio artifact created
         evt = emit_artifact_created(
             component="operator_loop",
             run_id=attempt.attempt_id,
@@ -369,138 +525,11 @@ class OperatorLoop:
         evt.privacy_layer = 0
         self._event_writer.write(evt)
 
-        # --- ANALYZING ---
-        self._emit(LoopState.ANALYZING)
-
-        # Event: analysis started
-        evt = emit_analysis_started(
-            component="operator_loop",
-            run_id=attempt.attempt_id,
-            correlation_id=attempt.attempt_id,
-        )
-        evt.privacy_layer = 0
-        self._event_writer.write(evt)
-
-        try:
-            analysis = analyze_tap(cap_result.audio, cap_result.sample_rate)
-        except Exception as e:
-            # Event: analysis failed
-            evt = emit_analysis_failed(
-                component="operator_loop",
-                run_id=attempt.attempt_id,
-                error=str(e),
-                correlation_id=attempt.attempt_id,
-            )
-            evt.privacy_layer = 0
-            self._event_writer.write(evt)
-
-            attempt.status = AttemptStatus.FAILED
-            self.store.save_attempt(attempt)
-            return LoopResult(
-                attempt=attempt,
-                audio=cap_result.audio,
-                error=f"Analysis failed: {e}",
-            )
-
-        # Mark analyzed
-        attempt.mark_analyzed(
-            dominant_hz=analysis.dominant_hz,
-            rms=analysis.rms,
-            confidence=analysis.confidence,
-            peak_count=len(analysis.peaks) if analysis.peaks else 0,
-            clipped=analysis.clipped,
-        )
-
-        # Save analysis
-        analysis_path = attempt_dir / "analysis.json"
-        with open(analysis_path, "w", encoding="utf-8") as f:
-            json.dump(
-                {
-                    "dominant_hz": analysis.dominant_hz,
-                    "rms": float(analysis.rms),
-                    "confidence": float(analysis.confidence),
-                    "clipped": analysis.clipped,
-                    "peak_count": len(analysis.peaks) if analysis.peaks else 0,
-                    "peaks": [
-                        {"freq_hz": p.freq_hz, "magnitude": float(p.magnitude)}
-                        for p in (analysis.peaks or [])[:20]
-                    ],
-                },
-                f,
-                indent=2,
-            )
-        attempt.analysis_path = "analysis.json"
-
-        # Event: analysis artifact created
-        evt = emit_artifact_created(
-            component="operator_loop",
-            run_id=attempt.attempt_id,
-            artifact_name="analysis.json",
-            artifact_type="analysis",
-            correlation_id=attempt.attempt_id,
-        )
-        evt.privacy_layer = 0
-        self._event_writer.write(evt)
-
-        # --- GATING ---
-        self._emit(LoopState.GATING)
-        verdict = check_quality(
-            analysis=analysis,
-            sample_rate=cap_result.sample_rate,
-            audio=cap_result.audio,
-        )
-
-        # Mark gated
-        attempt.mark_gated(verdict)
-
-        # Save quality check
-        quality_path = attempt_dir / "quality_check.json"
-        with open(quality_path, "w", encoding="utf-8") as f:
-            json.dump(verdict.to_dict(), f, indent=2)
-        attempt.quality_check_path = "quality_check.json"
-
-        # Event: quality_check artifact created
-        evt = emit_artifact_created(
-            component="operator_loop",
-            run_id=attempt.attempt_id,
-            artifact_name="quality_check.json",
-            artifact_type="quality_check",
-            correlation_id=attempt.attempt_id,
-        )
-        evt.privacy_layer = 0
-        self._event_writer.write(evt)
-
-        # Event: analysis completed (with metrics)
-        evt = emit_analysis_completed(
-            component="operator_loop",
-            run_id=attempt.attempt_id,
-            artifacts_created=["audio.wav", "analysis.json", "quality_check.json"],
-            metrics={
-                "verdict": verdict.verdict.value,
-                "confidence": float(analysis.confidence),
-                "peak_count": len(analysis.peaks) if analysis.peaks else 0,
-            },
-            correlation_id=attempt.attempt_id,
-        )
-        evt.privacy_layer = 0
-        self._event_writer.write(evt)
-
-        # Event: decision required (FAIL/WARN only)
-        if verdict.verdict in (Verdict.FAIL, Verdict.WARN):
-            options = (
-                ["retry", "override", "abort"]
-                if verdict.verdict == Verdict.FAIL
-                else ["accept", "retry"]
-            )
-            evt = emit_decision_required(
-                component="operator_loop",
-                run_id=attempt.attempt_id,
-                decision_type="quality_gate",
-                options=options,
-                correlation_id=attempt.attempt_id,
-            )
-            evt.privacy_layer = 0
-            self._event_writer.write(evt)
+        # --- ANALYZING + GATING ---
+        result_or_error = self._do_analyze_and_gate(attempt, attempt_dir, cap_result)
+        if isinstance(result_or_error, LoopResult):
+            return result_or_error
+        analysis, verdict = result_or_error
 
         # Save attempt metadata
         self.store.save_attempt(attempt)
@@ -526,6 +555,33 @@ class OperatorLoop:
     # -------------------------------------------------------------------------
     # Spine advisory hook (PR#4) + UWSM persistence (PR#5)
     # -------------------------------------------------------------------------
+
+    def _extract_advisory_fields(
+        self, directive: Any
+    ) -> tuple[Any, Any, Any, Any]:
+        """Extract (action, summary, focus, confidence) from a spine directive."""
+        if directive is None:
+            return None, None, None, None
+
+        raw_action = self._directive_field(directive, "action")
+        advisory_action = (
+            raw_action.name
+            if hasattr(raw_action, "name")
+            else str(raw_action).upper()
+            if raw_action
+            else None
+        )
+        advisory_summary = self._directive_field(directive, "summary")
+        advisory_conf = self._directive_field(directive, "confidence")
+        focus = self._directive_field(directive, "focus")
+        advisory_focus = None
+        if focus is not None:
+            advisory_focus = {
+                "target_type": self._directive_field(focus, "target_type"),
+                "target_id": self._directive_field(focus, "target_id"),
+                "highlight_region": self._directive_field(focus, "highlight_region"),
+            }
+        return advisory_action, advisory_summary, advisory_focus, advisory_conf
 
     def _run_shadow_hook(self, attempt: Attempt) -> None:
         """
@@ -659,34 +715,9 @@ class OperatorLoop:
                 pass  # fail-closed
 
         directive = (decision or {}).get("directive")
-        advisory_action = None
-        advisory_summary = None
-        advisory_focus = None
-        advisory_conf = None
-
-        if directive is not None:
-            # directive may be a dict (current) or a dataclass (future)
-            raw_action = self._directive_field(directive, "action")
-            # AttentionAction enum values are lowercase; shadow_record
-            # validator expects uppercase canonical names.
-            advisory_action = (
-                raw_action.name
-                if hasattr(raw_action, "name")
-                else str(raw_action).upper()
-                if raw_action
-                else None
-            )
-            advisory_summary = self._directive_field(directive, "summary")
-            advisory_conf = self._directive_field(directive, "confidence")
-            focus = self._directive_field(directive, "focus")
-            if focus is not None:
-                advisory_focus = {
-                    "target_type": self._directive_field(focus, "target_type"),
-                    "target_id": self._directive_field(focus, "target_id"),
-                    "highlight_region": self._directive_field(
-                        focus, "highlight_region"
-                    ),
-                }
+        advisory_action, advisory_summary, advisory_focus, advisory_conf = (
+            self._extract_advisory_fields(directive)
+        )
 
         # Persist advisory record
         write_shadow_record(

@@ -27,14 +27,11 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Dict, Tuple, Any, Union
+from typing import Callable, List, Optional, Dict, Tuple, Any
 import numpy as np
 from scipy import stats
 
 from .budget import (
-    UncertaintyComponent,
-    CombinedUncertainty,
-    DistributionType,
     welch_satterthwaite_dof,
     coverage_factor,
 )
@@ -376,7 +373,6 @@ def monte_carlo_uncertainty(
     std = float(np.std(valid_samples, ddof=1))
 
     # Shortest coverage interval
-    alpha = 1 - confidence_level
     sorted_samples = np.sort(valid_samples)
     n_valid = len(sorted_samples)
     n_coverage = int(np.ceil(n_valid * confidence_level))
@@ -482,7 +478,7 @@ def validate_gum_assumptions(
     model_func: Callable[..., float],
     input_values: Dict[str, float],
     input_uncertainties: Dict[str, float],
-    n_test_points: int = 5,
+    _n_test_points: int = 5,
 ) -> Dict[str, Any]:
     """
     Validate that GUM linearization is adequate for this model.
@@ -498,8 +494,8 @@ def validate_gum_assumptions(
         Nominal values.
     input_uncertainties : Dict[str, float]
         Standard uncertainties.
-    n_test_points : int
-        Points per input to test linearity.
+    _n_test_points : int
+        Reserved for future use (currently unused).
 
     Returns
     -------

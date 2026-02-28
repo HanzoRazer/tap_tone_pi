@@ -383,11 +383,11 @@ def format_gamma_calibration_report(result: GammaCalibrationResult) -> str:
     lines.append("γ (Gamma) Calibration Report")
     lines.append("=" * 65)
 
-    lines.append(f"\nData Summary:")
+    lines.append("\nData Summary:")
     lines.append(f"  Specimens:    {result.n_specimens}")
     lines.append(f"  Measurements: {result.n_measurements}")
 
-    lines.append(f"\nOverall Statistics:")
+    lines.append("\nOverall Statistics:")
     lines.append(f"  γ mean = {result.gamma_mean:.4f}")
     lines.append(f"  γ std  = {result.gamma_std:.4f}")
     lines.append(f"  γ SEM  = {result.gamma_sem:.4f}")
@@ -397,7 +397,7 @@ def format_gamma_calibration_report(result: GammaCalibrationResult) -> str:
         lines.append(f"  γ weighted = {result.weighted_gamma:.4f} (inverse-variance)")
 
     if result.mode_gammas:
-        lines.append(f"\nPer-Mode Analysis:")
+        lines.append("\nPer-Mode Analysis:")
         for mode_id, (mean, std) in sorted(result.mode_gammas.items()):
             if std > 0:
                 lines.append(f"  Mode {mode_id}: γ = {mean:.4f} ± {std:.4f}")
@@ -405,14 +405,14 @@ def format_gamma_calibration_report(result: GammaCalibrationResult) -> str:
                 lines.append(f"  Mode {mode_id}: γ = {mean:.4f}")
 
     if len(result.specimen_gammas) > 1:
-        lines.append(f"\nPer-Specimen Analysis:")
+        lines.append("\nPer-Specimen Analysis:")
         for spec_id, gamma in sorted(result.specimen_gammas.items()):
             lines.append(f"  {spec_id}: γ = {gamma:.4f}")
 
-    lines.append(f"\nRecommendation:")
+    lines.append("\nRecommendation:")
     lines.append(f"  Use γ = {result.gamma_mean:.3f} for design calculations")
     if result.gamma_std > 0.05:
-        lines.append(f"  (High variability - consider more specimens)")
+        lines.append("  (High variability - consider more specimens)")
 
     lines.append("")
     return "\n".join(lines)

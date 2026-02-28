@@ -212,7 +212,7 @@ def compute_frequency_response(
     )
 
     # Captured spectrum
-    _, psd_cap = welch(captured, fs=sample_rate, nperseg=nperseg, noverlap=noverlap)
+    _, _psd_cap = welch(captured, fs=sample_rate, nperseg=nperseg, noverlap=noverlap)
 
     # Cross spectral density for phase
     _, csd_result = csd(

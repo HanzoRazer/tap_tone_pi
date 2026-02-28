@@ -1,8 +1,5 @@
 """Tests for 2-oscillator coupled model (rigid back)."""
 
-import math
-import pytest
-import numpy as np
 
 from tap_tone_pi.design import (
     coupled_2osc_eigenfrequencies,

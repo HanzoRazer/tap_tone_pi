@@ -2,13 +2,11 @@
 Tests for uncertainty module (Phase 3 P0).
 """
 
-import math
 import pytest
 
 from tap_tone_pi.uncertainty import (
     # Budget
     UncertaintyBudget,
-    UncertaintyComponent,
     combine_uncertainties,
     expand_uncertainty,
     # Frequency
@@ -27,7 +25,6 @@ from tap_tone_pi.uncertainty import (
     uncertainty_to_dict,
 )
 from tap_tone_pi.uncertainty.budget import (
-    UncertaintyType,
     get_calibration_uncertainty_factor,
     get_snr_uncertainty_factor,
 )
@@ -505,8 +502,8 @@ class TestUncertaintyIntegration:
     def test_calibration_improves_all_uncertainties(self):
         """Calibration should improve frequency, amplitude, and MOE uncertainties."""
         # Frequency
-        freq_cal = compute_frequency_uncertainty(freq_hz=440.0, is_calibrated=True)
-        freq_uncal = compute_frequency_uncertainty(freq_hz=440.0, is_calibrated=False)
+        _freq_cal = compute_frequency_uncertainty(freq_hz=440.0, is_calibrated=True)
+        _freq_uncal = compute_frequency_uncertainty(freq_hz=440.0, is_calibrated=False)
 
         # Amplitude
         amp_cal = compute_amplitude_uncertainty(magnitude_db=-20.0, is_calibrated=True)

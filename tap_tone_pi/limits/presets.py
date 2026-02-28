@@ -8,8 +8,8 @@ import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-from .curves import LimitCurve, LimitPoint, LimitType, create_flat_limit
-from .masks import FrequencyMask, MaskRegion
+from .curves import LimitCurve
+from .masks import FrequencyMask
 
 
 # Built-in presets for common use cases

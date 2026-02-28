@@ -12,13 +12,11 @@ Tests cover:
 
 import math
 
-import numpy as np
 import pytest
 
 from tap_tone_pi.design import (
     # Core functions
     thickness_for_target_frequency,
-    coupled_eigenfrequencies,
     chladni_to_box_frequency,
     # Result classes
     PlateThicknessResult,
@@ -30,7 +28,6 @@ from tap_tone_pi.design import (
     BodyStyle,
     get_body_calibration,
     list_body_styles,
-    MaterialPreset,
     get_material_preset,
     list_materials,
 )

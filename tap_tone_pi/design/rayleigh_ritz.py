@@ -39,9 +39,9 @@ References:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, List, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -655,18 +655,18 @@ def format_rayleigh_ritz_report(result: RayleighRitzResult) -> str:
     lines.append("Rayleigh-Ritz Modal Analysis")
     lines.append("=" * 65)
 
-    lines.append(f"\nPlate Properties:")
+    lines.append("\nPlate Properties:")
     lines.append(f"  Dimensions : {result.plate.a*1000:.1f} x {result.plate.b*1000:.1f} x {result.plate.h*1000:.2f} mm")
     lines.append(f"  E_L        : {result.plate.E_L/1e9:.2f} GPa")
     lines.append(f"  E_C        : {result.plate.E_C/1e9:.2f} GPa")
     lines.append(f"  E_L/E_C    : {result.plate.orthotropy_ratio:.1f}")
     lines.append(f"  Density    : {result.plate.rho:.0f} kg/m3")
 
-    lines.append(f"\nBoundary Conditions:")
+    lines.append("\nBoundary Conditions:")
     lines.append(f"  X edges    : {result.bc_x.value}")
     lines.append(f"  Y edges    : {result.bc_y.value}")
 
-    lines.append(f"\nModal Frequencies:")
+    lines.append("\nModal Frequencies:")
     lines.append(f"  {'Mode':<6} {'(m,n)':<8} {'Frequency':>12}")
     lines.append(f"  {'-'*6} {'-'*8} {'-'*12}")
 

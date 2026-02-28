@@ -51,18 +51,16 @@ Usage:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-import numpy as np
 from scipy import optimize
 
 from .rayleigh_ritz import (
     OrthotropicPlate,
     BoundaryCondition,
     solve_rayleigh_ritz,
-    RayleighRitzResult,
 )
 from .thickness_calculator import plate_modal_frequency
 
@@ -495,14 +493,14 @@ class InverseDesignProblem:
     def solve(
         self,
         constraints: Optional[ThicknessConstraints] = None,
-        initial_guess_mm: Optional[float] = None,
+        _initial_guess_mm: Optional[float] = None,
         method: str = "bounded",
     ) -> InverseSolverResult:
         """Solve the inverse problem.
 
         Args:
             constraints: Thickness constraints
-            initial_guess_mm: Initial thickness guess (mm)
+            _initial_guess_mm: Reserved for future use (currently unused)
             method: Optimization method ("bounded", "brent", "golden")
 
         Returns:
@@ -670,16 +668,16 @@ def format_inverse_solver_report(result: InverseSolverResult) -> str:
     lines.append("Inverse Thickness Solver Result")
     lines.append("=" * 65)
 
-    lines.append(f"\nOptimal Thickness:")
+    lines.append("\nOptimal Thickness:")
     lines.append(f"  h = {result.thickness_mm:.2f} mm ({result.thickness_m*1e6:.0f} μm)")
 
-    lines.append(f"\nSolver Info:")
+    lines.append("\nSolver Info:")
     lines.append(f"  Forward model: {result.forward_model.value}")
     lines.append(f"  Iterations:    {result.n_iterations}")
     lines.append(f"  Converged:     {result.converged}")
     lines.append(f"  Constraints:   {'active' if result.constraints_active else 'inactive'}")
 
-    lines.append(f"\nFrequency Matching:")
+    lines.append("\nFrequency Matching:")
     lines.append(f"  {'Mode':<8} {'Target':>10} {'Achieved':>10} {'Error':>10} {'Error %':>10}")
     lines.append(f"  {'-'*8} {'-'*10} {'-'*10} {'-'*10} {'-'*10}")
 

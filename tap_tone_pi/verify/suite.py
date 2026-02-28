@@ -5,9 +5,9 @@ Verification test suite runner.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any
 
 import numpy as np
 

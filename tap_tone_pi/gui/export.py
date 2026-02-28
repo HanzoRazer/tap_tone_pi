@@ -165,6 +165,149 @@ def _generate_spectrum_csv(
         return False
 
 
+def _collect_points(
+    session_dir: Path,
+    pack_root: Path,
+    warnings: List[str],
+    files: List[Dict[str, Any]],
+) -> List[str]:
+    """Discover point directories and copy best-attempt artifacts."""
+    point_ids: List[str] = []
+
+    def add_file(src: Path, relpath: str, kind: str) -> None:
+        dst = pack_root / relpath
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+        files.append(
+            {
+                "relpath": relpath.replace("\\", "/"),
+                "sha256": sha256_file(dst),
+                "bytes": dst.stat().st_size,
+                "kind": kind,
+            }
+        )
+
+    for item in sorted(session_dir.iterdir()):
+        if not item.is_dir():
+            continue
+        if item.name.startswith("_") or item.name.startswith("."):
+            continue
+        attempts = [
+            d for d in item.iterdir() if d.is_dir() and d.name.startswith("attempt_")
+        ]
+        if not attempts:
+            continue
+
+        point_id = item.name
+        best_attempt = _find_best_attempt(item)
+        if best_attempt is None:
+            warnings.append(f"No valid attempt for point {point_id}")
+            continue
+
+        point_ids.append(point_id)
+
+        audio_path = best_attempt / "audio.wav"
+        if audio_path.exists():
+            add_file(audio_path, f"audio/points/{point_id}.wav", "audio_raw")
+        else:
+            warnings.append(f"No audio for point {point_id}")
+
+        analysis_path = best_attempt / "analysis.json"
+        if analysis_path.exists():
+            add_file(
+                analysis_path,
+                f"spectra/points/{point_id}/analysis.json",
+                "analysis_peaks",
+            )
+
+        if audio_path.exists():
+            spectrum_path = pack_root / f"spectra/points/{point_id}/spectrum.csv"
+            if _generate_spectrum_csv(audio_path, analysis_path, spectrum_path):
+                files.append(
+                    {
+                        "relpath": f"spectra/points/{point_id}/spectrum.csv",
+                        "sha256": sha256_file(spectrum_path),
+                        "bytes": spectrum_path.stat().st_size,
+                        "kind": "spectrum_csv",
+                    }
+                )
+
+    return point_ids
+
+
+def _build_manifest(
+    session_dir: Path,
+    pack_root: Path,
+    point_ids: List[str],
+    files: List[Dict[str, Any]],
+) -> None:
+    """Write session metadata and viewer_pack.json manifest."""
+    session_meta = {
+        "schema_id": "session_meta_v1",
+        "schema_version": "1.0",
+        "run_id": session_dir.name,
+        "exported_at_utc": utc_now_iso(),
+        "point_count": len(point_ids),
+        "source": "tap_tone_pi_gui",
+    }
+    meta_path = pack_root / "meta" / "session_meta.json"
+    meta_path.parent.mkdir(parents=True, exist_ok=True)
+    meta_path.write_text(json.dumps(session_meta, indent=2), encoding="utf-8")
+    files.append(
+        {
+            "relpath": "meta/session_meta.json",
+            "sha256": sha256_file(meta_path),
+            "bytes": meta_path.stat().st_size,
+            "kind": "session_meta",
+        }
+    )
+
+    manifest = {
+        "schema_id": "viewer_pack_v1",
+        "schema_version": "v1",
+        "created_at_utc": utc_now_iso(),
+        "source_session": session_dir.name,
+        "detected_phase": "quality_gated",
+        "measurement_only": True,
+        "points": point_ids,
+        "contents": {
+            "audio": any(f["kind"] == "audio_raw" for f in files),
+            "spectra": any(
+                f["kind"] in ("spectrum_csv", "analysis_peaks") for f in files
+            ),
+            "coherence": False,
+            "ods": False,
+            "wolf": False,
+            "plots": False,
+            "provenance": False,
+        },
+        "files": sorted(files, key=lambda x: x["relpath"]),
+    }
+
+    manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8")
+    bundle_sha = sha256_bytes(manifest_bytes)
+    manifest["bundle_sha256"] = bundle_sha
+
+    manifest_path = pack_root / "viewer_pack.json"
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+
+def _package_as_zip(pack_root: Path, output_dir: Path, session_name: str) -> Path:
+    """ZIP the pack directory, remove the directory, return zip path."""
+    zip_path = output_dir / f"{session_name}_viewer_pack.zip"
+    if zip_path.exists():
+        zip_path.unlink()
+
+    with ZipFile(zip_path, "w", compression=ZIP_DEFLATED) as zf:
+        for fp in pack_root.rglob("*"):
+            if fp.is_file():
+                arcname = fp.relative_to(pack_root).as_posix()
+                zf.write(fp, arcname=arcname)
+
+    shutil.rmtree(pack_root)
+    return zip_path
+
+
 def export_gui_session(
     session_dir: Path,
     output_dir: Optional[Path] = None,
@@ -200,74 +343,9 @@ def export_gui_session(
 
     warnings: List[str] = []
     files: List[Dict[str, Any]] = []
-    point_ids: List[str] = []
 
-    def add_file(src: Path, relpath: str, kind: str) -> None:
-        dst = pack_root / relpath
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dst)
-        files.append(
-            {
-                "relpath": relpath.replace("\\", "/"),
-                "sha256": sha256_file(dst),
-                "bytes": dst.stat().st_size,
-                "kind": kind,
-            }
-        )
-
-    # Find all points
-    for item in sorted(session_dir.iterdir()):
-        if not item.is_dir():
-            continue
-
-        # Skip non-point directories
-        if item.name.startswith("_") or item.name.startswith("."):
-            continue
-
-        # Check if this looks like a point directory (has attempt_* subdirs)
-        attempts = [
-            d for d in item.iterdir() if d.is_dir() and d.name.startswith("attempt_")
-        ]
-        if not attempts:
-            continue
-
-        point_id = item.name
-        best_attempt = _find_best_attempt(item)
-
-        if best_attempt is None:
-            warnings.append(f"No valid attempt for point {point_id}")
-            continue
-
-        point_ids.append(point_id)
-
-        # Copy audio
-        audio_path = best_attempt / "audio.wav"
-        if audio_path.exists():
-            add_file(audio_path, f"audio/points/{point_id}.wav", "audio_raw")
-        else:
-            warnings.append(f"No audio for point {point_id}")
-
-        # Copy analysis
-        analysis_path = best_attempt / "analysis.json"
-        if analysis_path.exists():
-            add_file(
-                analysis_path,
-                f"spectra/points/{point_id}/analysis.json",
-                "analysis_peaks",
-            )
-
-        # Generate spectrum CSV if possible
-        if audio_path.exists():
-            spectrum_path = pack_root / f"spectra/points/{point_id}/spectrum.csv"
-            if _generate_spectrum_csv(audio_path, analysis_path, spectrum_path):
-                files.append(
-                    {
-                        "relpath": f"spectra/points/{point_id}/spectrum.csv",
-                        "sha256": sha256_file(spectrum_path),
-                        "bytes": spectrum_path.stat().st_size,
-                        "kind": "spectrum_csv",
-                    }
-                )
+    # Collect measurement points
+    point_ids = _collect_points(session_dir, pack_root, warnings, files)
 
     if not point_ids:
         return ExportResult(
@@ -276,74 +354,12 @@ def export_gui_session(
             warnings=warnings,
         )
 
-    # Create session metadata
-    session_meta = {
-        "schema_id": "session_meta_v1",
-        "schema_version": "1.0",
-        "run_id": session_dir.name,
-        "exported_at_utc": utc_now_iso(),
-        "point_count": len(point_ids),
-        "source": "tap_tone_pi_gui",
-    }
+    # Write metadata + manifest
+    _build_manifest(session_dir, pack_root, point_ids, files)
 
-    meta_path = pack_root / "meta" / "session_meta.json"
-    meta_path.parent.mkdir(parents=True, exist_ok=True)
-    meta_path.write_text(json.dumps(session_meta, indent=2), encoding="utf-8")
-    files.append(
-        {
-            "relpath": "meta/session_meta.json",
-            "sha256": sha256_file(meta_path),
-            "bytes": meta_path.stat().st_size,
-            "kind": "session_meta",
-        }
-    )
-
-    # Create manifest
-    manifest = {
-        "schema_id": "viewer_pack_v1",
-        "schema_version": "v1",
-        "created_at_utc": utc_now_iso(),
-        "source_session": session_dir.name,
-        "detected_phase": "quality_gated",
-        "measurement_only": True,
-        "points": point_ids,
-        "contents": {
-            "audio": any(f["kind"] == "audio_raw" for f in files),
-            "spectra": any(
-                f["kind"] in ("spectrum_csv", "analysis_peaks") for f in files
-            ),
-            "coherence": False,
-            "ods": False,
-            "wolf": False,
-            "plots": False,
-            "provenance": False,
-        },
-        "files": sorted(files, key=lambda x: x["relpath"]),
-    }
-
-    # Compute bundle SHA before adding it
-    manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8")
-    bundle_sha = sha256_bytes(manifest_bytes)
-    manifest["bundle_sha256"] = bundle_sha
-
-    manifest_path = pack_root / "viewer_pack.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-
-    # Create ZIP if requested
+    # Package output
     if as_zip:
-        zip_path = output_dir / f"{session_dir.name}_viewer_pack.zip"
-        if zip_path.exists():
-            zip_path.unlink()
-
-        with ZipFile(zip_path, "w", compression=ZIP_DEFLATED) as zf:
-            for fp in pack_root.rglob("*"):
-                if fp.is_file():
-                    arcname = fp.relative_to(pack_root).as_posix()
-                    zf.write(fp, arcname=arcname)
-
-        # Clean up directory
-        shutil.rmtree(pack_root)
-
+        zip_path = _package_as_zip(pack_root, output_dir, session_dir.name)
         return ExportResult(
             success=True,
             output_path=zip_path,

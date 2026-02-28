@@ -6,7 +6,7 @@ Add tests for all retry scenarios: success, partial failure, complete failure, t
 """
 
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 

@@ -223,6 +223,48 @@ def _detect_trust_erosion(
     return None
 
 
+def _run_priority_detectors(evs: List[Any]) -> List[Tuple[MomentName, float, List[str]]]:
+    """Run priority-ordered detectors with suppression logic."""
+    detected: List[Tuple[MomentName, float, List[str]]] = []
+
+    def _detected_names() -> set[str]:
+        return {m[0] for m in detected}
+
+    if result := _detect_error(evs):
+        detected.append(result)
+
+    if "ERROR" not in _detected_names():
+        if result := _detect_overload(evs):
+            detected.append(result)
+
+    if not _detected_names() & {"ERROR", "OVERLOAD"}:
+        if result := _detect_decision_required(evs):
+            detected.append(result)
+
+    if not _detected_names() & {"ERROR", "OVERLOAD", "DECISION_REQUIRED"}:
+        if result := _detect_finding(evs):
+            detected.append(result)
+
+    if not _detected_names() & {"ERROR", "OVERLOAD", "DECISION_REQUIRED", "FINDING"}:
+        if result := _detect_hesitation(evs):
+            detected.append(result)
+
+    if not detected:
+        if result := _detect_first_signal(evs):
+            detected.append(result)
+
+    # Attention-based detectors (can coexist, priority handled at end)
+    stats = _collect_attention_stats(evs)
+    if result := _detect_confidence_climb(evs, stats):
+        detected.append(result)
+
+    if "TRUST_EROSION" not in _detected_names():
+        if result := _detect_trust_erosion(evs, stats):
+            detected.append(result)
+
+    return detected
+
+
 # --- Main Detection Entry Point ---
 
 
@@ -241,42 +283,7 @@ def detect_moments(events: List[Any]) -> List[dict]:
     # Sort by occurred_at if present, otherwise keep order
     evs = sorted(events, key=lambda e: str(_get(e, "occurred_at", "")))
 
-    detected: List[Tuple[MomentName, float, List[str]]] = []
-
-    # Run priority-ordered detectors (early return semantics)
-    if result := _detect_error(evs):
-        detected.append(result)
-
-    if not any(m[0] == "ERROR" for m in detected):
-        if result := _detect_overload(evs):
-            detected.append(result)
-
-    if not any(m[0] in ("ERROR", "OVERLOAD") for m in detected):
-        if result := _detect_decision_required(evs):
-            detected.append(result)
-
-    if not any(m[0] in ("ERROR", "OVERLOAD", "DECISION_REQUIRED") for m in detected):
-        if result := _detect_finding(evs):
-            detected.append(result)
-
-    if not any(
-        m[0] in ("ERROR", "OVERLOAD", "DECISION_REQUIRED", "FINDING") for m in detected
-    ):
-        if result := _detect_hesitation(evs):
-            detected.append(result)
-
-    if not detected:
-        if result := _detect_first_signal(evs):
-            detected.append(result)
-
-    # Attention-based detectors (can coexist, priority handled at end)
-    stats = _collect_attention_stats(evs)
-    if result := _detect_confidence_climb(evs, stats):
-        detected.append(result)
-
-    if not any(m[0] == "TRUST_EROSION" for m in detected):
-        if result := _detect_trust_erosion(evs, stats):
-            detected.append(result)
+    detected = _run_priority_detectors(evs)
 
     if not detected:
         return []

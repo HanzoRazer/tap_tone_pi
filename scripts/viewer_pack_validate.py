@@ -29,7 +29,7 @@ import json
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 # Schema validation (optional dependency)
 try:
@@ -103,6 +103,43 @@ def load_schema(schema_path: Optional[Path]) -> Optional[dict]:
         return json.load(f)
 
 
+def _verify_file_integrity(
+    handle: Any,
+    manifest: dict,
+    result: ValidationResult,
+) -> None:
+    """Verify each file in manifest exists in ZIP with correct size and SHA256."""
+    zip_names = set(handle.zip_handle.namelist())
+
+    for entry in iter_files(manifest):
+        if entry.relpath not in zip_names:
+            result.add_error(f"File missing from ZIP: {entry.relpath}")
+            continue
+
+        try:
+            data = read_file_from_pack(handle, entry.relpath)
+        except Exception as e:
+            result.add_error(f"Failed to read {entry.relpath}: {e}")
+            continue
+
+        if len(data) != entry.bytes:
+            result.add_error(
+                f"Size mismatch for {entry.relpath}: "
+                f"declared={entry.bytes} actual={len(data)}"
+            )
+        else:
+            result.add_pass()
+
+        actual_sha = compute_file_sha256(data)
+        if actual_sha != entry.sha256:
+            result.add_error(
+                f"SHA256 mismatch for {entry.relpath}: "
+                f"declared={entry.sha256[:16]}... actual={actual_sha[:16]}..."
+            )
+        else:
+            result.add_pass()
+
+
 def validate_viewer_pack(
     zip_path: Path,
     schema_path: Optional[Path] = None,
@@ -163,41 +200,10 @@ def validate_viewer_pack(
             )
 
         # 4. Verify each file exists and matches
-        zip_names = set(handle.zip_handle.namelist())
-
-        for entry in iter_files(manifest):
-            # Check file exists in ZIP
-            if entry.relpath not in zip_names:
-                result.add_error(f"File missing from ZIP: {entry.relpath}")
-                continue
-
-            # Read file and verify
-            try:
-                data = read_file_from_pack(handle, entry.relpath)
-            except Exception as e:
-                result.add_error(f"Failed to read {entry.relpath}: {e}")
-                continue
-
-            # Verify size
-            if len(data) != entry.bytes:
-                result.add_error(
-                    f"Size mismatch for {entry.relpath}: "
-                    f"declared={entry.bytes} actual={len(data)}"
-                )
-            else:
-                result.add_pass()
-
-            # Verify SHA256
-            actual_sha = compute_file_sha256(data)
-            if actual_sha != entry.sha256:
-                result.add_error(
-                    f"SHA256 mismatch for {entry.relpath}: "
-                    f"declared={entry.sha256[:16]}... actual={actual_sha[:16]}..."
-                )
-            else:
-                result.add_pass()
+        _verify_file_integrity(handle, manifest, result)
 
         # 5. Check for orphan files (in ZIP but not in manifest)
+        zip_names = set(handle.zip_handle.namelist())
         manifest_paths = {f.relpath for f in iter_files(manifest)}
         manifest_paths.add(MANIFEST_FILENAME)
 

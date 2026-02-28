@@ -290,7 +290,7 @@ def _build_system_section(story, metadata, geometry, grid, units, H1, H2, BODY, 
                 )
 
 
-def _build_apparatus_section(story, metadata, excitation, H1, BODY):
+def _build_apparatus_section(story, metadata, excitation, H1, _BODY):
     """Build experimental apparatus section."""
     story.append(Paragraph("3. Experimental Apparatus", H1))
     app_kv = [

@@ -31,7 +31,7 @@ Coherence drops when:
 """
 
 from dataclasses import dataclass, field
-from typing import Tuple, Optional, Dict, Any, List
+from typing import Tuple, Optional
 import numpy as np
 from scipy import signal
 

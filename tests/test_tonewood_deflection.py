@@ -11,17 +11,12 @@ Tests cover:
 """
 
 import json
-import math
-import tempfile
-from pathlib import Path
 
 import pytest
 
 from tap_tone_pi.tonewood_deflection import (
     Geometry,
     StripMassGeom,
-    FitResult,
-    DeflectionResult,
     mm_to_m,
     m_to_mm,
     g_to_kg,
@@ -33,7 +28,6 @@ from tap_tone_pi.tonewood_deflection import (
     compute_specific_stiffness,
     read_csv_points,
     analyze_deflection,
-    G,
 )
 
 

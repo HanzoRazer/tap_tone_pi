@@ -4,11 +4,10 @@ Core Rub & Buzz detection algorithms.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import List, Optional, Tuple, Dict, Any
+from dataclasses import dataclass
+from typing import List, Optional, Tuple, Dict
 
 import numpy as np
-from scipy import signal as scipy_signal
 
 from .schemas import DefectType, DefectEvent, DetectionConfig, SweepConfig
 from .envelope import compute_envelope, detect_transients

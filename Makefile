@@ -244,6 +244,28 @@ RH    ?=
 
 # ---- Validation & CI ----
 
+# Code health gates (complexity, maintainability, security, dead code)
+.PHONY: check-complexity check-maintainability check-security check-deadcode check-health ci-dry-run
+
+check-complexity:
+	@python ci/check_code_health.py complexity
+
+check-maintainability:
+	@python ci/check_code_health.py maintainability
+
+check-security:
+	@python ci/check_code_health.py security
+
+check-deadcode:
+	@python ci/check_code_health.py deadcode
+
+check-health:
+	@python ci/check_code_health.py all
+
+ci-dry-run: test check-health
+	@echo ""
+	@echo "✅ CI dry run passed: tests + code health gates"
+
 # Validate output artifacts against contract schemas
 validate-schemas:
 	@python scripts/validate_schemas.py --out-root $(OUT_ROOT) --schemas-root $(SCHEMAS_ROOT)

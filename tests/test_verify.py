@@ -2,9 +2,7 @@
 Tests for the verification test suite.
 """
 
-import math
 
-import numpy as np
 import pytest
 
 from tap_tone_pi.verify import (
@@ -12,11 +10,9 @@ from tap_tone_pi.verify import (
     VerificationSuite,
     run_verification_suite,
     quick_verify,
-    VerificationTest,
     TestOutcome,
     verify_frequency_accuracy,
     verify_amplitude_accuracy,
-    verify_snr_measurement,
     verify_peak_detection,
     verify_noise_floor,
     VerificationReport,

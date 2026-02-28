@@ -526,6 +526,63 @@ def _build_uncertainty_block(
     return uncertainty_block
 
 
+def _build_dial_block(args: argparse.Namespace, dial_zeroed_at: Optional[str]) -> Optional[Dict[str, Any]]:
+    """Build dial indicator calibration sub-block."""
+    if not (args.dial_zeroed or args.dial_zero_method or args.dial_zero_notes):
+        return None
+    return {
+        "zeroed": bool(args.dial_zeroed),
+        "zeroed_at_utc": dial_zeroed_at or utc_now_iso(),
+        "method": args.dial_zero_method,
+        "notes": args.dial_zero_notes,
+    }
+
+
+def _build_load_cell_block(args: argparse.Namespace) -> Optional[Dict[str, Any]]:
+    """Build load cell calibration sub-block."""
+    if not (
+        args.load_cell_present
+        or args.load_cell_calibration_date_utc
+        or args.load_cell_cal_provider
+        or args.load_cell_cert_id
+    ):
+        return None
+    return {
+        "present": bool(args.load_cell_present),
+        "calibration_date_utc": args.load_cell_calibration_date_utc or "unknown",
+        "calibration_provider": args.load_cell_cal_provider,
+        "certificate_id": args.load_cell_cert_id,
+        "notes": args.load_cell_cal_notes,
+    }
+
+
+def _build_standard_block(args: argparse.Namespace) -> Optional[Dict[str, Any]]:
+    """Build standard specimen calibration sub-block."""
+    if not (args.standard_used or args.standard_specimen_id):
+        return None
+
+    pass_flag = None
+    if (
+        args.standard_expected_k is not None
+        and args.standard_observed_k is not None
+        and args.standard_tolerance is not None
+    ):
+        pass_flag = (
+            abs(args.standard_observed_k - args.standard_expected_k)
+            <= args.standard_tolerance
+        )
+
+    return {
+        "used": bool(args.standard_used),
+        "specimen_id": args.standard_specimen_id or "unknown",
+        "expected_k": args.standard_expected_k,
+        "observed_k": args.standard_observed_k,
+        "tolerance": args.standard_tolerance,
+        "pass": pass_flag,
+        "notes": None,
+    }
+
+
 def _build_calibration_block(args: argparse.Namespace) -> Optional[Dict[str, Any]]:
     """Build calibration block from args."""
     if not (args.dial_zeroed or args.load_cell_present or args.standard_used):
@@ -535,62 +592,10 @@ def _build_calibration_block(args: argparse.Namespace) -> Optional[Dict[str, Any
     if args.dial_zeroed and not dial_zeroed_at:
         dial_zeroed_at = utc_now_iso()
 
-    # Dial block
-    dial_block = None
-    if args.dial_zeroed or args.dial_zero_method or args.dial_zero_notes:
-        dial_block = {
-            "zeroed": bool(args.dial_zeroed),
-            "zeroed_at_utc": dial_zeroed_at or utc_now_iso(),
-            "method": args.dial_zero_method,
-            "notes": args.dial_zero_notes,
-        }
-
-    # Load cell block
-    load_cell_block = None
-    if (
-        args.load_cell_present
-        or args.load_cell_calibration_date_utc
-        or args.load_cell_cal_provider
-        or args.load_cell_cert_id
-    ):
-        load_cell_block = {
-            "present": bool(args.load_cell_present),
-            "calibration_date_utc": args.load_cell_calibration_date_utc or "unknown",
-            "calibration_provider": args.load_cell_cal_provider,
-            "certificate_id": args.load_cell_cert_id,
-            "notes": args.load_cell_cal_notes,
-        }
-
-    # Standard specimen block
-    standard_block = None
-    if args.standard_used or args.standard_specimen_id:
-        pass_flag = None
-        if (
-            args.standard_expected_k is not None
-            and args.standard_observed_k is not None
-            and args.standard_tolerance is not None
-        ):
-            pass_flag = (
-                abs(args.standard_observed_k - args.standard_expected_k)
-                <= args.standard_tolerance
-            )
-
-        standard_block = {
-            "used": bool(args.standard_used),
-            "specimen_id": args.standard_specimen_id or "unknown",
-            "expected_k": args.standard_expected_k,
-            "observed_k": args.standard_observed_k,
-            "tolerance": args.standard_tolerance,
-            "pass": pass_flag,
-            "notes": None,
-        }
-
     return {
-        "dial": dial_block or {"zeroed": False, "zeroed_at_utc": utc_now_iso()},
-        "load_cell": load_cell_block
-        or {"present": False, "calibration_date_utc": "unknown"},
-        "standard_specimen": standard_block
-        or {"used": False, "specimen_id": "unknown"},
+        "dial": _build_dial_block(args, dial_zeroed_at) or {"zeroed": False, "zeroed_at_utc": utc_now_iso()},
+        "load_cell": _build_load_cell_block(args) or {"present": False, "calibration_date_utc": "unknown"},
+        "standard_specimen": _build_standard_block(args) or {"used": False, "specimen_id": "unknown"},
     }
 
 

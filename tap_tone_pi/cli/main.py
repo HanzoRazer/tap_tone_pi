@@ -23,14 +23,22 @@ Usage:
 """
 
 from __future__ import annotations
-from typing import Callable
+from typing import Callable, Any
 
 import argparse
 import json
-import os
 import sys
 from datetime import datetime
 from pathlib import Path
+
+from tap_tone_pi.cli.export_cmd import cmd_export_pack as _cmd_export_pack_impl
+from tap_tone_pi.cli.session_utils import (
+    find_all_sessions,
+    count_session_points,
+    format_size,
+    open_path,
+    print_summary,
+)
 
 
 # Resolve project root for session directories
@@ -591,13 +599,33 @@ def _handle_fail_verdict(
         return False, 1
 
 
-def cmd_measure(args: argparse.Namespace) -> int:
-    """Quality-gated measurement with operator loop."""
+def _run_limit_check(args: argparse.Namespace, result: Any) -> int | None:
+    """Run limit test if configured. Returns non-zero exit code on violation, else None."""
     from tap_tone_pi.cli.limits_integration import (
         load_limits_config,
         run_limit_test,
         handle_limit_test_result,
     )
+    limits_config = load_limits_config(args)
+    if limits_config and result.analysis:
+        passed, output = run_limit_test(
+            result.analysis,
+            limits_config,
+            verbose=True,
+            as_json=getattr(args, "limits_json", False),
+        )
+        limit_exit = handle_limit_test_result(
+            passed,
+            output,
+            fail_on_violation=getattr(args, "limits_fail", False),
+        )
+        if limit_exit != 0:
+            return limit_exit
+    return None
+
+
+def cmd_measure(args: argparse.Namespace) -> int:
+    """Quality-gated measurement with operator loop."""
     from tap_tone_pi.core.user_config import (
         get_saved_device,
         load_config,
@@ -693,43 +721,17 @@ def cmd_measure(args: argparse.Namespace) -> int:
 
         if result.verdict.verdict == Verdict.PASS:
             exit_code = _handle_pass_verdict(loop, result)
-            # Run limit test if specified
-            limits_config = load_limits_config(args)
-            if limits_config and result.analysis:
-                passed, output = run_limit_test(
-                    result.analysis,
-                    limits_config,
-                    verbose=True,
-                    as_json=getattr(args, "limits_json", False),
-                )
-                limit_exit = handle_limit_test_result(
-                    passed,
-                    output,
-                    fail_on_violation=getattr(args, "limits_fail", False),
-                )
-                if limit_exit != 0:
-                    return limit_exit
+            limit_exit = _run_limit_check(args, result)
+            if limit_exit is not None:
+                return limit_exit
             return exit_code
 
         elif result.verdict.verdict == Verdict.WARN:
             accepted, exit_code = _handle_warn_verdict(loop, result)
             if accepted:
-                # Run limit test if specified
-                limits_config = load_limits_config(args)
-                if limits_config and result.analysis:
-                    passed, output = run_limit_test(
-                        result.analysis,
-                        limits_config,
-                        verbose=True,
-                        as_json=getattr(args, "limits_json", False),
-                    )
-                    limit_exit = handle_limit_test_result(
-                        passed,
-                        output,
-                        fail_on_violation=getattr(args, "limits_fail", False),
-                    )
-                    if limit_exit != 0:
-                        return limit_exit
+                limit_exit = _run_limit_check(args, result)
+                if limit_exit is not None:
+                    return limit_exit
                 return exit_code
             # else: continue to retry
 
@@ -947,82 +949,8 @@ def cmd_bending(args: argparse.Namespace) -> int:
 
 
 def cmd_export_pack(args: argparse.Namespace) -> int:
-    """Export a session as viewer_pack_v1 ZIP."""
-    import subprocess
-
-    from tap_tone_pi.cli.validators import confirm_overwrite
-
-    # Consistent with other CLI commands - resolve against PROJECT_ROOT
-    session_path = Path(args.session)
-    if not session_path.is_absolute():
-        session_path = (PROJECT_ROOT / session_path).resolve()
-
-    # Output path: allow relative-to-CWD for convenience
-    out_path = Path(args.out)
-    if not out_path.is_absolute():
-        out_path = Path.cwd() / out_path
-
-    if not session_path.exists():
-        print(f"Session not found: {session_path}", file=sys.stderr)
-        return 1
-
-    # Confirm overwrite if output exists
-    confirm_overwrite(out_path, force=getattr(args, "force", False))
-
-    # Guardrail: exporter expects Phase 2 session structure
-    grid_json = session_path / "grid.json"
-    if not grid_json.exists():
-        print(
-            "export-pack expects a Phase 2 session directory.\n"
-            f"Missing grid.json in: {session_path}",
-            file=sys.stderr,
-        )
-        return 1
-
-    export_script = PROJECT_ROOT / "scripts" / "export" / "viewer_pack_v1_export.py"
-    if not export_script.exists():
-        print(f"Exporter script not found: {export_script}", file=sys.stderr)
-        return 1
-
-    argv = [
-        sys.executable,
-        str(export_script),
-        "--session",
-        str(session_path),
-        "--out",
-        str(out_path),
-    ]
-
-    # Run export
-    rc = subprocess.call(argv, cwd=str(PROJECT_ROOT))
-    if rc != 0:
-        return rc
-
-    # Optional ZIP validation
-    if args.validate:
-        validate_script = PROJECT_ROOT / "scripts" / "viewer_pack_validate.py"
-        if not validate_script.exists():
-            print(f"ZIP validator script not found: {validate_script}", file=sys.stderr)
-            return 1
-
-        v_argv = [
-            sys.executable,
-            str(validate_script),
-            str(out_path),
-        ]
-
-        # Passthrough flags
-        if args.strict:
-            v_argv.append("--strict")
-        if args.json:
-            v_argv.append("--json")
-
-        v_rc = subprocess.call(v_argv, cwd=str(PROJECT_ROOT))
-        if v_rc != 0:
-            return v_rc
-
-    print(f"Wrote: {out_path}")
-    return 0
+    """Export a session as viewer_pack_v1 ZIP (delegated to cli.export_cmd)."""
+    return _cmd_export_pack_impl(args, PROJECT_ROOT)
 
 
 def cmd_evidence_check(args: argparse.Namespace) -> int:
@@ -1069,73 +997,28 @@ def cmd_completion(args: argparse.Namespace) -> int:
 
 
 def _print_summary(label: str | None, res) -> None:
-    """Print analysis summary to console."""
-    print("")
-    if label:
-        print(f"Label: {label}")
-    print(f"Dominant: {res.dominant_hz if res.dominant_hz else 'n/a'} Hz")
-    print(
-        f"RMS: {res.rms:.6f}   Clipped: {res.clipped}   Confidence: {res.confidence:.2f}"
-    )
-    if res.peaks:
-        print("Top peaks:")
-        for p in res.peaks[:8]:
-            print(f"  - {p.freq_hz:8.2f} Hz   mag={p.magnitude:.3f}")
-    else:
-        print("No peaks detected (try higher gain or quieter room).")
-    print("")
+    """Print analysis summary to console (delegated to cli.session_utils)."""
+    print_summary(label, res)
 
 
 def _find_all_sessions() -> list[Path]:
     """Find all session directories across known roots."""
-    sessions = []
-    prefixes = ("session_", "capture_", "bend_", "chladni_", "gold_")
-
-    for root in SESSION_ROOTS:
-        if root.exists():
-            for d in root.iterdir():
-                if d.is_dir() and any(d.name.startswith(p) for p in prefixes):
-                    sessions.append(d)
-            # Also check one level deeper for date-organized sessions
-            for sub in root.iterdir():
-                if sub.is_dir():
-                    for d in sub.iterdir():
-                        if d.is_dir() and any(d.name.startswith(p) for p in prefixes):
-                            sessions.append(d)
-
-    return sessions
+    return find_all_sessions(SESSION_ROOTS)
 
 
 def _count_session_points(session_dir: Path) -> int | None:
     """Count capture points from session.jsonl if present."""
-    jsonl = session_dir / "session.jsonl"
-    if jsonl.exists():
-        try:
-            return sum(1 for _ in jsonl.open())
-        except (ImportError, OSError, ValueError, KeyError, AttributeError):
-            pass
-    return None
+    return count_session_points(session_dir)
 
 
 def _format_size(size: int) -> str:
     """Format file size in human-readable form."""
-    for unit in ["B", "KB", "MB", "GB"]:
-        if size < 1024:
-            return f"{size:.0f} {unit}" if unit == "B" else f"{size:.1f} {unit}"
-        size /= 1024
-    return f"{size:.1f} TB"
+    return format_size(size)
 
 
 def _open_path(path: Path) -> None:
     """Open a path in the system file manager."""
-    import subprocess
-
-    if sys.platform == "darwin":
-        subprocess.run(["open", str(path)])
-    elif sys.platform == "win32":
-        os.startfile(str(path))
-    else:
-        subprocess.run(["xdg-open", str(path)])
+    open_path(path)
 
 
 def _bash_completion() -> str:

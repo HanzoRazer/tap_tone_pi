@@ -66,11 +66,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 # Import from sister modules
 from .gore_spreadsheet import (
-    BuildSpreadsheetEntry,
-    CrossValidationResult,
     cross_validate_modulus,
     dynamic_modulus_from_frequency,
-    build_spreadsheet_entry,
     DEFAULT_CROSSVAL_THRESHOLD_PCT,
     _sha256,
 )
@@ -562,7 +559,323 @@ class QALabSpecEntry:
 
 
 # =============================================================================
-# Builder Functions
+# Builder Helpers — extracted from build_qa_lab_spec_entry (CC reduction)
+# Each helper addresses one section of the QA lab spec.
+# Pure data logic; I/O (JSON loads) is kept minimal and explicit.
+# =============================================================================
+
+
+def _load_bending_data(
+    entry: "QALabSpecEntry",
+    bending_json_path: str,
+    warnings: List[str],
+) -> Optional[float]:
+    """Load bending JSON and populate entry fields.
+
+    Returns:
+        E_static (GPa) or None if loading failed.
+    """
+    try:
+        with open(bending_json_path, "r", encoding="utf-8") as f:
+            bending = json.load(f)
+        E_static = bending.get("E_GPa")
+        entry.E_static_GPa = round(E_static, 3) if E_static else None
+        entry.E_uncorrected_GPa = round(
+            bending.get("E_euler_bernoulli_GPa", E_static or 0), 3
+        )
+
+        shear_info = bending.get("shear_correction", {})
+        entry.shear_correction_applied = shear_info.get("applied", False)
+        entry.shear_correction_percent = round(
+            shear_info.get("reduction_percent", 0), 2
+        )
+
+        fit_info = bending.get("fit", {})
+        entry.fit_r_squared = round(fit_info.get("r2", 0), 4)
+
+        entry.audit.bending_data_path = bending_json_path
+        entry.audit.bending_data_sha256 = _sha256(Path(bending_json_path))
+        return E_static
+    except Exception as e:
+        warnings.append(f"Failed to load bending data: {e}")
+        return None
+
+
+def _load_acoustic_data(
+    entry: "QALabSpecEntry",
+    acoustic_json_path: str,
+    density_kg_m3: Optional[float],
+    length_mm: Optional[float],
+    thickness_mm: float,
+    warnings: List[str],
+) -> Tuple[Optional[float], Optional[float]]:
+    """Load acoustic JSON, extract peaks, compute dynamic E.
+
+    Returns:
+        (measured_freq, E_dynamic) — either may be None.
+    """
+    measured_freq: Optional[float] = None
+    E_dynamic: Optional[float] = None
+    try:
+        with open(acoustic_json_path, "r", encoding="utf-8") as f:
+            peaks = json.load(f)
+
+        # Extract frequencies from multiple possible formats
+        if "peaks_hz" in peaks and peaks["peaks_hz"]:
+            freqs = peaks["peaks_hz"]
+            measured_freq = min(freqs)
+            entry.measurements.peak_frequencies_hz = freqs
+        elif "peaks" in peaks and peaks["peaks"]:
+            peak_list = peaks["peaks"]
+            if isinstance(peak_list[0], dict):
+                freqs = [
+                    p.get("frequency_hz", p.get("freq_hz", 0)) for p in peak_list
+                ]
+                amps = [p.get("amplitude", 0) for p in peak_list]
+                measured_freq = min(f for f in freqs if f > 0)
+                entry.measurements.peak_frequencies_hz = freqs
+                entry.measurements.peak_amplitudes = amps
+        elif "fundamental_hz" in peaks:
+            measured_freq = peaks["fundamental_hz"]
+
+        entry.measurements.fundamental_freq_hz = (
+            round(measured_freq, 1) if measured_freq else None
+        )
+
+        # Compute dynamic E if we have the required inputs
+        if measured_freq and density_kg_m3 and length_mm:
+            E_dynamic = dynamic_modulus_from_frequency(
+                measured_freq, density_kg_m3, length_mm, thickness_mm
+            )
+            entry.E_dynamic_GPa = round(E_dynamic, 3)
+
+        entry.audit.peaks_data_path = acoustic_json_path
+        entry.audit.peaks_data_sha256 = _sha256(Path(acoustic_json_path))
+    except Exception as e:
+        warnings.append(f"Failed to load acoustic data: {e}")
+    return measured_freq, E_dynamic
+
+
+def _apply_crossvalidation(
+    entry: "QALabSpecEntry",
+    E_static: float,
+    E_dynamic: Optional[float],
+    measured_freq: Optional[float],
+    density_kg_m3: Optional[float],
+    length_mm: Optional[float],
+    thickness_mm: float,
+    crossval_threshold_pct: float,
+    warnings: List[str],
+) -> None:
+    """Run cross-validation between static and dynamic modulus."""
+    crossval = cross_validate_modulus(
+        E_static_GPa=E_static,
+        E_dynamic_GPa=E_dynamic,
+        measured_freq_hz=measured_freq,
+        density_kg_m3=density_kg_m3,
+        length_mm=length_mm,
+        thickness_mm=thickness_mm,
+        threshold_percent=crossval_threshold_pct,
+    )
+    entry.quality.crossval_agreement = crossval.agreement
+    entry.quality.crossval_delta_percent = crossval.delta_percent
+    warnings.extend(crossval.warnings)
+
+
+def _compute_stiffness_index(
+    entry: "QALabSpecEntry",
+    E_best: float,
+    thickness_mm: float,
+    direction: str,
+    instrument: Optional[str],
+    SI_target: Optional[float],
+) -> None:
+    """Compute SI, preset matching, and target thickness."""
+    entry.SI = round(stiffness_index(E_best, thickness_mm), 2)
+
+    preset = get_preset(instrument) if instrument else None
+    target = SI_target
+
+    if target is None and preset is not None:
+        if direction.upper() == "L":
+            target = preset.SI_L_typical
+        elif direction.upper() == "C" and preset.SI_C_typical:
+            target = preset.SI_C_typical
+
+    if target is not None:
+        entry.SI_target = target
+        entry.h_target_mm = round(thickness_for_target_SI(target, E_best), 3)
+
+    if preset is not None:
+        entry.instrument_type = preset.instrument.value
+        if direction.upper() == "L":
+            entry.preset_SI_typical = preset.SI_L_typical
+            entry.preset_h_recommended_mm = round(
+                thickness_for_target_SI(preset.SI_L_typical, E_best), 3
+            )
+            if entry.SI < preset.SI_L_min:
+                entry.preset_match_status = "low"
+            elif entry.SI > preset.SI_L_max:
+                entry.preset_match_status = "high"
+            else:
+                entry.preset_match_status = "good"
+
+
+def _compute_derived_physics(
+    entry: "QALabSpecEntry",
+    E_best: float,
+    density_kg_m3: float,
+) -> None:
+    """Compute wave speed, specific stiffness, radiation ratio."""
+    import math
+
+    E_Pa = E_best * 1e9
+    spec = E_Pa / density_kg_m3
+    c = math.sqrt(spec)
+    entry.specific_stiffness = round(spec, 0)
+    entry.wave_speed_m_s = round(c, 0)
+    entry.radiation_ratio = round(c / density_kg_m3, 4)
+
+
+def _load_modal_data(
+    entry: "QALabSpecEntry",
+    modes_json_path: str,
+    warnings: List[str],
+) -> None:
+    """Load modal analysis JSON and populate entry.modal."""
+    try:
+        with open(modes_json_path, "r", encoding="utf-8") as f:
+            modes_data = json.load(f)
+
+        modes_list = modes_data.get("modes", [])
+        entry.modal.n_modes_identified = len(modes_list)
+
+        for i, m in enumerate(modes_list):
+            mode_result = ModeResult(
+                mode_number=i + 1,
+                frequency_hz=m.get("frequency_hz", 0),
+                damping_ratio=m.get("damping_ratio", 0),
+                quality_factor=m.get("quality_factor", m.get("Q", 0)),
+                amplitude=m.get("amplitude", 0),
+                confidence=m.get("confidence", "medium"),
+                stability_count=m.get("stability_count", 0),
+                phase_deg=m.get("phase_deg"),
+                bandwidth_hz=m.get("bandwidth_hz"),
+            )
+            entry.modal.modes.append(mode_result)
+
+        # Find dominant mode
+        if modes_list:
+            dominant = max(modes_list, key=lambda x: x.get("amplitude", 0))
+            entry.modal.dominant_mode_freq_hz = dominant.get("frequency_hz")
+            entry.modal.dominant_mode_damping = dominant.get("damping_ratio")
+            entry.modal.dominant_mode_Q = dominant.get(
+                "quality_factor", dominant.get("Q")
+            )
+
+    except Exception as e:
+        warnings.append(f"Failed to load modal data: {e}")
+
+
+def _load_uncertainty_data(
+    entry: "QALabSpecEntry",
+    uncertainty_json_path: str,
+    E_best: Optional[float],
+    warnings: List[str],
+) -> None:
+    """Load uncertainty budget JSON and populate entry.errors."""
+    try:
+        with open(uncertainty_json_path, "r", encoding="utf-8") as f:
+            unc_data = json.load(f)
+
+        entry.errors.combined_standard_uncertainty = unc_data.get(
+            "combined_standard_uncertainty"
+        )
+        entry.errors.expanded_uncertainty = unc_data.get("expanded_uncertainty")
+        entry.errors.coverage_factor = unc_data.get("coverage_factor", 2.0)
+        entry.errors.effective_dof = unc_data.get("degrees_of_freedom")
+        entry.errors.E_uncertainty_percent = unc_data.get(
+            "relative_uncertainty_percent"
+        )
+
+        if entry.errors.combined_standard_uncertainty and E_best:
+            entry.errors.E_uncertainty_GPa = entry.errors.combined_standard_uncertainty
+
+        # Components
+        for comp in unc_data.get("components", []):
+            entry.errors.components.append(
+                UncertaintyComponent(
+                    name=comp.get("name", ""),
+                    value=comp.get("value", 0),
+                    unit=comp.get("unit", ""),
+                    type=comp.get("type", "type_b"),
+                    sensitivity_coefficient=comp.get("sensitivity_coefficient", 1.0),
+                    description=comp.get("description", ""),
+                )
+            )
+
+        # Find dominant source
+        if entry.errors.components:
+            dominant = max(entry.errors.components, key=lambda x: x.value)
+            entry.errors.dominant_error_source = dominant.name
+
+    except Exception as e:
+        warnings.append(f"Failed to load uncertainty data: {e}")
+
+
+def _load_quality_data(
+    entry: "QALabSpecEntry",
+    quality_json_path: str,
+    warnings: List[str],
+) -> None:
+    """Load quality assessment JSON and populate entry.quality."""
+    try:
+        with open(quality_json_path, "r", encoding="utf-8") as f:
+            qual_data = json.load(f)
+
+        entry.quality.verdict = qual_data.get("verdict", "pass")
+        entry.quality.policy_version = qual_data.get("policy_version", "")
+        entry.quality.error_count = qual_data.get("error_count", 0)
+        entry.quality.warning_count = qual_data.get("warning_count", 0)
+
+        for rule in qual_data.get("triggered_rules", []):
+            entry.quality.triggered_rules.append(
+                TriggeredRuleInfo(
+                    rule_id=rule.get("rule_id", ""),
+                    severity=rule.get("severity", "soft"),
+                    message=rule.get("message", ""),
+                )
+            )
+
+    except Exception as e:
+        warnings.append(f"Failed to load quality data: {e}")
+
+
+def _load_wolf_data(
+    entry: "QALabSpecEntry",
+    wolf_json_path: str,
+    warnings: List[str],
+) -> None:
+    """Load wolf-tone analysis JSON and populate entry.special."""
+    try:
+        with open(wolf_json_path, "r", encoding="utf-8") as f:
+            wolf_data = json.load(f)
+
+        worst = wolf_data.get("worst_wolf", {})
+        entry.special.wolf = WolfToneAnalysis(
+            wolf_detected=wolf_data.get("n_pairs", 0) > 0,
+            worst_wolf_freq_hz=worst.get("center_freq_hz"),
+            worst_wolf_beat_hz=worst.get("beat_freq_hz"),
+            worst_wolf_severity=worst.get("severity", "none"),
+            n_wolf_pairs=wolf_data.get("n_pairs", 0),
+        )
+
+    except Exception as e:
+        warnings.append(f"Failed to load wolf data: {e}")
+
+
+# =============================================================================
+# Builder — Orchestrator
 # =============================================================================
 
 
@@ -619,7 +932,7 @@ def build_qa_lab_spec_entry(
         Complete QALabSpecEntry with all available data populated
     """
     entry = QALabSpecEntry()
-    warnings = []
+    warnings: List[str] = []
 
     # === Section 1: Sample Identification ===
     entry.sample = SampleIdentification(
@@ -653,233 +966,55 @@ def build_qa_lab_spec_entry(
         density_kg_m3=density_kg_m3,
     )
 
-    # === Section 4: Derived Properties (load from bending/acoustic) ===
-    E_static = None
-    E_dynamic = None
-    measured_freq = None
+    # === Section 4: Derived Properties ===
+    E_static: Optional[float] = None
+    E_dynamic: Optional[float] = None
+    measured_freq: Optional[float] = None
 
-    # Load bending data
     if bending_json_path:
-        try:
-            with open(bending_json_path, "r", encoding="utf-8") as f:
-                bending = json.load(f)
-            E_static = bending.get("E_GPa")
-            entry.E_static_GPa = round(E_static, 3) if E_static else None
-            entry.E_uncorrected_GPa = round(bending.get("E_euler_bernoulli_GPa", E_static or 0), 3)
+        E_static = _load_bending_data(entry, bending_json_path, warnings)
 
-            shear_info = bending.get("shear_correction", {})
-            entry.shear_correction_applied = shear_info.get("applied", False)
-            entry.shear_correction_percent = round(shear_info.get("reduction_percent", 0), 2)
-
-            fit_info = bending.get("fit", {})
-            entry.fit_r_squared = round(fit_info.get("r2", 0), 4)
-
-            entry.audit.bending_data_path = bending_json_path
-            entry.audit.bending_data_sha256 = _sha256(Path(bending_json_path))
-        except Exception as e:
-            warnings.append(f"Failed to load bending data: {e}")
-
-    # Load acoustic data
     if acoustic_json_path:
-        try:
-            with open(acoustic_json_path, "r", encoding="utf-8") as f:
-                peaks = json.load(f)
-
-            # Extract frequencies
-            if "peaks_hz" in peaks and peaks["peaks_hz"]:
-                freqs = peaks["peaks_hz"]
-                measured_freq = min(freqs)
-                entry.measurements.peak_frequencies_hz = freqs
-            elif "peaks" in peaks and peaks["peaks"]:
-                peak_list = peaks["peaks"]
-                if isinstance(peak_list[0], dict):
-                    freqs = [p.get("frequency_hz", p.get("freq_hz", 0)) for p in peak_list]
-                    amps = [p.get("amplitude", 0) for p in peak_list]
-                    measured_freq = min(f for f in freqs if f > 0)
-                    entry.measurements.peak_frequencies_hz = freqs
-                    entry.measurements.peak_amplitudes = amps
-            elif "fundamental_hz" in peaks:
-                measured_freq = peaks["fundamental_hz"]
-
-            entry.measurements.fundamental_freq_hz = round(measured_freq, 1) if measured_freq else None
-
-            # Compute dynamic E
-            if measured_freq and density_kg_m3 and length_mm:
-                E_dynamic = dynamic_modulus_from_frequency(
-                    measured_freq, density_kg_m3, length_mm, thickness_mm
-                )
-                entry.E_dynamic_GPa = round(E_dynamic, 3)
-
-            entry.audit.peaks_data_path = acoustic_json_path
-            entry.audit.peaks_data_sha256 = _sha256(Path(acoustic_json_path))
-        except Exception as e:
-            warnings.append(f"Failed to load acoustic data: {e}")
-
-    # Cross-validation
-    if E_static is not None:
-        crossval = cross_validate_modulus(
-            E_static_GPa=E_static,
-            E_dynamic_GPa=E_dynamic,
-            measured_freq_hz=measured_freq,
-            density_kg_m3=density_kg_m3,
-            length_mm=length_mm,
-            thickness_mm=thickness_mm,
-            threshold_percent=crossval_threshold_pct,
+        measured_freq, E_dynamic = _load_acoustic_data(
+            entry, acoustic_json_path, density_kg_m3, length_mm, thickness_mm, warnings
         )
-        entry.quality.crossval_agreement = crossval.agreement
-        entry.quality.crossval_delta_percent = crossval.delta_percent
-        warnings.extend(crossval.warnings)
 
-    # Stiffness Index
+    if E_static is not None:
+        _apply_crossvalidation(
+            entry, E_static, E_dynamic, measured_freq,
+            density_kg_m3, length_mm, thickness_mm,
+            crossval_threshold_pct, warnings,
+        )
+
     E_best = E_static or E_dynamic
     if E_best is not None:
-        entry.SI = round(stiffness_index(E_best, thickness_mm), 2)
+        _compute_stiffness_index(
+            entry, E_best, thickness_mm, direction, instrument, SI_target
+        )
 
-        preset = get_preset(instrument) if instrument else None
-        target = SI_target
-
-        if target is None and preset is not None:
-            if direction.upper() == "L":
-                target = preset.SI_L_typical
-            elif direction.upper() == "C" and preset.SI_C_typical:
-                target = preset.SI_C_typical
-
-        if target is not None:
-            entry.SI_target = target
-            entry.h_target_mm = round(thickness_for_target_SI(target, E_best), 3)
-
-        if preset is not None:
-            entry.instrument_type = preset.instrument.value
-            if direction.upper() == "L":
-                entry.preset_SI_typical = preset.SI_L_typical
-                entry.preset_h_recommended_mm = round(
-                    thickness_for_target_SI(preset.SI_L_typical, E_best), 3
-                )
-                if entry.SI < preset.SI_L_min:
-                    entry.preset_match_status = "low"
-                elif entry.SI > preset.SI_L_max:
-                    entry.preset_match_status = "high"
-                else:
-                    entry.preset_match_status = "good"
-
-    # Derived properties
     if E_best is not None and density_kg_m3 is not None:
-        import math
-        E_Pa = E_best * 1e9
-        spec = E_Pa / density_kg_m3
-        c = math.sqrt(spec)
-        entry.specific_stiffness = round(spec, 0)
-        entry.wave_speed_m_s = round(c, 0)
-        entry.radiation_ratio = round(c / density_kg_m3, 4)
+        _compute_derived_physics(entry, E_best, density_kg_m3)
 
-    # === Section 5: Modal Analysis (load if available) ===
+    # === Section 5: Modal Analysis ===
     if modes_json_path:
-        try:
-            with open(modes_json_path, "r", encoding="utf-8") as f:
-                modes_data = json.load(f)
+        _load_modal_data(entry, modes_json_path, warnings)
 
-            modes_list = modes_data.get("modes", [])
-            entry.modal.n_modes_identified = len(modes_list)
-
-            for i, m in enumerate(modes_list):
-                mode_result = ModeResult(
-                    mode_number=i + 1,
-                    frequency_hz=m.get("frequency_hz", 0),
-                    damping_ratio=m.get("damping_ratio", 0),
-                    quality_factor=m.get("quality_factor", m.get("Q", 0)),
-                    amplitude=m.get("amplitude", 0),
-                    confidence=m.get("confidence", "medium"),
-                    stability_count=m.get("stability_count", 0),
-                    phase_deg=m.get("phase_deg"),
-                    bandwidth_hz=m.get("bandwidth_hz"),
-                )
-                entry.modal.modes.append(mode_result)
-
-            # Find dominant mode
-            if modes_list:
-                dominant = max(modes_list, key=lambda x: x.get("amplitude", 0))
-                entry.modal.dominant_mode_freq_hz = dominant.get("frequency_hz")
-                entry.modal.dominant_mode_damping = dominant.get("damping_ratio")
-                entry.modal.dominant_mode_Q = dominant.get("quality_factor", dominant.get("Q"))
-
-        except Exception as e:
-            warnings.append(f"Failed to load modal data: {e}")
-
-    # === Section 6: Error Analysis (load if available) ===
+    # === Section 6: Error Analysis ===
     if uncertainty_json_path:
-        try:
-            with open(uncertainty_json_path, "r", encoding="utf-8") as f:
-                unc_data = json.load(f)
+        _load_uncertainty_data(entry, uncertainty_json_path, E_best, warnings)
 
-            entry.errors.combined_standard_uncertainty = unc_data.get("combined_standard_uncertainty")
-            entry.errors.expanded_uncertainty = unc_data.get("expanded_uncertainty")
-            entry.errors.coverage_factor = unc_data.get("coverage_factor", 2.0)
-            entry.errors.effective_dof = unc_data.get("degrees_of_freedom")
-            entry.errors.E_uncertainty_percent = unc_data.get("relative_uncertainty_percent")
-
-            if entry.errors.combined_standard_uncertainty and E_best:
-                entry.errors.E_uncertainty_GPa = entry.errors.combined_standard_uncertainty
-
-            # Components
-            for comp in unc_data.get("components", []):
-                entry.errors.components.append(UncertaintyComponent(
-                    name=comp.get("name", ""),
-                    value=comp.get("value", 0),
-                    unit=comp.get("unit", ""),
-                    type=comp.get("type", "type_b"),
-                    sensitivity_coefficient=comp.get("sensitivity_coefficient", 1.0),
-                    description=comp.get("description", ""),
-                ))
-
-            # Find dominant source
-            if entry.errors.components:
-                dominant = max(entry.errors.components, key=lambda x: x.value)
-                entry.errors.dominant_error_source = dominant.name
-
-        except Exception as e:
-            warnings.append(f"Failed to load uncertainty data: {e}")
-
-    # === Section 7: Quality Assessment (load if available) ===
+    # === Section 7: Quality Assessment ===
     if quality_json_path:
-        try:
-            with open(quality_json_path, "r", encoding="utf-8") as f:
-                qual_data = json.load(f)
+        _load_quality_data(entry, quality_json_path, warnings)
 
-            entry.quality.verdict = qual_data.get("verdict", "pass")
-            entry.quality.policy_version = qual_data.get("policy_version", "")
-            entry.quality.error_count = qual_data.get("error_count", 0)
-            entry.quality.warning_count = qual_data.get("warning_count", 0)
-
-            for rule in qual_data.get("triggered_rules", []):
-                entry.quality.triggered_rules.append(TriggeredRuleInfo(
-                    rule_id=rule.get("rule_id", ""),
-                    severity=rule.get("severity", "soft"),
-                    message=rule.get("message", ""),
-                ))
-
-        except Exception as e:
-            warnings.append(f"Failed to load quality data: {e}")
-
-    # === Section 8: Special Analysis (load if available) ===
+    # === Section 8: Special Analysis ===
     if wolf_json_path:
-        try:
-            with open(wolf_json_path, "r", encoding="utf-8") as f:
-                wolf_data = json.load(f)
-
-            worst = wolf_data.get("worst_wolf", {})
-            entry.special.wolf = WolfToneAnalysis(
-                wolf_detected=wolf_data.get("n_pairs", 0) > 0,
-                worst_wolf_freq_hz=worst.get("center_freq_hz"),
-                worst_wolf_beat_hz=worst.get("beat_freq_hz"),
-                worst_wolf_severity=worst.get("severity", "none"),
-                n_wolf_pairs=wolf_data.get("n_pairs", 0),
-            )
-
-        except Exception as e:
-            warnings.append(f"Failed to load wolf data: {e}")
+        _load_wolf_data(entry, wolf_json_path, warnings)
 
     # === Section 9: Audit Trail ===
-    entry.audit.export_timestamp_utc = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    entry.audit.export_timestamp_utc = time.strftime(
+        "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
+    )
 
     # Store warnings
     entry.warnings = warnings

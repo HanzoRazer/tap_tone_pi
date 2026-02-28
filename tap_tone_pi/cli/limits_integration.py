@@ -113,7 +113,6 @@ def run_limit_test(
         MaskRegion,
         check_against_limits,
     )
-    from tap_tone_pi.limits.testing import format_test_result
 
     # Build limit curves from config
     limits = []
@@ -178,8 +177,6 @@ def format_limit_test_cli(
     Returns:
         Formatted string
     """
-    from tap_tone_pi.limits.testing import format_test_result
-
     lines = []
 
     # Header

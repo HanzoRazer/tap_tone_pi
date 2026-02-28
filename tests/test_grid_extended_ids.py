@@ -5,7 +5,6 @@ m4 Audit Fix: Grid ID Breaks at 26 Rows.
 Tests for spreadsheet-style column naming (A-Z, AA-AZ, BA-BZ, etc.).
 """
 
-import pytest
 
 from tap_tone_pi.core.grid import Grid, _row_to_letters
 

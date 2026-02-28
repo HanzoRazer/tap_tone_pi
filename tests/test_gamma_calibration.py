@@ -1,13 +1,11 @@
 """Tests for γ calibration tool."""
 
-import math
 import pytest
 
 from tap_tone_pi.design.gamma_calibration import (
     ModeMeasurement,
     SpecimenData,
     GammaCalibration,
-    GammaCalibrationResult,
     calibrate_gamma_from_pairs,
     calibrate_gamma_multi_specimen,
     format_gamma_calibration_report,

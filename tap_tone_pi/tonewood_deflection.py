@@ -535,37 +535,37 @@ def print_report(result: DeflectionResult) -> None:
     print("3-Point Bending Results (Euler-Bernoulli)")
     print("=" * 60)
 
-    print(f"\nGeometry:")
+    print("\nGeometry:")
     print(f"  Span L        : {result.span_mm:.3f} mm")
     print(f"  Width b       : {result.width_mm:.3f} mm")
     print(f"  Thickness h   : {result.thick_mm:.3f} mm")
     print(f"  L/h ratio     : {result.slenderness_ratio:.1f}")
 
-    print(f"\nFit:")
+    print("\nFit:")
     print(f"  Method        : {result.method}")
     print(f"  Points        : {result.n_points}")
     print(f"  Slope k       : {result.slope_N_per_m:.3e} N/m")
     if result.r2 is not None:
         print(f"  R^2           : {result.r2:.5f}")
 
-    print(f"\nStiffness:")
+    print("\nStiffness:")
     print(f"  Young's E     : {result.E_Pa:.3e} Pa")
     print(f"                : {result.E_GPa:.3f} GPa")
 
     if result.density_kg_m3 is not None:
-        print(f"\nDensity / Specific Stiffness:")
+        print("\nDensity / Specific Stiffness:")
         print(f"  Density       : {result.density_kg_m3:.1f} kg/m^3")
         print(f"                : {result.density_g_cm3:.3f} g/cm^3")
         print(f"  E/rho         : {result.specific_stiffness_m2_s2:.0f} m^2/s^2")
         print(f"  c_L (wave)    : {result.wave_speed_m_s:.0f} m/s")
 
     if result.h_target_mm is not None:
-        print(f"\nThickness Target (constant E*h^3):")
+        print("\nThickness Target (constant E*h^3):")
         print(f"  Reference     : {result.h_ref_mm:.3f} mm at {result.E_ref_GPa:.3f} GPa")
         print(f"  Target h      : {result.h_target_mm:.3f} mm")
 
     if result.warnings:
-        print(f"\nWarnings:")
+        print("\nWarnings:")
         for w in result.warnings:
             print(f"  - {w}")
 

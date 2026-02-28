@@ -3,13 +3,10 @@
 Tests for Gore-style stiffness index calculations.
 """
 
-import math
 import pytest
 
 from tap_tone_pi.bending.gore_stiffness import (
-    GrainDirection,
     InstrumentType,
-    SITargetPreset,
     SI_PRESETS,
     stiffness_index,
     thickness_for_target_SI,
@@ -249,7 +246,7 @@ class TestPhysicalRealism:
 
     def test_typical_dreadnought_matches_preset(self):
         """Typical dreadnought values should match preset range."""
-        preset = get_preset(InstrumentType.STEEL_STRING_DREADNOUGHT)
+        _preset = get_preset(InstrumentType.STEEL_STRING_DREADNOUGHT)  # noqa: F841
         # For E=13 GPa to hit dreadnought SI range (350-500):
         # h = (420/13)^(1/3) ≈ 3.18 mm
         result = analyze_orthotropic(

@@ -252,6 +252,120 @@ class QualityAssessment:
         return " | ".join(flag_strs)
 
 
+def _check_signal_flags(
+    assessment: QualityAssessment,
+    th: QualityThresholds,
+    *,
+    clipped: bool,
+    rms: float | None,
+    snr_db: float | None,
+) -> None:
+    """Check signal-level quality flags (clipping, RMS, SNR)."""
+    if clipped:
+        assessment.add_flag(
+            UncertaintyFlag.CLIPPED,
+            message="Audio signal was clipped - retake measurement"
+        )
+    if rms is not None and rms < th.min_rms:
+        assessment.add_flag(
+            UncertaintyFlag.LOW_SIGNAL,
+            value=rms,
+            threshold=th.min_rms,
+            message=f"RMS {rms:.4f} below minimum {th.min_rms}"
+        )
+    if snr_db is not None and snr_db < th.min_snr_db:
+        assessment.add_flag(
+            UncertaintyFlag.LOW_SNR,
+            value=snr_db,
+            threshold=th.min_snr_db,
+            message=f"SNR {snr_db:.1f} dB below minimum {th.min_snr_db} dB"
+        )
+
+
+def _check_analysis_flags(
+    assessment: QualityAssessment,
+    th: QualityThresholds,
+    *,
+    confidence: float | None,
+    coherence: float | None,
+    q_factor: float | None,
+) -> None:
+    """Check analysis-metric quality flags (confidence, coherence, Q-factor)."""
+    if confidence is not None and confidence < th.min_confidence:
+        assessment.add_flag(
+            UncertaintyFlag.LOW_CONFIDENCE,
+            value=confidence,
+            threshold=th.min_confidence,
+            message=f"Confidence {confidence:.2%} below minimum {th.min_confidence:.0%}"
+        )
+    if coherence is not None and coherence < th.min_coherence:
+        assessment.add_flag(
+            UncertaintyFlag.POOR_COHERENCE,
+            value=coherence,
+            threshold=th.min_coherence,
+            message=f"Coherence {coherence:.2f} below minimum {th.min_coherence}"
+        )
+    if q_factor is not None and q_factor < th.min_q_factor:
+        assessment.add_flag(
+            UncertaintyFlag.WIDE_BANDWIDTH,
+            value=q_factor,
+            threshold=th.min_q_factor,
+            message=f"Q-factor {q_factor:.1f} below minimum {th.min_q_factor}"
+        )
+
+
+def _check_precision_flags(
+    assessment: QualityAssessment,
+    th: QualityThresholds,
+    *,
+    dominant_hz: float | None,
+    freq_uncertainty_hz: float | None,
+    cv_pct: float | None,
+    reference_hz: float | None,
+    reference_uncertainty_hz: float | None,
+) -> None:
+    """Check measurement-precision quality flags (uncertainty, CV, outlier)."""
+    if dominant_hz is not None and freq_uncertainty_hz is not None:
+        relative_uncertainty = freq_uncertainty_hz / dominant_hz if dominant_hz > 0 else 0
+        if (relative_uncertainty > th.max_relative_uncertainty or
+                freq_uncertainty_hz > th.max_absolute_uncertainty_hz):
+            assessment.add_flag(
+                UncertaintyFlag.HIGH_UNCERTAINTY,
+                value=freq_uncertainty_hz,
+                threshold=max(
+                    th.max_absolute_uncertainty_hz,
+                    dominant_hz * th.max_relative_uncertainty
+                ),
+                message=f"Uncertainty {freq_uncertainty_hz:.2f} Hz ({relative_uncertainty:.1%}) exceeds threshold"
+            )
+
+    if cv_pct is not None and cv_pct > th.max_cv_pct:
+        assessment.add_flag(
+            UncertaintyFlag.HIGH_VARIATION,
+            value=cv_pct,
+            threshold=th.max_cv_pct,
+            message=f"CV {cv_pct:.2f}% exceeds maximum {th.max_cv_pct}%"
+        )
+
+    if (dominant_hz is not None and reference_hz is not None
+            and freq_uncertainty_hz is not None):
+        if reference_uncertainty_hz is not None:
+            combined_u = (freq_uncertainty_hz**2 + reference_uncertainty_hz**2)**0.5
+        else:
+            combined_u = freq_uncertainty_hz
+
+        deviation = abs(dominant_hz - reference_hz)
+        threshold = th.outlier_sigma * combined_u
+
+        if combined_u > 0 and deviation > threshold:
+            assessment.add_flag(
+                UncertaintyFlag.OUTLIER,
+                value=deviation,
+                threshold=threshold,
+                message=f"Deviation {deviation:.2f} Hz exceeds {th.outlier_sigma}\u03c3 threshold"
+            )
+
+
 def assess_measurement_quality(
     *,
     dominant_hz: float | None = None,
@@ -300,103 +414,19 @@ def assess_measurement_quality(
     th = thresholds or DEFAULT_THRESHOLDS
     assessment = QualityAssessment()
 
-    # Check clipping (highest priority)
-    if clipped:
-        assessment.add_flag(
-            UncertaintyFlag.CLIPPED,
-            message="Audio signal was clipped - retake measurement"
-        )
-
-    # Check signal level
-    if rms is not None and rms < th.min_rms:
-        assessment.add_flag(
-            UncertaintyFlag.LOW_SIGNAL,
-            value=rms,
-            threshold=th.min_rms,
-            message=f"RMS {rms:.4f} below minimum {th.min_rms}"
-        )
-
-    # Check SNR
-    if snr_db is not None and snr_db < th.min_snr_db:
-        assessment.add_flag(
-            UncertaintyFlag.LOW_SNR,
-            value=snr_db,
-            threshold=th.min_snr_db,
-            message=f"SNR {snr_db:.1f} dB below minimum {th.min_snr_db} dB"
-        )
-
-    # Check confidence
-    if confidence is not None and confidence < th.min_confidence:
-        assessment.add_flag(
-            UncertaintyFlag.LOW_CONFIDENCE,
-            value=confidence,
-            threshold=th.min_confidence,
-            message=f"Confidence {confidence:.2%} below minimum {th.min_confidence:.0%}"
-        )
-
-    # Check coherence (for two-channel measurements)
-    if coherence is not None and coherence < th.min_coherence:
-        assessment.add_flag(
-            UncertaintyFlag.POOR_COHERENCE,
-            value=coherence,
-            threshold=th.min_coherence,
-            message=f"Coherence {coherence:.2f} below minimum {th.min_coherence}"
-        )
-
-    # Check Q-factor
-    if q_factor is not None and q_factor < th.min_q_factor:
-        assessment.add_flag(
-            UncertaintyFlag.WIDE_BANDWIDTH,
-            value=q_factor,
-            threshold=th.min_q_factor,
-            message=f"Q-factor {q_factor:.1f} below minimum {th.min_q_factor}"
-        )
-
-    # Check uncertainty (if frequency is available)
-    if dominant_hz is not None and freq_uncertainty_hz is not None:
-        relative_uncertainty = freq_uncertainty_hz / dominant_hz if dominant_hz > 0 else 0
-
-        # Check both relative and absolute thresholds
-        if (relative_uncertainty > th.max_relative_uncertainty or
-                freq_uncertainty_hz > th.max_absolute_uncertainty_hz):
-            assessment.add_flag(
-                UncertaintyFlag.HIGH_UNCERTAINTY,
-                value=freq_uncertainty_hz,
-                threshold=max(
-                    th.max_absolute_uncertainty_hz,
-                    dominant_hz * th.max_relative_uncertainty
-                ),
-                message=f"Uncertainty {freq_uncertainty_hz:.2f} Hz ({relative_uncertainty:.1%}) exceeds threshold"
-            )
-
-    # Check repeatability CV
-    if cv_pct is not None and cv_pct > th.max_cv_pct:
-        assessment.add_flag(
-            UncertaintyFlag.HIGH_VARIATION,
-            value=cv_pct,
-            threshold=th.max_cv_pct,
-            message=f"CV {cv_pct:.2f}% exceeds maximum {th.max_cv_pct}%"
-        )
-
-    # Check for outlier (if reference available)
-    if (dominant_hz is not None and reference_hz is not None
-            and freq_uncertainty_hz is not None):
-        # Use combined uncertainty if reference uncertainty available
-        if reference_uncertainty_hz is not None:
-            combined_u = (freq_uncertainty_hz**2 + reference_uncertainty_hz**2)**0.5
-        else:
-            combined_u = freq_uncertainty_hz
-
-        deviation = abs(dominant_hz - reference_hz)
-        threshold = th.outlier_sigma * combined_u
-
-        if combined_u > 0 and deviation > threshold:
-            assessment.add_flag(
-                UncertaintyFlag.OUTLIER,
-                value=deviation,
-                threshold=threshold,
-                message=f"Deviation {deviation:.2f} Hz exceeds {th.outlier_sigma}σ threshold"
-            )
+    _check_signal_flags(assessment, th, clipped=clipped, rms=rms, snr_db=snr_db)
+    _check_analysis_flags(
+        assessment, th,
+        confidence=confidence, coherence=coherence, q_factor=q_factor,
+    )
+    _check_precision_flags(
+        assessment, th,
+        dominant_hz=dominant_hz,
+        freq_uncertainty_hz=freq_uncertainty_hz,
+        cv_pct=cv_pct,
+        reference_hz=reference_hz,
+        reference_uncertainty_hz=reference_uncertainty_hz,
+    )
 
     return assessment
 

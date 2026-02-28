@@ -43,7 +43,7 @@ import math
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 
 # =============================================================================
@@ -556,28 +556,28 @@ def format_single_report(result: SingleDirectionResult) -> str:
     lines.append(f"Gore Stiffness Index — {result.direction}-grain")
     lines.append("=" * 60)
 
-    lines.append(f"\nInput:")
+    lines.append("\nInput:")
     lines.append(f"  E ({result.direction})     : {result.E_GPa:.3f} GPa")
     lines.append(f"  Thickness h : {result.h_mm:.3f} mm")
 
-    lines.append(f"\nStiffness Index:")
+    lines.append("\nStiffness Index:")
     lines.append(f"  SI = E × h³ : {result.SI:.2f} GPa·mm³")
 
     if result.SI_target is not None:
-        lines.append(f"\nThickness Target:")
+        lines.append("\nThickness Target:")
         lines.append(f"  Target SI   : {result.SI_target:.2f} GPa·mm³")
         lines.append(f"  h required  : {result.h_target_mm:.3f} mm")
         delta = result.h_mm - result.h_target_mm
         lines.append(f"  Remove      : {delta:.3f} mm" if delta > 0 else f"  Add         : {-delta:.3f} mm")
 
     if result.density_kg_m3 is not None:
-        lines.append(f"\nDensity / Specific Stiffness:")
+        lines.append("\nDensity / Specific Stiffness:")
         lines.append(f"  Density     : {result.density_kg_m3:.1f} kg/m³")
         lines.append(f"  E/ρ         : {result.specific_stiffness:.0f} m²/s²")
         lines.append(f"  Wave speed  : {result.wave_speed_m_s:.0f} m/s")
 
     if result.warnings:
-        lines.append(f"\nWarnings:")
+        lines.append("\nWarnings:")
         for w in result.warnings:
             lines.append(f"  - {w}")
 
@@ -592,34 +592,34 @@ def format_orthotropic_report(result: OrthotropicResult) -> str:
     lines.append("Gore Stiffness Index — Orthotropic Analysis")
     lines.append("=" * 60)
 
-    lines.append(f"\nGeometry:")
+    lines.append("\nGeometry:")
     lines.append(f"  Thickness h : {result.h_mm:.3f} mm")
 
-    lines.append(f"\nLong-grain (L):")
+    lines.append("\nLong-grain (L):")
     lines.append(f"  E_L         : {result.E_L_GPa:.3f} GPa")
     lines.append(f"  SI_L        : {result.SI_L:.2f} GPa·mm³")
 
-    lines.append(f"\nCross-grain (C):")
+    lines.append("\nCross-grain (C):")
     lines.append(f"  E_C         : {result.E_C_GPa:.3f} GPa")
     lines.append(f"  SI_C        : {result.SI_C:.2f} GPa·mm³")
 
-    lines.append(f"\nOrthotropic Ratios:")
+    lines.append("\nOrthotropic Ratios:")
     lines.append(f"  E_L / E_C   : {result.E_ratio_L_C:.2f}")
     lines.append(f"  E_C / E_L   : {result.E_ratio_C_L:.4f}")
     lines.append(f"  SI_L / SI_C : {result.SI_ratio_L_C:.2f}")
 
     if result.SI_target_L is not None:
-        lines.append(f"\nThickness Target (L-grain):")
+        lines.append("\nThickness Target (L-grain):")
         lines.append(f"  Target SI_L : {result.SI_target_L:.2f} GPa·mm³")
         lines.append(f"  h required  : {result.h_target_L_mm:.3f} mm")
 
     if result.SI_target_C is not None:
-        lines.append(f"\nThickness Target (C-grain):")
+        lines.append("\nThickness Target (C-grain):")
         lines.append(f"  Target SI_C : {result.SI_target_C:.2f} GPa·mm³")
         lines.append(f"  h required  : {result.h_target_C_mm:.3f} mm")
 
     if result.density_kg_m3 is not None:
-        lines.append(f"\nDensity / Specific Stiffness:")
+        lines.append("\nDensity / Specific Stiffness:")
         lines.append(f"  Density     : {result.density_kg_m3:.1f} kg/m³")
         lines.append(f"  E_L/ρ       : {result.specific_stiffness_L:.0f} m²/s²")
         lines.append(f"  E_C/ρ       : {result.specific_stiffness_C:.0f} m²/s²")
@@ -636,7 +636,7 @@ def format_orthotropic_report(result: OrthotropicResult) -> str:
         lines.append(f"  h recommend : {pc['h_recommended_mm']:.3f} mm")
 
     if result.warnings:
-        lines.append(f"\nWarnings:")
+        lines.append("\nWarnings:")
         for w in result.warnings:
             lines.append(f"  - {w}")
 

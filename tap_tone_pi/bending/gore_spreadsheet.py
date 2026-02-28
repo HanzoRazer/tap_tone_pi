@@ -58,19 +58,13 @@ import math
 import time
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from .gore_stiffness import (
-    GrainDirection,
-    InstrumentType,
-    SITargetPreset,
-    SI_PRESETS,
     stiffness_index,
     thickness_for_target_SI,
     orthotropic_ratio,
     get_preset,
-    analyze_single_direction,
-    analyze_orthotropic,
 )
 
 
@@ -467,6 +461,112 @@ def _sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+def _load_bending_data(
+    entry: BuildSpreadsheetEntry,
+    bending_json_path: str,
+    warnings: List[str],
+    provenance: Dict[str, str],
+) -> Optional[float]:
+    """Load static bending data and populate entry fields. Returns E_static."""
+    bending = load_bending_moe(bending_json_path)
+    E_static = bending.get("E_GPa")
+    entry.E_static_GPa = round(E_static, 3) if E_static else None
+    entry.E_uncorrected_GPa = round(bending.get("E_euler_bernoulli_GPa", E_static), 3)
+
+    shear_info = bending.get("shear_correction", {})
+    entry.shear_correction_applied = shear_info.get("applied", False)
+    entry.shear_correction_percent = round(shear_info.get("reduction_percent", 0), 2)
+
+    fit_info = bending.get("fit", {})
+    entry.fit_r_squared = round(fit_info.get("r2", 0), 4)
+
+    if fit_info.get("warning"):
+        warnings.append(f"Bending fit: {fit_info['warning']}")
+
+    provenance["bending_json_path"] = bending_json_path
+    provenance["bending_json_sha256"] = _sha256(Path(bending_json_path))
+    return E_static
+
+
+def _load_acoustic_data(
+    entry: BuildSpreadsheetEntry,
+    acoustic_json_path: str,
+    density_kg_m3: Optional[float],
+    length_mm: Optional[float],
+    thickness_mm: float,
+    provenance: Dict[str, str],
+) -> tuple[Optional[float], Optional[float]]:
+    """Load acoustic tap tone data. Returns (E_dynamic, measured_freq)."""
+    peaks = load_acoustic_peaks(acoustic_json_path)
+    measured_freq = extract_fundamental_frequency(peaks)
+    entry.fundamental_freq_hz = round(measured_freq, 1) if measured_freq else None
+
+    E_dynamic = None
+    if measured_freq and density_kg_m3 and length_mm:
+        E_dynamic = dynamic_modulus_from_frequency(
+            measured_freq, density_kg_m3, length_mm, thickness_mm
+        )
+        entry.E_dynamic_GPa = round(E_dynamic, 3)
+
+    provenance["acoustic_json_path"] = acoustic_json_path
+    provenance["acoustic_json_sha256"] = _sha256(Path(acoustic_json_path))
+    return E_dynamic, measured_freq
+
+
+def _apply_stiffness_and_preset(
+    entry: BuildSpreadsheetEntry,
+    E_best: float,
+    thickness_mm: float,
+    direction: str,
+    SI_target: Optional[float],
+    instrument: Optional[str],
+) -> None:
+    """Compute stiffness index and compare against instrument preset."""
+    entry.SI = round(stiffness_index(E_best, thickness_mm), 2)
+
+    target = SI_target
+    preset = get_preset(instrument) if instrument else None
+
+    if target is None and preset is not None:
+        if direction.upper() == "L":
+            target = preset.SI_L_typical
+        elif direction.upper() == "C" and preset.SI_C_typical:
+            target = preset.SI_C_typical
+
+    if target is not None:
+        entry.SI_target = target
+        entry.h_target_mm = round(thickness_for_target_SI(target, E_best), 3)
+
+    if preset is not None:
+        entry.instrument_type = preset.instrument.value
+        if direction.upper() == "L":
+            entry.preset_SI_typical = preset.SI_L_typical
+            entry.preset_h_recommended_mm = round(
+                thickness_for_target_SI(preset.SI_L_typical, E_best), 3
+            )
+            if entry.SI < preset.SI_L_min:
+                entry.preset_match_status = "low"
+            elif entry.SI > preset.SI_L_max:
+                entry.preset_match_status = "high"
+            else:
+                entry.preset_match_status = "good"
+
+
+def _compute_derived_properties(
+    entry: BuildSpreadsheetEntry,
+    E_best: float,
+    density_kg_m3: float,
+) -> None:
+    """Compute specific stiffness, wave speed, and radiation ratio."""
+    E_Pa = E_best * 1e9
+    spec = E_Pa / density_kg_m3  # m²/s²
+    c = math.sqrt(spec)  # m/s
+
+    entry.specific_stiffness = round(spec, 0)
+    entry.wave_speed_m_s = round(c, 0)
+    entry.radiation_ratio = round(c / density_kg_m3, 4)
+
+
 def build_spreadsheet_entry(
     specimen_id: str,
     direction: str,
@@ -516,47 +616,18 @@ def build_spreadsheet_entry(
     )
 
     # -------------------------------------------------------------------------
-    # Load static bending data
+    # Load data sources
     # -------------------------------------------------------------------------
     E_static = None
     if bending_json_path:
-        bending = load_bending_moe(bending_json_path)
-        E_static = bending.get("E_GPa")
-        entry.E_static_GPa = round(E_static, 3) if E_static else None
-        entry.E_uncorrected_GPa = round(bending.get("E_euler_bernoulli_GPa", E_static), 3)
+        E_static = _load_bending_data(entry, bending_json_path, warnings, provenance)
 
-        shear_info = bending.get("shear_correction", {})
-        entry.shear_correction_applied = shear_info.get("applied", False)
-        entry.shear_correction_percent = round(shear_info.get("reduction_percent", 0), 2)
-
-        fit_info = bending.get("fit", {})
-        entry.fit_r_squared = round(fit_info.get("r2", 0), 4)
-
-        if fit_info.get("warning"):
-            warnings.append(f"Bending fit: {fit_info['warning']}")
-
-        provenance["bending_json_path"] = bending_json_path
-        provenance["bending_json_sha256"] = _sha256(Path(bending_json_path))
-
-    # -------------------------------------------------------------------------
-    # Load acoustic tap tone data
-    # -------------------------------------------------------------------------
     E_dynamic = None
     measured_freq = None
     if acoustic_json_path:
-        peaks = load_acoustic_peaks(acoustic_json_path)
-        measured_freq = extract_fundamental_frequency(peaks)
-        entry.fundamental_freq_hz = round(measured_freq, 1) if measured_freq else None
-
-        # Compute dynamic E if we have all needed parameters
-        if measured_freq and density_kg_m3 and length_mm:
-            E_dynamic = dynamic_modulus_from_frequency(
-                measured_freq, density_kg_m3, length_mm, thickness_mm
-            )
-            entry.E_dynamic_GPa = round(E_dynamic, 3)
-
-        provenance["acoustic_json_path"] = acoustic_json_path
-        provenance["acoustic_json_sha256"] = _sha256(Path(acoustic_json_path))
+        E_dynamic, measured_freq = _load_acoustic_data(
+            entry, acoustic_json_path, density_kg_m3, length_mm, thickness_mm, provenance,
+        )
 
     # -------------------------------------------------------------------------
     # Cross-validation
@@ -576,53 +647,19 @@ def build_spreadsheet_entry(
         warnings.extend(crossval.warnings)
 
     # -------------------------------------------------------------------------
-    # Stiffness Index
+    # Stiffness Index + Instrument Preset
     # -------------------------------------------------------------------------
     E_best = E_static or E_dynamic  # Prefer static if available
     if E_best is not None:
-        entry.SI = round(stiffness_index(E_best, thickness_mm), 2)
-
-        # Determine target SI
-        target = SI_target
-        preset = get_preset(instrument) if instrument else None
-
-        if target is None and preset is not None:
-            # Use preset target based on direction
-            if direction.upper() == "L":
-                target = preset.SI_L_typical
-            elif direction.upper() == "C" and preset.SI_C_typical:
-                target = preset.SI_C_typical
-
-        if target is not None:
-            entry.SI_target = target
-            entry.h_target_mm = round(thickness_for_target_SI(target, E_best), 3)
-
-        # Instrument preset comparison
-        if preset is not None:
-            entry.instrument_type = preset.instrument.value
-            if direction.upper() == "L":
-                entry.preset_SI_typical = preset.SI_L_typical
-                entry.preset_h_recommended_mm = round(
-                    thickness_for_target_SI(preset.SI_L_typical, E_best), 3
-                )
-                if entry.SI < preset.SI_L_min:
-                    entry.preset_match_status = "low"
-                elif entry.SI > preset.SI_L_max:
-                    entry.preset_match_status = "high"
-                else:
-                    entry.preset_match_status = "good"
+        _apply_stiffness_and_preset(
+            entry, E_best, thickness_mm, direction, SI_target, instrument,
+        )
 
     # -------------------------------------------------------------------------
-    # Derived properties (specific stiffness, wave speed)
+    # Derived properties
     # -------------------------------------------------------------------------
     if E_best is not None and density_kg_m3 is not None:
-        E_Pa = E_best * 1e9
-        spec = E_Pa / density_kg_m3  # m²/s²
-        c = math.sqrt(spec)  # m/s
-
-        entry.specific_stiffness = round(spec, 0)
-        entry.wave_speed_m_s = round(c, 0)
-        entry.radiation_ratio = round(c / density_kg_m3, 4)
+        _compute_derived_properties(entry, E_best, density_kg_m3)
 
     entry.warnings = warnings
     entry.provenance = provenance

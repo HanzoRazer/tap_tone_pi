@@ -22,7 +22,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-import numpy as np
 
 
 class MatchStatus(Enum):
@@ -144,6 +143,60 @@ def compute_tolerance_hz(freq_hz: float, tolerance_pct: float = 2.0) -> float:
     return max(min_tol_hz, freq_hz * tolerance_pct / 100.0)
 
 
+def _assess_match_quality(
+    p1: Phase1Peak,
+    p2: Phase2Mode,
+    delta_pct: float,
+    tolerance_pct: float,
+    weak_match_threshold: float,
+) -> tuple[MatchStatus, ConfidenceLevel, list[str]]:
+    """Assess quality of a single P1-P2 frequency match."""
+    if p1.confidence < weak_match_threshold:
+        status = MatchStatus.WEAK_MATCH
+        confidence = ConfidenceLevel.LOW
+        notes = [f"P1 confidence low ({p1.confidence:.2f})"]
+    elif abs(delta_pct) > tolerance_pct * 0.5:
+        status = MatchStatus.MATCHED
+        confidence = ConfidenceLevel.MEDIUM
+        notes = ["Near tolerance boundary"]
+    else:
+        status = MatchStatus.MATCHED
+        confidence = ConfidenceLevel.HIGH
+        notes = []
+
+    if p2.coherence_mean < 0.7:
+        confidence = (
+            ConfidenceLevel.MEDIUM
+            if confidence == ConfidenceLevel.HIGH
+            else ConfidenceLevel.LOW
+        )
+        notes.append(f"P2 coherence low ({p2.coherence_mean:.2f})")
+
+    return status, confidence, notes
+
+
+def _collect_unmatched_p2(
+    p2_sorted: list[Phase2Mode],
+    p2_matched: set[int],
+) -> tuple[list[ModeMatch], list[str]]:
+    """Build ModeMatch entries and warnings for unmatched P2 modes."""
+    matches: list[ModeMatch] = []
+    warnings: list[str] = []
+    for j, p2 in enumerate(p2_sorted):
+        if j not in p2_matched:
+            matches.append(ModeMatch(
+                p1_freq_hz=None,
+                p2_freq_hz=p2.freq_hz,
+                freq_delta_hz=None,
+                freq_delta_pct=None,
+                status=MatchStatus.P2_ONLY,
+                confidence=ConfidenceLevel.LOW,
+                notes=["No corresponding P1 peak found"],
+            ))
+            warnings.append(f"P2 mode at {p2.freq_hz:.1f} Hz not detected in P1")
+    return matches, warnings
+
+
 def match_phases(
     p1_peaks: list[Phase1Peak],
     p2_modes: list[Phase2Mode],
@@ -219,25 +272,9 @@ def match_phases(
             delta_hz = p2.freq_hz - p1.freq_hz
             delta_pct = (delta_hz / p1.freq_hz) * 100.0 if p1.freq_hz > 0 else 0.0
 
-            # Assess match quality
-            if p1.confidence < weak_match_threshold:
-                status = MatchStatus.WEAK_MATCH
-                confidence = ConfidenceLevel.LOW
-                notes = [f"P1 confidence low ({p1.confidence:.2f})"]
-            elif abs(delta_pct) > tolerance_pct * 0.5:
-                # Close to tolerance edge
-                status = MatchStatus.MATCHED
-                confidence = ConfidenceLevel.MEDIUM
-                notes = ["Near tolerance boundary"]
-            else:
-                status = MatchStatus.MATCHED
-                confidence = ConfidenceLevel.HIGH
-                notes = []
-
-            # Check P2 coherence if available
-            if p2.coherence_mean < 0.7:
-                confidence = ConfidenceLevel.MEDIUM if confidence == ConfidenceLevel.HIGH else ConfidenceLevel.LOW
-                notes.append(f"P2 coherence low ({p2.coherence_mean:.2f})")
+            status, confidence, notes = _assess_match_quality(
+                p1, p2, delta_pct, tolerance_pct, weak_match_threshold,
+            )
 
             matches.append(ModeMatch(
                 p1_freq_hz=p1.freq_hz,
@@ -266,18 +303,9 @@ def match_phases(
             warnings.append(f"P1 peak at {p1.freq_hz:.1f} Hz not confirmed by P2 ODS")
 
     # Unmatched P2 modes
-    for j, p2 in enumerate(p2_sorted):
-        if j not in p2_matched:
-            matches.append(ModeMatch(
-                p1_freq_hz=None,
-                p2_freq_hz=p2.freq_hz,
-                freq_delta_hz=None,
-                freq_delta_pct=None,
-                status=MatchStatus.P2_ONLY,
-                confidence=ConfidenceLevel.LOW,
-                notes=["No corresponding P1 peak found"],
-            ))
-            warnings.append(f"P2 mode at {p2.freq_hz:.1f} Hz not detected in P1")
+    p2_unmatched, p2_warns = _collect_unmatched_p2(p2_sorted, p2_matched)
+    matches.extend(p2_unmatched)
+    warnings.extend(p2_warns)
 
     # Compute statistics
     n_matched = sum(1 for m in matches if m.status == MatchStatus.MATCHED)

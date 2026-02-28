@@ -22,8 +22,8 @@ Trade-offs:
 - More overlap → more effective averages (but diminishing returns)
 """
 
-from dataclasses import dataclass, field
-from typing import Tuple, Optional, Dict, Any
+from dataclasses import dataclass
+from typing import Optional, Dict, Any
 import numpy as np
 from scipy import signal
 

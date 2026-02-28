@@ -13,7 +13,6 @@ from .budget import (
     UncertaintyBudget,
     UncertaintyType,
     UNCERTAINTY_FACTORS,
-    combine_uncertainties,
 )
 
 

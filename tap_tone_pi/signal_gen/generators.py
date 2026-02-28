@@ -18,7 +18,6 @@ from .waveforms import (
     MultitoneConfig,
     ImpulseConfig,
     CombConfig,
-    WaveformType,
     SweepType,
     NoiseType,
 )

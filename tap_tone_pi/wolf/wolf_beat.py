@@ -327,7 +327,7 @@ def extract_linewidth_lorentzian(
             ),
             maxfev=1000,
         )
-        f0_fit, gamma_fit, A_fit, C_fit = popt
+        f0_fit, gamma_fit, _A_fit, _C_fit = popt
 
         # Compute R^2
         y_pred = _lorentzian(f_fit, *popt)

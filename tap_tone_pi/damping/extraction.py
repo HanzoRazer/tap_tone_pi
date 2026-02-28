@@ -274,7 +274,7 @@ def extract_damping_logdec(
     # Find envelope peaks (local maxima)
     # Distance between peaks should be approximately one period
     min_distance = int(sample_rate / peak_freq / 2)
-    peak_indices, peak_props = scipy_signal.find_peaks(
+    peak_indices, _peak_props = scipy_signal.find_peaks(
         envelope,
         distance=max(1, min_distance),
         height=np.max(envelope) * 0.05,  # At least 5% of max
@@ -474,6 +474,136 @@ def extract_damping_curvefit(
         return np.nan, np.nan, details
 
 
+def _collect_method_estimates(
+    signal: np.ndarray,
+    freqs: np.ndarray,
+    magnitude: np.ndarray,
+    sample_rate: int,
+    peak_freq: float,
+    bandwidth_hz: float,
+) -> Tuple[
+    List[float], List[float], List[str], List[str],
+    float, float, float, float, float, float,
+]:
+    """Run all three damping extraction methods and collect warnings.
+
+    Returns:
+        (estimates, uncertainties, methods, warnings,
+         zeta_hp, u_hp, zeta_ld, u_ld, zeta_cf, u_cf)
+    """
+    warnings: List[str] = []
+
+    # Half-power bandwidth
+    zeta_hp, u_hp, details_hp = extract_damping_halfpower(
+        freqs, magnitude, peak_freq,
+        search_bandwidth_hz=bandwidth_hz * 2,
+    )
+    if "warning" in details_hp:
+        warnings.append(f"Half-power: {details_hp['warning']}")
+    if "error" in details_hp:
+        warnings.append(f"Half-power failed: {details_hp['error']}")
+
+    # Log-decrement
+    zeta_ld, u_ld, details_ld = extract_damping_logdec(
+        signal, sample_rate, peak_freq,
+        bandwidth_hz=bandwidth_hz,
+    )
+    if "warning" in details_ld:
+        warnings.append(f"Log-dec: {details_ld['warning']}")
+    if "error" in details_ld:
+        warnings.append(f"Log-dec failed: {details_ld['error']}")
+
+    # Curve-fit
+    zeta_cf, u_cf, details_cf = extract_damping_curvefit(
+        signal, sample_rate, peak_freq,
+        bandwidth_hz=bandwidth_hz,
+    )
+    if "warning" in details_cf:
+        warnings.append(f"Curve-fit: {details_cf['warning']}")
+    if "error" in details_cf:
+        warnings.append(f"Curve-fit failed: {details_cf['error']}")
+
+    # Filter valid estimates
+    estimates: List[float] = []
+    uncertainties: List[float] = []
+    methods: List[str] = []
+
+    if np.isfinite(zeta_hp) and zeta_hp > 0 and np.isfinite(u_hp):
+        estimates.append(zeta_hp)
+        uncertainties.append(u_hp)
+        methods.append("halfpower")
+
+    if np.isfinite(zeta_ld) and zeta_ld > 0 and np.isfinite(u_ld):
+        estimates.append(zeta_ld)
+        uncertainties.append(u_ld)
+        methods.append("logdec")
+
+    if np.isfinite(zeta_cf) and zeta_cf > 0 and np.isfinite(u_cf):
+        estimates.append(zeta_cf)
+        uncertainties.append(u_cf)
+        methods.append("curvefit")
+
+    return (
+        estimates, uncertainties, methods, warnings,
+        zeta_hp, u_hp, zeta_ld, u_ld, zeta_cf, u_cf,
+    )
+
+
+def _weighted_average_and_agreement(
+    estimates: List[float],
+    uncertainties: List[float],
+    methods: List[str],
+    agreement_tolerance: float,
+    confidence_level: float,
+    warnings: List[str],
+) -> Tuple[float, float, bool, str]:
+    """Inverse-variance weighted average with agreement check and CI.
+
+    Returns:
+        (zeta_weighted, margin, methods_agree, method_label)
+    """
+    n_valid = len(estimates)
+
+    # Inverse-variance weights
+    weights = []
+    for u in uncertainties:
+        if u > 0:
+            weights.append(1.0 / (u ** 2))
+        else:
+            weights.append(1.0)
+
+    total_weight = sum(weights)
+    zeta_weighted = sum(e * w for e, w in zip(estimates, weights)) / total_weight
+    u_weighted = np.sqrt(1.0 / total_weight)
+
+    # Check method agreement
+    if n_valid >= 2:
+        relative_spread = (max(estimates) - min(estimates)) / zeta_weighted
+        methods_agree = relative_spread < agreement_tolerance
+        if not methods_agree:
+            warnings.append(
+                f"Methods disagree: spread = {relative_spread * 100:.1f}% "
+                f"(threshold = {agreement_tolerance * 100:.0f}%)"
+            )
+    else:
+        methods_agree = True
+
+    # Confidence interval margin
+    if n_valid > 1:
+        t_crit = t_distribution.ppf((1 + confidence_level) / 2, n_valid - 1)
+        margin = t_crit * u_weighted
+    else:
+        margin = 2.0 * u_weighted
+
+    # Method label
+    if n_valid > 1:
+        method_label = f"weighted_average({','.join(methods)})"
+    else:
+        method_label = methods[0]
+
+    return zeta_weighted, margin, methods_agree, method_label
+
+
 def extract_damping_crossvalidated(
     signal: np.ndarray,
     freqs: np.ndarray,
@@ -504,60 +634,25 @@ def extract_damping_crossvalidated(
     Returns:
         DampingResult with cross-validated damping estimate
     """
-    warnings = []
-
-    # Get estimates from all three methods
-    zeta_hp, u_hp, details_hp = extract_damping_halfpower(
-        freqs, magnitude, peak_freq,
-        search_bandwidth_hz=bandwidth_hz * 2,
+    # Run all methods and collect valid estimates
+    (
+        estimates, uncertainties, methods, warnings,
+        zeta_hp, u_hp, zeta_ld, u_ld, zeta_cf, u_cf,
+    ) = _collect_method_estimates(
+        signal, freqs, magnitude, sample_rate, peak_freq, bandwidth_hz,
     )
-    if "warning" in details_hp:
-        warnings.append(f"Half-power: {details_hp['warning']}")
-    if "error" in details_hp:
-        warnings.append(f"Half-power failed: {details_hp['error']}")
 
-    zeta_ld, u_ld, details_ld = extract_damping_logdec(
-        signal, sample_rate, peak_freq,
-        bandwidth_hz=bandwidth_hz,
-    )
-    if "warning" in details_ld:
-        warnings.append(f"Log-dec: {details_ld['warning']}")
-    if "error" in details_ld:
-        warnings.append(f"Log-dec failed: {details_ld['error']}")
-
-    zeta_cf, u_cf, details_cf = extract_damping_curvefit(
-        signal, sample_rate, peak_freq,
-        bandwidth_hz=bandwidth_hz,
-    )
-    if "warning" in details_cf:
-        warnings.append(f"Curve-fit: {details_cf['warning']}")
-    if "error" in details_cf:
-        warnings.append(f"Curve-fit failed: {details_cf['error']}")
-
-    # Collect valid estimates
-    estimates = []
-    uncertainties = []
-    methods = []
-
-    if np.isfinite(zeta_hp) and zeta_hp > 0 and np.isfinite(u_hp):
-        estimates.append(zeta_hp)
-        uncertainties.append(u_hp)
-        methods.append("halfpower")
-
-    if np.isfinite(zeta_ld) and zeta_ld > 0 and np.isfinite(u_ld):
-        estimates.append(zeta_ld)
-        uncertainties.append(u_ld)
-        methods.append("logdec")
-
-    if np.isfinite(zeta_cf) and zeta_cf > 0 and np.isfinite(u_cf):
-        estimates.append(zeta_cf)
-        uncertainties.append(u_cf)
-        methods.append("curvefit")
+    # Per-method optional values for the result dataclass
+    hp_est = zeta_hp if np.isfinite(zeta_hp) else None
+    hp_unc = u_hp if np.isfinite(u_hp) else None
+    ld_est = zeta_ld if np.isfinite(zeta_ld) else None
+    ld_unc = u_ld if np.isfinite(u_ld) else None
+    cf_est = zeta_cf if np.isfinite(zeta_cf) else None
+    cf_unc = u_cf if np.isfinite(u_cf) else None
 
     n_valid = len(estimates)
 
     if n_valid == 0:
-        # No valid estimates
         return DampingResult(
             frequency_hz=peak_freq,
             damping_ratio=np.nan,
@@ -568,48 +663,22 @@ def extract_damping_crossvalidated(
             confidence_level=confidence_level,
             confidence_interval=(np.nan, np.nan),
             method_used="none",
-            halfpower_estimate=zeta_hp if np.isfinite(zeta_hp) else None,
-            halfpower_uncertainty=u_hp if np.isfinite(u_hp) else None,
-            logdec_estimate=zeta_ld if np.isfinite(zeta_ld) else None,
-            logdec_uncertainty=u_ld if np.isfinite(u_ld) else None,
-            curvefit_estimate=zeta_cf if np.isfinite(zeta_cf) else None,
-            curvefit_uncertainty=u_cf if np.isfinite(u_cf) else None,
+            halfpower_estimate=hp_est,
+            halfpower_uncertainty=hp_unc,
+            logdec_estimate=ld_est,
+            logdec_uncertainty=ld_unc,
+            curvefit_estimate=cf_est,
+            curvefit_uncertainty=cf_unc,
             methods_agree=False,
             n_methods_valid=0,
             warnings=warnings + ["No valid damping estimates"],
         )
 
-    # Inverse-variance weighted average
-    weights = []
-    for u in uncertainties:
-        if u > 0:
-            weights.append(1.0 / (u**2))
-        else:
-            weights.append(1.0)  # Equal weight if uncertainty unknown
-
-    total_weight = sum(weights)
-    zeta_weighted = sum(e * w for e, w in zip(estimates, weights)) / total_weight
-    u_weighted = np.sqrt(1.0 / total_weight)
-
-    # Check method agreement
-    if n_valid >= 2:
-        relative_spread = (max(estimates) - min(estimates)) / zeta_weighted
-        methods_agree = relative_spread < agreement_tolerance
-        if not methods_agree:
-            warnings.append(
-                f"Methods disagree: spread = {relative_spread*100:.1f}% "
-                f"(threshold = {agreement_tolerance*100:.0f}%)"
-            )
-    else:
-        methods_agree = True  # Can't disagree with only one estimate
-
-    # Confidence interval
-    if n_valid > 1:
-        t_crit = t_distribution.ppf((1 + confidence_level) / 2, n_valid - 1)
-        margin = t_crit * u_weighted
-    else:
-        # Single estimate: use coverage factor k=2
-        margin = 2.0 * u_weighted
+    # Weighted average, agreement check, confidence interval
+    zeta_weighted, margin, methods_agree, method_used = _weighted_average_and_agreement(
+        estimates, uncertainties, methods,
+        agreement_tolerance, confidence_level, warnings,
+    )
 
     ci_lower = max(0, zeta_weighted - margin)
     ci_upper = zeta_weighted + margin
@@ -620,28 +689,24 @@ def extract_damping_crossvalidated(
     tau = 1.0 / (zeta_weighted * omega_n) if zeta_weighted > 0 and omega_n > 0 else np.inf
     alpha = zeta_weighted * omega_n
 
-    # Determine method label
-    if n_valid > 1:
-        method_used = f"weighted_average({','.join(methods)})"
-    else:
-        method_used = methods[0]
-
     return DampingResult(
         frequency_hz=peak_freq,
         damping_ratio=zeta_weighted,
         quality_factor=Q,
         decay_time_s=tau,
         decay_rate_nepers_per_s=alpha,
-        damping_ratio_std=u_weighted,
+        damping_ratio_std=np.sqrt(1.0 / sum(
+            1.0 / (u ** 2) if u > 0 else 1.0 for u in uncertainties
+        )),
         confidence_level=confidence_level,
         confidence_interval=(ci_lower, ci_upper),
         method_used=method_used,
-        halfpower_estimate=zeta_hp if np.isfinite(zeta_hp) else None,
-        halfpower_uncertainty=u_hp if np.isfinite(u_hp) else None,
-        logdec_estimate=zeta_ld if np.isfinite(zeta_ld) else None,
-        logdec_uncertainty=u_ld if np.isfinite(u_ld) else None,
-        curvefit_estimate=zeta_cf if np.isfinite(zeta_cf) else None,
-        curvefit_uncertainty=u_cf if np.isfinite(u_cf) else None,
+        halfpower_estimate=hp_est,
+        halfpower_uncertainty=hp_unc,
+        logdec_estimate=ld_est,
+        logdec_uncertainty=ld_unc,
+        curvefit_estimate=cf_est,
+        curvefit_uncertainty=cf_unc,
         methods_agree=methods_agree,
         n_methods_valid=n_valid,
         warnings=warnings,

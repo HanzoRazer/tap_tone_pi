@@ -1,7 +1,6 @@
 """Tests for Rayleigh-Ritz modal analysis."""
 
 import math
-import pytest
 import numpy as np
 
 from tap_tone_pi.design import (

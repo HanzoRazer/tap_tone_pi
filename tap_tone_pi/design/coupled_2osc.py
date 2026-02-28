@@ -497,20 +497,20 @@ def format_2osc_report(result: Coupled2OscResult) -> str:
 
     lines.append(f"\nBody Style: {result.body_style}")
 
-    lines.append(f"\nTop Plate:")
+    lines.append("\nTop Plate:")
     lines.append(f"  Thickness  : {result.top_h_mm:.2f} mm")
 
-    lines.append(f"\nUncoupled Component Frequencies:")
+    lines.append("\nUncoupled Component Frequencies:")
     lines.append(f"  Top (in box)    : {result.f_top_box_Hz:.1f} Hz")
     lines.append(f"  Helmholtz       : {result.f_helmholtz_Hz:.1f} Hz")
     lines.append(f"  Coupling        : {result.f_coupling_Hz:.1f} Hz")
 
-    lines.append(f"\nCoupled Eigenfrequencies:")
+    lines.append("\nCoupled Eigenfrequencies:")
     lines.append(f"  f1 = {result.f1_Hz:6.1f} Hz  -  {result.mode1_description}")
     lines.append(f"  f2 = {result.f2_Hz:6.1f} Hz  -  {result.mode2_description}")
 
     if result.back_activity_ratio is not None:
-        lines.append(f"\nBack Assessment:")
+        lines.append("\nBack Assessment:")
         lines.append(f"  Activity ratio  : {result.back_activity_ratio:.2f}")
         lines.append(f"  Model fit       : {result.back_model_recommendation}")
 
@@ -523,7 +523,7 @@ def format_2osc_report(result: Coupled2OscResult) -> str:
     lines.append(f"\n{result.recommendation}")
 
     if result.warnings:
-        lines.append(f"\nWarnings:")
+        lines.append("\nWarnings:")
         for w in result.warnings:
             lines.append(f"  * {w}")
 

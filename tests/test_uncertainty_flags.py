@@ -1,6 +1,5 @@
 """Tests for uncertainty flags module (Phase 3.2)."""
 
-import pytest
 
 from tap_tone_pi.core.uncertainty_flags import (
     UncertaintyFlag,
@@ -9,7 +8,6 @@ from tap_tone_pi.core.uncertainty_flags import (
     QualityAssessment,
     assess_measurement_quality,
     format_flags_for_display,
-    DEFAULT_THRESHOLDS,
     FLAG_DESCRIPTIONS,
     FLAG_SEVERITY,
 )

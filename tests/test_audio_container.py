@@ -6,7 +6,6 @@ M6 Audit: Sample Rate Consistency Not Enforced
 Fix: Embed sample rate in audio container, validate on load.
 """
 
-import tempfile
 from pathlib import Path
 
 import numpy as np

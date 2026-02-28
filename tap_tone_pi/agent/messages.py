@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional, Sequence
+from typing import Any, Callable, Dict, List, Literal, Optional, Sequence
 
 from tap_tone_pi.core.quality_policy import (
     QualityVerdict,
@@ -605,7 +605,7 @@ def should_show_full_explanation(ctx: AgentContext, rule_id: str) -> bool:
 
 
 def _pick_ftue_hint(
-    stage: UserStage, ctx: AgentContext, rule_ids: List[str]
+    stage: UserStage, _ctx: AgentContext, rule_ids: List[str]
 ) -> Optional[str]:
     hints = FTUE_HINTS.get(stage, ())
     if not hints:
@@ -619,42 +619,18 @@ def _pick_ftue_hint(
     return hints[0]
 
 
-def _merge_actions(
-    base: tuple[SuggestedAction, ...],
-    rule_actions: List[SuggestedAction],
-    *,
-    stage: UserStage,
-    verdict: Verdict,
-    ctx: AgentContext,
+def _apply_escalations(
+    add: Callable[[SuggestedAction], None],
     rule_ids: List[str],
-) -> tuple[SuggestedAction, ...]:
-    """
-    Merge verdict default actions with rule-suggested actions deterministically.
+    ctx: AgentContext,
+) -> None:
+    """Inject stronger corrective actions for repeated rule hits (PR6)."""
 
-    Rules:
-    - FAIL: prioritize retry + fix actions. Keep override available (measure workflow), but don't push it early for first_run.
-    - WARN: novice -> retry first; regular/expert -> accept first.
-    - PASS: advance only.
-    - Avoid duplicates by action_id.
-    - Escalate if a rule repeats (consecutive hits or count).
-    """
-    merged: List[SuggestedAction] = []
-    seen: set[str] = set()
-
-    def add(act: SuggestedAction) -> None:
-        if act.action_id in seen:
-            return
-        seen.add(act.action_id)
-        merged.append(act)
-
-    # Escalation: if repeat rule hit, inject stronger corrective action earlier
-    # (still deterministic; no hidden interpretation)
     def repeated(rule_id: str, threshold: int) -> bool:
         return (ctx.get_consecutive_hits(rule_id) >= threshold) or (
             ctx.get_rule_count(rule_id) >= threshold
         )
 
-    # Special escalations (PR6: expanded for Q010 and Q003)
     if "Q011" in rule_ids and repeated("Q011", 3):
         add(
             SuggestedAction(
@@ -692,6 +668,38 @@ def _merge_actions(
                 "No peaks repeated; coupling or environment issue",
             )
         )
+
+
+def _merge_actions(
+    base: tuple[SuggestedAction, ...],
+    rule_actions: List[SuggestedAction],
+    *,
+    stage: UserStage,
+    verdict: Verdict,
+    ctx: AgentContext,
+    rule_ids: List[str],
+) -> tuple[SuggestedAction, ...]:
+    """
+    Merge verdict default actions with rule-suggested actions deterministically.
+
+    Rules:
+    - FAIL: prioritize retry + fix actions. Keep override available (measure workflow), but don't push it early for first_run.
+    - WARN: novice -> retry first; regular/expert -> accept first.
+    - PASS: advance only.
+    - Avoid duplicates by action_id.
+    - Escalate if a rule repeats (consecutive hits or count).
+    """
+    merged: List[SuggestedAction] = []
+    seen: set[str] = set()
+
+    def add(act: SuggestedAction) -> None:
+        if act.action_id in seen:
+            return
+        seen.add(act.action_id)
+        merged.append(act)
+
+    # Escalation: inject stronger corrective actions for repeated rule hits
+    _apply_escalations(add, rule_ids, ctx)
 
     # For FAIL, pull in top rule actions first (more actionable than generic abort/override)
     if verdict == Verdict.FAIL:

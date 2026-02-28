@@ -4,7 +4,6 @@ Tests for QA/QC Lab Specification Sheet module.
 """
 
 import json
-import math
 import tempfile
 from pathlib import Path
 
@@ -22,17 +21,12 @@ from tap_tone_pi.bending.qa_lab_spec import (
     TriggeredRuleInfo,
     QualityAssessment,
     WolfToneAnalysis,
-    ChladniAnalysis,
-    SpecialAnalysis,
-    AuditTrail,
-    # Main entry
     QALabSpecEntry,
     # Builder and export
     build_qa_lab_spec_entry,
     export_qa_lab_csv,
     export_qa_lab_json,
     QA_LAB_CSV_COLUMNS,
-    SCHEMA_VERSION,
 )
 
 

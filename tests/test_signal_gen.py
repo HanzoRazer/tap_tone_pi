@@ -2,7 +2,6 @@
 Tests for the signal generator module.
 """
 
-import math
 
 import numpy as np
 import pytest
@@ -20,9 +19,6 @@ from tap_tone_pi.signal_gen import (
     signal_to_int16,
     normalize_signal,
     SignalConfig,
-    SweepConfig,
-    NoiseConfig,
-    WaveformType,
     SweepType,
     NoiseType,
 )

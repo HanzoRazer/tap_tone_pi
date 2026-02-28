@@ -1,5 +1,31 @@
 {
-  "threshold": 25,
-  "violation_count": 0,
-  "violations": []
+  "generated": "2026-02-25",
+  "note": "Post Phase 1-5 code health cleanup",
+  "complexity_gate": {
+    "max_grade": "D",
+    "max_avg_cc": 16.0,
+    "d_grade_functions": [
+      "tap_tone_pi/core/phase_crossval.py::match_phases (CC=22)",
+      "tap_tone_pi/validate/viewer_pack_v1.py::_validate_point_spectrum (CC=22)"
+    ],
+    "d_grade_count": 2,
+    "e_f_grade_count": 0
+  },
+  "maintainability_gate": {
+    "min_grade": "B",
+    "b_grade_files": [
+      "tap_tone_pi/cli/main.py (MI=15.66)"
+    ],
+    "c_or_worse_count": 0
+  },
+  "security_gate": {
+    "severity_threshold": "MEDIUM",
+    "medium_plus_findings": 0
+  },
+  "deadcode_gate": {
+    "tool": "vulture",
+    "min_confidence": 90,
+    "findings": 0,
+    "whitelist": "vulture_whitelist.py"
+  }
 }

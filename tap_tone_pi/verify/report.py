@@ -8,7 +8,7 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import Optional, Dict, Any
 
 from .tests import TestOutcome, VerificationTest
 from .suite import VerificationResult

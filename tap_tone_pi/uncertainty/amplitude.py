@@ -7,12 +7,7 @@ from __future__ import annotations
 import math
 from typing import Optional
 
-from .budget import (
-    UncertaintyBudget,
-    UncertaintyType,
-    get_calibration_uncertainty_factor,
-    get_snr_uncertainty_factor,
-)
+from .budget import UncertaintyBudget, UncertaintyType, get_calibration_uncertainty_factor
 
 
 def compute_snr_uncertainty(snr_db: float) -> float:

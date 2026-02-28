@@ -1,12 +1,10 @@
 """Tests for inverse thickness solver."""
 
-import math
 import pytest
 
 from tap_tone_pi.design.inverse_solver import (
     ForwardModel,
     ThicknessConstraints,
-    FrequencyTarget,
     InverseSolverResult,
     solve_for_thickness,
     InverseDesignProblem,
