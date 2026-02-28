@@ -8,7 +8,7 @@ Lazy imports are used for numpy/sounddevice to improve CLI startup time.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from tap_tone_pi.core.errors import (
     DeviceError,
@@ -17,11 +17,7 @@ from tap_tone_pi.core.errors import (
     CaptureError,
     ValidationError,
     handle_device_error,
-    with_retry,
 )
-
-if TYPE_CHECKING:
-    import numpy as np
 
 
 @dataclass(frozen=True)

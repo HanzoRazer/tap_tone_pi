@@ -205,7 +205,7 @@ def detect_outliers_chauvenet(
 
     outliers = np.zeros(n, dtype=bool)
 
-    for iteration in range(max_iterations):
+    for _ in range(max_iterations):
         valid = ~outliers
         valid_values = values[valid]
         n_valid = len(valid_values)
@@ -546,7 +546,6 @@ def compute_statistics(
         Complete statistical summary.
     """
     values = np.asarray(values, dtype=float)
-    n_total = len(values)
 
     if outlier_mask is not None:
         n_outliers = np.sum(outlier_mask)
