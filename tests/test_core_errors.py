@@ -53,8 +53,13 @@ class TestExceptionHierarchy:
 
     def test_other_errors_inherit_from_base(self):
         """All custom errors should inherit from TapToneError."""
-        for err_class in [AnalysisError, QualityError, ValidationError,
-                          FileFormatError, ConfigError]:
+        for err_class in [
+            AnalysisError,
+            QualityError,
+            ValidationError,
+            FileFormatError,
+            ConfigError,
+        ]:
             assert issubclass(err_class, TapToneError)
 
     def test_can_catch_by_base_class(self):
@@ -198,6 +203,7 @@ class TestWithRetry:
 
     def test_preserves_function_metadata(self):
         """Decorator should preserve function name and docstring."""
+
         @with_retry()
         def my_function():
             """My docstring."""
@@ -235,8 +241,7 @@ class TestErrorContext:
     def test_with_details(self):
         """Should include arbitrary details."""
         ctx = ErrorContext(
-            operation="analysis",
-            details={"sample_rate": 48000, "duration": 2.5}
+            operation="analysis", details={"sample_rate": 48000, "duration": 2.5}
         )
         err = ValueError("Failed")
         msg = ctx.format_message(err)
@@ -265,7 +270,7 @@ class TestFormatErrorForUser:
         """Should include suggestion from TapToneError."""
         err = DeviceNotFoundError(
             "Device 5 not found",
-            suggestion="Run 'ttp devices' to list available devices"
+            suggestion="Run 'ttp devices' to list available devices",
         )
         msg = format_error_for_user(err)
         assert "Device 5 not found" in msg

@@ -58,6 +58,7 @@ class CoherenceResult:
     quality_grade : str
         Overall quality: "excellent", "good", "acceptable", "poor"
     """
+
     frequencies: np.ndarray
     coherence: np.ndarray
     mean_coherence: float = 0.0
@@ -101,6 +102,7 @@ class TransferFunctionResult:
     phase_uncertainty : np.ndarray
         Uncertainty in phase (from coherence).
     """
+
     frequencies: np.ndarray
     magnitude: np.ndarray
     phase: np.ndarray
@@ -171,18 +173,18 @@ def compute_auto_spectrum(
     if detrend == "constant":
         signal_data = signal_data - np.mean(signal_data)
     elif detrend == "linear":
-        signal_data = signal.detrend(signal_data, type='linear')
+        signal_data = signal.detrend(signal_data, type="linear")
 
     # Apply window and FFT
     windowed = signal_data * win
     spectrum = np.fft.rfft(windowed, n=n_fft)
 
     # Compute PSD (one-sided)
-    psd = np.abs(spectrum)**2 / (sample_rate * win_factor)
+    psd = np.abs(spectrum) ** 2 / (sample_rate * win_factor)
     # Double all except DC and Nyquist
     psd[1:-1] *= 2
 
-    frequencies = np.fft.rfftfreq(n_fft, 1/sample_rate)
+    frequencies = np.fft.rfftfreq(n_fft, 1 / sample_rate)
 
     return frequencies, psd
 
@@ -237,8 +239,8 @@ def compute_cross_spectrum(
         signal_x = signal_x - np.mean(signal_x)
         signal_y = signal_y - np.mean(signal_y)
     elif detrend == "linear":
-        signal_x = signal.detrend(signal_x, type='linear')
-        signal_y = signal.detrend(signal_y, type='linear')
+        signal_x = signal.detrend(signal_x, type="linear")
+        signal_y = signal.detrend(signal_y, type="linear")
 
     # Apply window and FFT
     X = np.fft.rfft(signal_x * win, n=n_fft)
@@ -248,7 +250,7 @@ def compute_cross_spectrum(
     csd = np.conj(X) * Y / (sample_rate * win_factor)
     csd[1:-1] *= 2  # One-sided adjustment
 
-    frequencies = np.fft.rfftfreq(n_fft, 1/sample_rate)
+    frequencies = np.fft.rfftfreq(n_fft, 1 / sample_rate)
 
     return frequencies, csd
 
@@ -306,8 +308,12 @@ def compute_coherence(
 
     # Use scipy.signal.coherence for robust Welch-based calculation
     frequencies, coherence = signal.coherence(
-        signal_x, signal_y, fs=sample_rate,
-        nperseg=n_fft, noverlap=n_overlap, window=window
+        signal_x,
+        signal_y,
+        fs=sample_rate,
+        nperseg=n_fft,
+        noverlap=n_overlap,
+        window=window,
     )
 
     # Clip to valid range (numerical errors can push slightly outside [0, 1])
@@ -495,27 +501,44 @@ def estimate_transfer_function(
 
     # Use scipy.signal.csd for Welch method with proper averaging
     freqs, Gxy = signal.csd(
-        signal_input, signal_output, fs=sample_rate,
-        nperseg=n_fft, noverlap=n_overlap, window=window,
-        detrend=detrend, return_onesided=True
+        signal_input,
+        signal_output,
+        fs=sample_rate,
+        nperseg=n_fft,
+        noverlap=n_overlap,
+        window=window,
+        detrend=detrend,
+        return_onesided=True,
     )
 
     _, Gxx = signal.welch(
-        signal_input, fs=sample_rate,
-        nperseg=n_fft, noverlap=n_overlap, window=window,
-        detrend=detrend, return_onesided=True
+        signal_input,
+        fs=sample_rate,
+        nperseg=n_fft,
+        noverlap=n_overlap,
+        window=window,
+        detrend=detrend,
+        return_onesided=True,
     )
 
     _, Gyy = signal.welch(
-        signal_output, fs=sample_rate,
-        nperseg=n_fft, noverlap=n_overlap, window=window,
-        detrend=detrend, return_onesided=True
+        signal_output,
+        fs=sample_rate,
+        nperseg=n_fft,
+        noverlap=n_overlap,
+        window=window,
+        detrend=detrend,
+        return_onesided=True,
     )
 
     # Compute coherence
     coherence_result = compute_coherence(
-        signal_input, signal_output, sample_rate,
-        n_fft=n_fft, n_overlap=n_overlap, window=window
+        signal_input,
+        signal_output,
+        sample_rate,
+        n_fft=n_fft,
+        n_overlap=n_overlap,
+        window=window,
     )
 
     # Compute H1 and H2

@@ -104,7 +104,7 @@ def analyze_harmonics(
         if h == 1:
             fundamental_amplitude = peak_amp
         else:
-            total_harmonic_power += peak_amp ** 2
+            total_harmonic_power += peak_amp**2
 
     # Calculate THD
     if fundamental_amplitude > 0:
@@ -128,7 +128,7 @@ def analyze_harmonics(
         non_harmonic_power = np.sum((non_harmonic[non_harmonic > noise_floor * 3]) ** 2)
         if fundamental_amplitude > 0:
             non_harmonic_content_db = 10 * np.log10(
-                non_harmonic_power / (fundamental_amplitude ** 2) + 1e-10
+                non_harmonic_power / (fundamental_amplitude**2) + 1e-10
             )
         else:
             non_harmonic_content_db = -100.0
@@ -274,8 +274,7 @@ def detect_rub_buzz(
         # Check for non-harmonic content above threshold
         if harmonic_analysis.non_harmonic_content_db > threshold_db:
             severity = min(
-                1.0,
-                (harmonic_analysis.non_harmonic_content_db - threshold_db) / 20.0
+                1.0, (harmonic_analysis.non_harmonic_content_db - threshold_db) / 20.0
             )
 
             if severity >= detection_config.severity_threshold:
@@ -293,7 +292,8 @@ def detect_rub_buzz(
                     severity=severity,
                     duration_ms=window_duration_ms,
                     confidence=0.7,  # Base confidence
-                    snr_db=harmonic_analysis.non_harmonic_content_db - harmonic_analysis.noise_floor_db,
+                    snr_db=harmonic_analysis.non_harmonic_content_db
+                    - harmonic_analysis.noise_floor_db,
                     details={
                         "thd_percent": harmonic_analysis.thd_percent,
                         "non_harmonic_db": harmonic_analysis.non_harmonic_content_db,

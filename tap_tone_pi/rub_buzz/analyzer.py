@@ -75,10 +75,7 @@ class RubBuzzAnalyzer:
 
         # Calculate overall THD+N at reference frequency
         # Use mid-sweep point as reference
-        mid_time = (
-            self.sweep_config.pre_silence_s +
-            self.sweep_config.duration_s / 2
-        )
+        mid_time = self.sweep_config.pre_silence_s + self.sweep_config.duration_s / 2
         mid_freq = self.sweep_config.get_freq_at_time(mid_time)
 
         # Extract signal around mid-sweep
@@ -249,7 +246,11 @@ def quick_rub_buzz_check(
         return True, min(0.4, severity), f"Minor transients: {len(transients)} events"
     elif len(transients) < 10:
         severity = max(t.peak_amplitude for t in transients)
-        return False, min(0.7, severity), f"Multiple transients: {len(transients)} events"
+        return (
+            False,
+            min(0.7, severity),
+            f"Multiple transients: {len(transients)} events",
+        )
     else:
         return False, 1.0, f"Severe transient activity: {len(transients)} events"
 

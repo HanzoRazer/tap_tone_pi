@@ -526,7 +526,9 @@ def _build_uncertainty_block(
     return uncertainty_block
 
 
-def _build_dial_block(args: argparse.Namespace, dial_zeroed_at: Optional[str]) -> Optional[Dict[str, Any]]:
+def _build_dial_block(
+    args: argparse.Namespace, dial_zeroed_at: Optional[str]
+) -> Optional[Dict[str, Any]]:
     """Build dial indicator calibration sub-block."""
     if not (args.dial_zeroed or args.dial_zero_method or args.dial_zero_notes):
         return None
@@ -593,9 +595,12 @@ def _build_calibration_block(args: argparse.Namespace) -> Optional[Dict[str, Any
         dial_zeroed_at = utc_now_iso()
 
     return {
-        "dial": _build_dial_block(args, dial_zeroed_at) or {"zeroed": False, "zeroed_at_utc": utc_now_iso()},
-        "load_cell": _build_load_cell_block(args) or {"present": False, "calibration_date_utc": "unknown"},
-        "standard_specimen": _build_standard_block(args) or {"used": False, "specimen_id": "unknown"},
+        "dial": _build_dial_block(args, dial_zeroed_at)
+        or {"zeroed": False, "zeroed_at_utc": utc_now_iso()},
+        "load_cell": _build_load_cell_block(args)
+        or {"present": False, "calibration_date_utc": "unknown"},
+        "standard_specimen": _build_standard_block(args)
+        or {"used": False, "specimen_id": "unknown"},
     }
 
 

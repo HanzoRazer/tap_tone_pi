@@ -606,6 +606,7 @@ def _run_limit_check(args: argparse.Namespace, result: Any) -> int | None:
         run_limit_test,
         handle_limit_test_result,
     )
+
     limits_config = load_limits_config(args)
     if limits_config and result.analysis:
         passed, output = run_limit_test(
@@ -656,6 +657,7 @@ def cmd_measure(args: argparse.Namespace) -> int:
     # Pre-flight hardware check
     if not getattr(args, "skip_preflight", False):
         from tap_tone_pi.cli.preflight import require_preflight
+
         require_preflight(device=device, sample_rate=sample_rate)
 
     # Create session directory
@@ -1147,7 +1149,9 @@ The preflight command verifies your audio hardware is ready:
     )
     p_pre.add_argument("--device", type=int, default=None, help="Device index to test")
     p_pre.add_argument("--sample-rate", type=int, default=48000, help="Sample rate Hz")
-    p_pre.add_argument("--duration", type=float, default=0.5, help="Test duration seconds")
+    p_pre.add_argument(
+        "--duration", type=float, default=0.5, help="Test duration seconds"
+    )
     p_pre.set_defaults(fn=cmd_preflight)
 
     # record

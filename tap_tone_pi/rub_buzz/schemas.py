@@ -190,9 +190,9 @@ class SweepConfig:
             return self.start_freq_hz * (ratio ** (t / self.duration_s))
         else:
             # Linear sweep: f(t) = f1 + (f2-f1) * t/T
-            return self.start_freq_hz + (
-                self.end_freq_hz - self.start_freq_hz
-            ) * (t / self.duration_s)
+            return self.start_freq_hz + (self.end_freq_hz - self.start_freq_hz) * (
+                t / self.duration_s
+            )
 
     def get_time_at_freq(self, freq_hz: float) -> float:
         """Calculate time at which sweep reaches given frequency."""
@@ -200,10 +200,16 @@ class SweepConfig:
 
         if self.sweep_type == "logarithmic":
             ratio = self.end_freq_hz / self.start_freq_hz
-            t = self.duration_s * math.log(freq_hz / self.start_freq_hz) / math.log(ratio)
+            t = (
+                self.duration_s
+                * math.log(freq_hz / self.start_freq_hz)
+                / math.log(ratio)
+            )
         else:
-            t = self.duration_s * (freq_hz - self.start_freq_hz) / (
-                self.end_freq_hz - self.start_freq_hz
+            t = (
+                self.duration_s
+                * (freq_hz - self.start_freq_hz)
+                / (self.end_freq_hz - self.start_freq_hz)
             )
 
         return t + self.pre_silence_s

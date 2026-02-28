@@ -23,7 +23,6 @@ from enum import Enum
 from typing import Any
 
 
-
 class MatchStatus(Enum):
     """Status of mode matching between phases."""
 
@@ -113,8 +112,12 @@ class CrossValidationResult:
                 {
                     "p1_freq_hz": m.p1_freq_hz,
                     "p2_freq_hz": m.p2_freq_hz,
-                    "freq_delta_hz": round(m.freq_delta_hz, 2) if m.freq_delta_hz else None,
-                    "freq_delta_pct": round(m.freq_delta_pct, 3) if m.freq_delta_pct else None,
+                    "freq_delta_hz": round(m.freq_delta_hz, 2)
+                    if m.freq_delta_hz
+                    else None,
+                    "freq_delta_pct": round(m.freq_delta_pct, 3)
+                    if m.freq_delta_pct
+                    else None,
                     "status": m.status.value,
                     "confidence": m.confidence.value,
                     "notes": m.notes,
@@ -184,15 +187,17 @@ def _collect_unmatched_p2(
     warnings: list[str] = []
     for j, p2 in enumerate(p2_sorted):
         if j not in p2_matched:
-            matches.append(ModeMatch(
-                p1_freq_hz=None,
-                p2_freq_hz=p2.freq_hz,
-                freq_delta_hz=None,
-                freq_delta_pct=None,
-                status=MatchStatus.P2_ONLY,
-                confidence=ConfidenceLevel.LOW,
-                notes=["No corresponding P1 peak found"],
-            ))
+            matches.append(
+                ModeMatch(
+                    p1_freq_hz=None,
+                    p2_freq_hz=p2.freq_hz,
+                    freq_delta_hz=None,
+                    freq_delta_pct=None,
+                    status=MatchStatus.P2_ONLY,
+                    confidence=ConfidenceLevel.LOW,
+                    notes=["No corresponding P1 peak found"],
+                )
+            )
             warnings.append(f"P2 mode at {p2.freq_hz:.1f} Hz not detected in P1")
     return matches, warnings
 
@@ -273,33 +278,41 @@ def match_phases(
             delta_pct = (delta_hz / p1.freq_hz) * 100.0 if p1.freq_hz > 0 else 0.0
 
             status, confidence, notes = _assess_match_quality(
-                p1, p2, delta_pct, tolerance_pct, weak_match_threshold,
+                p1,
+                p2,
+                delta_pct,
+                tolerance_pct,
+                weak_match_threshold,
             )
 
-            matches.append(ModeMatch(
-                p1_freq_hz=p1.freq_hz,
-                p2_freq_hz=p2.freq_hz,
-                freq_delta_hz=delta_hz,
-                freq_delta_pct=delta_pct,
-                status=status,
-                confidence=confidence,
-                notes=notes,
-            ))
+            matches.append(
+                ModeMatch(
+                    p1_freq_hz=p1.freq_hz,
+                    p2_freq_hz=p2.freq_hz,
+                    freq_delta_hz=delta_hz,
+                    freq_delta_pct=delta_pct,
+                    status=status,
+                    confidence=confidence,
+                    notes=notes,
+                )
+            )
 
             p1_matched.add(i)
             p2_matched.add(best_j)
 
         elif p1.confidence >= min_confidence_for_match:
             # P1 peak with no P2 match - possibly spurious
-            matches.append(ModeMatch(
-                p1_freq_hz=p1.freq_hz,
-                p2_freq_hz=None,
-                freq_delta_hz=None,
-                freq_delta_pct=None,
-                status=MatchStatus.P1_ONLY,
-                confidence=ConfidenceLevel.LOW,
-                notes=["No corresponding P2 mode found"],
-            ))
+            matches.append(
+                ModeMatch(
+                    p1_freq_hz=p1.freq_hz,
+                    p2_freq_hz=None,
+                    freq_delta_hz=None,
+                    freq_delta_pct=None,
+                    status=MatchStatus.P1_ONLY,
+                    confidence=ConfidenceLevel.LOW,
+                    notes=["No corresponding P2 mode found"],
+                )
+            )
             warnings.append(f"P1 peak at {p1.freq_hz:.1f} Hz not confirmed by P2 ODS")
 
     # Unmatched P2 modes
@@ -318,8 +331,8 @@ def match_phases(
 
     # Consistency check: flag if too many unmatched
     is_consistent = (
-        n_p1_only <= len(p1_peaks) * 0.3 and  # <30% P1 unmatched
-        n_p2_only <= len(p2_modes) * 0.3  # <30% P2 unmatched
+        n_p1_only <= len(p1_peaks) * 0.3  # <30% P1 unmatched
+        and n_p2_only <= len(p2_modes) * 0.3  # <30% P2 unmatched
     )
 
     if not is_consistent:
@@ -362,12 +375,14 @@ def load_p1_peaks_from_json(data: dict[str, Any]) -> list[Phase1Peak]:
     confidence = data.get("confidence", 1.0)
 
     for p in data["peaks"]:
-        peaks.append(Phase1Peak(
-            freq_hz=float(p["freq_hz"]),
-            magnitude=float(p.get("magnitude", 0.0)),
-            confidence=confidence,
-            label=p.get("label"),
-        ))
+        peaks.append(
+            Phase1Peak(
+                freq_hz=float(p["freq_hz"]),
+                magnitude=float(p.get("magnitude", 0.0)),
+                confidence=confidence,
+                label=p.get("label"),
+            )
+        )
 
     return peaks
 
@@ -396,12 +411,14 @@ def load_p2_modes_from_json(data: dict[str, Any]) -> list[Phase2Mode]:
     n_points = data.get("n_points", 0)
 
     for freq in target_freqs:
-        modes.append(Phase2Mode(
-            freq_hz=float(freq),
-            n_points=n_points,
-            max_magnitude=1.0,  # Placeholder, actual value from individual ODS file
-            coherence_mean=1.0,  # Placeholder
-        ))
+        modes.append(
+            Phase2Mode(
+                freq_hz=float(freq),
+                n_points=n_points,
+                max_magnitude=1.0,  # Placeholder, actual value from individual ODS file
+                coherence_mean=1.0,  # Placeholder
+            )
+        )
 
     return modes
 

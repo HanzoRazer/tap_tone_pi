@@ -110,9 +110,13 @@ class TestPresets:
         """Preset values should be physically reasonable."""
         for preset in SI_PRESETS.values():
             # SI_L should be reasonable (50-700 GPa·mm³)
-            assert 50 < preset.SI_L_typical < 700, f"{preset.instrument} has unrealistic SI_L"
+            assert 50 < preset.SI_L_typical < 700, (
+                f"{preset.instrument} has unrealistic SI_L"
+            )
             # Thickness should be reasonable (1-5 mm)
-            assert 1.0 < preset.h_typical_mm < 5.0, f"{preset.instrument} has unrealistic h"
+            assert 1.0 < preset.h_typical_mm < 5.0, (
+                f"{preset.instrument} has unrealistic h"
+            )
 
 
 class TestSingleDirectionAnalysis:
@@ -150,7 +154,10 @@ class TestSingleDirectionAnalysis:
     def test_analyze_single_direction_warning_for_excessive_thinning(self):
         """Warning should appear if target requires >40% material removal."""
         result = analyze_single_direction(
-            E_GPa=12.0, h_mm=5.0, direction="L", SI_target=100.0  # Very low target
+            E_GPa=12.0,
+            h_mm=5.0,
+            direction="L",
+            SI_target=100.0,  # Very low target
         )
         assert any("<60%" in w for w in result.warnings)
 
@@ -160,9 +167,7 @@ class TestOrthotropicAnalysis:
 
     def test_analyze_orthotropic_basic(self):
         """Basic orthotropic analysis should compute both directions."""
-        result = analyze_orthotropic(
-            E_L_GPa=12.0, E_C_GPa=0.8, h_mm=3.0
-        )
+        result = analyze_orthotropic(E_L_GPa=12.0, E_C_GPa=0.8, h_mm=3.0)
         assert isinstance(result, OrthotropicResult)
         assert result.E_L_GPa == pytest.approx(12.0, rel=1e-3)
         assert result.E_C_GPa == pytest.approx(0.8, rel=1e-3)

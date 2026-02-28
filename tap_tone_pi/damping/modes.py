@@ -36,9 +36,10 @@ from enum import Enum
 
 class ModeConfidence(Enum):
     """Confidence level in mode identification."""
-    HIGH = "high"           # Stable across multiple orders, clear peak
-    MEDIUM = "medium"       # Some stability, reasonable peak
-    LOW = "low"             # Unstable or weak peak
+
+    HIGH = "high"  # Stable across multiple orders, clear peak
+    MEDIUM = "medium"  # Some stability, reasonable peak
+    LOW = "low"  # Unstable or weak peak
     COMPUTATIONAL = "computational"  # Likely numerical artifact
 
 
@@ -76,6 +77,7 @@ class ModeIdentificationResult:
     metadata : Dict[str, Any]
         Additional analysis metadata.
     """
+
     frequency_hz: float
     damping_ratio: float
     amplitude: float
@@ -170,7 +172,7 @@ def identify_modes(
         return []
 
     # Sort by prominence and take top max_modes
-    prominences = properties['prominences']
+    prominences = properties["prominences"]
     sorted_indices = np.argsort(prominences)[::-1][:max_modes]
     peak_indices = peak_indices[sorted_indices]
     prominences = prominences[sorted_indices]
@@ -188,9 +190,7 @@ def identify_modes(
         peak_phase = phase[idx] if phase is not None else 0.0
 
         # Estimate bandwidth using half-power method
-        bandwidth, q_factor = _estimate_bandwidth(
-            freqs, magnitude, idx, peak_freq
-        )
+        bandwidth, q_factor = _estimate_bandwidth(freqs, magnitude, idx, peak_freq)
 
         # Initial damping estimate from Q
         damping_ratio = 1.0 / (2.0 * q_factor) if q_factor > 0 else 0.05
@@ -198,12 +198,16 @@ def identify_modes(
         # Stabilization analysis if requested
         if use_stabilization:
             stability_info = _check_stabilization(
-                freqs, magnitude, peak_freq, model_orders,
-                frequency_tolerance, damping_tolerance
+                freqs,
+                magnitude,
+                peak_freq,
+                model_orders,
+                frequency_tolerance,
+                damping_tolerance,
             )
-            stability_count = stability_info['stability_count']
-            freq_std = stability_info['frequency_std']
-            damping_std = stability_info['damping_std']
+            stability_count = stability_info["stability_count"]
+            freq_std = stability_info["frequency_std"]
+            damping_std = stability_info["damping_std"]
 
             # Determine confidence based on stability
             if stability_count >= len(model_orders) - 2:
@@ -239,9 +243,9 @@ def identify_modes(
             frequency_std=float(freq_std),
             damping_std=float(damping_std),
             metadata={
-                'peak_index': int(idx),
-                'model_orders': model_orders if use_stabilization else [],
-            }
+                "peak_index": int(idx),
+                "model_orders": model_orders if use_stabilization else [],
+            },
         )
         results.append(result)
 
@@ -271,8 +275,10 @@ def _estimate_bandwidth(
         if magnitude[i] < half_power_level:
             # Linear interpolation
             if i + 1 < len(freqs):
-                ratio = (half_power_level - magnitude[i]) / (magnitude[i+1] - magnitude[i] + 1e-12)
-                f1 = freqs[i] + ratio * (freqs[i+1] - freqs[i])
+                ratio = (half_power_level - magnitude[i]) / (
+                    magnitude[i + 1] - magnitude[i] + 1e-12
+                )
+                f1 = freqs[i] + ratio * (freqs[i + 1] - freqs[i])
             else:
                 f1 = freqs[i]
             break
@@ -283,8 +289,10 @@ def _estimate_bandwidth(
         if magnitude[i] < half_power_level:
             # Linear interpolation
             if i > 0:
-                ratio = (half_power_level - magnitude[i-1]) / (magnitude[i] - magnitude[i-1] + 1e-12)
-                f2 = freqs[i-1] + ratio * (freqs[i] - freqs[i-1])
+                ratio = (half_power_level - magnitude[i - 1]) / (
+                    magnitude[i] - magnitude[i - 1] + 1e-12
+                )
+                f2 = freqs[i - 1] + ratio * (freqs[i] - freqs[i - 1])
             else:
                 f2 = freqs[i]
             break
@@ -325,9 +333,9 @@ def _check_stabilization(
 
     if len(freq_estimates) < 2:
         return {
-            'stability_count': 0,
-            'frequency_std': float('inf'),
-            'damping_std': float('inf'),
+            "stability_count": 0,
+            "frequency_std": float("inf"),
+            "damping_std": float("inf"),
         }
 
     freq_estimates = np.array(freq_estimates)
@@ -345,11 +353,11 @@ def _check_stabilization(
             stability_count += 1
 
     return {
-        'stability_count': stability_count,
-        'frequency_std': float(np.std(freq_estimates)),
-        'damping_std': float(np.std(damping_estimates)),
-        'frequency_estimates': freq_estimates.tolist(),
-        'damping_estimates': damping_estimates.tolist(),
+        "stability_count": stability_count,
+        "frequency_std": float(np.std(freq_estimates)),
+        "damping_std": float(np.std(damping_estimates)),
+        "frequency_estimates": freq_estimates.tolist(),
+        "damping_estimates": damping_estimates.tolist(),
     }
 
 
@@ -389,7 +397,9 @@ def _fit_local_pole(
     def resonance_model(f, f_n, zeta, A):
         omega = 2 * np.pi * f
         omega_n = 2 * np.pi * f_n
-        denom = np.sqrt((omega_n**2 - omega**2)**2 + (2*zeta*omega_n*omega)**2)
+        denom = np.sqrt(
+            (omega_n**2 - omega**2) ** 2 + (2 * zeta * omega_n * omega) ** 2
+        )
         return A * omega_n**2 / denom
 
     try:
@@ -398,8 +408,7 @@ def _fit_local_pole(
         bounds = ([0.5, 0.001, 0.01], [2.0, 0.5, 10.0])
 
         popt, _ = curve_fit(
-            resonance_model, f_scaled, m_scaled,
-            p0=p0, bounds=bounds, maxfev=1000
+            resonance_model, f_scaled, m_scaled, p0=p0, bounds=bounds, maxfev=1000
         )
 
         pole_freq = popt[0] * freq_norm
@@ -441,7 +450,7 @@ def _compute_mac_matrix(
             shape_j = _extract_local_shape(freqs, magnitude, mode_j.frequency_hz)
 
             # Compute MAC
-            numerator = np.abs(np.vdot(shape_i, shape_j))**2
+            numerator = np.abs(np.vdot(shape_i, shape_j)) ** 2
             denominator = np.vdot(shape_i, shape_i) * np.vdot(shape_j, shape_j)
 
             mac = numerator / (denominator + 1e-12)
@@ -462,7 +471,7 @@ def _extract_local_shape(
 
     # Resample to fixed number of points for consistent comparison
     if len(local_mag) < n_points:
-        return np.pad(local_mag, (0, n_points - len(local_mag)), mode='edge')
+        return np.pad(local_mag, (0, n_points - len(local_mag)), mode="edge")
     elif len(local_mag) > n_points:
         indices = np.linspace(0, len(local_mag) - 1, n_points).astype(int)
         return local_mag[indices]
@@ -544,8 +553,7 @@ def isolate_mode_signal(
 
     # Design Butterworth bandpass filter
     sos = signal.butter(
-        filter_order, [low_norm, high_norm],
-        btype='bandpass', output='sos'
+        filter_order, [low_norm, high_norm], btype="bandpass", output="sos"
     )
 
     # Apply zero-phase filtering
@@ -557,24 +565,24 @@ def isolate_mode_signal(
 
     # Compute instantaneous frequency for validation
     inst_phase = np.unwrap(np.angle(analytic_signal))
-    inst_freq = np.gradient(inst_phase, 1/sample_rate) / (2 * np.pi)
+    inst_freq = np.gradient(inst_phase, 1 / sample_rate) / (2 * np.pi)
 
     # Quality metrics
-    mean_inst_freq = np.mean(inst_freq[len(inst_freq)//4:3*len(inst_freq)//4])
-    freq_deviation = np.std(inst_freq[len(inst_freq)//4:3*len(inst_freq)//4])
+    mean_inst_freq = np.mean(inst_freq[len(inst_freq) // 4 : 3 * len(inst_freq) // 4])
+    freq_deviation = np.std(inst_freq[len(inst_freq) // 4 : 3 * len(inst_freq) // 4])
 
     metadata = {
-        'filter_type': 'butterworth_bandpass',
-        'filter_order': filter_order,
-        'f_low_hz': f_low,
-        'f_high_hz': f_high,
-        'bandwidth_hz': f_high - f_low,
-        'bandwidth_factor': bandwidth_factor,
-        'mean_instantaneous_freq_hz': float(mean_inst_freq),
-        'instantaneous_freq_std_hz': float(freq_deviation),
-        'freq_deviation_percent': float(100 * freq_deviation / mode_frequency),
-        'signal_rms': float(np.sqrt(np.mean(filtered_signal**2))),
-        'envelope_peak': float(np.max(envelope)),
+        "filter_type": "butterworth_bandpass",
+        "filter_order": filter_order,
+        "f_low_hz": f_low,
+        "f_high_hz": f_high,
+        "bandwidth_hz": f_high - f_low,
+        "bandwidth_factor": bandwidth_factor,
+        "mean_instantaneous_freq_hz": float(mean_inst_freq),
+        "instantaneous_freq_std_hz": float(freq_deviation),
+        "freq_deviation_percent": float(100 * freq_deviation / mode_frequency),
+        "signal_rms": float(np.sqrt(np.mean(filtered_signal**2))),
+        "envelope_peak": float(np.max(envelope)),
     }
 
     return filtered_signal, envelope, metadata
@@ -616,9 +624,7 @@ def estimate_mode_count(
 
     mag_db = 20 * np.log10(np.maximum(magnitude, 1e-12))
 
-    peak_indices, properties = signal.find_peaks(
-        mag_db, prominence=min_prominence_db
-    )
+    peak_indices, properties = signal.find_peaks(mag_db, prominence=min_prominence_db)
 
     peak_frequencies = freqs[peak_indices].tolist()
 

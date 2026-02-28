@@ -121,14 +121,20 @@ class TestGammaCalibration:
     def test_multi_specimen(self):
         """Should handle multiple specimens."""
         cal = GammaCalibration()
-        cal.add_specimen("guitar_001", [
-            ModeMeasurement("1,1", 185.0, 158.0),
-            ModeMeasurement("2,1", 312.0, 275.0),
-        ])
-        cal.add_specimen("guitar_002", [
-            ModeMeasurement("1,1", 178.0, 152.0),
-            ModeMeasurement("2,1", 298.0, 262.0),
-        ])
+        cal.add_specimen(
+            "guitar_001",
+            [
+                ModeMeasurement("1,1", 185.0, 158.0),
+                ModeMeasurement("2,1", 312.0, 275.0),
+            ],
+        )
+        cal.add_specimen(
+            "guitar_002",
+            [
+                ModeMeasurement("1,1", 178.0, 152.0),
+                ModeMeasurement("2,1", 298.0, 262.0),
+            ],
+        )
         result = cal.compute()
         assert result.n_specimens == 2
         assert result.n_measurements == 4
@@ -144,10 +150,13 @@ class TestGammaCalibration:
     def test_per_specimen_statistics(self):
         """Should compute per-specimen mean γ."""
         cal = GammaCalibration()
-        cal.add_specimen("guitar_001", [
-            ModeMeasurement("1,1", 200.0, 170.0),
-            ModeMeasurement("2,1", 300.0, 270.0),
-        ])
+        cal.add_specimen(
+            "guitar_001",
+            [
+                ModeMeasurement("1,1", 200.0, 170.0),
+                ModeMeasurement("2,1", 300.0, 270.0),
+            ],
+        )
         result = cal.compute()
         assert "guitar_001" in result.specimen_gammas
 
@@ -181,19 +190,23 @@ class TestConvenienceFunctions:
 
     def test_calibrate_from_pairs(self):
         """Quick calibration from pairs."""
-        result = calibrate_gamma_from_pairs([
-            (200.0, 170.0),
-            (300.0, 270.0),
-        ])
+        result = calibrate_gamma_from_pairs(
+            [
+                (200.0, 170.0),
+                (300.0, 270.0),
+            ]
+        )
         assert result.n_measurements == 2
         assert result.gamma_mean > 0
 
     def test_calibrate_multi_specimen(self):
         """Multi-specimen convenience function."""
-        result = calibrate_gamma_multi_specimen({
-            "g1": [(200, 170), (300, 270)],
-            "g2": [(190, 162), (290, 261)],
-        })
+        result = calibrate_gamma_multi_specimen(
+            {
+                "g1": [(200, 170), (300, 270)],
+                "g2": [(190, 162), (290, 261)],
+            }
+        )
         assert result.n_specimens == 2
 
 

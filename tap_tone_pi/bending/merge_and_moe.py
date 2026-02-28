@@ -151,7 +151,7 @@ def _linear_fit(F: List[float], d: List[float]) -> LinearFitResult:
 
     # Compute condition number (M1 fix: detect near-singular)
     d_centered = [x - xbar for x in d]
-    ss_x = sum(x ** 2 for x in d_centered)
+    ss_x = sum(x**2 for x in d_centered)
 
     if ss_x < 1e-20:
         return LinearFitResult(
@@ -176,7 +176,7 @@ def _linear_fit(F: List[float], d: List[float]) -> LinearFitResult:
 
     # Compute R² and residuals
     residuals = [(y - (slope * (x - xbar) + ybar)) for x, y in zip(d, F)]
-    ss_res = sum(r ** 2 for r in residuals)
+    ss_res = sum(r**2 for r in residuals)
     ss_tot = sum((y - ybar) ** 2 for y in F) + 1e-20
     r2 = max(0.0, 1.0 - ss_res / ss_tot)  # Clamp to non-negative
 
@@ -234,8 +234,8 @@ def _timoshenko_correction_factor(
     """
     import math
 
-    h_over_l_squared = 1.0 / (l_over_h ** 2)
-    coefficient = (math.pi ** 2 / 12.0) * (1.0 + e_over_g / kappa)
+    h_over_l_squared = 1.0 / (l_over_h**2)
+    coefficient = (math.pi**2 / 12.0) * (1.0 + e_over_g / kappa)
 
     return 1.0 + coefficient * h_over_l_squared
 
@@ -504,7 +504,9 @@ def main() -> None:
             f"-{moe_calc['shear_correction_percent']:.1f}% correction)"
         )
     else:
-        print(f"  E = {E_pa / 1e9:.3f} GPa (L/h = {moe_calc['l_over_h']:.1f}, no correction needed)")
+        print(
+            f"  E = {E_pa / 1e9:.3f} GPa (L/h = {moe_calc['l_over_h']:.1f}, no correction needed)"
+        )
     print(f"  R² = {r2:.4f}")
 
 

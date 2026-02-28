@@ -25,14 +25,14 @@ class DampingResult:
     """Result of damping extraction for a single mode."""
 
     frequency_hz: float
-    damping_ratio: float              # ζ (zeta)
-    quality_factor: float             # Q = 1/(2ζ)
-    decay_time_s: float               # τ = 1/(ζωn)
-    decay_rate_nepers_per_s: float    # α = ζωn
+    damping_ratio: float  # ζ (zeta)
+    quality_factor: float  # Q = 1/(2ζ)
+    decay_time_s: float  # τ = 1/(ζωn)
+    decay_rate_nepers_per_s: float  # α = ζωn
 
     # Uncertainty
     damping_ratio_std: float
-    confidence_level: float           # e.g., 0.95
+    confidence_level: float  # e.g., 0.95
     confidence_interval: Tuple[float, float]
 
     # Method details
@@ -45,7 +45,7 @@ class DampingResult:
     curvefit_uncertainty: Optional[float]
 
     # Quality flags
-    methods_agree: bool               # Within tolerance
+    methods_agree: bool  # Within tolerance
     n_methods_valid: int
     warnings: List[str]
 
@@ -86,7 +86,7 @@ class DampingResult:
             f"Mode at {self.frequency_hz:.1f} Hz:",
             f"  Damping ratio ζ = {self.damping_ratio:.4f} ± {self.damping_ratio_std:.4f}",
             f"  Quality factor Q = {self.quality_factor:.1f}",
-            f"  Decay time τ = {self.decay_time_s*1000:.1f} ms",
+            f"  Decay time τ = {self.decay_time_s * 1000:.1f} ms",
             f"  Method: {self.method_used} ({self.n_methods_valid} methods valid)",
         ]
         if not self.methods_agree:
@@ -126,8 +126,9 @@ def extract_damping_halfpower(
     }
 
     # Find peak in search range
-    mask = (freqs >= peak_freq - search_bandwidth_hz) & \
-           (freqs <= peak_freq + search_bandwidth_hz)
+    mask = (freqs >= peak_freq - search_bandwidth_hz) & (
+        freqs <= peak_freq + search_bandwidth_hz
+    )
 
     if not np.any(mask):
         details["error"] = "No data in search range"
@@ -261,7 +262,7 @@ def extract_damping_logdec(
     details["filter_high_normalized"] = float(high)
 
     try:
-        b, a = scipy_signal.butter(4, [low, high], btype='band')
+        b, a = scipy_signal.butter(4, [low, high], btype="band")
         filtered = scipy_signal.filtfilt(b, a, signal)
     except ValueError as e:
         details["error"] = f"Filter design failed: {e}"
@@ -283,7 +284,9 @@ def extract_damping_logdec(
     details["n_envelope_peaks"] = len(peak_indices)
 
     if len(peak_indices) < min_cycles + 1:
-        details["error"] = f"Insufficient peaks ({len(peak_indices)} < {min_cycles + 1})"
+        details["error"] = (
+            f"Insufficient peaks ({len(peak_indices)} < {min_cycles + 1})"
+        )
         return np.nan, np.nan, details
 
     # Get peak amplitudes
@@ -319,7 +322,7 @@ def extract_damping_logdec(
 
     # Propagate uncertainty
     # dζ/dδ = 4π² / (4π² + δ²)^(3/2)
-    sensitivity = 4 * np.pi**2 / (4 * np.pi**2 + delta_mean**2)**1.5
+    sensitivity = 4 * np.pi**2 / (4 * np.pi**2 + delta_mean**2) ** 1.5
     u_zeta = sensitivity * delta_sem
 
     details["damping_ratio"] = float(damping_ratio)
@@ -370,7 +373,7 @@ def extract_damping_curvefit(
     high = max(low + 0.01, min(high, 0.99))
 
     try:
-        b, a = scipy_signal.butter(4, [low, high], btype='band')
+        b, a = scipy_signal.butter(4, [low, high], btype="band")
         filtered = scipy_signal.filtfilt(b, a, signal)
     except ValueError as e:
         details["error"] = f"Filter design failed: {e}"
@@ -409,8 +412,8 @@ def extract_damping_curvefit(
     else:
         fit_end_idx = min(int(fit_duration_s * sample_rate), len(t) - 1)
 
-    t_fit = t[:fit_end_idx + 1]
-    y_fit = y_norm[:fit_end_idx + 1]
+    t_fit = t[: fit_end_idx + 1]
+    y_fit = y_norm[: fit_end_idx + 1]
 
     details["fit_duration_s"] = float(t_fit[-1])
     details["n_fit_points"] = len(t_fit)
@@ -440,7 +443,9 @@ def extract_damping_curvefit(
         bounds = (1e-6, omega_n)  # 0 < ζ < 1
 
         popt, pcov = curve_fit(
-            decay_model, t_fit, y_fit,
+            decay_model,
+            t_fit,
+            y_fit,
             p0=p0,
             bounds=bounds,
             maxfev=10000,
@@ -459,8 +464,8 @@ def extract_damping_curvefit(
 
         # Goodness of fit
         y_pred = decay_model(t_fit, alpha)
-        ss_res = np.sum((y_fit - y_pred)**2)
-        ss_tot = np.sum((y_fit - np.mean(y_fit))**2)
+        ss_res = np.sum((y_fit - y_pred) ** 2)
+        ss_tot = np.sum((y_fit - np.mean(y_fit)) ** 2)
         r_squared = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
         details["r_squared"] = float(r_squared)
 
@@ -482,8 +487,16 @@ def _collect_method_estimates(
     peak_freq: float,
     bandwidth_hz: float,
 ) -> Tuple[
-    List[float], List[float], List[str], List[str],
-    float, float, float, float, float, float,
+    List[float],
+    List[float],
+    List[str],
+    List[str],
+    float,
+    float,
+    float,
+    float,
+    float,
+    float,
 ]:
     """Run all three damping extraction methods and collect warnings.
 
@@ -495,7 +508,9 @@ def _collect_method_estimates(
 
     # Half-power bandwidth
     zeta_hp, u_hp, details_hp = extract_damping_halfpower(
-        freqs, magnitude, peak_freq,
+        freqs,
+        magnitude,
+        peak_freq,
         search_bandwidth_hz=bandwidth_hz * 2,
     )
     if "warning" in details_hp:
@@ -505,7 +520,9 @@ def _collect_method_estimates(
 
     # Log-decrement
     zeta_ld, u_ld, details_ld = extract_damping_logdec(
-        signal, sample_rate, peak_freq,
+        signal,
+        sample_rate,
+        peak_freq,
         bandwidth_hz=bandwidth_hz,
     )
     if "warning" in details_ld:
@@ -515,7 +532,9 @@ def _collect_method_estimates(
 
     # Curve-fit
     zeta_cf, u_cf, details_cf = extract_damping_curvefit(
-        signal, sample_rate, peak_freq,
+        signal,
+        sample_rate,
+        peak_freq,
         bandwidth_hz=bandwidth_hz,
     )
     if "warning" in details_cf:
@@ -544,8 +563,16 @@ def _collect_method_estimates(
         methods.append("curvefit")
 
     return (
-        estimates, uncertainties, methods, warnings,
-        zeta_hp, u_hp, zeta_ld, u_ld, zeta_cf, u_cf,
+        estimates,
+        uncertainties,
+        methods,
+        warnings,
+        zeta_hp,
+        u_hp,
+        zeta_ld,
+        u_ld,
+        zeta_cf,
+        u_cf,
     )
 
 
@@ -568,7 +595,7 @@ def _weighted_average_and_agreement(
     weights = []
     for u in uncertainties:
         if u > 0:
-            weights.append(1.0 / (u ** 2))
+            weights.append(1.0 / (u**2))
         else:
             weights.append(1.0)
 
@@ -636,10 +663,23 @@ def extract_damping_crossvalidated(
     """
     # Run all methods and collect valid estimates
     (
-        estimates, uncertainties, methods, warnings,
-        zeta_hp, u_hp, zeta_ld, u_ld, zeta_cf, u_cf,
+        estimates,
+        uncertainties,
+        methods,
+        warnings,
+        zeta_hp,
+        u_hp,
+        zeta_ld,
+        u_ld,
+        zeta_cf,
+        u_cf,
     ) = _collect_method_estimates(
-        signal, freqs, magnitude, sample_rate, peak_freq, bandwidth_hz,
+        signal,
+        freqs,
+        magnitude,
+        sample_rate,
+        peak_freq,
+        bandwidth_hz,
     )
 
     # Per-method optional values for the result dataclass
@@ -676,8 +716,12 @@ def extract_damping_crossvalidated(
 
     # Weighted average, agreement check, confidence interval
     zeta_weighted, margin, methods_agree, method_used = _weighted_average_and_agreement(
-        estimates, uncertainties, methods,
-        agreement_tolerance, confidence_level, warnings,
+        estimates,
+        uncertainties,
+        methods,
+        agreement_tolerance,
+        confidence_level,
+        warnings,
     )
 
     ci_lower = max(0, zeta_weighted - margin)
@@ -686,7 +730,9 @@ def extract_damping_crossvalidated(
     # Derived quantities
     omega_n = 2 * np.pi * peak_freq
     Q = 1.0 / (2.0 * zeta_weighted) if zeta_weighted > 0 else np.inf
-    tau = 1.0 / (zeta_weighted * omega_n) if zeta_weighted > 0 and omega_n > 0 else np.inf
+    tau = (
+        1.0 / (zeta_weighted * omega_n) if zeta_weighted > 0 and omega_n > 0 else np.inf
+    )
     alpha = zeta_weighted * omega_n
 
     return DampingResult(
@@ -695,9 +741,9 @@ def extract_damping_crossvalidated(
         quality_factor=Q,
         decay_time_s=tau,
         decay_rate_nepers_per_s=alpha,
-        damping_ratio_std=np.sqrt(1.0 / sum(
-            1.0 / (u ** 2) if u > 0 else 1.0 for u in uncertainties
-        )),
+        damping_ratio_std=np.sqrt(
+            1.0 / sum(1.0 / (u**2) if u > 0 else 1.0 for u in uncertainties)
+        ),
         confidence_level=confidence_level,
         confidence_interval=(ci_lower, ci_upper),
         method_used=method_used,

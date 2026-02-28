@@ -82,7 +82,11 @@ class LimitCurve:
 
         # Find bracketing points
         for i in range(len(self.points) - 1):
-            if self.points[i].frequency_hz <= freq_hz <= self.points[i + 1].frequency_hz:
+            if (
+                self.points[i].frequency_hz
+                <= freq_hz
+                <= self.points[i + 1].frequency_hz
+            ):
                 return _interpolate_log_linear(
                     freq_hz,
                     self.points[i].frequency_hz,
@@ -118,10 +122,14 @@ class LimitCurve:
                 n_points,
             )
 
-        values = np.array([
-            self.get_limit_at_freq(f) if self.get_limit_at_freq(f) is not None else np.nan
-            for f in frequencies_hz
-        ])
+        values = np.array(
+            [
+                self.get_limit_at_freq(f)
+                if self.get_limit_at_freq(f) is not None
+                else np.nan
+                for f in frequencies_hz
+            ]
+        )
 
         return frequencies_hz, values
 
@@ -237,10 +245,14 @@ def interpolate_limit(
     Returns:
         Array of limit values (NaN where undefined)
     """
-    return np.array([
-        curve.get_limit_at_freq(f) if curve.get_limit_at_freq(f) is not None else np.nan
-        for f in frequencies_hz
-    ])
+    return np.array(
+        [
+            curve.get_limit_at_freq(f)
+            if curve.get_limit_at_freq(f) is not None
+            else np.nan
+            for f in frequencies_hz
+        ]
+    )
 
 
 def create_flat_limit(

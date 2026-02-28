@@ -173,23 +173,15 @@ class TestFrequencyUncertainty:
 
     def test_frequency_uncertainty_higher_snr_lower_uncertainty(self):
         """Higher SNR should give lower uncertainty."""
-        budget_low = compute_frequency_uncertainty(
-            freq_hz=440.0, snr_db=20.0
-        )
-        budget_high = compute_frequency_uncertainty(
-            freq_hz=440.0, snr_db=60.0
-        )
+        budget_low = compute_frequency_uncertainty(freq_hz=440.0, snr_db=20.0)
+        budget_high = compute_frequency_uncertainty(freq_hz=440.0, snr_db=60.0)
 
         assert budget_high.expanded_uncertainty < budget_low.expanded_uncertainty
 
     def test_frequency_uncertainty_short_duration(self):
         """Short duration increases uncertainty."""
-        budget_long = compute_frequency_uncertainty(
-            freq_hz=440.0, duration_s=2.0
-        )
-        budget_short = compute_frequency_uncertainty(
-            freq_hz=440.0, duration_s=0.1
-        )
+        budget_long = compute_frequency_uncertainty(freq_hz=440.0, duration_s=2.0)
+        budget_short = compute_frequency_uncertainty(freq_hz=440.0, duration_s=0.1)
 
         assert budget_short.expanded_uncertainty > budget_long.expanded_uncertainty
 
@@ -291,7 +283,7 @@ class TestStiffnessUncertainty:
 
         assert thickness_comp is not None
         # Thickness should contribute > 50% of variance
-        total_variance = budget.combined_standard_uncertainty ** 2
+        total_variance = budget.combined_standard_uncertainty**2
         thickness_frac = thickness_comp.contribution / total_variance
         assert thickness_frac > 0.3  # Significant contributor
 
@@ -356,12 +348,20 @@ class TestStiffnessUncertainty:
     def test_stiffness_uncertainty_dispatch(self):
         """Dispatch function selects correct method."""
         budget_defl = compute_stiffness_uncertainty(
-            E_GPa=12.0, method="deflection", span_mm=400.0, thickness_mm=3.0,
-            deflection_mm=1.0, force_N=10.0
+            E_GPa=12.0,
+            method="deflection",
+            span_mm=400.0,
+            thickness_mm=3.0,
+            deflection_mm=1.0,
+            force_N=10.0,
         )
         budget_tap = compute_stiffness_uncertainty(
-            E_GPa=12.0, method="tap_tone", frequency_hz=500.0, length_mm=400.0,
-            thickness_mm=3.0, density_kg_m3=400.0
+            E_GPa=12.0,
+            method="tap_tone",
+            frequency_hz=500.0,
+            length_mm=400.0,
+            thickness_mm=3.0,
+            density_kg_m3=400.0,
         )
 
         assert budget_defl.measurement_value == 12.0
@@ -507,16 +507,26 @@ class TestUncertaintyIntegration:
 
         # Amplitude
         amp_cal = compute_amplitude_uncertainty(magnitude_db=-20.0, is_calibrated=True)
-        amp_uncal = compute_amplitude_uncertainty(magnitude_db=-20.0, is_calibrated=False)
+        amp_uncal = compute_amplitude_uncertainty(
+            magnitude_db=-20.0, is_calibrated=False
+        )
 
         # MOE (tap tone)
         moe_cal = compute_tap_tone_moe_uncertainty(
-            E_GPa=12.0, frequency_hz=500.0, length_mm=400.0,
-            thickness_mm=3.0, density_kg_m3=400.0, is_calibrated=True
+            E_GPa=12.0,
+            frequency_hz=500.0,
+            length_mm=400.0,
+            thickness_mm=3.0,
+            density_kg_m3=400.0,
+            is_calibrated=True,
         )
         moe_uncal = compute_tap_tone_moe_uncertainty(
-            E_GPa=12.0, frequency_hz=500.0, length_mm=400.0,
-            thickness_mm=3.0, density_kg_m3=400.0, is_calibrated=False
+            E_GPa=12.0,
+            frequency_hz=500.0,
+            length_mm=400.0,
+            thickness_mm=3.0,
+            density_kg_m3=400.0,
+            is_calibrated=False,
         )
 
         # All calibrated should be better

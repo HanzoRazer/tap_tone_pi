@@ -311,6 +311,7 @@ def run_wizard(args: argparse.Namespace) -> int:
     if getattr(args, "reset", False):
         # Check if there's actually a config to reset
         from tap_tone_pi.core.user_config import load_config, CONFIG_FILE
+
         existing = load_config()
         if existing and existing.audio_device:
             confirm_action(

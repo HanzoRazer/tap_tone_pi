@@ -1,6 +1,5 @@
 """Tests for uncertainty flags module (Phase 3.2)."""
 
-
 from tap_tone_pi.core.uncertainty_flags import (
     UncertaintyFlag,
     QualityThresholds,

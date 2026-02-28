@@ -223,7 +223,9 @@ def _detect_trust_erosion(
     return None
 
 
-def _run_priority_detectors(evs: List[Any]) -> List[Tuple[MomentName, float, List[str]]]:
+def _run_priority_detectors(
+    evs: List[Any],
+) -> List[Tuple[MomentName, float, List[str]]]:
     """Run priority-ordered detectors with suppression logic."""
     detected: List[Tuple[MomentName, float, List[str]]] = []
 

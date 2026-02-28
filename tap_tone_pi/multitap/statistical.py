@@ -31,6 +31,7 @@ from scipy import stats
 
 class OutlierMethod(Enum):
     """Method for outlier detection."""
+
     CHAUVENET = "chauvenet"
     MAD = "mad"  # Median Absolute Deviation
     GRUBBS = "grubbs"
@@ -64,6 +65,7 @@ class TapMeasurement:
     metadata : Dict
         Additional measurement metadata.
     """
+
     tap_index: int
     value: float
     uncertainty: float = 0.0
@@ -103,6 +105,7 @@ class StatisticalSummary:
     n_outliers : int
         Number of outliers detected.
     """
+
     mean: float
     std: float
     median: float
@@ -149,6 +152,7 @@ class MultiTapResult:
     n_taps_used : int
         Number of taps after outlier rejection.
     """
+
     final_value: float
     standard_uncertainty: float
     expanded_uncertainty: float
@@ -401,7 +405,7 @@ def weighted_average(
         uncertainty = 1.0 / np.sqrt(sum_inv_var)
     else:
         # General weighted case - use weighted standard error
-        weighted_var = np.sum(weights * (values - weighted_mean)**2)
+        weighted_var = np.sum(weights * (values - weighted_mean) ** 2)
         # Effective sample size
         n_eff = 1.0 / np.sum(weights**2)
         uncertainty = np.sqrt(weighted_var / max(1, n_eff - 1))
@@ -454,7 +458,7 @@ def compute_confidence_interval(
 
     # t-value for confidence interval
     alpha = 1 - confidence_level
-    t_value = stats.t.ppf(1 - alpha/2, dof)
+    t_value = stats.t.ppf(1 - alpha / 2, dof)
 
     margin = t_value * sem
     lower = mean - margin
@@ -510,18 +514,29 @@ def check_convergence(
         cv = std / abs(mean)
 
     if cv > cv_threshold:
-        return False, cv, f"CV = {cv*100:.1f}% exceeds {cv_threshold*100:.1f}% threshold"
+        return (
+            False,
+            cv,
+            f"CV = {cv * 100:.1f}% exceeds {cv_threshold * 100:.1f}% threshold",
+        )
 
     # Check stability of running mean
     if n >= stability_window + 2:
         recent_means = [
-            np.mean(values[:i+1])
-            for i in range(n - stability_window, n)
+            np.mean(values[: i + 1]) for i in range(n - stability_window, n)
         ]
-        recent_change = np.std(recent_means) / abs(mean) if abs(mean) > 1e-12 else np.std(recent_means)
+        recent_change = (
+            np.std(recent_means) / abs(mean)
+            if abs(mean) > 1e-12
+            else np.std(recent_means)
+        )
 
         if recent_change > cv_threshold / 2:
-            return False, cv, f"Running mean still changing ({recent_change*100:.1f}%)"
+            return (
+                False,
+                cv,
+                f"Running mean still changing ({recent_change * 100:.1f}%)",
+            )
 
     return True, cv, "Converged"
 
@@ -558,9 +573,16 @@ def compute_statistics(
 
     if n == 0:
         return StatisticalSummary(
-            mean=np.nan, std=np.nan, median=np.nan, mad=np.nan,
-            sem=np.nan, cv_percent=np.nan, range=(np.nan, np.nan),
-            iqr=np.nan, n_samples=0, n_outliers=n_outliers
+            mean=np.nan,
+            std=np.nan,
+            median=np.nan,
+            mad=np.nan,
+            sem=np.nan,
+            cv_percent=np.nan,
+            range=(np.nan, np.nan),
+            iqr=np.nan,
+            n_samples=0,
+            n_outliers=n_outliers,
         )
 
     mean = float(np.mean(valid_values))
@@ -650,7 +672,7 @@ def analyze_multi_tap(
     elif outlier_method == OutlierMethod.IQR:
         q1, q3 = np.percentile(values, [25, 75])
         iqr = q3 - q1
-        outlier_mask = (values < q1 - 1.5*iqr) | (values > q3 + 1.5*iqr)
+        outlier_mask = (values < q1 - 1.5 * iqr) | (values > q3 + 1.5 * iqr)
     else:
         outlier_mask = np.zeros(n_taps, dtype=bool)
 
@@ -695,7 +717,7 @@ def analyze_multi_tap(
     # Coverage factor (from t-distribution)
     dof = max(1, n_valid - 1)
     alpha = 1 - confidence_level
-    k = float(stats.t.ppf(1 - alpha/2, dof))
+    k = float(stats.t.ppf(1 - alpha / 2, dof))
 
     expanded_unc = k * std_unc
 
@@ -704,7 +726,9 @@ def analyze_multi_tap(
         converged, conv_metric, _ = check_convergence(valid_values)
     else:
         converged = n_valid >= 3
-        conv_metric = statistics.cv_percent / 100 if not np.isnan(statistics.cv_percent) else 1.0
+        conv_metric = (
+            statistics.cv_percent / 100 if not np.isnan(statistics.cv_percent) else 1.0
+        )
 
     return MultiTapResult(
         final_value=final_value,

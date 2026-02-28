@@ -49,6 +49,7 @@ class SignificanceConfig:
 
     M7 fix: Replaces hardcoded 1 Hz threshold with physics-based approach.
     """
+
     coverage_factor: float = DEFAULT_COVERAGE_FACTOR
     fallback_threshold_pct: float = DEFAULT_FALLBACK_THRESHOLD_PCT
     min_absolute_hz: float = 0.5  # Minimum detectable change (FFT resolution limit)
@@ -354,6 +355,7 @@ class ExtractedPeak:
 
     M7 fix: Now includes uncertainty information for significance testing.
     """
+
     label: str
     freq_hz: float
     amplitude: float
@@ -376,9 +378,14 @@ def _extract_peaks(data: dict[str, Any]) -> list[ExtractedPeak]:
     def _get_uncertainty(info: dict) -> float | None:
         """Extract uncertainty from various field names."""
         # Direct uncertainty fields
-        for key in ["freq_uncertainty", "freq_uncertainty_hz",
-                    "uncertainty", "uncertainty_hz",
-                    "std_error", "std_error_hz"]:
+        for key in [
+            "freq_uncertainty",
+            "freq_uncertainty_hz",
+            "uncertainty",
+            "uncertainty_hz",
+            "std_error",
+            "std_error_hz",
+        ]:
             if key in info:
                 return float(info[key])
 
@@ -406,12 +413,14 @@ def _extract_peaks(data: dict[str, Any]) -> list[ExtractedPeak]:
                     or info.get("amplitude", 1.0)
                 )
                 if freq:
-                    peaks.append(ExtractedPeak(
-                        label=label,
-                        freq_hz=float(freq),
-                        amplitude=float(amp),
-                        uncertainty_hz=_get_uncertainty(info),
-                    ))
+                    peaks.append(
+                        ExtractedPeak(
+                            label=label,
+                            freq_hz=float(freq),
+                            amplitude=float(amp),
+                            uncertainty_hz=_get_uncertainty(info),
+                        )
+                    )
 
     # Format 2: {"peaks": [{"freq_hz": 440, "magnitude": 0.5}]}
     elif "peaks" in data and isinstance(data["peaks"], list):
@@ -420,12 +429,14 @@ def _extract_peaks(data: dict[str, Any]) -> list[ExtractedPeak]:
             amp = p.get("magnitude") or p.get("amp") or p.get("amplitude", 1.0)
             label = p.get("label", f"P{i + 1}")
             if freq:
-                peaks.append(ExtractedPeak(
-                    label=label,
-                    freq_hz=float(freq),
-                    amplitude=float(amp),
-                    uncertainty_hz=_get_uncertainty(p),
-                ))
+                peaks.append(
+                    ExtractedPeak(
+                        label=label,
+                        freq_hz=float(freq),
+                        amplitude=float(amp),
+                        uncertainty_hz=_get_uncertainty(p),
+                    )
+                )
 
     # Format 3: {"dominant_hz": 440}
     if "dominant_hz" in data:
@@ -436,14 +447,18 @@ def _extract_peaks(data: dict[str, Any]) -> list[ExtractedPeak]:
             snr_db = cc.get("snr_db")
             if snr_db is not None:
                 snr_linear = 10 ** (snr_db / 20.0)
-                uncertainty = data["dominant_hz"] / (2.0 * snr_linear) if snr_linear > 0 else None
+                uncertainty = (
+                    data["dominant_hz"] / (2.0 * snr_linear) if snr_linear > 0 else None
+                )
 
-        peaks.append(ExtractedPeak(
-            label="dominant",
-            freq_hz=float(data["dominant_hz"]),
-            amplitude=data.get("rms", 1.0),
-            uncertainty_hz=uncertainty,
-        ))
+        peaks.append(
+            ExtractedPeak(
+                label="dominant",
+                freq_hz=float(data["dominant_hz"]),
+                amplitude=data.get("rms", 1.0),
+                uncertainty_hz=uncertainty,
+            )
+        )
 
     return peaks
 
@@ -588,7 +603,9 @@ def format_diff_report(diff: SessionDiff) -> str:
         lines.append(
             f"  {'Label':<10} {'Freq A':>10} {'Freq B':>10} {'Δ Hz':>10} {'±u':>8} {'Status':<10}"
         )
-        lines.append(f"  {'-' * 10} {'-' * 10} {'-' * 10} {'-' * 10} {'-' * 8} {'-' * 10}")
+        lines.append(
+            f"  {'-' * 10} {'-' * 10} {'-' * 10} {'-' * 10} {'-' * 8} {'-' * 10}"
+        )
 
         for p in diff.peaks:
             freq_a_str = f"{p.freq_a:.1f}" if p.freq_a else "-"

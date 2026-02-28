@@ -166,12 +166,14 @@ def add_verify_subcommand(subparsers) -> None:
         help="Quick pass/fail check only",
     )
     verify_parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         help="Verbose output with details",
     )
     verify_parser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         type=str,
         default=None,
         help="Save report to JSON file",
@@ -182,7 +184,8 @@ def add_verify_subcommand(subparsers) -> None:
         help="Output results as JSON",
     )
     verify_parser.add_argument(
-        "-r", "--sample-rate",
+        "-r",
+        "--sample-rate",
         type=int,
         default=48000,
         help="Sample rate for test signals (default: 48000)",
@@ -200,25 +203,29 @@ def add_verify_subcommand(subparsers) -> None:
         help="Verify frequency measurement",
     )
     freq_parser.add_argument(
-        "-f", "--frequency",
+        "-f",
+        "--frequency",
         type=float,
         default=440.0,
         help="Test frequency in Hz (default: 440)",
     )
     freq_parser.add_argument(
-        "-t", "--tolerance",
+        "-t",
+        "--tolerance",
         type=float,
         default=5.0,
         help="Tolerance in cents (default: 5)",
     )
     freq_parser.add_argument(
-        "-d", "--duration",
+        "-d",
+        "--duration",
         type=float,
         default=1.0,
         help="Signal duration in seconds (default: 1.0)",
     )
     freq_parser.add_argument(
-        "-r", "--sample-rate",
+        "-r",
+        "--sample-rate",
         type=int,
         default=48000,
         help="Sample rate (default: 48000)",
@@ -231,25 +238,29 @@ def add_verify_subcommand(subparsers) -> None:
         help="Verify amplitude measurement",
     )
     amp_parser.add_argument(
-        "-a", "--amplitude",
+        "-a",
+        "--amplitude",
         type=float,
         default=0.5,
         help="Test amplitude 0-1 (default: 0.5)",
     )
     amp_parser.add_argument(
-        "-t", "--tolerance",
+        "-t",
+        "--tolerance",
         type=float,
         default=0.5,
         help="Tolerance in dB (default: 0.5)",
     )
     amp_parser.add_argument(
-        "-d", "--duration",
+        "-d",
+        "--duration",
         type=float,
         default=0.5,
         help="Signal duration in seconds (default: 0.5)",
     )
     amp_parser.add_argument(
-        "-r", "--sample-rate",
+        "-r",
+        "--sample-rate",
         type=int,
         default=48000,
         help="Sample rate (default: 48000)",

@@ -174,9 +174,7 @@ class TestDetectionConfig:
 
     def test_custom_thresholds(self):
         """Test custom thresholds."""
-        config = DetectionConfig(
-            thresholds_by_freq=[(100, -20), (1000, -30)]
-        )
+        config = DetectionConfig(thresholds_by_freq=[(100, -20), (1000, -30)])
 
         assert config.get_threshold_at_freq(100) == -20
         assert config.get_threshold_at_freq(1000) == -30
@@ -243,24 +241,24 @@ class TestTransientDetection:
         """Test transient detection returns list."""
         sample_rate = 48000
         duration = 0.5
-        
+
         # Create signal with clear transient pattern
         t = np.linspace(0, duration, int(sample_rate * duration))
         signal = 0.1 * np.sin(2 * np.pi * 1000 * t)
-        
+
         # Add burst transients
         for i in range(3):
             idx = int((0.1 + i * 0.15) * sample_rate)
-            signal[idx:idx + 200] += 0.5
-        
+            signal[idx : idx + 200] += 0.5
+
         transients = detect_transients(
-            signal, 
-            sample_rate, 
+            signal,
+            sample_rate,
             threshold_factor=2.0,
             min_duration_ms=1.0,
             max_duration_ms=50.0,
         )
-        
+
         # Should return a list (may or may not detect depending on algorithm)
         assert isinstance(transients, list)
 
@@ -318,9 +316,9 @@ class TestHarmonicAnalysis:
         t = np.linspace(0, duration, int(sample_rate * duration))
         # Create signal with known harmonics
         signal = (
-            1.0 * np.sin(2 * np.pi * fundamental * t) +
-            0.3 * np.sin(2 * np.pi * 2 * fundamental * t) +
-            0.1 * np.sin(2 * np.pi * 3 * fundamental * t)
+            1.0 * np.sin(2 * np.pi * fundamental * t)
+            + 0.3 * np.sin(2 * np.pi * 2 * fundamental * t)
+            + 0.1 * np.sin(2 * np.pi * 3 * fundamental * t)
         )
 
         result = analyze_harmonics(signal, fundamental, sample_rate)
@@ -421,7 +419,7 @@ class TestRubBuzzDetector:
         # Add some impulse defects
         for defect_time in [0.5, 1.0, 1.5]:
             idx = int(defect_time * sample_rate)
-            signal[idx:idx + 100] += 0.5 * np.random.randn(100)
+            signal[idx : idx + 100] += 0.5 * np.random.randn(100)
 
         config = DetectionConfig(severity_threshold=0.1)
         events = detect_rub_buzz(

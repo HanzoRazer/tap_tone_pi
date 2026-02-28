@@ -53,13 +53,15 @@ from typing import Any, Dict, List, Optional
 
 class GrainDirection(str, Enum):
     """Grain direction for anisotropic wood properties."""
-    LONG = "L"       # Parallel to grain (longitudinal)
-    CROSS = "C"      # Perpendicular to grain (radial/tangential)
-    UNKNOWN = "?"    # Direction not specified
+
+    LONG = "L"  # Parallel to grain (longitudinal)
+    CROSS = "C"  # Perpendicular to grain (radial/tangential)
+    UNKNOWN = "?"  # Direction not specified
 
 
 class InstrumentType(str, Enum):
     """Instrument types for target SI presets."""
+
     CLASSICAL_GUITAR = "classical"
     STEEL_STRING_DREADNOUGHT = "dreadnought"
     STEEL_STRING_OM = "om"
@@ -79,15 +81,16 @@ class SITargetPreset:
     Values derived from Gore & Gilet recommendations and common luthier practice.
     SI values in GPa·mm³.
     """
+
     instrument: InstrumentType
     description: str
-    SI_L_min: float      # Long-grain SI minimum
+    SI_L_min: float  # Long-grain SI minimum
     SI_L_typical: float  # Long-grain SI typical/target
-    SI_L_max: float      # Long-grain SI maximum
-    SI_C_min: Optional[float] = None      # Cross-grain SI minimum (if specified)
+    SI_L_max: float  # Long-grain SI maximum
+    SI_C_min: Optional[float] = None  # Cross-grain SI minimum (if specified)
     SI_C_typical: Optional[float] = None  # Cross-grain SI typical
-    SI_C_max: Optional[float] = None      # Cross-grain SI maximum
-    h_typical_mm: float = 2.8             # Typical finished thickness
+    SI_C_max: Optional[float] = None  # Cross-grain SI maximum
+    h_typical_mm: float = 2.8  # Typical finished thickness
     notes: str = ""
 
 
@@ -230,7 +233,7 @@ def stiffness_index(E_GPa: float, h_mm: float) -> float:
         SI captures the plate's bending stiffness independent of width.
         Two plates with equal SI will have equal bending rigidity per unit width.
     """
-    return E_GPa * (h_mm ** 3)
+    return E_GPa * (h_mm**3)
 
 
 def thickness_for_target_SI(SI_target: float, E_GPa: float) -> float:
@@ -387,7 +390,11 @@ def analyze_single_direction(
         SingleDirectionResult with computed values
     """
     if isinstance(direction, str):
-        direction = GrainDirection(direction.upper()) if direction.upper() in ("L", "C") else GrainDirection.UNKNOWN
+        direction = (
+            GrainDirection(direction.upper())
+            if direction.upper() in ("L", "C")
+            else GrainDirection.UNKNOWN
+        )
 
     warnings = []
 
@@ -517,7 +524,13 @@ def analyze_orthotropic(
             result.instrument_match = preset.instrument.value
 
             # Compare to preset
-            SI_L_status = "low" if SI_L < preset.SI_L_min else "high" if SI_L > preset.SI_L_max else "good"
+            SI_L_status = (
+                "low"
+                if SI_L < preset.SI_L_min
+                else "high"
+                if SI_L > preset.SI_L_max
+                else "good"
+            )
 
             result.preset_comparison = {
                 "instrument": preset.description,
@@ -526,7 +539,9 @@ def analyze_orthotropic(
                 "SI_L_measured": round(SI_L, 2),
                 "SI_L_status": SI_L_status,
                 "h_typical_mm": preset.h_typical_mm,
-                "h_recommended_mm": round(thickness_for_target_SI(preset.SI_L_typical, E_L_GPa), 3),
+                "h_recommended_mm": round(
+                    thickness_for_target_SI(preset.SI_L_typical, E_L_GPa), 3
+                ),
             }
 
             if SI_L_status == "low":
@@ -568,7 +583,11 @@ def format_single_report(result: SingleDirectionResult) -> str:
         lines.append(f"  Target SI   : {result.SI_target:.2f} GPa·mm³")
         lines.append(f"  h required  : {result.h_target_mm:.3f} mm")
         delta = result.h_mm - result.h_target_mm
-        lines.append(f"  Remove      : {delta:.3f} mm" if delta > 0 else f"  Add         : {-delta:.3f} mm")
+        lines.append(
+            f"  Remove      : {delta:.3f} mm"
+            if delta > 0
+            else f"  Add         : {-delta:.3f} mm"
+        )
 
     if result.density_kg_m3 is not None:
         lines.append("\nDensity / Specific Stiffness:")
@@ -659,16 +678,17 @@ def main() -> None:
     # Mode selection
     mode = ap.add_mutually_exclusive_group()
     mode.add_argument(
-        "--single", action="store_true",
-        help="Single-direction analysis (requires --E_GPa)"
+        "--single",
+        action="store_true",
+        help="Single-direction analysis (requires --E_GPa)",
     )
     mode.add_argument(
-        "--ortho", action="store_true",
-        help="Orthotropic analysis (requires --E_L_GPa and --E_C_GPa)"
+        "--ortho",
+        action="store_true",
+        help="Orthotropic analysis (requires --E_L_GPa and --E_C_GPa)",
     )
     mode.add_argument(
-        "--list-presets", action="store_true",
-        help="List available instrument presets"
+        "--list-presets", action="store_true", help="List available instrument presets"
     )
 
     # Geometry
@@ -676,8 +696,12 @@ def main() -> None:
 
     # Single-direction inputs
     ap.add_argument("--E_GPa", type=float, help="Young's modulus (single direction)")
-    ap.add_argument("--direction", choices=["L", "C"], default="L",
-                    help="Grain direction (L=long, C=cross)")
+    ap.add_argument(
+        "--direction",
+        choices=["L", "C"],
+        default="L",
+        help="Grain direction (L=long, C=cross)",
+    )
 
     # Orthotropic inputs
     ap.add_argument("--E_L_GPa", type=float, help="Long-grain modulus")
@@ -690,7 +714,9 @@ def main() -> None:
 
     # Optional
     ap.add_argument("--density", type=float, help="Density in kg/m³")
-    ap.add_argument("--instrument", type=str, help="Instrument type for preset matching")
+    ap.add_argument(
+        "--instrument", type=str, help="Instrument type for preset matching"
+    )
 
     # Output
     ap.add_argument("--json", type=str, help="Output JSON file path")

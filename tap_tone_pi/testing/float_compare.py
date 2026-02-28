@@ -77,7 +77,9 @@ class TolerancePresets:
     SAMPLE_RATE_REL = 0.001  # 0.1% (covers rounding)
 
 
-def approx_freq(expected: float, *, abs_tol: float = None, rel_tol: float = None) -> Any:
+def approx_freq(
+    expected: float, *, abs_tol: float = None, rel_tol: float = None
+) -> Any:
     """
     Pytest approx for frequency values.
 
@@ -91,7 +93,9 @@ def approx_freq(expected: float, *, abs_tol: float = None, rel_tol: float = None
     return pytest.approx(expected, abs=abs_tol, rel=rel_tol)
 
 
-def approx_magnitude(expected: float, *, abs_tol: float = None, rel_tol: float = None) -> Any:
+def approx_magnitude(
+    expected: float, *, abs_tol: float = None, rel_tol: float = None
+) -> Any:
     """
     Pytest approx for magnitude values (normalized 0-1).
 
@@ -299,7 +303,8 @@ def magnitude_isclose(
 ) -> Union[bool, np.ndarray]:
     """Check if magnitude values are close (numpy-compatible)."""
     return np.isclose(
-        a, b,
+        a,
+        b,
         atol=TolerancePresets.MAGNITUDE_ABS,
         rtol=TolerancePresets.MAGNITUDE_REL,
     )

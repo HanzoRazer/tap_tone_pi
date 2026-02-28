@@ -51,6 +51,7 @@ from typing import Any, Dict, List, Optional
 
 class BodyStyle(str, Enum):
     """Guitar body style enumeration."""
+
     DREADNOUGHT = "dreadnought"
     JUMBO = "jumbo"
     OM = "om"
@@ -69,35 +70,36 @@ class BodyCalibration:
 
     All dimensions in SI units (m, m², m³).
     """
+
     style: BodyStyle
     description: str
 
     # Cavity parameters
-    volume_m3: float              # Cavity volume
-    soundhole_area_m2: float      # Soundhole area
-    soundhole_L_eff_m: float      # Effective length for Helmholtz
+    volume_m3: float  # Cavity volume
+    soundhole_area_m2: float  # Soundhole area
+    soundhole_L_eff_m: float  # Effective length for Helmholtz
 
     # Top plate effective dimensions
-    top_a_m: float                # Length (along grain)
-    top_b_m: float                # Width (across grain)
-    top_area_m2: float            # Total top plate area
+    top_a_m: float  # Length (along grain)
+    top_b_m: float  # Width (across grain)
+    top_area_m2: float  # Total top plate area
     top_effective_area_m2: float  # Acoustically active area
 
     # Back plate effective dimensions
-    back_a_m: float               # Length (along grain)
-    back_b_m: float               # Width (across grain)
-    back_area_m2: float           # Total back plate area
-    back_effective_area_m2: float # Acoustically active area
+    back_a_m: float  # Length (along grain)
+    back_b_m: float  # Width (across grain)
+    back_area_m2: float  # Total back plate area
+    back_effective_area_m2: float  # Acoustically active area
 
     # Calibration coefficients (empirical)
-    eta_top: float = 1.0          # Geometry factor for top
-    eta_back: float = 1.0         # Geometry factor for back
-    gamma_top: float = 1.0        # Chladni-to-box transfer (top)
-    gamma_back: float = 1.0       # Chladni-to-box transfer (back)
+    eta_top: float = 1.0  # Geometry factor for top
+    eta_back: float = 1.0  # Geometry factor for back
+    gamma_top: float = 1.0  # Chladni-to-box transfer (top)
+    gamma_back: float = 1.0  # Chladni-to-box transfer (back)
 
     # Target frequencies (Hz)
     f_monopole_target: float = 100.0  # Target monopole-like mode
-    f_air_target: float = 95.0        # Target air resonance (Helmholtz)
+    f_air_target: float = 95.0  # Target air resonance (Helmholtz)
 
     notes: str = ""
 
@@ -105,38 +107,36 @@ class BodyCalibration:
 # Body style calibration database
 # Values derived from Gore & Gilet + empirical measurements
 _BODY_CALIBRATIONS: Dict[BodyStyle, BodyCalibration] = {
-
     BodyStyle.JUMBO: BodyCalibration(
         style=BodyStyle.JUMBO,
         description="Jumbo body (e.g., Gibson J-200, Guild F-50)",
-        volume_m3=0.025,              # ~25 liters
-        soundhole_area_m2=0.0079,     # ~100mm diameter
-        soundhole_L_eff_m=0.085,      # Effective length = h + 1.6×r
-        top_a_m=0.520,                # 520mm length
-        top_b_m=0.430,                # 430mm lower bout
-        top_area_m2=0.180,            # ~1800 cm²
+        volume_m3=0.025,  # ~25 liters
+        soundhole_area_m2=0.0079,  # ~100mm diameter
+        soundhole_L_eff_m=0.085,  # Effective length = h + 1.6×r
+        top_a_m=0.520,  # 520mm length
+        top_b_m=0.430,  # 430mm lower bout
+        top_area_m2=0.180,  # ~1800 cm²
         top_effective_area_m2=0.140,  # ~77% effective
-        back_a_m=0.559,               # 559mm (from user's mahogany spec)
-        back_b_m=0.241,               # 241mm effective width
-        back_area_m2=0.135,           # ~1350 cm²
-        back_effective_area_m2=0.100, # ~74% effective
+        back_a_m=0.559,  # 559mm (from user's mahogany spec)
+        back_b_m=0.241,  # 241mm effective width
+        back_area_m2=0.135,  # ~1350 cm²
+        back_effective_area_m2=0.100,  # ~74% effective
         eta_top=0.92,
         eta_back=0.88,
         gamma_top=0.85,
         gamma_back=0.82,
-        f_monopole_target=86.0,       # User's target
+        f_monopole_target=86.0,  # User's target
         f_air_target=90.0,
         notes="Large body, warm fundamental, strong bass",
     ),
-
     BodyStyle.DREADNOUGHT: BodyCalibration(
         style=BodyStyle.DREADNOUGHT,
         description="Dreadnought (e.g., Martin D-28, D-18)",
-        volume_m3=0.022,              # ~22 liters
-        soundhole_area_m2=0.0079,     # ~100mm diameter
+        volume_m3=0.022,  # ~22 liters
+        soundhole_area_m2=0.0079,  # ~100mm diameter
         soundhole_L_eff_m=0.085,
-        top_a_m=0.505,                # 505mm length
-        top_b_m=0.400,                # 400mm lower bout
+        top_a_m=0.505,  # 505mm length
+        top_b_m=0.400,  # 400mm lower bout
         top_area_m2=0.160,
         top_effective_area_m2=0.120,
         back_a_m=0.505,
@@ -151,12 +151,11 @@ _BODY_CALIBRATIONS: Dict[BodyStyle, BodyCalibration] = {
         f_air_target=105.0,
         notes="Classic steel-string, strong midrange projection",
     ),
-
     BodyStyle.OM: BodyCalibration(
         style=BodyStyle.OM,
         description="Orchestra Model (e.g., Martin OM-28, 000)",
-        volume_m3=0.018,              # ~18 liters
-        soundhole_area_m2=0.0071,     # ~95mm diameter
+        volume_m3=0.018,  # ~18 liters
+        soundhole_area_m2=0.0071,  # ~95mm diameter
         soundhole_L_eff_m=0.080,
         top_a_m=0.495,
         top_b_m=0.380,
@@ -174,11 +173,10 @@ _BODY_CALIBRATIONS: Dict[BodyStyle, BodyCalibration] = {
         f_air_target=115.0,
         notes="Balanced response, fingerstyle friendly",
     ),
-
     BodyStyle.OOO: BodyCalibration(
         style=BodyStyle.OOO,
         description="000/Auditorium (e.g., Martin 000-28)",
-        volume_m3=0.016,              # ~16 liters
+        volume_m3=0.016,  # ~16 liters
         soundhole_area_m2=0.0071,
         soundhole_L_eff_m=0.080,
         top_a_m=0.485,
@@ -197,12 +195,11 @@ _BODY_CALIBRATIONS: Dict[BodyStyle, BodyCalibration] = {
         f_air_target=120.0,
         notes="Slightly smaller than OM, articulate",
     ),
-
     BodyStyle.PARLOR: BodyCalibration(
         style=BodyStyle.PARLOR,
         description="Parlor guitar (small body, intimate)",
-        volume_m3=0.012,              # ~12 liters
-        soundhole_area_m2=0.0064,     # ~90mm diameter
+        volume_m3=0.012,  # ~12 liters
+        soundhole_area_m2=0.0064,  # ~90mm diameter
         soundhole_L_eff_m=0.076,
         top_a_m=0.440,
         top_b_m=0.340,
@@ -220,12 +217,11 @@ _BODY_CALIBRATIONS: Dict[BodyStyle, BodyCalibration] = {
         f_air_target=135.0,
         notes="Small body, focused midrange, vintage character",
     ),
-
     BodyStyle.CLASSICAL: BodyCalibration(
         style=BodyStyle.CLASSICAL,
         description="Classical guitar (nylon string)",
-        volume_m3=0.014,              # ~14 liters
-        soundhole_area_m2=0.0064,     # ~90mm diameter
+        volume_m3=0.014,  # ~14 liters
+        soundhole_area_m2=0.0064,  # ~90mm diameter
         soundhole_L_eff_m=0.076,
         top_a_m=0.480,
         top_b_m=0.370,
@@ -243,11 +239,10 @@ _BODY_CALIBRATIONS: Dict[BodyStyle, BodyCalibration] = {
         f_air_target=100.0,
         notes="Traditional fan bracing, warm fundamental",
     ),
-
     BodyStyle.GRAND_AUDITORIUM: BodyCalibration(
         style=BodyStyle.GRAND_AUDITORIUM,
         description="Grand Auditorium (e.g., Taylor 814)",
-        volume_m3=0.019,              # ~19 liters
+        volume_m3=0.019,  # ~19 liters
         soundhole_area_m2=0.0079,
         soundhole_L_eff_m=0.085,
         top_a_m=0.500,
@@ -266,12 +261,11 @@ _BODY_CALIBRATIONS: Dict[BodyStyle, BodyCalibration] = {
         f_air_target=110.0,
         notes="Modern versatile body, balanced projection",
     ),
-
     BodyStyle.ARCHTOP: BodyCalibration(
         style=BodyStyle.ARCHTOP,
         description="Archtop guitar (carved top/back)",
         volume_m3=0.024,
-        soundhole_area_m2=0.010,      # f-holes combined
+        soundhole_area_m2=0.010,  # f-holes combined
         soundhole_L_eff_m=0.095,
         top_a_m=0.520,
         top_b_m=0.430,
@@ -281,7 +275,7 @@ _BODY_CALIBRATIONS: Dict[BodyStyle, BodyCalibration] = {
         back_b_m=0.430,
         back_area_m2=0.175,
         back_effective_area_m2=0.125,
-        eta_top=0.75,                 # Carved reduces effective area
+        eta_top=0.75,  # Carved reduces effective area
         eta_back=0.70,
         gamma_top=0.70,
         gamma_back=0.65,
@@ -334,21 +328,22 @@ class MaterialPreset:
 
     All values are typical/average. Actual wood varies significantly.
     """
+
     name: str
     species: str
 
     # Elastic moduli (GPa)
-    E_L_GPa: float        # Longitudinal (along grain)
-    E_C_GPa: float        # Cross-grain (radial/tangential average)
+    E_L_GPa: float  # Longitudinal (along grain)
+    E_C_GPa: float  # Cross-grain (radial/tangential average)
 
     # Density (kg/m³)
     density_kg_m3: float
 
     # Derived
-    R_anis: float         # Orthotropic ratio E_L/E_C
+    R_anis: float  # Orthotropic ratio E_L/E_C
 
     # Quality indicators
-    typical_use: str      # "top", "back", "both"
+    typical_use: str  # "top", "back", "both"
     quality_notes: str = ""
 
     # Ranges for validation
@@ -359,7 +354,6 @@ class MaterialPreset:
 
 # Common tonewood presets
 _MATERIAL_PRESETS: Dict[str, MaterialPreset] = {
-
     # Soundboard woods (tops)
     "sitka_spruce": MaterialPreset(
         name="sitka_spruce",
@@ -374,7 +368,6 @@ _MATERIAL_PRESETS: Dict[str, MaterialPreset] = {
         E_C_range=(0.6, 1.2),
         density_range=(380, 480),
     ),
-
     "engelmann_spruce": MaterialPreset(
         name="engelmann_spruce",
         species="Picea engelmannii",
@@ -388,7 +381,6 @@ _MATERIAL_PRESETS: Dict[str, MaterialPreset] = {
         E_C_range=(0.5, 1.1),
         density_range=(340, 440),
     ),
-
     "european_spruce": MaterialPreset(
         name="european_spruce",
         species="Picea abies",
@@ -402,7 +394,6 @@ _MATERIAL_PRESETS: Dict[str, MaterialPreset] = {
         E_C_range=(0.5, 1.0),
         density_range=(400, 500),
     ),
-
     "adirondack_spruce": MaterialPreset(
         name="adirondack_spruce",
         species="Picea rubens",
@@ -416,7 +407,6 @@ _MATERIAL_PRESETS: Dict[str, MaterialPreset] = {
         E_C_range=(0.7, 1.2),
         density_range=(390, 480),
     ),
-
     "western_red_cedar": MaterialPreset(
         name="western_red_cedar",
         species="Thuja plicata",
@@ -430,7 +420,6 @@ _MATERIAL_PRESETS: Dict[str, MaterialPreset] = {
         E_C_range=(0.5, 0.9),
         density_range=(300, 420),
     ),
-
     "redwood": MaterialPreset(
         name="redwood",
         species="Sequoia sempervirens",
@@ -444,7 +433,6 @@ _MATERIAL_PRESETS: Dict[str, MaterialPreset] = {
         E_C_range=(0.4, 0.9),
         density_range=(320, 420),
     ),
-
     # Back/side woods
     "mahogany": MaterialPreset(
         name="mahogany",
@@ -459,7 +447,6 @@ _MATERIAL_PRESETS: Dict[str, MaterialPreset] = {
         E_C_range=(0.4, 0.9),
         density_range=(480, 620),
     ),
-
     "indian_rosewood": MaterialPreset(
         name="indian_rosewood",
         species="Dalbergia latifolia",
@@ -473,7 +460,6 @@ _MATERIAL_PRESETS: Dict[str, MaterialPreset] = {
         E_C_range=(0.7, 1.2),
         density_range=(750, 950),
     ),
-
     "brazilian_rosewood": MaterialPreset(
         name="brazilian_rosewood",
         species="Dalbergia nigra",
@@ -487,7 +473,6 @@ _MATERIAL_PRESETS: Dict[str, MaterialPreset] = {
         E_C_range=(0.8, 1.3),
         density_range=(800, 1000),
     ),
-
     "maple": MaterialPreset(
         name="maple",
         species="Acer saccharum",
@@ -501,7 +486,6 @@ _MATERIAL_PRESETS: Dict[str, MaterialPreset] = {
         E_C_range=(0.8, 1.4),
         density_range=(650, 800),
     ),
-
     "sapele": MaterialPreset(
         name="sapele",
         species="Entandrophragma cylindricum",
@@ -515,7 +499,6 @@ _MATERIAL_PRESETS: Dict[str, MaterialPreset] = {
         E_C_range=(0.5, 1.0),
         density_range=(550, 720),
     ),
-
     "koa": MaterialPreset(
         name="koa",
         species="Acacia koa",
@@ -529,7 +512,6 @@ _MATERIAL_PRESETS: Dict[str, MaterialPreset] = {
         E_C_range=(0.6, 1.1),
         density_range=(520, 700),
     ),
-
     "walnut": MaterialPreset(
         name="walnut",
         species="Juglans nigra",
@@ -543,7 +525,6 @@ _MATERIAL_PRESETS: Dict[str, MaterialPreset] = {
         E_C_range=(0.6, 1.0),
         density_range=(540, 700),
     ),
-
     "ovangkol": MaterialPreset(
         name="ovangkol",
         species="Guibourtia ehie",
@@ -585,16 +566,18 @@ def list_materials(use_filter: Optional[str] = None) -> List[Dict[str, Any]]:
     for mat in _MATERIAL_PRESETS.values():
         if use_filter and mat.typical_use != use_filter and mat.typical_use != "both":
             continue
-        results.append({
-            "name": mat.name,
-            "species": mat.species,
-            "E_L_GPa": mat.E_L_GPa,
-            "E_C_GPa": mat.E_C_GPa,
-            "density_kg_m3": mat.density_kg_m3,
-            "R_anis": mat.R_anis,
-            "typical_use": mat.typical_use,
-            "notes": mat.quality_notes,
-        })
+        results.append(
+            {
+                "name": mat.name,
+                "species": mat.species,
+                "E_L_GPa": mat.E_L_GPa,
+                "E_C_GPa": mat.E_C_GPa,
+                "density_kg_m3": mat.density_kg_m3,
+                "R_anis": mat.R_anis,
+                "typical_use": mat.typical_use,
+                "notes": mat.quality_notes,
+            }
+        )
     return results
 
 

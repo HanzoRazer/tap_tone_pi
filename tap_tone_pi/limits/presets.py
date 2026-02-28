@@ -103,8 +103,16 @@ BUILTIN_PRESETS: Dict[str, Dict[str, Any]] = {
             "regions": [
                 {"freq_min_hz": 47.0, "freq_max_hz": 53.0, "reason": "50 Hz hum"},
                 {"freq_min_hz": 57.0, "freq_max_hz": 63.0, "reason": "60 Hz hum"},
-                {"freq_min_hz": 97.0, "freq_max_hz": 103.0, "reason": "100 Hz harmonic"},
-                {"freq_min_hz": 117.0, "freq_max_hz": 123.0, "reason": "120 Hz harmonic"},
+                {
+                    "freq_min_hz": 97.0,
+                    "freq_max_hz": 103.0,
+                    "reason": "100 Hz harmonic",
+                },
+                {
+                    "freq_min_hz": 117.0,
+                    "freq_max_hz": 123.0,
+                    "reason": "120 Hz harmonic",
+                },
             ],
         },
     },
@@ -174,7 +182,9 @@ def load_preset(
     return limits, mask
 
 
-def load_preset_from_file(filepath: Path | str) -> tuple[List[LimitCurve], Optional[FrequencyMask]]:
+def load_preset_from_file(
+    filepath: Path | str,
+) -> tuple[List[LimitCurve], Optional[FrequencyMask]]:
     """
     Load a preset from JSON file.
 
@@ -267,7 +277,9 @@ def describe_preset(name: str) -> str:
             lines.append(f"    {limit['description']}")
         points = limit.get("points", [])
         if points:
-            freq_range = f"{points[0]['frequency_hz']:.0f}-{points[-1]['frequency_hz']:.0f} Hz"
+            freq_range = (
+                f"{points[0]['frequency_hz']:.0f}-{points[-1]['frequency_hz']:.0f} Hz"
+            )
             lines.append(f"    Range: {freq_range}")
 
     mask = preset.get("mask")
@@ -276,6 +288,8 @@ def describe_preset(name: str) -> str:
         lines.append("Mask:")
         lines.append(f"  Name: {mask.get('name', 'unnamed')}")
         for region in mask.get("regions", []):
-            lines.append(f"  - {region['freq_min_hz']:.0f}-{region['freq_max_hz']:.0f} Hz: {region.get('reason', '')}")
+            lines.append(
+                f"  - {region['freq_min_hz']:.0f}-{region['freq_max_hz']:.0f} Hz: {region.get('reason', '')}"
+            )
 
     return "\n".join(lines)

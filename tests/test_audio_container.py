@@ -84,9 +84,7 @@ class TestAudioContainer:
     def test_container_to_dict(self):
         """to_dict should serialize metadata correctly."""
         signal = np.zeros(48000, dtype=np.float32)
-        container = AudioContainer(
-            signal=signal, sample_rate=48000, source="test.wav"
-        )
+        container = AudioContainer(signal=signal, sample_rate=48000, source="test.wav")
 
         d = container.to_dict()
 
@@ -103,9 +101,7 @@ class TestAudioContainer2Ch:
         """2-channel container creation should work."""
         ref = np.zeros(1000, dtype=np.float32)
         rov = np.zeros(1000, dtype=np.float32)
-        container = AudioContainer2Ch(
-            reference=ref, roving=rov, sample_rate=48000
-        )
+        container = AudioContainer2Ch(reference=ref, roving=rov, sample_rate=48000)
 
         assert container.sample_rate == 48000
         assert container.num_samples == 1000

@@ -379,9 +379,7 @@ class TestBuildQALabSpecEntry:
             },
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(bending_data, f)
             bending_path = f.name
 
@@ -407,9 +405,7 @@ class TestBuildQALabSpecEntry:
             "peaks_hz": [187.5, 523.1, 1025.4],
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(peaks_data, f)
             peaks_path = f.name
 
@@ -441,9 +437,7 @@ class TestBuildQALabSpecEntry:
 
         # Create with bending data
         bending_data = {"E_GPa": 12.0}
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(bending_data, f)
             bending_path = f.name
 
@@ -461,9 +455,7 @@ class TestBuildQALabSpecEntry:
     def test_derived_properties(self):
         """Should compute derived properties."""
         bending_data = {"E_GPa": 12.0}
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(bending_data, f)
             bending_path = f.name
 
@@ -502,9 +494,7 @@ class TestCSVExport:
             density_kg_m3=420.0,
         )
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             csv_path = f.name
 
         try:
@@ -534,9 +524,7 @@ class TestCSVExport:
             for i in range(5)
         ]
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             csv_path = f.name
 
         try:
@@ -563,9 +551,7 @@ class TestJSONExport:
             thickness_mm=3.0,
         )
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json_path = f.name
 
         try:

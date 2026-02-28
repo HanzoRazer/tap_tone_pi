@@ -61,8 +61,11 @@ class TestSolveForThicknessSimple:
         """Should return InverseSolverResult."""
         result = solve_for_thickness(
             target_f1_Hz=180.0,
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
             forward_model=ForwardModel.SIMPLE,
         )
         assert isinstance(result, InverseSolverResult)
@@ -72,8 +75,11 @@ class TestSolveForThicknessSimple:
         target = 180.0
         result = solve_for_thickness(
             target_f1_Hz=target,
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
             forward_model=ForwardModel.SIMPLE,
         )
         # Should be within 2%
@@ -84,13 +90,19 @@ class TestSolveForThicknessSimple:
         """Higher frequency target should require thicker plate."""
         result_low = solve_for_thickness(
             target_f1_Hz=150.0,
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
         )
         result_high = solve_for_thickness(
             target_f1_Hz=250.0,
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
         )
         assert result_high.thickness_mm > result_low.thickness_mm
 
@@ -98,14 +110,20 @@ class TestSolveForThicknessSimple:
         """γ < 1 should give thicker plate for same box frequency."""
         result_no_gamma = solve_for_thickness(
             target_f1_Hz=180.0,
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
             gamma=1.0,
         )
         result_with_gamma = solve_for_thickness(
             target_f1_Hz=180.0,
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
             gamma=0.85,  # Need higher free freq to get 180 box freq
         )
         # With γ < 1, we need higher free-plate frequency
@@ -117,8 +135,11 @@ class TestSolveForThicknessSimple:
         # Force a very high target that would need thick plate
         result = solve_for_thickness(
             target_f1_Hz=500.0,
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
             constraints=ThicknessConstraints(h_min_mm=2.0, h_max_mm=4.0),
         )
         assert result.thickness_mm <= 4.0
@@ -128,8 +149,11 @@ class TestSolveForThicknessSimple:
         """Result should be in realistic range for guitars."""
         result = solve_for_thickness(
             target_f1_Hz=180.0,
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
         )
         # Typical guitar top: 2-4mm
         assert 1.5 < result.thickness_mm < 5.0
@@ -147,8 +171,11 @@ class TestSolveForThicknessRayleighRitz:
         """Should return InverseSolverResult."""
         result = solve_for_thickness(
             target_f1_Hz=50.0,  # Achievable with SS BC
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
             forward_model=ForwardModel.RAYLEIGH_RITZ,
         )
         assert isinstance(result, InverseSolverResult)
@@ -159,8 +186,11 @@ class TestSolveForThicknessRayleighRitz:
         target = 50.0  # Achievable in 2-5mm range with SS BC
         result = solve_for_thickness(
             target_f1_Hz=target,
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
             forward_model=ForwardModel.RAYLEIGH_RITZ,
         )
         # Should be within 5%
@@ -174,8 +204,11 @@ class TestInverseDesignProblem:
     def test_single_target(self):
         """Single target optimization."""
         problem = InverseDesignProblem(
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
             forward_model=ForwardModel.SIMPLE,  # Use simple for predictable results
         )
         problem.add_target(mode=1, frequency_Hz=180.0)
@@ -186,8 +219,11 @@ class TestInverseDesignProblem:
     def test_multi_target(self):
         """Multiple target optimization."""
         problem = InverseDesignProblem(
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
             forward_model=ForwardModel.SIMPLE,
         )
         problem.add_target(mode=1, frequency_Hz=180.0, weight=1.0)
@@ -199,16 +235,22 @@ class TestInverseDesignProblem:
         """Higher weight should prioritize that target."""
         # Two problems with swapped weights
         problem1 = InverseDesignProblem(
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
             forward_model=ForwardModel.SIMPLE,
         )
         problem1.add_target(mode=1, frequency_Hz=150.0, weight=10.0)
         problem1.add_target(mode=2, frequency_Hz=400.0, weight=1.0)
 
         problem2 = InverseDesignProblem(
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
             forward_model=ForwardModel.SIMPLE,
         )
         problem2.add_target(mode=1, frequency_Hz=150.0, weight=1.0)
@@ -227,8 +269,11 @@ class TestInverseDesignProblem:
     def test_no_targets_raises(self):
         """Should raise error if no targets."""
         problem = InverseDesignProblem(
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
         )
         with pytest.raises(ValueError):
             problem.solve()
@@ -236,8 +281,11 @@ class TestInverseDesignProblem:
     def test_clear_targets(self):
         """clear_targets should remove all targets."""
         problem = InverseDesignProblem(
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
         )
         problem.add_target(mode=1, frequency_Hz=180.0)
         problem.clear_targets()
@@ -247,8 +295,11 @@ class TestInverseDesignProblem:
     def test_with_gamma(self):
         """Should handle γ transfer coefficient."""
         problem = InverseDesignProblem(
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
             gamma=0.85,
         )
         problem.add_target(mode=1, frequency_Hz=180.0)
@@ -270,7 +321,8 @@ class TestMaterialSelection:
         material, result = solve_for_material_and_thickness(
             target_f1_Hz=180.0,
             candidates=candidates,
-            a=0.45, b=0.35,
+            a=0.45,
+            b=0.35,
         )
         assert material.name in ["Spruce", "Cedar", "Redwood"]
         assert result.thickness_mm > 0
@@ -285,7 +337,8 @@ class TestMaterialSelection:
         material, result = solve_for_material_and_thickness(
             target_f1_Hz=180.0,
             candidates=candidates,
-            a=0.45, b=0.35,
+            a=0.45,
+            b=0.35,
             constraints=constraints,
         )
         assert result.thickness_mm >= 2.5
@@ -299,8 +352,11 @@ class TestFormatReport:
         """Should return string."""
         result = solve_for_thickness(
             target_f1_Hz=180.0,
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
         )
         report = format_inverse_solver_report(result)
         assert isinstance(report, str)
@@ -309,8 +365,11 @@ class TestFormatReport:
         """Report should include thickness."""
         result = solve_for_thickness(
             target_f1_Hz=180.0,
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
         )
         report = format_inverse_solver_report(result)
         assert "mm" in report
@@ -319,8 +378,11 @@ class TestFormatReport:
         """Report should include frequency comparison."""
         result = solve_for_thickness(
             target_f1_Hz=180.0,
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
         )
         report = format_inverse_solver_report(result)
         assert "Target" in report or "Achieved" in report
@@ -333,8 +395,11 @@ class TestToDict:
         """Result should serialize to dict."""
         result = solve_for_thickness(
             target_f1_Hz=180.0,
-            E_L=12e9, E_C=0.8e9, rho=420,
-            a=0.45, b=0.35,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            a=0.45,
+            b=0.35,
         )
         d = result.to_dict()
         assert "thickness_mm" in d
@@ -350,8 +415,11 @@ class TestRealisticDesignScenarios:
         # Typical classical: target ~170 Hz box frequency
         result = solve_for_thickness(
             target_f1_Hz=170.0,
-            E_L=10e9, E_C=0.6e9, rho=400,  # Cedar
-            a=0.36, b=0.28,  # Classical top dimensions
+            E_L=10e9,
+            E_C=0.6e9,
+            rho=400,  # Cedar
+            a=0.36,
+            b=0.28,  # Classical top dimensions
             gamma=0.85,
         )
         # Should be in typical range
@@ -362,8 +430,11 @@ class TestRealisticDesignScenarios:
         # Dreadnought: larger, stiffer, higher frequency
         result = solve_for_thickness(
             target_f1_Hz=200.0,
-            E_L=12e9, E_C=0.8e9, rho=420,  # Sitka spruce
-            a=0.40, b=0.30,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,  # Sitka spruce
+            a=0.40,
+            b=0.30,
             gamma=0.88,
         )
         assert 2.0 < result.thickness_mm < 4.5
@@ -372,8 +443,11 @@ class TestRealisticDesignScenarios:
         """Design parlor guitar top (smaller body)."""
         result = solve_for_thickness(
             target_f1_Hz=220.0,  # Higher due to smaller body
-            E_L=11e9, E_C=0.7e9, rho=400,
-            a=0.32, b=0.24,  # Smaller dimensions
+            E_L=11e9,
+            E_C=0.7e9,
+            rho=400,
+            a=0.32,
+            b=0.24,  # Smaller dimensions
             gamma=0.90,
         )
         assert 2.0 < result.thickness_mm < 4.0

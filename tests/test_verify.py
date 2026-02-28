@@ -2,7 +2,6 @@
 Tests for the verification test suite.
 """
 
-
 import pytest
 
 from tap_tone_pi.verify import (
@@ -274,7 +273,10 @@ class TestVerificationSuite:
 
         assert isinstance(result, VerificationResult)
         assert result.total > 0
-        assert result.passed + result.failed + result.skipped + result.errors == result.total
+        assert (
+            result.passed + result.failed + result.skipped + result.errors
+            == result.total
+        )
 
     def test_run_verification_suite(self):
         """Test convenience function."""

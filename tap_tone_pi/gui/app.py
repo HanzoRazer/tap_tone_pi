@@ -913,10 +913,10 @@ class App(tk.Tk):
 
     # --- Callbacks ---
 
-
     def do_quality_measure(self, entry_vars: list) -> None:
         """Run quality-gated measurement (delegated to measurement_flow module)."""
         from tap_tone_pi.gui.measurement_flow import do_quality_measure as _impl
+
         _impl(self, entry_vars)
 
     def do_tap_live(self, entry_vars: list[tk.StringVar]) -> None:
@@ -1081,7 +1081,9 @@ class App(tk.Tk):
     def do_chladni_wizard(self) -> None:
         """Chladni pattern analysis wizard (delegated to chladni_flow module)."""
         from tap_tone_pi.gui.chladni_flow import do_chladni_wizard as _impl
+
         _impl(self)
+
 
 # --- Helper functions for building form groups ---
 

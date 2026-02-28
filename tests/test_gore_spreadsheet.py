@@ -410,7 +410,9 @@ class TestPhysicalRealism:
         assert 300 < entry.SI < 400, "SI out of range for typical spruce"
         assert 5000 < entry.wave_speed_m_s < 6000, "Wave speed out of range"
         # Cross-validation should show good agreement since we used consistent values
-        assert entry.crossval_agreement in ["good", "marginal"], "Cross-validation should pass"
+        assert entry.crossval_agreement in ["good", "marginal"], (
+            "Cross-validation should pass"
+        )
 
     def test_cedar_classical_workflow(self, tmp_path):
         """Full workflow with realistic cedar values."""
@@ -438,4 +440,6 @@ class TestPhysicalRealism:
         # Cedar should be in classical range
         assert 7.0 < entry.E_static_GPa < 11.0, "E out of range for cedar"
         # SI = 8.5 × 3.4³ = 8.5 × 39.3 = 334 GPa·mm³ (in range 280-380)
-        assert entry.preset_match_status == "good", f"Cedar SI={entry.SI:.0f} should be in range"
+        assert entry.preset_match_status == "good", (
+            f"Cedar SI={entry.SI:.0f} should be in range"
+        )

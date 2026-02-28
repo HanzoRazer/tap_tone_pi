@@ -184,6 +184,7 @@ class QualityAssessment:
     metrics : dict
         Detailed quality metrics.
     """
+
     overall_grade: str
     coherence_grade: str
     snr_grade: str
@@ -261,7 +262,7 @@ def _build_quality_recommendations(
     if not averaging_adequate:
         needed = required_averages_for_error(median_coh, target_error)
         recommendations.append(
-            f"Increase averaging from {n_averages} to {needed} for {target_error*100:.0f}% error target"
+            f"Increase averaging from {n_averages} to {needed} for {target_error * 100:.0f}% error target"
         )
 
     if min_coh < 0.6:
@@ -275,7 +276,7 @@ def _build_quality_recommendations(
 
     if coherent_fraction < 0.8:
         recommendations.append(
-            f"Only {coherent_fraction*100:.0f}% of frequencies have \u03b3\u00b2 > {coherence_threshold}. "
+            f"Only {coherent_fraction * 100:.0f}% of frequencies have \u03b3\u00b2 > {coherence_threshold}. "
             "Consider reviewing measurement setup."
         )
 
@@ -285,7 +286,9 @@ def _build_quality_recommendations(
         )
 
     if not recommendations:
-        recommendations.append("Measurement quality is acceptable for most applications.")
+        recommendations.append(
+            "Measurement quality is acceptable for most applications."
+        )
 
     return recommendations
 
@@ -363,7 +366,9 @@ def validate_measurement_quality(
     snr_grade = _grade_snr(mean_snr_db, min_snr_db)
     averaging_adequate = max_error <= target_error
     overall_grade = _compute_overall_grade(
-        coherence_grade, snr_grade, averaging_adequate,
+        coherence_grade,
+        snr_grade,
+        averaging_adequate,
     )
 
     # Recommendations

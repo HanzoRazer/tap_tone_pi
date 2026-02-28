@@ -209,7 +209,7 @@ class VerificationSuite:
                 expected_db=expected_db,
                 tolerance_db=0.5,
             )
-            test.name = f"amplitude_{int(amp*100)}pct"
+            test.name = f"amplitude_{int(amp * 100)}pct"
             self.tests.append(test)
 
     def _test_multi_peak_detection(self):

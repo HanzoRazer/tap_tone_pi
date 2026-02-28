@@ -27,7 +27,10 @@ def validate_device_index(device: int | None) -> int | None:
     valid_indices = [d["index"] for d in devices if d["max_input_channels"] > 0]
 
     if device not in valid_indices:
-        print(f"Error: Device {device} not found or has no input channels.", file=sys.stderr)
+        print(
+            f"Error: Device {device} not found or has no input channels.",
+            file=sys.stderr,
+        )
         print(f"Available input devices: {valid_indices}", file=sys.stderr)
         print("Run 'ttp devices' to see all devices.", file=sys.stderr)
         sys.exit(1)
@@ -78,11 +81,17 @@ def validate_sample_rate(rate: int) -> int:
     valid_rates = [8000, 11025, 16000, 22050, 44100, 48000, 96000, 192000]
 
     if rate < 8000:
-        print(f"Error: Sample rate {rate} Hz is too low (minimum: 8000 Hz)", file=sys.stderr)
+        print(
+            f"Error: Sample rate {rate} Hz is too low (minimum: 8000 Hz)",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     if rate > 192000:
-        print(f"Error: Sample rate {rate} Hz is too high (maximum: 192000 Hz)", file=sys.stderr)
+        print(
+            f"Error: Sample rate {rate} Hz is too high (maximum: 192000 Hz)",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     if rate not in valid_rates:
@@ -110,10 +119,16 @@ def validate_duration(seconds: float) -> float:
         sys.exit(1)
 
     if seconds < 0.5:
-        print(f"Warning: Very short duration ({seconds}s) may not capture full tap decay", file=sys.stderr)
+        print(
+            f"Warning: Very short duration ({seconds}s) may not capture full tap decay",
+            file=sys.stderr,
+        )
 
     if seconds > 30:
-        print(f"Warning: Long duration ({seconds}s) will create large files", file=sys.stderr)
+        print(
+            f"Warning: Long duration ({seconds}s) will create large files",
+            file=sys.stderr,
+        )
 
     return seconds
 

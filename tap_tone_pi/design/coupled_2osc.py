@@ -59,19 +59,19 @@ from .thickness_calculator import (
 
 def coupled_2osc_eigenfrequencies(
     # Top plate
-    E_L_top: float,      # Pa
-    E_C_top: float,      # Pa
-    rho_top: float,      # kg/m3
-    h_top: float,        # m
-    a_top: float,        # m
-    b_top: float,        # m
-    A_eff_top: float,    # m2 - effective piston area
-    eta_top: float,      # geometry factor
-    gamma_top: float,    # Chladni-to-box transfer
+    E_L_top: float,  # Pa
+    E_C_top: float,  # Pa
+    rho_top: float,  # kg/m3
+    h_top: float,  # m
+    a_top: float,  # m
+    b_top: float,  # m
+    A_eff_top: float,  # m2 - effective piston area
+    eta_top: float,  # geometry factor
+    gamma_top: float,  # Chladni-to-box transfer
     # Cavity (back treated as rigid boundary)
-    volume: float,       # m3
-    hole_area: float,    # m2
-    L_eff: float,        # m
+    volume: float,  # m3
+    hole_area: float,  # m2
+    L_eff: float,  # m
     # Air properties
     rho_air: float = AIR_DENSITY_KG_M3,
     c_air: float = AIR_SPEED_OF_SOUND_M_S,
@@ -108,27 +108,27 @@ def coupled_2osc_eigenfrequencies(
     f_top_box = chladni_to_box_frequency(f_top_free, gamma_top)
     m_top = rho_top * h_top * A_eff_top
     omega_top = 2.0 * math.pi * f_top_box
-    k_top = m_top * omega_top ** 2
+    k_top = m_top * omega_top**2
 
     # Helmholtz resonator parameters
     f_helmholtz = helmholtz_frequency(volume, hole_area, L_eff, c_air)
 
     # Cavity compliance: C_a = V / (rho_0 * c^2)
-    C_a = volume / (rho_air * c_air ** 2)
+    C_a = volume / (rho_air * c_air**2)
 
     # Soundhole inertance: M_h = rho_0 * L_eff / A_hole
     M_h = rho_air * L_eff / hole_area
 
     # Angular frequencies squared
-    omega_t_sq = omega_top ** 2
+    omega_t_sq = omega_top**2
     omega_H_sq = 1.0 / (M_h * C_a)
 
     # Coupling strength: w_c^2 = A_eff^2 / (m_t * C_a)
-    omega_c_sq = (A_eff_top ** 2) / (m_top * C_a)
+    omega_c_sq = (A_eff_top**2) / (m_top * C_a)
 
     # Closed-form eigenvalue solution
     sum_omega_sq = omega_t_sq + omega_H_sq + omega_c_sq
-    discriminant = sum_omega_sq ** 2 - 4.0 * omega_t_sq * omega_H_sq
+    discriminant = sum_omega_sq**2 - 4.0 * omega_t_sq * omega_H_sq
 
     if discriminant < 0:
         # Shouldn't happen for physical systems, but handle gracefully
@@ -160,12 +160,14 @@ def coupled_2osc_eigenfrequencies(
         ratio2 = 1.0
 
     # Normalize eigenvectors
-    norm1 = math.sqrt(1 + ratio1 ** 2) if ratio1 != 0 else 1.0
-    norm2 = math.sqrt(1 + ratio2 ** 2) if ratio2 != 0 else 1.0
-    eigenvectors = np.array([
-        [ratio1 / norm1, 1.0 / norm1],   # Mode 1: [top, air]
-        [ratio2 / norm2, 1.0 / norm2],   # Mode 2: [top, air]
-    ]).T
+    norm1 = math.sqrt(1 + ratio1**2) if ratio1 != 0 else 1.0
+    norm2 = math.sqrt(1 + ratio2**2) if ratio2 != 0 else 1.0
+    eigenvectors = np.array(
+        [
+            [ratio1 / norm1, 1.0 / norm1],  # Mode 1: [top, air]
+            [ratio2 / norm2, 1.0 / norm2],  # Mode 2: [top, air]
+        ]
+    ).T
 
     # Coupling frequency (diagnostic)
     f_coupling = math.sqrt(omega_c_sq) / (2.0 * math.pi)
@@ -193,12 +195,12 @@ def coupled_2osc_eigenfrequencies(
 
 
 def back_activity_ratio(
-    E_L_back: float,     # Pa
-    E_C_back: float,     # Pa
-    rho_back: float,     # kg/m3
-    h_back: float,       # m
-    a_back: float,       # m
-    b_back: float,       # m
+    E_L_back: float,  # Pa
+    E_C_back: float,  # Pa
+    rho_back: float,  # kg/m3
+    h_back: float,  # m
+    a_back: float,  # m
+    b_back: float,  # m
     f_coupled_max: float,  # Hz - highest coupled mode frequency
     eta_back: float = 1.0,
 ) -> Tuple[float, str]:
@@ -245,11 +247,11 @@ def back_activity_ratio(
 
 
 def minimum_back_thickness_for_rigid(
-    E_L_back: float,     # Pa
-    E_C_back: float,     # Pa
-    rho_back: float,     # kg/m3
-    a_back: float,       # m
-    b_back: float,       # m
+    E_L_back: float,  # Pa
+    E_C_back: float,  # Pa
+    rho_back: float,  # kg/m3
+    a_back: float,  # m
+    b_back: float,  # m
     f_coupled_max: float,  # Hz
     safety_factor: float = 1.2,
     rigidity_ratio: float = 1.5,
@@ -281,8 +283,8 @@ def minimum_back_thickness_for_rigid(
     # f = eta * (pi/2) * sqrt[(E_L/a^4 + E_C/b^4) / rho] * h
     # h = f / [eta * (pi/2) * sqrt[(E_L/a^4 + E_C/b^4) / rho]]
 
-    term_L = E_L_back / (a_back ** 4)
-    term_C = E_C_back / (b_back ** 4)
+    term_L = E_L_back / (a_back**4)
+    term_C = E_C_back / (b_back**4)
     stiffness_term = (term_L + term_C) / rho_back
     denominator = eta_back * (math.pi / 2.0) * math.sqrt(stiffness_term)
 
@@ -515,7 +517,9 @@ def format_2osc_report(result: Coupled2OscResult) -> str:
         lines.append(f"  Model fit       : {result.back_model_recommendation}")
 
     if result.target_monopole_Hz:
-        lines.append(f"\nTarget: {result.target_monopole_Hz:.1f} Hz (top-dominated mode)")
+        lines.append(
+            f"\nTarget: {result.target_monopole_Hz:.1f} Hz (top-dominated mode)"
+        )
         if result.f2_vs_target_Hz is not None:
             sign = "+" if result.f2_vs_target_Hz > 0 else ""
             lines.append(f"  f2 vs target: {sign}{result.f2_vs_target_Hz:.1f} Hz")

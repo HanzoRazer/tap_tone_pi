@@ -129,7 +129,9 @@ class MultitoneConfig:
     amplitude: float = 0.8  # Peak amplitude of combined signal
 
     # Frequencies and relative amplitudes
-    frequencies_hz: List[float] = field(default_factory=lambda: [100.0, 1000.0, 10000.0])
+    frequencies_hz: List[float] = field(
+        default_factory=lambda: [100.0, 1000.0, 10000.0]
+    )
     relative_amplitudes: Optional[List[float]] = None  # If None, equal amplitudes
     phases_deg: Optional[List[float]] = None  # If None, random or zero phases
 

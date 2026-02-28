@@ -107,7 +107,9 @@ def format_verification_report(
     # Summary
     status = "PASS" if result.success else "FAIL"
     if color:
-        status_colored = f"\033[92m{status}\033[0m" if result.success else f"\033[91m{status}\033[0m"
+        status_colored = (
+            f"\033[92m{status}\033[0m" if result.success else f"\033[91m{status}\033[0m"
+        )
     else:
         status_colored = status
 

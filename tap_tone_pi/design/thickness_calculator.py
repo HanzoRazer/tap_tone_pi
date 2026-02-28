@@ -109,8 +109,8 @@ def plate_modal_frequency(
         raise ValueError("All geometric and material parameters must be positive")
 
     # Effective bending stiffness per mode direction
-    term_L = E_L_Pa * (m ** 2) / (a ** 4)
-    term_C = E_C_Pa * (n ** 2) / (b ** 4)
+    term_L = E_L_Pa * (m**2) / (a**4)
+    term_C = E_C_Pa * (n**2) / (b**4)
 
     # Combined stiffness
     stiffness_term = (term_L + term_C) / rho
@@ -155,8 +155,8 @@ def thickness_for_target_frequency(
     if f_target <= 0:
         raise ValueError("Target frequency must be positive")
 
-    term_L = E_L_Pa * (m ** 2) / (a ** 4)
-    term_C = E_C_Pa * (n ** 2) / (b ** 4)
+    term_L = E_L_Pa * (m**2) / (a**4)
+    term_C = E_C_Pa * (n**2) / (b**4)
     stiffness_term = (term_L + term_C) / rho
 
     denominator = eta * (math.pi / 2.0) * math.sqrt(stiffness_term)
@@ -247,15 +247,15 @@ def box_to_chladni_frequency(
 
 def coupled_eigenfrequencies(
     # Top plate
-    E_L_top: float,      # Pa
-    E_C_top: float,      # Pa
-    rho_top: float,      # kg/m³
-    h_top: float,        # m
-    a_top: float,        # m
-    b_top: float,        # m
-    A_eff_top: float,    # m² - effective piston area
-    eta_top: float,      # geometry factor
-    gamma_top: float,    # Chladni-to-box transfer
+    E_L_top: float,  # Pa
+    E_C_top: float,  # Pa
+    rho_top: float,  # kg/m³
+    h_top: float,  # m
+    a_top: float,  # m
+    b_top: float,  # m
+    A_eff_top: float,  # m² - effective piston area
+    eta_top: float,  # geometry factor
+    gamma_top: float,  # Chladni-to-box transfer
     # Back plate
     E_L_back: float,
     E_C_back: float,
@@ -267,9 +267,9 @@ def coupled_eigenfrequencies(
     eta_back: float,
     gamma_back: float,
     # Cavity
-    volume: float,       # m³
-    hole_area: float,    # m²
-    L_eff: float,        # m
+    volume: float,  # m³
+    hole_area: float,  # m²
+    L_eff: float,  # m
     # Air properties
     rho_air: float = AIR_DENSITY_KG_M3,
     c_air: float = AIR_SPEED_OF_SOUND_M_S,
@@ -309,7 +309,7 @@ def coupled_eigenfrequencies(
     f_top_box = chladni_to_box_frequency(f_top_free, gamma_top)
     m_top = rho_top * h_top * A_eff_top  # Effective mass
     omega_top = 2.0 * math.pi * f_top_box
-    k_top = m_top * omega_top ** 2
+    k_top = m_top * omega_top**2
 
     # Back plate
     f_back_free = plate_modal_frequency(
@@ -318,14 +318,14 @@ def coupled_eigenfrequencies(
     f_back_box = chladni_to_box_frequency(f_back_free, gamma_back)
     m_back = rho_back * h_back * A_eff_back
     omega_back = 2.0 * math.pi * f_back_box
-    k_back = m_back * omega_back ** 2
+    k_back = m_back * omega_back**2
 
     # Helmholtz resonator
     f_helmholtz = helmholtz_frequency(volume, hole_area, L_eff, c_air)
     omega_H = 2.0 * math.pi * f_helmholtz
 
     # Cavity compliance: C_a = V / (ρ₀ × c²)
-    C_a = volume / (rho_air * c_air ** 2)
+    C_a = volume / (rho_air * c_air**2)
 
     # Soundhole inertance: M_h = ρ₀ × L_eff / A_hole
     M_h = rho_air * L_eff / hole_area
@@ -339,18 +339,22 @@ def coupled_eigenfrequencies(
     # Coordinates: [x_top, x_back, x_air]
     # x represents volume displacement = A × displacement
 
-    K = np.array([
-        [k_top + alpha_t * A_eff_top,  alpha_t * A_eff_back,         alpha_t],
-        [alpha_b * A_eff_top,          k_back + alpha_b * A_eff_back, alpha_b],
-        [A_eff_top / C_a,              A_eff_back / C_a,             1.0 / C_a],
-    ])
+    K = np.array(
+        [
+            [k_top + alpha_t * A_eff_top, alpha_t * A_eff_back, alpha_t],
+            [alpha_b * A_eff_top, k_back + alpha_b * A_eff_back, alpha_b],
+            [A_eff_top / C_a, A_eff_back / C_a, 1.0 / C_a],
+        ]
+    )
 
     # Build mass matrix M (3x3)
-    M = np.array([
-        [m_top, 0,      0],
-        [0,     m_back, 0],
-        [0,     0,      M_h],
-    ])
+    M = np.array(
+        [
+            [m_top, 0, 0],
+            [0, m_back, 0],
+            [0, 0, M_h],
+        ]
+    )
 
     # Solve generalized eigenvalue problem: K v = λ M v
     # where λ = ω²
@@ -554,7 +558,7 @@ def analyze_plate(
             )
         elif delta_h > current_h_mm * 0.4:
             warnings.append(
-                f"Removing {delta_h:.2f}mm ({100*delta_h/current_h_mm:.0f}% of thickness) "
+                f"Removing {delta_h:.2f}mm ({100 * delta_h / current_h_mm:.0f}% of thickness) "
                 "is aggressive. Consider a stiffer billet."
             )
 
@@ -668,7 +672,9 @@ def analyze_coupled_system(
     # Generate recommendation
     if f2_vs_target is not None:
         if abs(f2_vs_target) < 3:
-            recommendation = f"Coupled mode ({f2:.1f} Hz) is on target ({target:.1f} Hz)."
+            recommendation = (
+                f"Coupled mode ({f2:.1f} Hz) is on target ({target:.1f} Hz)."
+            )
         elif f2_vs_target > 0:
             recommendation = (
                 f"Coupled mode ({f2:.1f} Hz) is {f2_vs_target:.1f} Hz HIGH. "
@@ -686,7 +692,9 @@ def analyze_coupled_system(
     if f1 < 70:
         warnings.append(f"Air mode ({f1:.1f} Hz) is quite low. Check cavity volume.")
     if f1 > f2 * 0.95:
-        warnings.append("Air mode very close to coupled mode. Strong interaction expected.")
+        warnings.append(
+            "Air mode very close to coupled mode. Strong interaction expected."
+        )
 
     return CoupledSystemResult(
         body_style=body.style.value,
@@ -782,7 +790,9 @@ def format_coupled_report(result: CoupledSystemResult) -> str:
     lines.append(f"  f3 = {result.f3_Hz:6.1f} Hz  -  {result.mode3_description}")
 
     if result.target_monopole_Hz:
-        lines.append(f"\nTarget: {result.target_monopole_Hz:.1f} Hz (monopole-like mode)")
+        lines.append(
+            f"\nTarget: {result.target_monopole_Hz:.1f} Hz (monopole-like mode)"
+        )
         if result.f2_vs_target_Hz is not None:
             sign = "+" if result.f2_vs_target_Hz > 0 else ""
             lines.append(f"  f2 vs target: {sign}{result.f2_vs_target_Hz:.1f} Hz")
@@ -838,13 +848,19 @@ Examples:
 
     # Mode
     ap.add_argument(
-        "--mode", choices=["plate", "coupled"], default="plate",
-        help="Analysis mode: 'plate' (single plate) or 'coupled' (3-oscillator)"
+        "--mode",
+        choices=["plate", "coupled"],
+        default="plate",
+        help="Analysis mode: 'plate' (single plate) or 'coupled' (3-oscillator)",
     )
 
     # List options
-    ap.add_argument("--list-materials", action="store_true", help="List material presets")
-    ap.add_argument("--list-bodies", action="store_true", help="List body style presets")
+    ap.add_argument(
+        "--list-materials", action="store_true", help="List material presets"
+    )
+    ap.add_argument(
+        "--list-bodies", action="store_true", help="List body style presets"
+    )
 
     # Plate mode: material
     ap.add_argument("--material", type=str, help="Material preset name")
@@ -859,7 +875,9 @@ Examples:
 
     # Plate mode: target
     ap.add_argument("--target-freq", type=float, help="Target frequency (Hz)")
-    ap.add_argument("--eta", type=float, default=1.0, help="Geometry factor (default 1.0)")
+    ap.add_argument(
+        "--eta", type=float, default=1.0, help="Geometry factor (default 1.0)"
+    )
 
     # Coupled mode: body
     ap.add_argument("--body", type=str, help="Body style preset")
@@ -892,9 +910,11 @@ def _print_material_presets() -> None:
     for mat in list_materials():
         print(f"\n{mat['name']} ({mat['species']}):")
         print(f"  E_L: {mat['E_L_GPa']:.1f} GPa, E_C: {mat['E_C_GPa']:.2f} GPa")
-        print(f"  Density: {mat['density_kg_m3']:.0f} kg/m³, R_anis: {mat['R_anis']:.1f}")
+        print(
+            f"  Density: {mat['density_kg_m3']:.0f} kg/m³, R_anis: {mat['R_anis']:.1f}"
+        )
         print(f"  Use: {mat['typical_use']}")
-        if mat['notes']:
+        if mat["notes"]:
             print(f"  Notes: {mat['notes']}")
     print()
 
@@ -908,7 +928,7 @@ def _print_body_presets() -> None:
         print(f"  {body['description']}")
         print(f"  Volume: {body['volume_liters']:.1f} L")
         print(f"  Target monopole: {body['f_monopole_target']:.0f} Hz")
-        if body['notes']:
+        if body["notes"]:
             print(f"  Notes: {body['notes']}")
     print()
 
@@ -1028,7 +1048,7 @@ def _run_plate_mode(
         target_f_Hz=args.target_freq,
         current_h_mm=args.current_h,
         eta=args.eta,
-        material_name=getattr(args, 'material', None) or "custom",
+        material_name=getattr(args, "material", None) or "custom",
     )
 
     if not args.quiet:

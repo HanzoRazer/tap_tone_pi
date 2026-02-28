@@ -126,10 +126,9 @@ def _compute_local_snr(
     right_start = min(len(spectrum) - 1, peak_idx + 5)
     right_end = min(len(spectrum) - 1, peak_idx + noise_band + 5)
 
-    noise_bins = np.concatenate([
-        spectrum[left_start:left_end],
-        spectrum[right_start:right_end]
-    ])
+    noise_bins = np.concatenate(
+        [spectrum[left_start:left_end], spectrum[right_start:right_end]]
+    )
 
     if len(noise_bins) < 3:
         return 0.0  # Cannot estimate noise
@@ -227,7 +226,7 @@ def _estimate_q_factor(
         f_lower = np.interp(
             half_power,
             [spectrum[left_idx], spectrum[left_idx + 1]],
-            [freqs[left_idx], freqs[left_idx + 1]]
+            [freqs[left_idx], freqs[left_idx + 1]],
         )
     else:
         f_lower = freqs[left_idx]
@@ -236,7 +235,7 @@ def _estimate_q_factor(
         f_upper = np.interp(
             half_power,
             [spectrum[right_idx], spectrum[right_idx - 1]],
-            [freqs[right_idx], freqs[right_idx - 1]]
+            [freqs[right_idx], freqs[right_idx - 1]],
         )
     else:
         f_upper = freqs[right_idx]
@@ -289,13 +288,23 @@ def _compute_peak_confidence(
     # Clipping or very low signal → low confidence
     if clipped:
         return ConfidenceComponents(
-            snr_db=0.0, snr_confidence=0.0, flatness=1.0, flatness_confidence=0.0,
-            q_factor=None, q_confidence=0.0, overall=0.1
+            snr_db=0.0,
+            snr_confidence=0.0,
+            flatness=1.0,
+            flatness_confidence=0.0,
+            q_factor=None,
+            q_confidence=0.0,
+            overall=0.1,
         )
     if rms < 0.005:
         return ConfidenceComponents(
-            snr_db=0.0, snr_confidence=0.0, flatness=1.0, flatness_confidence=0.0,
-            q_factor=None, q_confidence=0.0, overall=0.0
+            snr_db=0.0,
+            snr_confidence=0.0,
+            flatness=1.0,
+            flatness_confidence=0.0,
+            q_factor=None,
+            q_confidence=0.0,
+            overall=0.0,
         )
 
     # SNR: sigmoid mapping
@@ -312,9 +321,7 @@ def _compute_peak_confidence(
     # Weighted combination (no coherence available in single-channel)
     weights = {"snr": 0.45, "flat": 0.25, "q": 0.30}
     overall = (
-        weights["snr"] * conf_snr +
-        weights["flat"] * conf_flat +
-        weights["q"] * conf_q
+        weights["snr"] * conf_snr + weights["flat"] * conf_flat + weights["q"] * conf_q
     )
 
     return ConfidenceComponents(
@@ -445,8 +452,13 @@ def analyze_tap(
         conf = confidence_components.overall
     else:
         confidence_components = ConfidenceComponents(
-            snr_db=0.0, snr_confidence=0.0, flatness=1.0, flatness_confidence=0.0,
-            q_factor=None, q_confidence=0.0, overall=0.0
+            snr_db=0.0,
+            snr_confidence=0.0,
+            flatness=1.0,
+            flatness_confidence=0.0,
+            q_factor=None,
+            q_confidence=0.0,
+            overall=0.0,
         )
         conf = 0.0
 

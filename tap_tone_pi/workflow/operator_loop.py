@@ -556,9 +556,7 @@ class OperatorLoop:
     # Spine advisory hook (PR#4) + UWSM persistence (PR#5)
     # -------------------------------------------------------------------------
 
-    def _extract_advisory_fields(
-        self, directive: Any
-    ) -> tuple[Any, Any, Any, Any]:
+    def _extract_advisory_fields(self, directive: Any) -> tuple[Any, Any, Any, Any]:
         """Extract (action, summary, focus, confidence) from a spine directive."""
         if directive is None:
             return None, None, None, None

@@ -72,7 +72,7 @@ class Geometry:
     @property
     def second_moment_of_area(self) -> float:
         """I = b * h^3 / 12 for rectangular section."""
-        return self.width_m * (self.thick_m ** 3) / 12.0
+        return self.width_m * (self.thick_m**3) / 12.0
 
     @property
     def slenderness_ratio(self) -> float:
@@ -194,7 +194,7 @@ def compute_E_from_slope(geom: Geometry, slope_N_per_m: float) -> float:
         Young's modulus in Pa
     """
     L, b, h = geom.span_m, geom.width_m, geom.thick_m
-    return (slope_N_per_m * (L ** 3)) / (4.0 * b * (h ** 3))
+    return (slope_N_per_m * (L**3)) / (4.0 * b * (h**3))
 
 
 def compute_E_single_point(geom: Geometry, F_N: float, delta_m: float) -> float:
@@ -218,7 +218,7 @@ def compute_E_single_point(geom: Geometry, F_N: float, delta_m: float) -> float:
         raise ValueError(f"Deflection must be > 0, got {delta_m}")
 
     L, b, h = geom.span_m, geom.width_m, geom.thick_m
-    return (F_N * (L ** 3)) / (4.0 * b * (h ** 3) * delta_m)
+    return (F_N * (L**3)) / (4.0 * b * (h**3) * delta_m)
 
 
 def linear_fit(x: List[float], y: List[float]) -> FitResult:
@@ -262,9 +262,7 @@ def linear_fit(x: List[float], y: List[float]) -> FitResult:
     return FitResult(slope_N_per_m=a, intercept_N=c, r2=r2, n_points=n)
 
 
-def compute_density(
-    strip: StripMassGeom, width_m: float, thick_m: float
-) -> float:
+def compute_density(strip: StripMassGeom, width_m: float, thick_m: float) -> float:
     """
     Compute density from strip mass and dimensions.
 
@@ -394,9 +392,7 @@ def read_csv_points(path: str) -> Tuple[List[float], List[float]]:
                 m_base = float(row["m_base_kg"])
                 m_test = float(row["m_test_kg"])
                 F = (m_test - m_base) * G
-                d = mm_to_m(
-                    float(row["defl_test_mm"]) - float(row["defl_base_mm"])
-                )
+                d = mm_to_m(float(row["defl_test_mm"]) - float(row["defl_base_mm"]))
 
             loads.append(F)
             defls.append(d)
@@ -561,7 +557,9 @@ def print_report(result: DeflectionResult) -> None:
 
     if result.h_target_mm is not None:
         print("\nThickness Target (constant E*h^3):")
-        print(f"  Reference     : {result.h_ref_mm:.3f} mm at {result.E_ref_GPa:.3f} GPa")
+        print(
+            f"  Reference     : {result.h_ref_mm:.3f} mm at {result.E_ref_GPa:.3f} GPa"
+        )
         print(f"  Target h      : {result.h_target_mm:.3f} mm")
 
     if result.warnings:

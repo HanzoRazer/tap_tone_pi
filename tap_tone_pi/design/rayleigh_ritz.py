@@ -49,6 +49,7 @@ from numpy.typing import NDArray
 
 class BoundaryCondition(Enum):
     """Plate boundary condition types."""
+
     FREE = "free"
     SIMPLY_SUPPORTED = "simply_supported"
     CLAMPED = "clamped"
@@ -64,31 +65,31 @@ class OrthotropicPlate:
     """Material and geometric properties of an orthotropic plate."""
 
     # Elastic moduli (Pa)
-    E_L: float      # Longitudinal (along grain)
-    E_C: float      # Cross-grain (across grain)
-    G_LC: float     # In-plane shear modulus
+    E_L: float  # Longitudinal (along grain)
+    E_C: float  # Cross-grain (across grain)
+    G_LC: float  # In-plane shear modulus
 
     # Poisson's ratios
-    nu_LC: float    # Poisson's ratio (strain in C due to stress in L)
-    nu_CL: float    # Poisson's ratio (strain in L due to stress in C)
+    nu_LC: float  # Poisson's ratio (strain in C due to stress in L)
+    nu_CL: float  # Poisson's ratio (strain in L due to stress in C)
 
     # Density (kg/m³)
     rho: float
 
     # Geometry
-    h: float        # Thickness (m)
-    a: float        # Length along L direction (m)
-    b: float        # Width along C direction (m)
+    h: float  # Thickness (m)
+    a: float  # Length along L direction (m)
+    b: float  # Width along C direction (m)
 
     @classmethod
     def from_wood(
         cls,
-        E_L: float,      # Pa
-        E_C: float,      # Pa
-        rho: float,      # kg/m³
-        h: float,        # m
-        a: float,        # m
-        b: float,        # m
+        E_L: float,  # Pa
+        E_C: float,  # Pa
+        rho: float,  # kg/m³
+        h: float,  # m
+        a: float,  # m
+        b: float,  # m
         nu_LC: float = 0.3,
     ) -> "OrthotropicPlate":
         """
@@ -115,33 +116,39 @@ class OrthotropicPlate:
         nu_CL = nu_LC * E_C / E_L
 
         return cls(
-            E_L=E_L, E_C=E_C, G_LC=G_LC,
-            nu_LC=nu_LC, nu_CL=nu_CL,
-            rho=rho, h=h, a=a, b=b,
+            E_L=E_L,
+            E_C=E_C,
+            G_LC=G_LC,
+            nu_LC=nu_LC,
+            nu_CL=nu_CL,
+            rho=rho,
+            h=h,
+            a=a,
+            b=b,
         )
 
     @property
     def D11(self) -> float:
         """Bending stiffness D₁₁ (along L direction)."""
         denom = 1.0 - self.nu_LC * self.nu_CL
-        return self.E_L * (self.h ** 3) / (12.0 * denom)
+        return self.E_L * (self.h**3) / (12.0 * denom)
 
     @property
     def D22(self) -> float:
         """Bending stiffness D₂₂ (along C direction)."""
         denom = 1.0 - self.nu_LC * self.nu_CL
-        return self.E_C * (self.h ** 3) / (12.0 * denom)
+        return self.E_C * (self.h**3) / (12.0 * denom)
 
     @property
     def D12(self) -> float:
         """Poisson coupling stiffness D₁₂."""
         denom = 1.0 - self.nu_LC * self.nu_CL
-        return self.nu_LC * self.E_C * (self.h ** 3) / (12.0 * denom)
+        return self.nu_LC * self.E_C * (self.h**3) / (12.0 * denom)
 
     @property
     def D66(self) -> float:
         """Twisting stiffness D₆₆."""
-        return self.G_LC * (self.h ** 3) / 12.0
+        return self.G_LC * (self.h**3) / 12.0
 
     @property
     def mass_per_area(self) -> float:
@@ -387,8 +394,8 @@ def compute_stiffness_matrix(
 
                     # D₁₂ term: (∂²w/∂x²)(∂²w/∂y²)
                     term_D12 = plate.D12 * (
-                        (d2phi_i * psi_i) * (phi_j * d2psi_j) +
-                        (phi_i * d2psi_i) * (d2phi_j * psi_j)
+                        (d2phi_i * psi_i) * (phi_j * d2psi_j)
+                        + (phi_i * d2psi_i) * (d2phi_j * psi_j)
                     )
 
                     # D₆₆ term: (∂²w/∂x∂y)²
@@ -552,7 +559,7 @@ class RayleighRitzResult:
         basis_y = get_basis_function(self.bc_y)
 
         # Evaluate mode shape
-        X, Y = np.meshgrid(x, y, indexing='ij')
+        X, Y = np.meshgrid(x, y, indexing="ij")
         w = np.zeros_like(X)
 
         for i, c in enumerate(mode.coefficients):
@@ -631,12 +638,14 @@ def solve_rayleigh_ritz(
         mi = max_idx // n_modes_y + 1
         ni = max_idx % n_modes_y + 1
 
-        modes.append(RayleighRitzMode(
-            mode_number=i + 1,
-            frequency_Hz=float(frequencies_Hz[i]),
-            mode_indices=(mi, ni),
-            coefficients=coeffs.copy(),
-        ))
+        modes.append(
+            RayleighRitzMode(
+                mode_number=i + 1,
+                frequency_Hz=float(frequencies_Hz[i]),
+                mode_indices=(mi, ni),
+                coefficients=coeffs.copy(),
+            )
+        )
 
     return RayleighRitzResult(
         plate=plate,
@@ -656,9 +665,11 @@ def format_rayleigh_ritz_report(result: RayleighRitzResult) -> str:
     lines.append("=" * 65)
 
     lines.append("\nPlate Properties:")
-    lines.append(f"  Dimensions : {result.plate.a*1000:.1f} x {result.plate.b*1000:.1f} x {result.plate.h*1000:.2f} mm")
-    lines.append(f"  E_L        : {result.plate.E_L/1e9:.2f} GPa")
-    lines.append(f"  E_C        : {result.plate.E_C/1e9:.2f} GPa")
+    lines.append(
+        f"  Dimensions : {result.plate.a * 1000:.1f} x {result.plate.b * 1000:.1f} x {result.plate.h * 1000:.2f} mm"
+    )
+    lines.append(f"  E_L        : {result.plate.E_L / 1e9:.2f} GPa")
+    lines.append(f"  E_C        : {result.plate.E_C / 1e9:.2f} GPa")
     lines.append(f"  E_L/E_C    : {result.plate.orthotropy_ratio:.1f}")
     lines.append(f"  Density    : {result.plate.rho:.0f} kg/m3")
 
@@ -668,7 +679,7 @@ def format_rayleigh_ritz_report(result: RayleighRitzResult) -> str:
 
     lines.append("\nModal Frequencies:")
     lines.append(f"  {'Mode':<6} {'(m,n)':<8} {'Frequency':>12}")
-    lines.append(f"  {'-'*6} {'-'*8} {'-'*12}")
+    lines.append(f"  {'-' * 6} {'-' * 8} {'-' * 12}")
 
     for mode in result.modes:
         lines.append(

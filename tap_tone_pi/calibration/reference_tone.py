@@ -103,7 +103,10 @@ def measure_amplitude_dbfs(signal: np.ndarray) -> float:
 
 
 def find_fundamental_frequency(
-    signal: np.ndarray, sample_rate: int, expected_freq: float, search_range: float = 50.0
+    signal: np.ndarray,
+    sample_rate: int,
+    expected_freq: float,
+    search_range: float = 50.0,
 ) -> float:
     """
     Find the fundamental frequency using FFT.
@@ -123,7 +126,9 @@ def find_fundamental_frequency(
     freqs = np.fft.rfftfreq(n, 1.0 / sample_rate)
 
     # Find peak in search range
-    mask = (freqs >= expected_freq - search_range) & (freqs <= expected_freq + search_range)
+    mask = (freqs >= expected_freq - search_range) & (
+        freqs <= expected_freq + search_range
+    )
     masked_magnitude = np.abs(fft_result)
     masked_magnitude[~mask] = 0
 
@@ -190,7 +195,10 @@ def measure_thd(
 
 
 def estimate_noise_floor(
-    signal: np.ndarray, sample_rate: int, exclude_freq: float, exclude_width: float = 100.0
+    signal: np.ndarray,
+    sample_rate: int,
+    exclude_freq: float,
+    exclude_width: float = 100.0,
 ) -> float:
     """
     Estimate noise floor excluding signal frequency.
@@ -214,7 +222,10 @@ def estimate_noise_floor(
     mask = np.ones(len(freqs), dtype=bool)
     for h in range(1, 10):  # Exclude first 9 harmonics
         harmonic_freq = exclude_freq * h
-        mask &= ~((freqs >= harmonic_freq - exclude_width) & (freqs <= harmonic_freq + exclude_width))
+        mask &= ~(
+            (freqs >= harmonic_freq - exclude_width)
+            & (freqs <= harmonic_freq + exclude_width)
+        )
 
     # Calculate noise floor from remaining bins
     if np.any(mask):
@@ -277,9 +288,7 @@ def run_reference_tone_test(
         captured = play_and_record_fn(reference, config.sample_rate)
 
         if captured is None or len(captured) == 0:
-            return ReferenceToneResult(
-                success=False, error_message="No audio captured"
-            )
+            return ReferenceToneResult(success=False, error_message="No audio captured")
 
         # Trim to analysis region (skip fade in/out)
         trim_samples = int(0.1 * config.sample_rate)  # 100ms
@@ -299,14 +308,10 @@ def run_reference_tone_test(
         frequency_error = measured_freq - config.frequency_hz
 
         # Measure THD
-        thd_db, thd_percent = measure_thd(
-            captured, config.sample_rate, measured_freq
-        )
+        thd_db, thd_percent = measure_thd(captured, config.sample_rate, measured_freq)
 
         # Estimate noise floor
-        noise_floor = estimate_noise_floor(
-            captured, config.sample_rate, measured_freq
-        )
+        noise_floor = estimate_noise_floor(captured, config.sample_rate, measured_freq)
 
         # Calculate SNR
         snr_db = measured_dbfs - noise_floor

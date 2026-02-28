@@ -147,7 +147,9 @@ class AutoTriggerDetector:
         self._post_trigger_samples = int(sample_rate * self.config.post_trigger_seconds)
         self._settle_chunks = max(1, self.config.settle_ms // self.config.chunk_ms)
         # M3 fix: Calculate discard chunks for ADC settling
-        self._discard_chunks = max(0, self.config.discard_initial_ms // self.config.chunk_ms)
+        self._discard_chunks = max(
+            0, self.config.discard_initial_ms // self.config.chunk_ms
+        )
 
         # State
         self._state = TriggerState.IDLE

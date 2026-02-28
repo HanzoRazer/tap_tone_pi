@@ -27,6 +27,7 @@ def _utc_now() -> str:
         .replace("+00:00", "Z")
     )
 
+
 def _row_to_letters(row: int) -> str:
     """Convert row index to spreadsheet-style letter ID.
 
@@ -45,6 +46,7 @@ def _row_to_letters(row: int) -> str:
         n, remainder = divmod(n - 1, 26)
         result.append(chr(65 + remainder))
     return "".join(reversed(result))
+
 
 class PointStatus(str, Enum):
     """Status of a measurement point."""

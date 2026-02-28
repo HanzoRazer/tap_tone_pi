@@ -24,11 +24,11 @@ from pathlib import Path
 # Thresholds (edit here to tighten gates over time)
 # ---------------------------------------------------------------------------
 # Complexity: no function worse than this grade
-MAX_COMPLEXITY_GRADE = "D"            # reject E / F
-MAX_AVG_COMPLEXITY = 16.0             # reject if average rises above this
+MAX_COMPLEXITY_GRADE = "D"  # reject E / F
+MAX_AVG_COMPLEXITY = 16.0  # reject if average rises above this
 
 # Maintainability: no file worse than this grade
-MIN_MI_GRADE = "B"                    # reject C / D / F  (B = MI ≥ 10)
+MIN_MI_GRADE = "B"  # reject C / D / F  (B = MI ≥ 10)
 
 # Directories to scan
 SCAN_DIRS = ["tap_tone_pi/", "scripts/", "modes/"]
@@ -42,7 +42,10 @@ def _run(cmd: list[str], *, capture: bool = True) -> subprocess.CompletedProcess
     if cmd and cmd[0] == "python":
         cmd = [PYTHON] + cmd[1:]
     return subprocess.run(
-        cmd, capture_output=capture, text=True, cwd=ROOT,
+        cmd,
+        capture_output=capture,
+        text=True,
+        cwd=ROOT,
     )
 
 
@@ -75,7 +78,9 @@ def check_complexity() -> bool:
     passed = True
 
     if violations:
-        print(f"FAIL: {len(violations)} function(s) exceed grade {MAX_COMPLEXITY_GRADE}:")
+        print(
+            f"FAIL: {len(violations)} function(s) exceed grade {MAX_COMPLEXITY_GRADE}:"
+        )
         for v in violations:
             print(f"  {v}")
         passed = False
@@ -92,7 +97,9 @@ def check_complexity() -> bool:
             try:
                 avg = float(line.split("(")[1].rstrip(")"))
                 if avg > MAX_AVG_COMPLEXITY:
-                    print(f"FAIL: Average CC {avg:.2f} exceeds threshold {MAX_AVG_COMPLEXITY}")
+                    print(
+                        f"FAIL: Average CC {avg:.2f} exceeds threshold {MAX_AVG_COMPLEXITY}"
+                    )
                     passed = False
                 else:
                     print(f"PASS: Average CC {avg:.2f} <= {MAX_AVG_COMPLEXITY}")
@@ -141,8 +148,18 @@ def check_maintainability() -> bool:
 def check_security() -> bool:
     """Fail if bandit finds any MEDIUM+ severity issue."""
     result = _run(
-        ["python", "-m", "bandit", "-r", "tap_tone_pi/",
-         "--severity-level", "medium", "-f", "json", "-q"]
+        [
+            "python",
+            "-m",
+            "bandit",
+            "-r",
+            "tap_tone_pi/",
+            "--severity-level",
+            "medium",
+            "-f",
+            "json",
+            "-q",
+        ]
     )
 
     if result.returncode == 2:
@@ -176,8 +193,10 @@ def check_security() -> bool:
     if findings:
         print(f"FAIL: {len(findings)} MEDIUM+ security finding(s):")
         for f in findings:
-            print(f"  {f['test_id']} {f['severity']} "
-                  f"{f['filename']}:{f['line_number']} — {f['issue_text'][:80]}")
+            print(
+                f"  {f['test_id']} {f['severity']} "
+                f"{f['filename']}:{f['line_number']} — {f['issue_text'][:80]}"
+            )
         return False
 
     print("PASS: No MEDIUM+ security findings")
@@ -190,15 +209,20 @@ def check_security() -> bool:
 def check_deadcode() -> bool:
     """Fail if vulture finds any dead code at ≥90% confidence."""
     result = _run(
-        ["python", "-m", "vulture",
-         "tap_tone_pi/", "tests/", "vulture_whitelist.py",
-         "--min-confidence", "90"]
+        [
+            "python",
+            "-m",
+            "vulture",
+            "tap_tone_pi/",
+            "tests/",
+            "vulture_whitelist.py",
+            "--min-confidence",
+            "90",
+        ]
     )
 
     findings = [
-        line.strip()
-        for line in result.stdout.strip().splitlines()
-        if line.strip()
+        line.strip() for line in result.stdout.strip().splitlines() if line.strip()
     ]
 
     if findings:

@@ -382,7 +382,9 @@ class TestLimitTesting:
         upper = create_flat_limit("upper", LimitType.UPPER, -20.0)
 
         result = check_against_limits(
-            frequencies, values, [upper],
+            frequencies,
+            values,
+            [upper],
             warn_margin_db=3.0,  # 3 dB margin
         )
 

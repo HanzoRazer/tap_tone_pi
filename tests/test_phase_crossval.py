@@ -156,7 +156,11 @@ class TestMatchPhases:
     def test_low_coherence_reduces_confidence(self):
         """Low P2 coherence should reduce match confidence."""
         p1 = [Phase1Peak(freq_hz=150.0, magnitude=0.9, confidence=0.95)]
-        p2 = [Phase2Mode(freq_hz=150.0, n_points=25, max_magnitude=1.0, coherence_mean=0.5)]
+        p2 = [
+            Phase2Mode(
+                freq_hz=150.0, n_points=25, max_magnitude=1.0, coherence_mean=0.5
+            )
+        ]
 
         result = match_phases(p1, p2)
 
@@ -250,7 +254,11 @@ class TestLoadFromJson:
         data = {
             "target_frequencies_hz": [100.0, 150.0, 220.0],
             "n_points": 25,
-            "ods_files": ["ods_f_100.0Hz.json", "ods_f_150.0Hz.json", "ods_f_220.0Hz.json"],
+            "ods_files": [
+                "ods_f_100.0Hz.json",
+                "ods_f_150.0Hz.json",
+                "ods_f_220.0Hz.json",
+            ],
         }
 
         modes = load_p2_modes_from_json(data)
@@ -304,10 +312,18 @@ class TestPhysicalRealism:
         ]
         # P2 ODS at slightly different frequencies (measurement variation)
         p2 = [
-            Phase2Mode(freq_hz=84.5, n_points=25, max_magnitude=1.0, coherence_mean=0.95),
-            Phase2Mode(freq_hz=151.0, n_points=25, max_magnitude=0.9, coherence_mean=0.92),
-            Phase2Mode(freq_hz=250.0, n_points=25, max_magnitude=0.8, coherence_mean=0.88),
-            Phase2Mode(freq_hz=308.0, n_points=25, max_magnitude=0.7, coherence_mean=0.85),
+            Phase2Mode(
+                freq_hz=84.5, n_points=25, max_magnitude=1.0, coherence_mean=0.95
+            ),
+            Phase2Mode(
+                freq_hz=151.0, n_points=25, max_magnitude=0.9, coherence_mean=0.92
+            ),
+            Phase2Mode(
+                freq_hz=250.0, n_points=25, max_magnitude=0.8, coherence_mean=0.88
+            ),
+            Phase2Mode(
+                freq_hz=308.0, n_points=25, max_magnitude=0.7, coherence_mean=0.85
+            ),
         ]
 
         result = match_phases(p1, p2, tolerance_pct=2.0)
@@ -322,7 +338,11 @@ class TestPhysicalRealism:
             Phase1Peak(freq_hz=150.0, magnitude=0.9, confidence=0.92),
             Phase1Peak(freq_hz=60.0, magnitude=0.3, confidence=0.7),  # 60Hz hum
         ]
-        p2 = [Phase2Mode(freq_hz=151.0, n_points=25, max_magnitude=1.0, coherence_mean=0.95)]
+        p2 = [
+            Phase2Mode(
+                freq_hz=151.0, n_points=25, max_magnitude=1.0, coherence_mean=0.95
+            )
+        ]
 
         result = match_phases(p1, p2, tolerance_pct=2.0)
 

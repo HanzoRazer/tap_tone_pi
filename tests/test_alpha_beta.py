@@ -48,48 +48,59 @@ class TestComputeAlpha:
     def test_free_boundary_gives_alpha_one(self):
         """Free boundary should give alpha = 1.0."""
         alpha, info = compute_alpha(
-            E_L=12e9, E_C=0.8e9, h=2.8e-3, a=0.5, b=0.38,
-            boundary="free"
+            E_L=12e9, E_C=0.8e9, h=2.8e-3, a=0.5, b=0.38, boundary="free"
         )
         assert alpha == 1.0
 
     def test_glued_boundary_greater_than_one(self):
         """Glued boundary should give alpha > 1."""
         alpha, info = compute_alpha(
-            E_L=12e9, E_C=0.8e9, h=2.8e-3, a=0.5, b=0.38,
-            boundary="glued"
+            E_L=12e9, E_C=0.8e9, h=2.8e-3, a=0.5, b=0.38, boundary="glued"
         )
         assert alpha > 1.0
 
     def test_clamped_greater_than_glued(self):
         """Clamped boundary should give higher alpha than glued."""
         alpha_glued, _ = compute_alpha(
-            E_L=12e9, E_C=0.8e9, h=2.8e-3, a=0.5, b=0.38,
-            boundary="glued"
+            E_L=12e9, E_C=0.8e9, h=2.8e-3, a=0.5, b=0.38, boundary="glued"
         )
         alpha_clamped, _ = compute_alpha(
-            E_L=12e9, E_C=0.8e9, h=2.8e-3, a=0.5, b=0.38,
-            boundary="clamped"
+            E_L=12e9, E_C=0.8e9, h=2.8e-3, a=0.5, b=0.38, boundary="clamped"
         )
         assert alpha_clamped > alpha_glued
 
     def test_braces_increase_alpha(self):
         """Adding braces should increase alpha."""
         alpha_no_brace, _ = compute_alpha(
-            E_L=12e9, E_C=0.8e9, h=2.8e-3, a=0.5, b=0.38,
-            boundary="glued", brace_count=0
+            E_L=12e9,
+            E_C=0.8e9,
+            h=2.8e-3,
+            a=0.5,
+            b=0.38,
+            boundary="glued",
+            brace_count=0,
         )
         alpha_with_brace, _ = compute_alpha(
-            E_L=12e9, E_C=0.8e9, h=2.8e-3, a=0.5, b=0.38,
-            boundary="glued", brace_count=5
+            E_L=12e9,
+            E_C=0.8e9,
+            h=2.8e-3,
+            a=0.5,
+            b=0.38,
+            boundary="glued",
+            brace_count=5,
         )
         assert alpha_with_brace > alpha_no_brace
 
     def test_alpha_in_realistic_range(self):
         """Alpha should be in typical range 1.0 - 2.0."""
         alpha, _ = compute_alpha(
-            E_L=12e9, E_C=0.8e9, h=2.8e-3, a=0.5, b=0.38,
-            boundary="glued", brace_count=5
+            E_L=12e9,
+            E_C=0.8e9,
+            h=2.8e-3,
+            a=0.5,
+            b=0.38,
+            boundary="glued",
+            brace_count=5,
         )
         assert 1.0 < alpha < 2.0
 
@@ -100,16 +111,22 @@ class TestComputeBeta:
     def test_no_air_loading_gives_beta_one(self):
         """Without air loading, beta should be close to 1."""
         beta, info = compute_beta(
-            rho=420, h=2.8e-3, a=0.5, b=0.38,
+            rho=420,
+            h=2.8e-3,
+            a=0.5,
+            b=0.38,
             include_air_loading=False,
-            brace_mass_total=0.0
+            brace_mass_total=0.0,
         )
         assert beta == 1.0
 
     def test_air_loading_increases_beta(self):
         """Air loading should increase beta > 1."""
         beta, info = compute_beta(
-            rho=420, h=2.8e-3, a=0.5, b=0.38,
+            rho=420,
+            h=2.8e-3,
+            a=0.5,
+            b=0.38,
             include_air_loading=True,
             cavity_depth=0.10,
         )
@@ -118,23 +135,32 @@ class TestComputeBeta:
     def test_braces_increase_beta(self):
         """Adding brace mass should increase beta."""
         beta_no_brace, _ = compute_beta(
-            rho=420, h=2.8e-3, a=0.5, b=0.38,
+            rho=420,
+            h=2.8e-3,
+            a=0.5,
+            b=0.38,
             include_air_loading=True,
             cavity_depth=0.10,
-            brace_mass_total=0.0
+            brace_mass_total=0.0,
         )
         beta_with_brace, _ = compute_beta(
-            rho=420, h=2.8e-3, a=0.5, b=0.38,
+            rho=420,
+            h=2.8e-3,
+            a=0.5,
+            b=0.38,
             include_air_loading=True,
             cavity_depth=0.10,
-            brace_mass_total=0.020  # 20g of braces
+            brace_mass_total=0.020,  # 20g of braces
         )
         assert beta_with_brace > beta_no_brace
 
     def test_beta_in_realistic_range(self):
         """Beta should be in typical range 1.3 - 2.0 with air loading."""
         beta, _ = compute_beta(
-            rho=420, h=2.8e-3, a=0.5, b=0.38,
+            rho=420,
+            h=2.8e-3,
+            a=0.5,
+            b=0.38,
             include_air_loading=True,
             cavity_depth=0.10,
         )
@@ -184,9 +210,7 @@ class TestBraceStiffnessAndMass:
 
     def test_brace_stiffness_positive(self):
         """Brace stiffness must be positive."""
-        k = brace_stiffness(
-            E_brace=12e9, h_brace=0.012, w_brace=0.006, L_brace=0.40
-        )
+        k = brace_stiffness(E_brace=12e9, h_brace=0.012, w_brace=0.006, L_brace=0.40)
         assert k > 0
 
     def test_more_braces_more_stiffness(self):
@@ -201,9 +225,7 @@ class TestBraceStiffnessAndMass:
 
     def test_brace_mass_positive(self):
         """Brace mass must be positive."""
-        m = brace_mass(
-            rho_brace=500, h_brace=0.012, w_brace=0.006, L_brace=0.40
-        )
+        m = brace_mass(rho_brace=500, h_brace=0.012, w_brace=0.006, L_brace=0.40)
         assert m > 0
 
 
@@ -213,8 +235,12 @@ class TestAnalyzeAlphaBeta:
     def test_returns_result_object(self):
         """Should return AlphaBetaResult dataclass."""
         result = analyze_alpha_beta(
-            E_L=12e9, E_C=0.8e9, rho=420,
-            h=2.8e-3, a=0.5, b=0.38,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            h=2.8e-3,
+            a=0.5,
+            b=0.38,
             f_free_Hz=150.0,
         )
         assert isinstance(result, AlphaBetaResult)
@@ -222,8 +248,12 @@ class TestAnalyzeAlphaBeta:
     def test_predicts_lower_box_frequency(self):
         """Box frequency should typically be lower than free."""
         result = analyze_alpha_beta(
-            E_L=12e9, E_C=0.8e9, rho=420,
-            h=2.8e-3, a=0.5, b=0.38,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            h=2.8e-3,
+            a=0.5,
+            b=0.38,
             f_free_Hz=150.0,
             boundary="glued",
             cavity_depth=0.10,
@@ -233,8 +263,12 @@ class TestAnalyzeAlphaBeta:
     def test_to_dict_works(self):
         """Result should be serializable to dict."""
         result = analyze_alpha_beta(
-            E_L=12e9, E_C=0.8e9, rho=420,
-            h=2.8e-3, a=0.5, b=0.38,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            h=2.8e-3,
+            a=0.5,
+            b=0.38,
             f_free_Hz=150.0,
         )
         d = result.to_dict()
@@ -249,8 +283,12 @@ class TestFormatAlphaBetaReport:
     def test_returns_string(self):
         """Should return formatted string."""
         result = analyze_alpha_beta(
-            E_L=12e9, E_C=0.8e9, rho=420,
-            h=2.8e-3, a=0.5, b=0.38,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            h=2.8e-3,
+            a=0.5,
+            b=0.38,
             f_free_Hz=150.0,
         )
         report = format_alpha_beta_report(result)
@@ -260,8 +298,12 @@ class TestFormatAlphaBetaReport:
     def test_includes_key_values(self):
         """Report should include alpha, beta, gamma."""
         result = analyze_alpha_beta(
-            E_L=12e9, E_C=0.8e9, rho=420,
-            h=2.8e-3, a=0.5, b=0.38,
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            h=2.8e-3,
+            a=0.5,
+            b=0.38,
             f_free_Hz=150.0,
         )
         report = format_alpha_beta_report(result)

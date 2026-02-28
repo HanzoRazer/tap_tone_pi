@@ -365,7 +365,9 @@ def propagate_uncertainty_linear(
     u = list(uncertainties)
 
     if len(c) != len(u):
-        raise ValueError(f"Length mismatch: {len(c)} coefficients, {len(u)} uncertainties")
+        raise ValueError(
+            f"Length mismatch: {len(c)} coefficients, {len(u)} uncertainties"
+        )
 
     return math.sqrt(sum(ci**2 * ui**2 for ci, ui in zip(c, u)))
 
@@ -438,14 +440,16 @@ class UncertaintyBudget:
             source_type: "Type A" (statistical) or "Type B" (other)
             degrees_of_freedom: Degrees of freedom (for Welch-Satterthwaite)
         """
-        self.components.append({
-            "name": name,
-            "uncertainty": uncertainty,
-            "unit": unit,
-            "source_type": source_type,
-            "degrees_of_freedom": degrees_of_freedom,
-            "contribution_pct": None,  # Computed when combined
-        })
+        self.components.append(
+            {
+                "name": name,
+                "uncertainty": uncertainty,
+                "unit": unit,
+                "source_type": source_type,
+                "degrees_of_freedom": degrees_of_freedom,
+                "contribution_pct": None,  # Computed when combined
+            }
+        )
 
     @property
     def combined_uncertainty(self) -> float:
@@ -456,7 +460,7 @@ class UncertaintyBudget:
 
     def compute_contributions(self) -> None:
         """Compute percentage contribution of each component."""
-        combined_sq = self.combined_uncertainty ** 2
+        combined_sq = self.combined_uncertainty**2
         if combined_sq < 1e-20:
             return
 
@@ -484,9 +488,7 @@ class UncertaintyBudget:
         lines.append("=" * 60)
 
         # Components table
-        lines.append(
-            f"{'Source':<25} {'Type':<8} {'u(x)':<12} {'Contribution':<12}"
-        )
+        lines.append(f"{'Source':<25} {'Type':<8} {'u(x)':<12} {'Contribution':<12}")
         lines.append("-" * 60)
 
         for c in self.components:
@@ -578,7 +580,9 @@ def compute_weighted_mean(
     uncs = list(uncertainties)
 
     if len(vals) != len(uncs):
-        raise ValueError(f"Length mismatch: {len(vals)} values, {len(uncs)} uncertainties")
+        raise ValueError(
+            f"Length mismatch: {len(vals)} values, {len(uncs)} uncertainties"
+        )
 
     if len(vals) == 0:
         raise ValueError("Empty input")
@@ -587,7 +591,7 @@ def compute_weighted_mean(
         raise ValueError("All uncertainties must be positive")
 
     # Inverse-variance weights
-    weights = [1.0 / (u ** 2) for u in uncs]
+    weights = [1.0 / (u**2) for u in uncs]
     sum_weights = sum(weights)
 
     # Weighted mean

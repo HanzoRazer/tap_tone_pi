@@ -25,7 +25,9 @@ class CaptureResult:
     """Result of an audio capture operation."""
 
     sample_rate: int
-    audio: Any  # np.ndarray, shape: (n_samples,) - use Any to avoid runtime numpy import
+    audio: (
+        Any  # np.ndarray, shape: (n_samples,) - use Any to avoid runtime numpy import
+    )
 
 
 def list_devices() -> list[dict]:
@@ -175,7 +177,9 @@ def record_audio(
 
     # Record float32 in [-1, 1]
     try:
-        audio = sd.rec(frames=n_samples, channels=channels, dtype="float32", blocking=True)
+        audio = sd.rec(
+            frames=n_samples, channels=channels, dtype="float32", blocking=True
+        )
     except Exception as e:
         raise CaptureError(
             f"Recording failed: {e}",
@@ -231,8 +235,6 @@ def auto_detect_device() -> int | None:
 
     # Fallback: system default
     return None
-
-
 
 
 def _validate_output_device(device: int | None) -> None:
@@ -355,6 +357,7 @@ def _get_auto_trigger_exports() -> dict[str, Any]:
         AutoTriggerDetector,
         record_audio_triggered,
     )
+
     return {
         "TriggerState": TriggerState,
         "TriggerConfig": TriggerConfig,
@@ -368,8 +371,12 @@ def _get_auto_trigger_exports() -> dict[str, Any]:
 def __getattr__(name: str) -> Any:
     """Lazy load auto-trigger exports on first access."""
     _auto_trigger_names = {
-        "TriggerState", "TriggerConfig", "TriggerResult",
-        "TriggerCallback", "AutoTriggerDetector", "record_audio_triggered"
+        "TriggerState",
+        "TriggerConfig",
+        "TriggerResult",
+        "TriggerCallback",
+        "AutoTriggerDetector",
+        "record_audio_triggered",
     }
     if name in _auto_trigger_names:
         exports = _get_auto_trigger_exports()

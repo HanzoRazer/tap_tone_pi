@@ -32,9 +32,7 @@ class TestValidateDeviceIndex:
             {"index": 1, "max_input_channels": 0},
             {"index": 2, "max_input_channels": 1},
         ]
-        with patch(
-            "tap_tone_pi.capture.list_devices", return_value=mock_devices
-        ):
+        with patch("tap_tone_pi.capture.list_devices", return_value=mock_devices):
             assert validate_device_index(0) == 0
             assert validate_device_index(2) == 2
 
@@ -43,9 +41,7 @@ class TestValidateDeviceIndex:
         mock_devices = [
             {"index": 0, "max_input_channels": 2},
         ]
-        with patch(
-            "tap_tone_pi.capture.list_devices", return_value=mock_devices
-        ):
+        with patch("tap_tone_pi.capture.list_devices", return_value=mock_devices):
             with pytest.raises(SystemExit) as exc_info:
                 validate_device_index(99)
             assert exc_info.value.code == 1
@@ -56,9 +52,7 @@ class TestValidateDeviceIndex:
             {"index": 0, "max_input_channels": 0},  # output only
             {"index": 1, "max_input_channels": 2},
         ]
-        with patch(
-            "tap_tone_pi.capture.list_devices", return_value=mock_devices
-        ):
+        with patch("tap_tone_pi.capture.list_devices", return_value=mock_devices):
             with pytest.raises(SystemExit):
                 validate_device_index(0)
 

@@ -48,11 +48,11 @@ class UncertaintyType(Enum):
 class DistributionType(Enum):
     """Probability distribution assumed for Type B uncertainty."""
 
-    NORMAL = "normal"           # Gaussian, u = a/k where k is coverage factor
-    RECTANGULAR = "rectangular" # Uniform, u = a/√3
-    TRIANGULAR = "triangular"   # u = a/√6
-    U_SHAPED = "u_shaped"       # Arcsine, u = a/√2
-    CUSTOM = "custom"           # User-specified divisor
+    NORMAL = "normal"  # Gaussian, u = a/k where k is coverage factor
+    RECTANGULAR = "rectangular"  # Uniform, u = a/√3
+    TRIANGULAR = "triangular"  # u = a/√6
+    U_SHAPED = "u_shaped"  # Arcsine, u = a/√2
+    CUSTOM = "custom"  # User-specified divisor
 
 
 @dataclass
@@ -285,7 +285,8 @@ def create_type_b_normal(
         unit=unit,
         uncertainty_type=UncertaintyType.TYPE_B,
         distribution=DistributionType.NORMAL,
-        description=description or f"Normal, U={expanded_uncertainty} at k={coverage_factor}",
+        description=description
+        or f"Normal, U={expanded_uncertainty} at k={coverage_factor}",
         sensitivity_coefficient=sensitivity_coefficient,
         degrees_of_freedom=50,  # Effectively infinite
         half_width=float(expanded_uncertainty),
@@ -512,21 +513,21 @@ def welch_satterthwaite_dof(
     - Result is typically truncated to integer for t-distribution lookup
     """
     if not contributions or not degrees_of_freedom:
-        return float('inf')
+        return float("inf")
 
     if len(contributions) != len(degrees_of_freedom):
         raise ValueError("contributions and degrees_of_freedom must have same length")
 
     u_c_squared = sum(contributions)
-    u_c_fourth = u_c_squared ** 2
+    u_c_fourth = u_c_squared**2
 
     denominator = 0.0
     for u_i_sq, nu_i in zip(contributions, degrees_of_freedom):
         if nu_i > 0:
-            denominator += (u_i_sq ** 2) / nu_i
+            denominator += (u_i_sq**2) / nu_i
 
     if denominator == 0:
-        return float('inf')
+        return float("inf")
 
     nu_eff = u_c_fourth / denominator
     return nu_eff
@@ -596,6 +597,7 @@ class CombinedUncertainty:
     dominant_source : str
         Name of largest contributor.
     """
+
     combined_standard_uncertainty: float
     effective_degrees_of_freedom: float
     coverage_factor: float
@@ -661,8 +663,8 @@ def combine_with_gum(
     if not components:
         return CombinedUncertainty(
             combined_standard_uncertainty=0.0,
-            effective_degrees_of_freedom=float('inf'),
-            coverage_factor=coverage_factor(float('inf'), confidence_level),
+            effective_degrees_of_freedom=float("inf"),
+            coverage_factor=coverage_factor(float("inf"), confidence_level),
             expanded_uncertainty=0.0,
             confidence_level=confidence_level,
         )

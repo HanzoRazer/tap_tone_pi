@@ -294,7 +294,9 @@ class ErrorAnalysis:
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
         # Remove empty lists and None values
-        d["components"] = [c.to_dict() if hasattr(c, "to_dict") else c for c in self.components]
+        d["components"] = [
+            c.to_dict() if hasattr(c, "to_dict") else c for c in self.components
+        ]
         return {k: v for k, v in d.items() if v is not None and v != []}
 
 
@@ -340,7 +342,9 @@ class QualityAssessment:
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
-        d["triggered_rules"] = [r.to_dict() if hasattr(r, "to_dict") else r for r in self.triggered_rules]
+        d["triggered_rules"] = [
+            r.to_dict() if hasattr(r, "to_dict") else r for r in self.triggered_rules
+        ]
         return {k: v for k, v in d.items() if v is not None and v != []}
 
 
@@ -529,7 +533,9 @@ class QALabSpecEntry:
                     "preset_SI_typical": self.preset_SI_typical,
                     "preset_h_recommended_mm": self.preset_h_recommended_mm,
                     "status": self.preset_match_status,
-                } if self.instrument_type else None,
+                }
+                if self.instrument_type
+                else None,
             },
             # Section 5
             "modal_analysis": self.modal.to_dict(),
@@ -628,9 +634,7 @@ def _load_acoustic_data(
         elif "peaks" in peaks and peaks["peaks"]:
             peak_list = peaks["peaks"]
             if isinstance(peak_list[0], dict):
-                freqs = [
-                    p.get("frequency_hz", p.get("freq_hz", 0)) for p in peak_list
-                ]
+                freqs = [p.get("frequency_hz", p.get("freq_hz", 0)) for p in peak_list]
                 amps = [p.get("amplitude", 0) for p in peak_list]
                 measured_freq = min(f for f in freqs if f > 0)
                 entry.measurements.peak_frequencies_hz = freqs
@@ -981,9 +985,15 @@ def build_qa_lab_spec_entry(
 
     if E_static is not None:
         _apply_crossvalidation(
-            entry, E_static, E_dynamic, measured_freq,
-            density_kg_m3, length_mm, thickness_mm,
-            crossval_threshold_pct, warnings,
+            entry,
+            E_static,
+            E_dynamic,
+            measured_freq,
+            density_kg_m3,
+            length_mm,
+            thickness_mm,
+            crossval_threshold_pct,
+            warnings,
         )
 
     E_best = E_static or E_dynamic
@@ -1149,7 +1159,9 @@ def export_qa_lab_csv(
                 "worst_wolf_severity": entry.special.wolf.worst_wolf_severity,
                 "worst_wolf_freq_hz": entry.special.wolf.worst_wolf_freq_hz,
                 # Section 9
-                "entry_hash_sha256": entry.audit.entry_hash_sha256[:16] + "..." if entry.audit.entry_hash_sha256 else None,
+                "entry_hash_sha256": entry.audit.entry_hash_sha256[:16] + "..."
+                if entry.audit.entry_hash_sha256
+                else None,
                 # Misc
                 "instrument_type": entry.instrument_type,
                 "preset_match_status": entry.preset_match_status,

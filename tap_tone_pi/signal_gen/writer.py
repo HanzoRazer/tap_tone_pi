@@ -144,7 +144,7 @@ def write_wav(
             # Pack 24-bit samples (3 bytes per sample)
             packed = bytearray()
             for frame in data:
-                for sample in (frame if channels > 1 else [frame]):
+                for sample in frame if channels > 1 else [frame]:
                     # Extract lower 3 bytes of int32
                     b = int(sample).to_bytes(4, byteorder="little", signed=True)
                     packed.extend(b[:3])

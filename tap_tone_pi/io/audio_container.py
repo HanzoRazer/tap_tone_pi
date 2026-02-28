@@ -77,7 +77,9 @@ class AudioContainer:
         if self.sample_rate <= 0:
             raise ValueError(f"sample_rate must be positive, got {self.sample_rate}")
         if not isinstance(self.signal, np.ndarray):
-            object.__setattr__(self, "signal", np.asarray(self.signal, dtype=np.float32))
+            object.__setattr__(
+                self, "signal", np.asarray(self.signal, dtype=np.float32)
+            )
 
     @property
     def duration_s(self) -> float:
@@ -91,7 +93,9 @@ class AudioContainer:
         """Number of samples."""
         return self.signal.shape[0]
 
-    def validate_sample_rate(self, expected_fs: int, tolerance_pct: float = 0.1) -> None:
+    def validate_sample_rate(
+        self, expected_fs: int, tolerance_pct: float = 0.1
+    ) -> None:
         """
         Validate sample rate matches expected value.
 
@@ -146,7 +150,9 @@ class AudioContainer2Ch:
         """Number of samples per channel."""
         return self.reference.shape[0]
 
-    def validate_sample_rate(self, expected_fs: int, tolerance_pct: float = 0.1) -> None:
+    def validate_sample_rate(
+        self, expected_fs: int, tolerance_pct: float = 0.1
+    ) -> None:
         """Validate sample rate matches expected value."""
         validate_sample_rate(
             expected_fs, self.sample_rate, self.source, tolerance_pct=tolerance_pct
@@ -275,7 +281,18 @@ SAMPLE_RATES = {
 
 def is_standard_sample_rate(fs: int) -> bool:
     """Check if sample rate is a common standard."""
-    standard_rates = {8000, 11025, 16000, 22050, 44100, 48000, 88200, 96000, 176400, 192000}
+    standard_rates = {
+        8000,
+        11025,
+        16000,
+        22050,
+        44100,
+        48000,
+        88200,
+        96000,
+        176400,
+        192000,
+    }
     return fs in standard_rates
 
 

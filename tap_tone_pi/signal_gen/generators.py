@@ -173,9 +173,7 @@ def generate_sweep(
     pre_samples = int(pre_silence_ms * sample_rate / 1000)
     post_samples = int(post_silence_ms * sample_rate / 1000)
 
-    result = np.concatenate(
-        [np.zeros(pre_samples), sweep, np.zeros(post_samples)]
-    )
+    result = np.concatenate([np.zeros(pre_samples), sweep, np.zeros(post_samples)])
 
     return result
 

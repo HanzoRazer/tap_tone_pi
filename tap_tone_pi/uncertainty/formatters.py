@@ -37,7 +37,9 @@ def format_with_uncertainty(
     if uncertainty >= 1:
         unc_decimals = max(0, significant_figures - int(math.log10(uncertainty)) - 1)
     else:
-        unc_decimals = significant_figures - int(math.floor(math.log10(uncertainty))) - 1
+        unc_decimals = (
+            significant_figures - int(math.floor(math.log10(uncertainty))) - 1
+        )
 
     unc_decimals = max(0, min(unc_decimals, 6))
 
@@ -103,7 +105,7 @@ def format_uncertainty_budget(
 
         for c in sorted_components:
             contribution_pct = (
-                c.contribution / (budget.combined_standard_uncertainty ** 2) * 100
+                c.contribution / (budget.combined_standard_uncertainty**2) * 100
                 if budget.combined_standard_uncertainty > 0
                 else 0
             )

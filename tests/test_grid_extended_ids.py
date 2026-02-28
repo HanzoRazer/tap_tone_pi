@@ -5,7 +5,6 @@ m4 Audit Fix: Grid ID Breaks at 26 Rows.
 Tests for spreadsheet-style column naming (A-Z, AA-AZ, BA-BZ, etc.).
 """
 
-
 from tap_tone_pi.core.grid import Grid, _row_to_letters
 
 
@@ -60,7 +59,9 @@ class TestRowToLetters:
             (702, "AAA"),
         ]
         for row, expected_id in expected:
-            assert _row_to_letters(row) == expected_id, f"Row {row} should be {expected_id}"
+            assert _row_to_letters(row) == expected_id, (
+                f"Row {row} should be {expected_id}"
+            )
 
 
 class TestGridRectangularExtended:

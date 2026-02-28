@@ -79,7 +79,9 @@ def cmd_calibrate_status(args: argparse.Namespace) -> int:
 
         # Stale warning
         if is_calibration_stale(data):
-            print(f"\n\033[93mWarning: Calibration is older than {CALIBRATION_EXPIRY_DAYS} days.")
+            print(
+                f"\n\033[93mWarning: Calibration is older than {CALIBRATION_EXPIRY_DAYS} days."
+            )
             print(f"Consider re-running calibration for best accuracy.{reset}")
 
         if data.notes:
@@ -344,7 +346,9 @@ def cmd_calibrate_verify(args: argparse.Namespace) -> int:
     print(f"\nCalibration data saved to: {path}")
 
     if not data.loopback_completed:
-        print("\nNote: Loopback test not completed. Run 'ttp calibrate loopback' for full calibration.")
+        print(
+            "\nNote: Loopback test not completed. Run 'ttp calibrate loopback' for full calibration."
+        )
     elif data.is_complete():
         print("\n\033[92mCalibration complete! Your device is now calibrated.\033[0m")
 
@@ -440,21 +444,33 @@ def add_calibrate_subcommand(subparsers) -> None:
     p_status.set_defaults(fn=cmd_calibrate_status)
 
     # loopback
-    p_loopback = cal_sub.add_parser("loopback", help="Run loopback frequency response test")
+    p_loopback = cal_sub.add_parser(
+        "loopback", help="Run loopback frequency response test"
+    )
     p_loopback.add_argument("--device", "-d", type=int, help="Device index")
     p_loopback.add_argument("--sample-rate", "-r", type=int, help="Sample rate (Hz)")
     p_loopback.add_argument("--duration", type=float, help="Test duration (seconds)")
-    p_loopback.add_argument("--simulate", action="store_true", help="Run in simulation mode")
-    p_loopback.add_argument("-y", "--yes", action="store_true", help="Skip confirmation")
+    p_loopback.add_argument(
+        "--simulate", action="store_true", help="Run in simulation mode"
+    )
+    p_loopback.add_argument(
+        "-y", "--yes", action="store_true", help="Skip confirmation"
+    )
     p_loopback.set_defaults(fn=cmd_calibrate_loopback)
 
     # verify
-    p_verify = cal_sub.add_parser("verify", help="Run reference tone amplitude verification")
+    p_verify = cal_sub.add_parser(
+        "verify", help="Run reference tone amplitude verification"
+    )
     p_verify.add_argument("--device", "-d", type=int, help="Device index")
     p_verify.add_argument("--sample-rate", "-r", type=int, help="Sample rate (Hz)")
     p_verify.add_argument("--duration", type=float, help="Test duration (seconds)")
-    p_verify.add_argument("--level", type=float, help="Reference level in dBFS (default: -20)")
-    p_verify.add_argument("--simulate", action="store_true", help="Run in simulation mode")
+    p_verify.add_argument(
+        "--level", type=float, help="Reference level in dBFS (default: -20)"
+    )
+    p_verify.add_argument(
+        "--simulate", action="store_true", help="Run in simulation mode"
+    )
     p_verify.add_argument("-y", "--yes", action="store_true", help="Skip confirmation")
     p_verify.set_defaults(fn=cmd_calibrate_verify)
 

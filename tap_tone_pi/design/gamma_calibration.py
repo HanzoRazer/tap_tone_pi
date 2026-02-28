@@ -73,6 +73,7 @@ class ModeMeasurement:
         uncertainty_free_Hz: Measurement uncertainty for f_free (optional)
         uncertainty_box_Hz: Measurement uncertainty for f_box (optional)
     """
+
     mode_id: str
     f_free_Hz: float
     f_box_Hz: float
@@ -116,6 +117,7 @@ class SpecimenData:
         modes: List of mode measurements
         metadata: Optional metadata (wood species, thickness, etc.)
     """
+
     specimen_id: str
     modes: List[ModeMeasurement] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -129,13 +131,15 @@ class SpecimenData:
         uncertainty_box_Hz: float = 0.0,
     ) -> None:
         """Add a mode measurement."""
-        self.modes.append(ModeMeasurement(
-            mode_id=mode_id,
-            f_free_Hz=f_free_Hz,
-            f_box_Hz=f_box_Hz,
-            uncertainty_free_Hz=uncertainty_free_Hz,
-            uncertainty_box_Hz=uncertainty_box_Hz,
-        ))
+        self.modes.append(
+            ModeMeasurement(
+                mode_id=mode_id,
+                f_free_Hz=f_free_Hz,
+                f_box_Hz=f_box_Hz,
+                uncertainty_free_Hz=uncertainty_free_Hz,
+                uncertainty_box_Hz=uncertainty_box_Hz,
+            )
+        )
 
     def get_gamma_values(self) -> List[float]:
         """Get γ values for all modes."""
@@ -162,6 +166,7 @@ class GammaCalibrationResult:
         all_gammas: List of all individual γ values
         weighted_gamma: Inverse-variance weighted mean (if uncertainties provided)
     """
+
     gamma_mean: float
     gamma_std: float
     gamma_sem: float
@@ -337,7 +342,9 @@ class GammaCalibration:
         specimen_gammas: Dict[str, float] = {}
         for specimen_id, specimen in self.specimens.items():
             if specimen.modes:
-                specimen_gammas[specimen_id] = statistics.mean(specimen.get_gamma_values())
+                specimen_gammas[specimen_id] = statistics.mean(
+                    specimen.get_gamma_values()
+                )
 
         # Weighted average (inverse-variance weighting) if uncertainties available
         weighted_gamma = None
@@ -346,7 +353,7 @@ class GammaCalibration:
 
         for meas in all_measurements:
             if meas.gamma_uncertainty > 0:
-                w = 1.0 / (meas.gamma_uncertainty ** 2)
+                w = 1.0 / (meas.gamma_uncertainty**2)
                 weights.append(w)
                 weighted_values.append(meas.gamma * w)
 
@@ -391,7 +398,9 @@ def format_gamma_calibration_report(result: GammaCalibrationResult) -> str:
     lines.append(f"  γ mean = {result.gamma_mean:.4f}")
     lines.append(f"  γ std  = {result.gamma_std:.4f}")
     lines.append(f"  γ SEM  = {result.gamma_sem:.4f}")
-    lines.append(f"  95% CI = ({result.gamma_ci_95[0]:.4f}, {result.gamma_ci_95[1]:.4f})")
+    lines.append(
+        f"  95% CI = ({result.gamma_ci_95[0]:.4f}, {result.gamma_ci_95[1]:.4f})"
+    )
 
     if result.weighted_gamma is not None:
         lines.append(f"  γ weighted = {result.weighted_gamma:.4f} (inverse-variance)")
@@ -447,7 +456,7 @@ def calibrate_gamma_from_pairs(
     cal = GammaCalibration()
 
     for i, (f_free, f_box) in enumerate(frequency_pairs):
-        mode_id = mode_ids[i] if mode_ids else f"mode_{i+1}"
+        mode_id = mode_ids[i] if mode_ids else f"mode_{i + 1}"
         cal.add_mode(mode_id, f_free, f_box)
 
     return cal.compute()
@@ -474,7 +483,7 @@ def calibrate_gamma_multi_specimen(
 
     for specimen_id, pairs in specimen_data.items():
         modes = [
-            ModeMeasurement(f"mode_{i+1}", f_free, f_box)
+            ModeMeasurement(f"mode_{i + 1}", f_free, f_box)
             for i, (f_free, f_box) in enumerate(pairs)
         ]
         cal.add_specimen(specimen_id, modes)

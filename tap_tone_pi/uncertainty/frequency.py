@@ -15,9 +15,7 @@ from .budget import (
 )
 
 
-def compute_frequency_resolution(
-    sample_rate: int, fft_size: int
-) -> float:
+def compute_frequency_resolution(sample_rate: int, fft_size: int) -> float:
     """
     Compute FFT frequency resolution (bin width).
 

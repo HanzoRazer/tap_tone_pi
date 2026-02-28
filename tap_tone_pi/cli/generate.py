@@ -13,7 +13,6 @@ Usage:
 from __future__ import annotations
 
 
-
 def cmd_generate_sine(args) -> int:
     """Generate sine wave."""
     from tap_tone_pi.signal_gen import generate_sine, write_wav
@@ -207,25 +206,29 @@ def add_generate_subcommand(subparsers) -> None:
     # Common arguments
     def add_common_args(parser, default_output: str):
         parser.add_argument(
-            "-o", "--output",
+            "-o",
+            "--output",
             type=str,
             default=default_output,
             help=f"Output WAV file (default: {default_output})",
         )
         parser.add_argument(
-            "-d", "--duration",
+            "-d",
+            "--duration",
             type=float,
             default=1.0,
             help="Duration in seconds (default: 1.0)",
         )
         parser.add_argument(
-            "-r", "--sample-rate",
+            "-r",
+            "--sample-rate",
             type=int,
             default=48000,
             help="Sample rate in Hz (default: 48000)",
         )
         parser.add_argument(
-            "-a", "--amplitude",
+            "-a",
+            "--amplitude",
             type=float,
             default=0.8,
             help="Peak amplitude 0-1 (default: 0.8)",
@@ -245,7 +248,8 @@ def add_generate_subcommand(subparsers) -> None:
     )
     add_common_args(sine_parser, "sine.wav")
     sine_parser.add_argument(
-        "-f", "--frequency",
+        "-f",
+        "--frequency",
         type=float,
         default=1000.0,
         help="Frequency in Hz (default: 1000)",
@@ -278,7 +282,8 @@ def add_generate_subcommand(subparsers) -> None:
         help="End frequency in Hz (default: 20000)",
     )
     sweep_parser.add_argument(
-        "-t", "--type",
+        "-t",
+        "--type",
         choices=["linear", "logarithmic", "chirp"],
         default="logarithmic",
         help="Sweep type (default: logarithmic)",
@@ -293,7 +298,8 @@ def add_generate_subcommand(subparsers) -> None:
     add_common_args(noise_parser, "noise.wav")
     noise_parser.set_defaults(amplitude=0.5)  # Lower default for noise
     noise_parser.add_argument(
-        "-t", "--type",
+        "-t",
+        "--type",
         choices=["white", "pink", "brown"],
         default="white",
         help="Noise type (default: white)",
@@ -358,13 +364,15 @@ def add_generate_subcommand(subparsers) -> None:
     )
     add_common_args(comb_parser, "comb.wav")
     comb_parser.add_argument(
-        "-f", "--fundamental",
+        "-f",
+        "--fundamental",
         type=float,
         default=110.0,
         help="Fundamental frequency in Hz (default: 110)",
     )
     comb_parser.add_argument(
-        "-n", "--harmonics",
+        "-n",
+        "--harmonics",
         type=int,
         default=20,
         help="Number of harmonics (default: 20)",

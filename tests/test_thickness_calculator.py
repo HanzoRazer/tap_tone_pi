@@ -183,7 +183,7 @@ class TestHelmholtzFrequency:
         f2 = helmholtz_frequency(0.030, A_hole, L_eff)  # 30L (2x)
 
         # f_H ∝ 1/√V, so 2x volume should give ~0.707x frequency
-        assert abs(f2 / f1 - 1/math.sqrt(2)) < 0.01
+        assert abs(f2 / f1 - 1 / math.sqrt(2)) < 0.01
 
     def test_invalid_parameters_raise(self):
         """Invalid parameters should raise ValueError."""
@@ -227,13 +227,29 @@ class TestCoupledEigenfrequencies:
 
         frequencies, eigenvectors, info = coupled_eigenfrequencies(
             # Top: Sitka spruce, 2.8mm
-            E_L_top=12.5e9, E_C_top=0.85e9, rho_top=420, h_top=0.0028,
-            a_top=0.5, b_top=0.4, A_eff_top=0.12, eta_top=0.95, gamma_top=0.88,
+            E_L_top=12.5e9,
+            E_C_top=0.85e9,
+            rho_top=420,
+            h_top=0.0028,
+            a_top=0.5,
+            b_top=0.4,
+            A_eff_top=0.12,
+            eta_top=0.95,
+            gamma_top=0.88,
             # Back: Mahogany, 2.9mm
-            E_L_back=10.2e9, E_C_back=0.65e9, rho_back=540, h_back=0.0029,
-            a_back=0.5, b_back=0.4, A_eff_back=0.10, eta_back=0.90, gamma_back=0.85,
+            E_L_back=10.2e9,
+            E_C_back=0.65e9,
+            rho_back=540,
+            h_back=0.0029,
+            a_back=0.5,
+            b_back=0.4,
+            A_eff_back=0.10,
+            eta_back=0.90,
+            gamma_back=0.85,
             # Cavity
-            volume=0.020, hole_area=0.0079, L_eff=0.085,
+            volume=0.020,
+            hole_area=0.0079,
+            L_eff=0.085,
         )
 
         assert len(frequencies) == 3
@@ -245,11 +261,27 @@ class TestCoupledEigenfrequencies:
         from tap_tone_pi.design.thickness_calculator import coupled_eigenfrequencies
 
         frequencies, _, _ = coupled_eigenfrequencies(
-            E_L_top=12.5e9, E_C_top=0.85e9, rho_top=420, h_top=0.0028,
-            a_top=0.5, b_top=0.4, A_eff_top=0.12, eta_top=0.95, gamma_top=0.88,
-            E_L_back=10.2e9, E_C_back=0.65e9, rho_back=540, h_back=0.0029,
-            a_back=0.5, b_back=0.4, A_eff_back=0.10, eta_back=0.90, gamma_back=0.85,
-            volume=0.020, hole_area=0.0079, L_eff=0.085,
+            E_L_top=12.5e9,
+            E_C_top=0.85e9,
+            rho_top=420,
+            h_top=0.0028,
+            a_top=0.5,
+            b_top=0.4,
+            A_eff_top=0.12,
+            eta_top=0.95,
+            gamma_top=0.88,
+            E_L_back=10.2e9,
+            E_C_back=0.65e9,
+            rho_back=540,
+            h_back=0.0029,
+            a_back=0.5,
+            b_back=0.4,
+            A_eff_back=0.10,
+            eta_back=0.90,
+            gamma_back=0.85,
+            volume=0.020,
+            hole_area=0.0079,
+            L_eff=0.085,
         )
 
         assert frequencies[0] <= frequencies[1] <= frequencies[2]
@@ -259,11 +291,27 @@ class TestCoupledEigenfrequencies:
         from tap_tone_pi.design.thickness_calculator import coupled_eigenfrequencies
 
         frequencies, _, _ = coupled_eigenfrequencies(
-            E_L_top=12.5e9, E_C_top=0.85e9, rho_top=420, h_top=0.0028,
-            a_top=0.5, b_top=0.4, A_eff_top=0.12, eta_top=0.95, gamma_top=0.88,
-            E_L_back=10.2e9, E_C_back=0.65e9, rho_back=540, h_back=0.0029,
-            a_back=0.5, b_back=0.4, A_eff_back=0.10, eta_back=0.90, gamma_back=0.85,
-            volume=0.020, hole_area=0.0079, L_eff=0.085,
+            E_L_top=12.5e9,
+            E_C_top=0.85e9,
+            rho_top=420,
+            h_top=0.0028,
+            a_top=0.5,
+            b_top=0.4,
+            A_eff_top=0.12,
+            eta_top=0.95,
+            gamma_top=0.88,
+            E_L_back=10.2e9,
+            E_C_back=0.65e9,
+            rho_back=540,
+            h_back=0.0029,
+            a_back=0.5,
+            b_back=0.4,
+            A_eff_back=0.10,
+            eta_back=0.90,
+            gamma_back=0.85,
+            volume=0.020,
+            hole_area=0.0079,
+            L_eff=0.085,
         )
 
         for f in frequencies:

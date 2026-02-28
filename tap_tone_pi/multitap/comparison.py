@@ -57,6 +57,7 @@ class ComparisonResult:
     alpha : float
         Significance level used.
     """
+
     statistically_different: bool
     p_value: float
     test_statistic: float
@@ -108,7 +109,7 @@ def cohens_d(group1: np.ndarray, group2: np.ndarray) -> float:
     var2 = np.var(group2, ddof=1)
 
     # Pooled standard deviation
-    pooled_std = np.sqrt(((n1-1)*var1 + (n2-1)*var2) / (n1 + n2 - 2))
+    pooled_std = np.sqrt(((n1 - 1) * var1 + (n2 - 1) * var2) / (n1 + n2 - 2))
 
     if pooled_std < 1e-12:
         return np.nan
@@ -223,11 +224,11 @@ def compare_specimens(
         # Welch-Satterthwaite dof
         var1 = np.var(g1, ddof=1)
         var2 = np.var(g2, ddof=1)
-        num = (var1/n1 + var2/n2)**2
-        denom = (var1/n1)**2/(n1-1) + (var2/n2)**2/(n2-1)
+        num = (var1 / n1 + var2 / n2) ** 2
+        denom = (var1 / n1) ** 2 / (n1 - 1) + (var2 / n2) ** 2 / (n2 - 1)
         dof = num / denom if denom > 0 else n1 + n2 - 2
 
-    t_crit = stats.t.ppf(1 - alpha/2, dof)
+    t_crit = stats.t.ppf(1 - alpha / 2, dof)
     ci_lower = mean_diff - t_crit * se_diff
     ci_upper = mean_diff + t_crit * se_diff
 
@@ -295,7 +296,8 @@ def compare_conditions(
     paired = len(baseline) == len(treatment)
 
     return compare_specimens(
-        treatment, baseline,  # Treatment - baseline to show change direction
+        treatment,
+        baseline,  # Treatment - baseline to show change direction
         alpha=alpha,
         paired=paired,
         practical_threshold_percent=min_detectable_change_percent,
@@ -305,6 +307,7 @@ def compare_conditions(
 @dataclass
 class PairwiseResult:
     """Result of pairwise comparison with multiple comparison correction."""
+
     group_i: int
     group_j: int
     group_i_name: str
@@ -368,8 +371,8 @@ def pairwise_comparison(
 
     # Eta-squared (effect size for ANOVA)
     grand_mean = np.mean(np.concatenate(groups))
-    ss_between = sum(len(g) * (np.mean(g) - grand_mean)**2 for g in groups)
-    ss_total = sum(np.sum((g - grand_mean)**2) for g in groups)
+    ss_between = sum(len(g) * (np.mean(g) - grand_mean) ** 2 for g in groups)
+    ss_total = sum(np.sum((g - grand_mean) ** 2) for g in groups)
     eta_sq = ss_between / ss_total if ss_total > 0 else 0
 
     anova_result = {
@@ -392,13 +395,17 @@ def pairwise_comparison(
             d = cohens_d(groups[i], groups[j])
             mean_diff = np.mean(groups[i]) - np.mean(groups[j])
 
-            pairwise_results.append({
-                "i": i, "j": j,
-                "name_i": group_names[i], "name_j": group_names[j],
-                "mean_diff": mean_diff,
-                "p_raw": p_raw,
-                "d": d,
-            })
+            pairwise_results.append(
+                {
+                    "i": i,
+                    "j": j,
+                    "name_i": group_names[i],
+                    "name_j": group_names[j],
+                    "mean_diff": mean_diff,
+                    "p_raw": p_raw,
+                    "d": d,
+                }
+            )
             raw_p_values.append(p_raw)
 
     # Apply correction
@@ -425,17 +432,19 @@ def pairwise_comparison(
     # Build final results
     final_pairwise = []
     for result, p_adj in zip(pairwise_results, adjusted_p):
-        final_pairwise.append(PairwiseResult(
-            group_i=result["i"],
-            group_j=result["j"],
-            group_i_name=result["name_i"],
-            group_j_name=result["name_j"],
-            mean_difference=float(result["mean_diff"]),
-            p_value_raw=float(result["p_raw"]),
-            p_value_adjusted=float(p_adj),
-            significant_after_correction=p_adj < alpha,
-            effect_size=float(result["d"]),
-        ))
+        final_pairwise.append(
+            PairwiseResult(
+                group_i=result["i"],
+                group_j=result["j"],
+                group_i_name=result["name_i"],
+                group_j_name=result["name_j"],
+                mean_difference=float(result["mean_diff"]),
+                p_value_raw=float(result["p_raw"]),
+                p_value_adjusted=float(p_adj),
+                significant_after_correction=p_adj < alpha,
+                effect_size=float(result["d"]),
+            )
+        )
 
     return anova_result, final_pairwise
 
@@ -482,12 +491,12 @@ def equivalence_test(
 
     # Pooled standard error (Welch approximation)
     n1, n2 = len(g1), len(g2)
-    se = np.sqrt(np.var(g1, ddof=1)/n1 + np.var(g2, ddof=1)/n2)
+    se = np.sqrt(np.var(g1, ddof=1) / n1 + np.var(g2, ddof=1) / n2)
 
     # Welch-Satterthwaite degrees of freedom
     var1, var2 = np.var(g1, ddof=1), np.var(g2, ddof=1)
-    num = (var1/n1 + var2/n2)**2
-    denom = (var1/n1)**2/(n1-1) + (var2/n2)**2/(n2-1)
+    num = (var1 / n1 + var2 / n2) ** 2
+    denom = (var1 / n1) ** 2 / (n1 - 1) + (var2 / n2) ** 2 / (n2 - 1)
     dof = num / denom if denom > 0 else n1 + n2 - 2
 
     # Lower test: H0: diff <= -margin
@@ -510,7 +519,7 @@ def equivalence_test(
         "mean_difference": float(mean_diff),
         "margin": equivalence_margin,
         "confidence_interval": (
-            float(mean_diff - stats.t.ppf(1-alpha, dof) * se),
-            float(mean_diff + stats.t.ppf(1-alpha, dof) * se),
+            float(mean_diff - stats.t.ppf(1 - alpha, dof) * se),
+            float(mean_diff + stats.t.ppf(1 - alpha, dof) * se),
         ),
     }

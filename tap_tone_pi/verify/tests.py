@@ -10,7 +10,6 @@ from enum import Enum
 from typing import Optional, List, Dict, Any
 
 
-
 class TestOutcome(Enum):
     """Outcome of a verification test."""
 
@@ -89,7 +88,9 @@ def verify_frequency_accuracy(
         expected=expected_hz,
         actual=measured_hz,
         tolerance=tolerance_cents,
-        message=f"Error: {cents_error:.1f} cents" if passed else f"Error {cents_error:.1f} cents exceeds {tolerance_cents:.1f} cents tolerance",
+        message=f"Error: {cents_error:.1f} cents"
+        if passed
+        else f"Error {cents_error:.1f} cents exceeds {tolerance_cents:.1f} cents tolerance",
         details={
             "cents_error": cents_error,
             "tolerance_cents": tolerance_cents,
@@ -122,7 +123,9 @@ def verify_amplitude_accuracy(
         expected=expected_db,
         actual=measured_db,
         tolerance=tolerance_db,
-        message=f"Error: {error_db:.2f} dB" if passed else f"Error {error_db:.2f} dB exceeds {tolerance_db:.1f} dB tolerance",
+        message=f"Error: {error_db:.2f} dB"
+        if passed
+        else f"Error {error_db:.2f} dB exceeds {tolerance_db:.1f} dB tolerance",
         details={
             "error_db": error_db,
         },
@@ -154,7 +157,9 @@ def verify_snr_measurement(
         expected=expected_snr_db,
         actual=measured_snr_db,
         tolerance=tolerance_db,
-        message=f"SNR error: {error_db:.1f} dB" if passed else f"SNR error {error_db:.1f} dB exceeds {tolerance_db:.1f} dB tolerance",
+        message=f"SNR error: {error_db:.1f} dB"
+        if passed
+        else f"SNR error {error_db:.1f} dB exceeds {tolerance_db:.1f} dB tolerance",
         details={
             "error_db": error_db,
         },
@@ -205,17 +210,21 @@ def verify_peak_detection(
 
         if best_match is not None:
             matched += 1
-            matches.append({
-                "expected": expected,
-                "detected": best_match,
-                "error_cents": best_error,
-            })
+            matches.append(
+                {
+                    "expected": expected,
+                    "detected": best_match,
+                    "error_cents": best_error,
+                }
+            )
         else:
-            matches.append({
-                "expected": expected,
-                "detected": None,
-                "error_cents": None,
-            })
+            matches.append(
+                {
+                    "expected": expected,
+                    "detected": None,
+                    "error_cents": None,
+                }
+            )
 
     detection_rate = matched / len(expected_peaks_hz)
     passed = detection_rate >= min_detection_rate
@@ -257,7 +266,9 @@ def verify_noise_floor(
         outcome=TestOutcome.PASS if passed else TestOutcome.FAIL,
         expected=max_noise_db,
         actual=measured_noise_db,
-        message=f"Noise floor: {measured_noise_db:.1f} dB" if passed else f"Noise floor {measured_noise_db:.1f} dB exceeds {max_noise_db:.1f} dB threshold",
+        message=f"Noise floor: {measured_noise_db:.1f} dB"
+        if passed
+        else f"Noise floor {measured_noise_db:.1f} dB exceeds {max_noise_db:.1f} dB threshold",
         details={
             "margin_db": max_noise_db - measured_noise_db,
         },
@@ -285,7 +296,9 @@ def verify_thd(
         outcome=TestOutcome.PASS if passed else TestOutcome.FAIL,
         expected=max_thd_percent,
         actual=measured_thd_percent,
-        message=f"THD: {measured_thd_percent:.3f}%" if passed else f"THD {measured_thd_percent:.3f}% exceeds {max_thd_percent:.1f}% threshold",
+        message=f"THD: {measured_thd_percent:.3f}%"
+        if passed
+        else f"THD {measured_thd_percent:.3f}% exceeds {max_thd_percent:.1f}% threshold",
         details={
             "margin_percent": max_thd_percent - measured_thd_percent,
         },
@@ -313,7 +326,9 @@ def verify_latency(
         outcome=TestOutcome.PASS if passed else TestOutcome.FAIL,
         expected=max_latency_ms,
         actual=measured_latency_ms,
-        message=f"Latency: {measured_latency_ms:.1f} ms" if passed else f"Latency {measured_latency_ms:.1f} ms exceeds {max_latency_ms:.1f} ms threshold",
+        message=f"Latency: {measured_latency_ms:.1f} ms"
+        if passed
+        else f"Latency {measured_latency_ms:.1f} ms exceeds {max_latency_ms:.1f} ms threshold",
         details={
             "margin_ms": max_latency_ms - measured_latency_ms,
         },
@@ -354,7 +369,9 @@ def verify_sample_rate(
         expected=expected_rate,
         actual=measured_rate,
         tolerance=tolerance_ppm,
-        message=f"Rate error: {error_ppm:.1f} ppm" if passed else f"Rate error {error_ppm:.1f} ppm exceeds {tolerance_ppm:.1f} ppm tolerance",
+        message=f"Rate error: {error_ppm:.1f} ppm"
+        if passed
+        else f"Rate error {error_ppm:.1f} ppm exceeds {tolerance_ppm:.1f} ppm tolerance",
         details={
             "error_ppm": error_ppm,
         },

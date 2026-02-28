@@ -60,7 +60,7 @@ class TestGeometry:
     def test_second_moment_of_area(self):
         # I = b * h^3 / 12
         geom = Geometry(span_m=0.4, width_m=0.03, thick_m=0.003)
-        expected_I = 0.03 * (0.003 ** 3) / 12
+        expected_I = 0.03 * (0.003**3) / 12
         assert geom.second_moment_of_area == pytest.approx(expected_I)
 
     def test_slenderness_ratio(self):

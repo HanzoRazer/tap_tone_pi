@@ -23,11 +23,12 @@ import numpy as np
 
 class QualityLevel(Enum):
     """Quality classification for a tap."""
+
     EXCELLENT = "excellent"  # Use with high confidence
-    GOOD = "good"           # Use normally
+    GOOD = "good"  # Use normally
     ACCEPTABLE = "acceptable"  # Use with caution
-    POOR = "poor"           # Consider rejection
-    REJECT = "reject"       # Do not use
+    POOR = "poor"  # Consider rejection
+    REJECT = "reject"  # Do not use
 
 
 @dataclass
@@ -62,6 +63,7 @@ class TapQualityMetrics:
     recommendations : List[str]
         Specific recommendations.
     """
+
     tap_index: int
     overall_score: float
     quality_level: QualityLevel
@@ -243,7 +245,8 @@ def assess_tap_quality(
     # Amplitude score
     if reference_amplitude is None:
         reference_amplitude = np.median(
-            [peak_amplitude] if len(all_values) < 2
+            [peak_amplitude]
+            if len(all_values) < 2
             else np.abs(all_values)  # Proxy if amplitude array not available
         )
         reference_amplitude = max(reference_amplitude, peak_amplitude * 0.5)
@@ -285,11 +288,11 @@ def assess_tap_quality(
     }
 
     overall = (
-        weights["snr"] * snr_score +
-        weights["amplitude"] * amp_score +
-        weights["consistency"] * consistency_score +
-        weights["spectral"] * spectral_score +
-        weights["coherence"] * coh_contribution
+        weights["snr"] * snr_score
+        + weights["amplitude"] * amp_score
+        + weights["consistency"] * consistency_score
+        + weights["spectral"] * spectral_score
+        + weights["coherence"] * coh_contribution
     )
 
     quality_level = score_to_level(overall)
@@ -331,10 +334,7 @@ def rank_tap_quality(
     List[Tuple[int, float, QualityLevel]]
         List of (tap_index, score, level) sorted by score descending.
     """
-    ranked = [
-        (m.tap_index, m.overall_score, m.quality_level)
-        for m in metrics_list
-    ]
+    ranked = [(m.tap_index, m.overall_score, m.quality_level) for m in metrics_list]
     return sorted(ranked, key=lambda x: -x[1])
 
 
@@ -366,10 +366,7 @@ def suggest_tap_rejection(
     the recommended rejections before accepting them.
     """
     n_taps = len(metrics_list)
-    max_reject = min(
-        int(n_taps * max_reject_fraction),
-        n_taps - min_keep
-    )
+    max_reject = min(int(n_taps * max_reject_fraction), n_taps - min_keep)
 
     if max_reject <= 0:
         return []
@@ -430,9 +427,9 @@ def quality_summary_report(
     recommendations = []
 
     usable_fraction = (
-        level_counts[QualityLevel.EXCELLENT] +
-        level_counts[QualityLevel.GOOD] +
-        level_counts[QualityLevel.ACCEPTABLE]
+        level_counts[QualityLevel.EXCELLENT]
+        + level_counts[QualityLevel.GOOD]
+        + level_counts[QualityLevel.ACCEPTABLE]
     ) / n_taps
 
     if usable_fraction < 0.7:

@@ -179,7 +179,7 @@ def detect_transients(
     for i in range(len(signal)):
         # Check if rapid rise occurred recently
         window_start = max(0, i - lookahead_samples)
-        had_rise = np.any(rapid_rise[window_start:i + 1])
+        had_rise = np.any(rapid_rise[window_start : i + 1])
 
         if above_threshold[i] and had_rise and not in_transient:
             # Start of transient
@@ -252,7 +252,7 @@ def compute_crest_factor(signal: np.ndarray) -> float:
         Crest factor in dB
     """
     peak = np.max(np.abs(signal))
-    rms = np.sqrt(np.mean(signal ** 2))
+    rms = np.sqrt(np.mean(signal**2))
 
     if rms < 1e-10:
         return 0.0

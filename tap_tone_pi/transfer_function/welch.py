@@ -52,6 +52,7 @@ class WelchResult:
     noverlap : int
         Samples of overlap.
     """
+
     frequencies: np.ndarray
     spectrum: np.ndarray
     n_segments: int = 1
@@ -113,10 +114,14 @@ def welch_spectrum(
 
     # Compute using scipy.signal.welch
     frequencies, psd = signal.welch(
-        signal_data, fs=sample_rate,
-        nperseg=nperseg, noverlap=noverlap,
-        window=window, detrend=detrend,
-        scaling=scaling, return_onesided=True
+        signal_data,
+        fs=sample_rate,
+        nperseg=nperseg,
+        noverlap=noverlap,
+        window=window,
+        detrend=detrend,
+        scaling=scaling,
+        return_onesided=True,
     )
 
     # Calculate segment count
@@ -127,7 +132,11 @@ def welch_spectrum(
     overlap_fraction = noverlap / nperseg
     effective_averages = n_segments * (1 - overlap_fraction) + overlap_fraction
 
-    freq_resolution = frequencies[1] - frequencies[0] if len(frequencies) > 1 else sample_rate / nperseg
+    freq_resolution = (
+        frequencies[1] - frequencies[0]
+        if len(frequencies) > 1
+        else sample_rate / nperseg
+    )
 
     return WelchResult(
         frequencies=frequencies,
@@ -191,10 +200,14 @@ def welch_cross_spectrum(
 
     # Compute using scipy.signal.csd
     frequencies, csd = signal.csd(
-        signal_x, signal_y, fs=sample_rate,
-        nperseg=nperseg, noverlap=noverlap,
-        window=window, detrend=detrend,
-        return_onesided=True
+        signal_x,
+        signal_y,
+        fs=sample_rate,
+        nperseg=nperseg,
+        noverlap=noverlap,
+        window=window,
+        detrend=detrend,
+        return_onesided=True,
     )
 
     # Calculate segment count
@@ -204,7 +217,11 @@ def welch_cross_spectrum(
     overlap_fraction = noverlap / nperseg
     effective_averages = n_segments * (1 - overlap_fraction) + overlap_fraction
 
-    freq_resolution = frequencies[1] - frequencies[0] if len(frequencies) > 1 else sample_rate / nperseg
+    freq_resolution = (
+        frequencies[1] - frequencies[0]
+        if len(frequencies) > 1
+        else sample_rate / nperseg
+    )
 
     return WelchResult(
         frequencies=frequencies,
@@ -246,6 +263,7 @@ class WelchFRFResult:
     frequency_resolution : float
         Hz per spectral line.
     """
+
     frequencies: np.ndarray
     H1: np.ndarray
     H2: np.ndarray
@@ -317,21 +335,31 @@ def welch_transfer_function(
 
     # Compute all spectral quantities
     frequencies, Gxx = signal.welch(
-        signal_input, fs=sample_rate,
-        nperseg=nperseg, noverlap=noverlap,
-        window=window, detrend=detrend
+        signal_input,
+        fs=sample_rate,
+        nperseg=nperseg,
+        noverlap=noverlap,
+        window=window,
+        detrend=detrend,
     )
 
     _, Gyy = signal.welch(
-        signal_output, fs=sample_rate,
-        nperseg=nperseg, noverlap=noverlap,
-        window=window, detrend=detrend
+        signal_output,
+        fs=sample_rate,
+        nperseg=nperseg,
+        noverlap=noverlap,
+        window=window,
+        detrend=detrend,
     )
 
     _, Gxy = signal.csd(
-        signal_input, signal_output, fs=sample_rate,
-        nperseg=nperseg, noverlap=noverlap,
-        window=window, detrend=detrend
+        signal_input,
+        signal_output,
+        fs=sample_rate,
+        nperseg=nperseg,
+        noverlap=noverlap,
+        window=window,
+        detrend=detrend,
     )
 
     # Compute estimators
@@ -348,14 +376,18 @@ def welch_transfer_function(
     Hv = Hv_mag * np.exp(1j * Hv_phase)
 
     # Coherence: γ² = |Gxy|² / (Gxx × Gyy)
-    coherence = np.abs(Gxy)**2 / np.maximum(Gxx * Gyy, 1e-30)
+    coherence = np.abs(Gxy) ** 2 / np.maximum(Gxx * Gyy, 1e-30)
     coherence = np.clip(coherence, 0.0, 1.0)
 
     # Segment count
     step = nperseg - noverlap
     n_segments = (n - noverlap) // step
 
-    freq_resolution = frequencies[1] - frequencies[0] if len(frequencies) > 1 else sample_rate / nperseg
+    freq_resolution = (
+        frequencies[1] - frequencies[0]
+        if len(frequencies) > 1
+        else sample_rate / nperseg
+    )
 
     return WelchFRFResult(
         frequencies=frequencies,
@@ -407,8 +439,13 @@ def optimal_welch_parameters(
         - actual_freq_resolution: Resulting frequency resolution
         - actual_variance_reduction: Resulting variance reduction
     """
-    if target_frequency_resolution is not None and target_variance_reduction is not None:
-        raise ValueError("Specify only one of target_frequency_resolution or target_variance_reduction")
+    if (
+        target_frequency_resolution is not None
+        and target_variance_reduction is not None
+    ):
+        raise ValueError(
+            "Specify only one of target_frequency_resolution or target_variance_reduction"
+        )
 
     if target_frequency_resolution is not None:
         # nperseg = fs / freq_resolution
@@ -440,7 +477,9 @@ def optimal_welch_parameters(
     effective_averages = n_segments * (1 - overlap_fraction) + overlap_fraction
 
     actual_freq_resolution = sample_rate / nperseg
-    actual_variance_reduction = effective_averages  # Variance reduced by factor of n_eff
+    actual_variance_reduction = (
+        effective_averages  # Variance reduced by factor of n_eff
+    )
 
     return {
         "nperseg": nperseg,

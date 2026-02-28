@@ -72,7 +72,8 @@ from .thickness_calculator import plate_modal_frequency
 
 class ForwardModel(str, Enum):
     """Choice of forward model for frequency computation."""
-    SIMPLE = "simple"           # Closed-form plate formula (fast)
+
+    SIMPLE = "simple"  # Closed-form plate formula (fast)
     RAYLEIGH_RITZ = "rayleigh_ritz"  # Variational method (accurate)
 
 
@@ -86,6 +87,7 @@ class ThicknessConstraints:
         h_step_mm: Thickness step for discrete optimization (optional)
         taper_max_ratio: Maximum taper ratio (center/edge) if variable thickness
     """
+
     h_min_mm: float = 1.5
     h_max_mm: float = 5.0
     h_step_mm: Optional[float] = None
@@ -122,6 +124,7 @@ class FrequencyTarget:
         weight: Relative importance (higher = more important)
         tolerance_Hz: Acceptable error (for constraint formulation)
     """
+
     mode: Union[Tuple[int, int], int]
     frequency_Hz: float
     weight: float = 1.0
@@ -155,6 +158,7 @@ class InverseSolverResult:
         forward_model: Which forward model was used
         constraints_active: Whether constraints limited the solution
     """
+
     thickness_mm: float
     thickness_m: float
     achieved_frequencies_Hz: List[float]
@@ -235,8 +239,12 @@ def _forward_rayleigh_ritz(
     More accurate but slower than simple formula.
     """
     plate = OrthotropicPlate.from_wood(
-        E_L=E_L, E_C=E_C, rho=rho,
-        h=h_m, a=a, b=b,
+        E_L=E_L,
+        E_C=E_C,
+        rho=rho,
+        h=h_m,
+        a=a,
+        b=b,
     )
 
     result = solve_rayleigh_ritz(
@@ -316,7 +324,7 @@ def solve_for_thickness(
         result = optimize.minimize_scalar(
             objective,
             bounds=(constraints.h_min_mm, constraints.h_max_mm),
-            method='bounded',
+            method="bounded",
         )
         h_opt_m = result.x * 1e-3
         n_iter = result.nfev
@@ -434,12 +442,14 @@ class InverseDesignProblem:
             weight: Relative importance
             tolerance_Hz: Acceptable error
         """
-        self.targets.append(FrequencyTarget(
-            mode=mode,
-            frequency_Hz=frequency_Hz,
-            weight=weight,
-            tolerance_Hz=tolerance_Hz,
-        ))
+        self.targets.append(
+            FrequencyTarget(
+                mode=mode,
+                frequency_Hz=frequency_Hz,
+                weight=weight,
+                tolerance_Hz=tolerance_Hz,
+            )
+        )
 
     def clear_targets(self) -> None:
         """Clear all targets."""
@@ -447,18 +457,31 @@ class InverseDesignProblem:
 
     def _compute_frequencies(self, h_m: float) -> List[float]:
         """Compute frequencies at given thickness."""
-        n_modes_needed = max(t.mode_index + 1 for t in self.targets) if self.targets else 5
+        n_modes_needed = (
+            max(t.mode_index + 1 for t in self.targets) if self.targets else 5
+        )
 
         if self.forward_model == ForwardModel.SIMPLE:
             freqs = _forward_simple(
-                h_m, self.E_L, self.E_C, self.rho, self.a, self.b,
-                n_modes=n_modes_needed
+                h_m,
+                self.E_L,
+                self.E_C,
+                self.rho,
+                self.a,
+                self.b,
+                n_modes=n_modes_needed,
             )
         else:
             freqs = _forward_rayleigh_ritz(
-                h_m, self.E_L, self.E_C, self.rho, self.a, self.b,
-                bc_x=self.bc_x, bc_y=self.bc_y,
-                n_return=n_modes_needed
+                h_m,
+                self.E_L,
+                self.E_C,
+                self.rho,
+                self.a,
+                self.b,
+                bc_x=self.bc_x,
+                bc_y=self.bc_y,
+                n_return=n_modes_needed,
             )
 
         # Apply gamma for box frequencies
@@ -482,7 +505,7 @@ class InverseDesignProblem:
             if idx < len(freqs):
                 # Relative error, weighted
                 rel_error = (freqs[idx] - target.frequency_Hz) / target.frequency_Hz
-                total_error += target.weight * (rel_error ** 2)
+                total_error += target.weight * (rel_error**2)
                 total_weight += target.weight
 
         if total_weight > 0:
@@ -519,8 +542,8 @@ class InverseDesignProblem:
             result = optimize.minimize_scalar(
                 self._objective,
                 bounds=(constraints.h_min_mm, constraints.h_max_mm),
-                method='bounded',
-                options={'xatol': 0.01},  # 0.01mm tolerance
+                method="bounded",
+                options={"xatol": 0.01},  # 0.01mm tolerance
             )
             h_opt_mm = result.x
             converged = result.success
@@ -562,10 +585,14 @@ class InverseDesignProblem:
                 errors_pct.append(100.0 * err / target.frequency_Hz)
             else:
                 achieved_freqs.append(0.0)
-                errors_Hz.append(float('inf'))
-                errors_pct.append(float('inf'))
+                errors_Hz.append(float("inf"))
+                errors_pct.append(float("inf"))
 
-        rms_error = math.sqrt(sum(e**2 for e in errors_Hz) / len(errors_Hz)) if errors_Hz else 0.0
+        rms_error = (
+            math.sqrt(sum(e**2 for e in errors_Hz) / len(errors_Hz))
+            if errors_Hz
+            else 0.0
+        )
 
         return InverseSolverResult(
             thickness_mm=h_opt_mm,
@@ -590,6 +617,7 @@ class InverseDesignProblem:
 @dataclass
 class MaterialCandidate:
     """Material candidate for selection optimization."""
+
     name: str
     E_L: float  # Pa
     E_C: float  # Pa
@@ -634,7 +662,8 @@ def solve_for_material_and_thickness(
             E_L=material.E_L,
             E_C=material.E_C,
             rho=material.rho,
-            a=a, b=b,
+            a=a,
+            b=b,
             gamma=gamma,
             constraints=constraints,
         )
@@ -669,21 +698,27 @@ def format_inverse_solver_report(result: InverseSolverResult) -> str:
     lines.append("=" * 65)
 
     lines.append("\nOptimal Thickness:")
-    lines.append(f"  h = {result.thickness_mm:.2f} mm ({result.thickness_m*1e6:.0f} μm)")
+    lines.append(
+        f"  h = {result.thickness_mm:.2f} mm ({result.thickness_m * 1e6:.0f} μm)"
+    )
 
     lines.append("\nSolver Info:")
     lines.append(f"  Forward model: {result.forward_model.value}")
     lines.append(f"  Iterations:    {result.n_iterations}")
     lines.append(f"  Converged:     {result.converged}")
-    lines.append(f"  Constraints:   {'active' if result.constraints_active else 'inactive'}")
+    lines.append(
+        f"  Constraints:   {'active' if result.constraints_active else 'inactive'}"
+    )
 
     lines.append("\nFrequency Matching:")
-    lines.append(f"  {'Mode':<8} {'Target':>10} {'Achieved':>10} {'Error':>10} {'Error %':>10}")
-    lines.append(f"  {'-'*8} {'-'*10} {'-'*10} {'-'*10} {'-'*10}")
+    lines.append(
+        f"  {'Mode':<8} {'Target':>10} {'Achieved':>10} {'Error':>10} {'Error %':>10}"
+    )
+    lines.append(f"  {'-' * 8} {'-' * 10} {'-' * 10} {'-' * 10} {'-' * 10}")
 
     for i in range(len(result.target_frequencies_Hz)):
         lines.append(
-            f"  {i+1:<8} "
+            f"  {i + 1:<8} "
             f"{result.target_frequencies_Hz[i]:>10.1f} "
             f"{result.achieved_frequencies_Hz[i]:>10.1f} "
             f"{result.frequency_errors_Hz[i]:>+10.1f} "

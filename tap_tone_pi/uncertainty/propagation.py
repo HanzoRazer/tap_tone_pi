@@ -63,11 +63,12 @@ class PropagationResult:
     method : str
         "analytical" or "monte_carlo"
     """
+
     output_value: float
     standard_uncertainty: float
     sensitivity_coefficients: Dict[str, float] = field(default_factory=dict)
     contribution_percent: Dict[str, float] = field(default_factory=dict)
-    effective_dof: float = float('inf')
+    effective_dof: float = float("inf")
     expanded_uncertainty: float = 0.0
     coverage_factor: float = 2.0
     confidence_level: float = 0.95
@@ -271,6 +272,7 @@ class MonteCarloResult:
     n_samples : int
         Number of Monte Carlo trials.
     """
+
     output_value: float
     standard_uncertainty: float
     expanded_uncertainty: float
@@ -378,7 +380,7 @@ def monte_carlo_uncertainty(
     n_coverage = int(np.ceil(n_valid * confidence_level))
 
     # Find shortest interval containing n_coverage samples
-    min_width = float('inf')
+    min_width = float("inf")
     best_lower = sorted_samples[0]
     best_upper = sorted_samples[-1]
 
@@ -506,9 +508,7 @@ def validate_gum_assumptions(
         - recommendation: str
     """
     # Analytical propagation
-    analytical = propagate_uncertainty(
-        model_func, input_values, input_uncertainties
-    )
+    analytical = propagate_uncertainty(model_func, input_values, input_uncertainties)
 
     # Monte Carlo (smaller sample for quick check)
     mc_dists = {}
@@ -518,16 +518,20 @@ def validate_gum_assumptions(
     mc = monte_carlo_uncertainty(model_func, mc_dists, n_samples=10000)
 
     # Compare results
-    rel_diff_mean = abs(analytical.output_value - mc.output_value) / abs(mc.output_value + 1e-12)
-    rel_diff_std = abs(analytical.standard_uncertainty - mc.standard_uncertainty) / (mc.standard_uncertainty + 1e-12)
+    rel_diff_mean = abs(analytical.output_value - mc.output_value) / abs(
+        mc.output_value + 1e-12
+    )
+    rel_diff_std = abs(analytical.standard_uncertainty - mc.standard_uncertainty) / (
+        mc.standard_uncertainty + 1e-12
+    )
 
     # Check skewness - significant skewness indicates nonlinearity
     skewness_threshold = 0.5
 
     linearization_adequate = (
-        rel_diff_mean < 0.01 and
-        rel_diff_std < 0.10 and
-        abs(mc.skewness) < skewness_threshold
+        rel_diff_mean < 0.01
+        and rel_diff_std < 0.10
+        and abs(mc.skewness) < skewness_threshold
     )
 
     if linearization_adequate:

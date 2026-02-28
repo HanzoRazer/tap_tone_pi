@@ -119,9 +119,7 @@ class TestLoadLimitsConfig:
             ],
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(limits_data, f)
             f.flush()
 
@@ -150,9 +148,7 @@ class TestLoadLimitsConfig:
 
     def test_preset_takes_precedence(self):
         """Preset should take precedence over custom file."""
-        args = argparse.Namespace(
-            limits="some_file.json", limits_preset="tonewood_tap"
-        )
+        args = argparse.Namespace(limits="some_file.json", limits_preset="tonewood_tap")
         result = load_limits_config(args)
 
         # Should load preset, not file (preset checked first)
@@ -334,9 +330,7 @@ class TestCLIIntegration:
         from tap_tone_pi.cli.main import build_parser
 
         parser = build_parser()
-        args = parser.parse_args(
-            ["quick", "--limits-preset", "speaker_response"]
-        )
+        args = parser.parse_args(["quick", "--limits-preset", "speaker_response"])
 
         assert args.limits_preset == "speaker_response"
 
@@ -346,7 +340,14 @@ class TestCLIIntegration:
 
         parser = build_parser()
         args = parser.parse_args(
-            ["measure", "--out", "./test", "--limits-preset", "noise_floor", "--limits-fail"]
+            [
+                "measure",
+                "--out",
+                "./test",
+                "--limits-preset",
+                "noise_floor",
+                "--limits-fail",
+            ]
         )
 
         assert args.limits_preset == "noise_floor"

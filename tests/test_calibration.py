@@ -438,9 +438,7 @@ class TestCompensation:
             FrequencyResponsePoint(freq_hz=10000.0, magnitude_db=-3.0, phase_deg=-10.0),
         ]
 
-        curve = build_compensation_curve(
-            fr_points, device_index=0, device_name="Test"
-        )
+        curve = build_compensation_curve(fr_points, device_index=0, device_name="Test")
 
         assert len(curve.frequencies_hz) == 3
         assert curve.device_index == 0

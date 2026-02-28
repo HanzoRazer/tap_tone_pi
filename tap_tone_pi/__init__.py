@@ -28,19 +28,24 @@ from typing import Any
 __version__ = "2.0.0"
 __all__ = ["__version__"]
 
+
 # Lazy imports for production-grade physics modules
 def __getattr__(name: str) -> Any:
     """Lazy loading of submodules."""
     if name == "damping":
         from . import damping
+
         return damping
     elif name == "uncertainty":
         from . import uncertainty
+
         return uncertainty
     elif name == "transfer_function":
         from . import transfer_function
+
         return transfer_function
     elif name == "multitap":
         from . import multitap
+
         return multitap
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

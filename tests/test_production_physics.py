@@ -17,6 +17,7 @@ from numpy.testing import assert_allclose
 # Damping Module Tests
 # ============================================================================
 
+
 class TestDampingExtraction:
     """Tests for damping extraction methods."""
 
@@ -35,7 +36,7 @@ class TestDampingExtraction:
 
         # SDOF magnitude response
         magnitude = 1.0 / np.sqrt(
-            (omega_n**2 - omega**2)**2 + (2*zeta*omega_n*omega)**2
+            (omega_n**2 - omega**2) ** 2 + (2 * zeta * omega_n * omega) ** 2
         )
 
         damping_ratio, uncertainty, metadata = extract_damping_halfpower(
@@ -55,7 +56,7 @@ class TestDampingExtraction:
         f_n = 100.0  # Hz - higher frequency gives more cycles
         zeta = 0.02  # Lower damping for more cycles to analyze
         sample_rate = 20000  # Higher sample rate
-        t = np.arange(0, 2.0, 1/sample_rate)  # Longer signal
+        t = np.arange(0, 2.0, 1 / sample_rate)  # Longer signal
 
         omega_n = 2 * np.pi * f_n
         omega_d = omega_n * np.sqrt(1 - zeta**2)
@@ -63,7 +64,10 @@ class TestDampingExtraction:
         signal = np.exp(-zeta * omega_n * t) * np.sin(omega_d * t)
 
         damping_ratio, uncertainty, metadata = extract_damping_logdec(
-            signal, sample_rate, f_n, min_cycles=10  # More cycles for accuracy
+            signal,
+            sample_rate,
+            f_n,
+            min_cycles=10,  # More cycles for accuracy
         )
 
         # Log decrement can have larger variance - allow 50% tolerance
@@ -80,7 +84,7 @@ class TestDampingExtraction:
         f_n = 100.0
         zeta = 0.02
         sample_rate = 10000
-        t = np.arange(0, 1.0, 1/sample_rate)
+        t = np.arange(0, 1.0, 1 / sample_rate)
 
         omega_n = 2 * np.pi * f_n
         omega_d = omega_n * np.sqrt(1 - zeta**2)
@@ -88,15 +92,20 @@ class TestDampingExtraction:
 
         # Compute spectrum
         from scipy.fft import rfft, rfftfreq
+
         spectrum = np.abs(rfft(signal))
-        freqs = rfftfreq(len(signal), 1/sample_rate)
+        freqs = rfftfreq(len(signal), 1 / sample_rate)
 
         result = extract_damping_crossvalidated(
             signal, freqs, spectrum, sample_rate, f_n
         )
 
         assert result.damping_ratio > 0
-        assert result.confidence_interval[0] < result.damping_ratio < result.confidence_interval[1]
+        assert (
+            result.confidence_interval[0]
+            < result.damping_ratio
+            < result.confidence_interval[1]
+        )
         assert result.quality_factor > 0
 
     def test_modes_identify_peaks(self):
@@ -114,7 +123,7 @@ class TestDampingExtraction:
             omega_n = 2 * np.pi * f_n
             zeta = 0.02
             magnitude += 1.0 / np.sqrt(
-                (omega_n**2 - omega**2)**2 + (2*zeta*omega_n*omega)**2 + 1e-6
+                (omega_n**2 - omega**2) ** 2 + (2 * zeta * omega_n * omega) ** 2 + 1e-6
             )
 
         modes = identify_modes(freqs, magnitude, min_prominence_db=3.0)
@@ -128,6 +137,7 @@ class TestDampingExtraction:
 # ============================================================================
 # Uncertainty Module Tests
 # ============================================================================
+
 
 class TestUncertaintyBudget:
     """Tests for ISO GUM uncertainty quantification."""
@@ -159,7 +169,7 @@ class TestUncertaintyBudget:
         from tap_tone_pi.uncertainty import create_type_b_normal
 
         U = 0.10  # Expanded uncertainty
-        k = 2.0   # Coverage factor
+        k = 2.0  # Coverage factor
         uc = create_type_b_normal("calibration", U, k, "Hz")
 
         expected_u = U / k
@@ -220,13 +230,14 @@ class TestUncertaintyBudget:
         assert abs(result.output_value - expected_mean) < 0.1
 
         # Standard uncertainty should be RSS
-        expected_u = np.sqrt(0.5**2 + (0.5/np.sqrt(3))**2)
+        expected_u = np.sqrt(0.5**2 + (0.5 / np.sqrt(3)) ** 2)
         assert abs(result.standard_uncertainty - expected_u) < 0.1
 
 
 # ============================================================================
 # Transfer Function Module Tests
 # ============================================================================
+
 
 class TestTransferFunction:
     """Tests for transfer function estimation."""
@@ -237,7 +248,7 @@ class TestTransferFunction:
 
         # Input and output with deterministic relationship
         sample_rate = 10000
-        t = np.arange(0, 1.0, 1/sample_rate)
+        t = np.arange(0, 1.0, 1 / sample_rate)
         input_signal = np.sin(2 * np.pi * 100 * t)
         output_signal = 2.0 * input_signal  # Perfect linear relationship
 
@@ -252,7 +263,7 @@ class TestTransferFunction:
         from tap_tone_pi.transfer_function import welch_transfer_function
 
         sample_rate = 10000
-        t = np.arange(0, 1.0, 1/sample_rate)
+        t = np.arange(0, 1.0, 1 / sample_rate)
 
         # Input: broadband excitation
         np.random.seed(42)
@@ -260,7 +271,8 @@ class TestTransferFunction:
 
         # Output: filtered version (known transfer function)
         from scipy.signal import butter, filtfilt
-        b, a = butter(2, 200 / (sample_rate/2), 'low')
+
+        b, a = butter(2, 200 / (sample_rate / 2), "low")
         output_signal = filtfilt(b, a, input_signal)
 
         result = welch_transfer_function(
@@ -302,6 +314,7 @@ class TestTransferFunction:
 # ============================================================================
 # Multi-tap Module Tests
 # ============================================================================
+
 
 class TestMultiTap:
     """Tests for multi-tap statistical analysis."""
@@ -381,7 +394,11 @@ class TestMultiTap:
         assert result.n_taps_used < 5  # Outlier should be rejected
         assert 439 < result.final_value < 441
         assert result.expanded_uncertainty > 0
-        assert result.confidence_interval[0] < result.final_value < result.confidence_interval[1]
+        assert (
+            result.confidence_interval[0]
+            < result.final_value
+            < result.confidence_interval[1]
+        )
 
     def test_compare_specimens_detects_difference(self):
         """Test specimen comparison detects significant difference."""
@@ -419,6 +436,7 @@ class TestMultiTap:
 # Integration Tests
 # ============================================================================
 
+
 class TestIntegration:
     """Integration tests across multiple modules."""
 
@@ -430,7 +448,7 @@ class TestIntegration:
         f_n = 100.0
         zeta = 0.025
         sample_rate = 10000
-        t = np.arange(0, 1.0, 1/sample_rate)
+        t = np.arange(0, 1.0, 1 / sample_rate)
 
         omega_n = 2 * np.pi * f_n
         omega_d = omega_n * np.sqrt(1 - zeta**2)
@@ -438,8 +456,9 @@ class TestIntegration:
 
         # Compute spectrum
         from scipy.fft import rfft, rfftfreq
+
         spectrum = np.abs(rfft(signal))
-        freqs = rfftfreq(len(signal), 1/sample_rate)
+        freqs = rfftfreq(len(signal), 1 / sample_rate)
 
         result = extract_damping_crossvalidated(
             signal, freqs, spectrum, sample_rate, f_n
@@ -456,7 +475,7 @@ class TestIntegration:
 
         # Simulate measurement
         sample_rate = 10000
-        t = np.arange(0, 0.5, 1/sample_rate)
+        t = np.arange(0, 0.5, 1 / sample_rate)
 
         np.random.seed(42)
         # Impact-like input
@@ -478,9 +497,7 @@ class TestIntegration:
 
         # 2. Identify modes
         modes = identify_modes(
-            frf_result.frequencies,
-            frf_result.magnitude,
-            min_prominence_db=3.0
+            frf_result.frequencies, frf_result.magnitude, min_prominence_db=3.0
         )
 
         assert len(modes) >= 1
@@ -495,7 +512,7 @@ class TestIntegration:
                 frf_result.frequencies,
                 frf_result.magnitude,
                 sample_rate,
-                mode_freq
+                mode_freq,
             )
 
             assert damping_result.damping_ratio > 0

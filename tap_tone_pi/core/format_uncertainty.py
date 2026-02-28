@@ -143,7 +143,9 @@ def format_analysis_summary(
     # Dominant frequency with uncertainty
     if dominant_hz is not None:
         if show_uncertainty and freq_uncertainty_hz is not None:
-            freq_str = format_frequency_with_uncertainty(dominant_hz, freq_uncertainty_hz)
+            freq_str = format_frequency_with_uncertainty(
+                dominant_hz, freq_uncertainty_hz
+            )
         else:
             freq_str = f"{dominant_hz:.1f} Hz"
         lines.append(f"Dominant: {freq_str}")

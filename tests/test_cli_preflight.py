@@ -54,9 +54,7 @@ class TestRunPreflight:
 
     def test_no_devices_fails(self):
         """Should fail if no audio devices found."""
-        with patch(
-            "tap_tone_pi.capture.list_devices", return_value=[]
-        ):
+        with patch("tap_tone_pi.capture.list_devices", return_value=[]):
             result = run_preflight(quiet=True)
             assert result.ok is False
             assert "No audio" in result.message
@@ -66,9 +64,7 @@ class TestRunPreflight:
         mock_devices = [
             {"index": 0, "max_input_channels": 2, "name": "Mic 1"},
         ]
-        with patch(
-            "tap_tone_pi.capture.list_devices", return_value=mock_devices
-        ):
+        with patch("tap_tone_pi.capture.list_devices", return_value=mock_devices):
             result = run_preflight(device=99, quiet=True)
             assert result.ok is False
             assert "not found" in result.message
@@ -78,9 +74,7 @@ class TestRunPreflight:
         mock_devices = [
             {"index": 0, "max_input_channels": 2, "name": "Mic 1"},
         ]
-        with patch(
-            "tap_tone_pi.capture.list_devices", return_value=mock_devices
-        ):
+        with patch("tap_tone_pi.capture.list_devices", return_value=mock_devices):
             with patch(
                 "tap_tone_pi.capture.record_audio",
                 side_effect=Exception("Device error"),
@@ -97,12 +91,8 @@ class TestRunPreflight:
         mock_capture = MagicMock()
         mock_capture.audio = np.zeros(1000, dtype=np.float32)  # silent
 
-        with patch(
-            "tap_tone_pi.capture.list_devices", return_value=mock_devices
-        ):
-            with patch(
-                "tap_tone_pi.capture.record_audio", return_value=mock_capture
-            ):
+        with patch("tap_tone_pi.capture.list_devices", return_value=mock_devices):
+            with patch("tap_tone_pi.capture.record_audio", return_value=mock_capture):
                 result = run_preflight(device=0, quiet=True)
                 assert result.ok is False
                 assert "silent" in result.message.lower()
@@ -116,12 +106,8 @@ class TestRunPreflight:
         # Audio at full scale = clipping
         mock_capture.audio = np.ones(1000, dtype=np.float32)
 
-        with patch(
-            "tap_tone_pi.capture.list_devices", return_value=mock_devices
-        ):
-            with patch(
-                "tap_tone_pi.capture.record_audio", return_value=mock_capture
-            ):
+        with patch("tap_tone_pi.capture.list_devices", return_value=mock_devices):
+            with patch("tap_tone_pi.capture.record_audio", return_value=mock_capture):
                 result = run_preflight(device=0, quiet=True)
                 assert result.ok is False
                 assert "clipping" in result.message.lower()
@@ -135,12 +121,8 @@ class TestRunPreflight:
         # Reasonable audio: RMS ~0.1, peak ~0.5
         mock_capture.audio = np.random.randn(1000).astype(np.float32) * 0.2
 
-        with patch(
-            "tap_tone_pi.capture.list_devices", return_value=mock_devices
-        ):
-            with patch(
-                "tap_tone_pi.capture.record_audio", return_value=mock_capture
-            ):
+        with patch("tap_tone_pi.capture.list_devices", return_value=mock_devices):
+            with patch("tap_tone_pi.capture.record_audio", return_value=mock_capture):
                 result = run_preflight(device=0, quiet=True)
                 assert result.ok is True
                 assert "passed" in result.message.lower()
@@ -155,12 +137,8 @@ class TestRunPreflight:
         mock_capture.audio = np.full(1000, 0.3, dtype=np.float32)
         mock_capture.audio[500] = 0.95  # one high peak
 
-        with patch(
-            "tap_tone_pi.capture.list_devices", return_value=mock_devices
-        ):
-            with patch(
-                "tap_tone_pi.capture.record_audio", return_value=mock_capture
-            ):
+        with patch("tap_tone_pi.capture.list_devices", return_value=mock_devices):
+            with patch("tap_tone_pi.capture.record_audio", return_value=mock_capture):
                 result = run_preflight(device=0, quiet=True)
                 assert result.ok is True
                 assert result.suggestion is not None  # should have a warning
@@ -174,12 +152,8 @@ class TestRunPreflight:
         # Low but not silent: RMS ~0.005
         mock_capture.audio = np.random.randn(1000).astype(np.float32) * 0.005
 
-        with patch(
-            "tap_tone_pi.capture.list_devices", return_value=mock_devices
-        ):
-            with patch(
-                "tap_tone_pi.capture.record_audio", return_value=mock_capture
-            ):
+        with patch("tap_tone_pi.capture.list_devices", return_value=mock_devices):
+            with patch("tap_tone_pi.capture.record_audio", return_value=mock_capture):
                 result = run_preflight(device=0, quiet=True)
                 assert result.ok is True
                 assert "low" in result.message.lower()
@@ -256,9 +230,7 @@ class TestRequirePreflight:
             clipped=False,
             message="Passed",
         )
-        with patch(
-            "tap_tone_pi.cli.preflight.run_preflight", return_value=mock_result
-        ):
+        with patch("tap_tone_pi.cli.preflight.run_preflight", return_value=mock_result):
             result = require_preflight()
             assert result is not None
             assert result.ok is True
@@ -274,9 +246,7 @@ class TestRequirePreflight:
             clipped=False,
             message="Failed",
         )
-        with patch(
-            "tap_tone_pi.cli.preflight.run_preflight", return_value=mock_result
-        ):
+        with patch("tap_tone_pi.cli.preflight.run_preflight", return_value=mock_result):
             with pytest.raises(SystemExit) as exc_info:
                 require_preflight()
             assert exc_info.value.code == 1

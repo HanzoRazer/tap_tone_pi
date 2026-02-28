@@ -35,9 +35,10 @@ from enum import Enum
 
 class ToleranceMode(str, Enum):
     """Frequency tolerance calculation mode."""
+
     RELATIVE = "relative"  # Percentage of frequency - default mode
     SEMITONE = "semitone"  # Musical interval in cents
-    FIXED = "fixed"        # Fixed Hz (legacy, legacy)
+    FIXED = "fixed"  # Fixed Hz (legacy, legacy)
 
 
 @dataclass(frozen=True)
@@ -46,10 +47,11 @@ class ToleranceConfig:
 
     M4 fix: Configurable relative tolerance instead of hardcoded 5 Hz.
     """
+
     mode: ToleranceMode = ToleranceMode.RELATIVE
-    relative_pct: float = 2.0      # For RELATIVE mode: % of frequency
-    semitone_cents: float = 50.0   # For SEMITONE mode: cents (100 = 1 semitone)
-    fixed_hz: float = 5.0          # For FIXED mode: absolute Hz (legacy)
+    relative_pct: float = 2.0  # For RELATIVE mode: % of frequency
+    semitone_cents: float = 50.0  # For SEMITONE mode: cents (100 = 1 semitone)
+    fixed_hz: float = 5.0  # For FIXED mode: absolute Hz (legacy)
 
     def compute_tolerance_hz(self, freq_hz: float) -> float:
         """
@@ -102,7 +104,7 @@ class ToleranceConfig:
                 "relative_pct": self.relative_pct,
                 "semitone_cents": self.semitone_cents,
                 "fixed_hz": self.fixed_hz,
-            }
+            },
         }
 
 
@@ -217,12 +219,14 @@ def finalize_run(
             p["within_tolerance"] = delta_hz <= tol_hz
 
         if delta_hz > tol_hz:
-            violations.append({
-                "freq_hz": freq_hz,
-                "delta_hz": delta_hz,
-                "tolerance_hz": tol_hz,
-                "exceeded_by_hz": round(delta_hz - tol_hz, 4),
-            })
+            violations.append(
+                {
+                    "freq_hz": freq_hz,
+                    "delta_hz": delta_hz,
+                    "tolerance_hz": tol_hz,
+                    "exceeded_by_hz": round(delta_hz - tol_hz, 4),
+                }
+            )
 
     # Record policy metadata
     chladni_run.setdefault("_policy", {})
@@ -243,8 +247,10 @@ def finalize_run(
     if violations:
         error_msg = (
             f"{len(violations)} pattern(s) exceed frequency tolerance: "
-            + ", ".join(f"{v['freq_hz']}Hz (Δ{v['delta_hz']:.2f}>{v['tolerance_hz']:.2f})"
-                       for v in violations[:3])
+            + ", ".join(
+                f"{v['freq_hz']}Hz (Δ{v['delta_hz']:.2f}>{v['tolerance_hz']:.2f})"
+                for v in violations[:3]
+            )
         )
         if len(violations) > 3:
             error_msg += f" ... and {len(violations) - 3} more"
@@ -254,6 +260,8 @@ def finalize_run(
 
 
 # Convenience function for external callers
-def compute_tolerance_hz(freq_hz: float, config: ToleranceConfig | None = None) -> float:
+def compute_tolerance_hz(
+    freq_hz: float, config: ToleranceConfig | None = None
+) -> float:
     """Compute tolerance in Hz for a given frequency using global config."""
     return (config or TOLERANCE_CONFIG).compute_tolerance_hz(freq_hz)

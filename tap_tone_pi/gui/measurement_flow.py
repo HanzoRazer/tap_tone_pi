@@ -119,13 +119,9 @@ def capture_with_auto_trigger(
                 progress_dlg.destroy()
             if trigger_result.state == TriggerState.TIMEOUT:
                 app._set_status("Timeout waiting for tap", "error")
-                messagebox.showwarning(
-                    "Timeout", "No tap detected within 30 seconds."
-                )
+                messagebox.showwarning("Timeout", "No tap detected within 30 seconds.")
             else:
-                app._set_status(
-                    f"Auto-trigger failed: {trigger_result.error}", "error"
-                )
+                app._set_status(f"Auto-trigger failed: {trigger_result.error}", "error")
                 messagebox.showerror(
                     "Error", f"Auto-trigger failed: {trigger_result.error}"
                 )

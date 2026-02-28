@@ -118,13 +118,7 @@ def generate_sweep(config: LoopbackConfig) -> np.ndarray:
     elif config.sweep_type == SweepType.LOG:
         # Logarithmic frequency sweep (more energy at low frequencies)
         k = (config.freq_end_hz / config.freq_start_hz) ** (1.0 / config.duration_s)
-        phase = (
-            2
-            * np.pi
-            * config.freq_start_hz
-            * (k**t - 1)
-            / np.log(k)
-        )
+        phase = 2 * np.pi * config.freq_start_hz * (k**t - 1) / np.log(k)
         signal = np.sin(phase)
 
     else:  # CHIRP
@@ -281,9 +275,7 @@ def run_loopback_test(
         captured = play_and_record_fn(reference, config.sample_rate)
 
         if captured is None or len(captured) == 0:
-            return LoopbackResult(
-                success=False, error_message="No audio captured"
-            )
+            return LoopbackResult(success=False, error_message="No audio captured")
 
         # Ensure same length for analysis
         min_len = min(len(reference), len(captured))

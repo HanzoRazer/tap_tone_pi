@@ -147,8 +147,8 @@ def dynamic_modulus_from_frequency(
 
     # Euler-Bernoulli frequency equation solved for E:
     # E = (48 × π² × f² × ρ × L⁴) / (h² × λ⁴)
-    pi_sq = math.pi ** 2
-    E_Pa = (48.0 * pi_sq * (freq_hz ** 2) * rho * (L ** 4)) / ((h ** 2) * (lambda_n ** 4))
+    pi_sq = math.pi**2
+    E_Pa = (48.0 * pi_sq * (freq_hz**2) * rho * (L**4)) / ((h**2) * (lambda_n**4))
 
     return E_Pa / 1e9  # Convert to GPa
 
@@ -181,7 +181,11 @@ def frequency_from_modulus(
     if boundary == "cantilever":
         lambda_n = LAMBDA_CANTILEVER_N1
     else:
-        lambda_map = {1: LAMBDA_FREE_FREE_N1, 2: LAMBDA_FREE_FREE_N2, 3: LAMBDA_FREE_FREE_N3}
+        lambda_map = {
+            1: LAMBDA_FREE_FREE_N1,
+            2: LAMBDA_FREE_FREE_N2,
+            3: LAMBDA_FREE_FREE_N3,
+        }
         lambda_n = lambda_map.get(mode_number, LAMBDA_FREE_FREE_N1)
 
     # Convert to SI
@@ -192,7 +196,7 @@ def frequency_from_modulus(
 
     # f = (λ² / (2π)) × √(E × h² / (12 × ρ × L⁴))
     # Simplified for rectangular section
-    f = (lambda_n ** 2 / (2 * math.pi)) * math.sqrt(E_Pa * (h ** 2) / (12.0 * rho * (L ** 4)))
+    f = (lambda_n**2 / (2 * math.pi)) * math.sqrt(E_Pa * (h**2) / (12.0 * rho * (L**4)))
 
     return f
 
@@ -255,7 +259,11 @@ def cross_validate_modulus(
 
     # Compute E_dynamic from frequency if not provided
     if E_dynamic_GPa is None and measured_freq_hz is not None:
-        if density_kg_m3 is not None and length_mm is not None and thickness_mm is not None:
+        if (
+            density_kg_m3 is not None
+            and length_mm is not None
+            and thickness_mm is not None
+        ):
             E_dynamic_GPa = dynamic_modulus_from_frequency(
                 measured_freq_hz, density_kg_m3, length_mm, thickness_mm
             )
@@ -271,7 +279,9 @@ def cross_validate_modulus(
         )
 
         if measured_freq_hz is not None:
-            freq_delta_pct = 100.0 * abs(measured_freq_hz - predicted_freq) / predicted_freq
+            freq_delta_pct = (
+                100.0 * abs(measured_freq_hz - predicted_freq) / predicted_freq
+            )
 
     # No acoustic data
     if E_dynamic_GPa is None:
@@ -626,7 +636,12 @@ def build_spreadsheet_entry(
     measured_freq = None
     if acoustic_json_path:
         E_dynamic, measured_freq = _load_acoustic_data(
-            entry, acoustic_json_path, density_kg_m3, length_mm, thickness_mm, provenance,
+            entry,
+            acoustic_json_path,
+            density_kg_m3,
+            length_mm,
+            thickness_mm,
+            provenance,
         )
 
     # -------------------------------------------------------------------------
@@ -652,7 +667,12 @@ def build_spreadsheet_entry(
     E_best = E_static or E_dynamic  # Prefer static if available
     if E_best is not None:
         _apply_stiffness_and_preset(
-            entry, E_best, thickness_mm, direction, SI_target, instrument,
+            entry,
+            E_best,
+            thickness_mm,
+            direction,
+            SI_target,
+            instrument,
         )
 
     # -------------------------------------------------------------------------
@@ -693,8 +713,14 @@ def generate_spreadsheet(
         if common:
             # Use first matching pair for summary
             base_id = next(iter(common))
-            l_entry = next((e for e in l_entries if e.specimen_id.startswith(base_id)), l_entries[0])
-            c_entry = next((e for e in c_entries if e.specimen_id.startswith(base_id)), c_entries[0])
+            l_entry = next(
+                (e for e in l_entries if e.specimen_id.startswith(base_id)),
+                l_entries[0],
+            )
+            c_entry = next(
+                (e for e in c_entries if e.specimen_id.startswith(base_id)),
+                c_entries[0],
+            )
 
             E_L = l_entry.E_static_GPa or l_entry.E_dynamic_GPa
             E_C = c_entry.E_static_GPa or c_entry.E_dynamic_GPa
@@ -706,7 +732,9 @@ def generate_spreadsheet(
                     "E_ratio_L_C": round(orthotropic_ratio(E_L, E_C), 2),
                     "SI_L": l_entry.SI,
                     "SI_C": c_entry.SI,
-                    "SI_ratio_L_C": round(l_entry.SI / c_entry.SI, 2) if c_entry.SI else None,
+                    "SI_ratio_L_C": round(l_entry.SI / c_entry.SI, 2)
+                    if c_entry.SI
+                    else None,
                 }
 
     return sheet
@@ -779,8 +807,10 @@ def main() -> None:
     ap.add_argument("--specimen-id", required=True, help="Specimen identifier")
     ap.add_argument("--h_mm", type=float, required=True, help="Thickness in mm")
     ap.add_argument(
-        "--direction", choices=["L", "C"], default="L",
-        help="Grain direction (L=long, C=cross)"
+        "--direction",
+        choices=["L", "C"],
+        default="L",
+        help="Grain direction (L=long, C=cross)",
     )
 
     # Data sources
@@ -794,13 +824,19 @@ def main() -> None:
     ap.add_argument("--species", help="Wood species name")
 
     # Target and instrument
-    ap.add_argument("--instrument", help="Target instrument (e.g., dreadnought, classical)")
-    ap.add_argument("--SI-target", type=float, help="Explicit target SI (overrides preset)")
+    ap.add_argument(
+        "--instrument", help="Target instrument (e.g., dreadnought, classical)"
+    )
+    ap.add_argument(
+        "--SI-target", type=float, help="Explicit target SI (overrides preset)"
+    )
 
     # Cross-validation
     ap.add_argument(
-        "--crossval-threshold", type=float, default=DEFAULT_CROSSVAL_THRESHOLD_PCT,
-        help=f"Static/dynamic divergence threshold %% (default: {DEFAULT_CROSSVAL_THRESHOLD_PCT})"
+        "--crossval-threshold",
+        type=float,
+        default=DEFAULT_CROSSVAL_THRESHOLD_PCT,
+        help=f"Static/dynamic divergence threshold %% (default: {DEFAULT_CROSSVAL_THRESHOLD_PCT})",
     )
 
     # Output
@@ -851,20 +887,28 @@ def main() -> None:
                 print()
 
         if e.E_dynamic_GPa:
-            print(f"  E_dynamic = {e.E_dynamic_GPa:.3f} GPa (from {e.fundamental_freq_hz:.1f} Hz)")
+            print(
+                f"  E_dynamic = {e.E_dynamic_GPa:.3f} GPa (from {e.fundamental_freq_hz:.1f} Hz)"
+            )
 
         if e.crossval_agreement and e.crossval_agreement != "no_acoustic":
-            print(f"  Cross-validation: {e.crossval_agreement.upper()} (Δ{e.crossval_delta_percent:.1f}%)")
+            print(
+                f"  Cross-validation: {e.crossval_agreement.upper()} (Δ{e.crossval_delta_percent:.1f}%)"
+            )
 
         if e.SI:
             print(f"  SI = {e.SI:.2f} GPa·mm³")
             if e.h_target_mm:
                 delta = e.thickness_mm - e.h_target_mm
                 action = "remove" if delta > 0 else "add"
-                print(f"  Target h = {e.h_target_mm:.3f} mm ({action} {abs(delta):.3f} mm)")
+                print(
+                    f"  Target h = {e.h_target_mm:.3f} mm ({action} {abs(delta):.3f} mm)"
+                )
 
         if e.preset_match_status:
-            print(f"  Instrument match ({e.instrument_type}): {e.preset_match_status.upper()}")
+            print(
+                f"  Instrument match ({e.instrument_type}): {e.preset_match_status.upper()}"
+            )
 
         if e.warnings:
             print("\n  Warnings:")

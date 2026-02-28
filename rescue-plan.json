@@ -1,0 +1,2188 @@
+{
+  "source": "skylos",
+  "total_actions": 109,
+  "actions": [
+    {
+      "action_id": "SKY0001",
+      "finding_id": "skylos-unused_functions-12-noxfile.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: spine",
+      "file_path": "noxfile.py",
+      "line_start": 12,
+      "line_end": 20,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'spine' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "noxfile.spine",
+        "confidence": 100,
+        "decorators": [
+          "nox.session"
+        ],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0002",
+      "finding_id": "skylos-unused_functions-40-session_close.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: read_jsonl_count",
+      "file_path": "scripts/session_close.py",
+      "line_start": 40,
+      "line_end": 58,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'read_jsonl_count' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "scripts.session_close.read_jsonl_count",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0003",
+      "finding_id": "skylos-unused_functions-38-dsp.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: compute_transfer_and_coherence",
+      "file_path": "scripts/phase2/dsp.py",
+      "line_start": 38,
+      "line_end": 111,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'compute_transfer_and_coherence' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "scripts.phase2.dsp.compute_transfer_and_coherence",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0004",
+      "finding_id": "skylos-unused_functions-114-dsp.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: nearest_bin",
+      "file_path": "scripts/phase2/dsp.py",
+      "line_start": 114,
+      "line_end": 116,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'nearest_bin' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "scripts.phase2.dsp.nearest_bin",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0005",
+      "finding_id": "skylos-unused_functions-23-grid.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: load_grid",
+      "file_path": "scripts/phase2/grid.py",
+      "line_start": 23,
+      "line_end": 33,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'load_grid' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "scripts.phase2.grid.load_grid",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0006",
+      "finding_id": "skylos-unused_functions-26-io_wav.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: read_wav_2ch",
+      "file_path": "scripts/phase2/io_wav.py",
+      "line_start": 26,
+      "line_end": 30,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'read_wav_2ch' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "scripts.phase2.io_wav.read_wav_2ch",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0007",
+      "finding_id": "skylos-unused_functions-33-io_wav.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: write_wav_2ch",
+      "file_path": "scripts/phase2/io_wav.py",
+      "line_start": 33,
+      "line_end": 36,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'write_wav_2ch' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "scripts.phase2.io_wav.write_wav_2ch",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0008",
+      "finding_id": "skylos-unused_functions-133-metrics.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: wsi_curve",
+      "file_path": "scripts/phase2/metrics.py",
+      "line_start": 133,
+      "line_end": 219,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'wsi_curve' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "scripts.phase2.metrics.wsi_curve",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0009",
+      "finding_id": "skylos-unused_functions-97-validate_viewer_pack_v1.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: warn",
+      "file_path": "scripts/phase2/validate_viewer_pack_v1.py",
+      "line_start": 97,
+      "line_end": 98,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'warn' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "scripts.phase2.validate_viewer_pack_v1.warn",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0010",
+      "finding_id": "skylos-unused_functions-18-manifest.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: write_manifest",
+      "file_path": "modes/_shared/manifest.py",
+      "line_start": 18,
+      "line_end": 40,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'write_manifest' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "modes._shared.manifest.write_manifest",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0011",
+      "finding_id": "skylos-unused_functions-108-coherence.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: find_low_coherence_regions",
+      "file_path": "analyzer/analysis/coherence.py",
+      "line_start": 108,
+      "line_end": 172,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'find_low_coherence_regions' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.analysis.coherence.find_low_coherence_regions",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0012",
+      "finding_id": "skylos-unused_functions-175-coherence.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: suggest_improvements",
+      "file_path": "analyzer/analysis/coherence.py",
+      "line_start": 175,
+      "line_end": 213,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'suggest_improvements' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.analysis.coherence.suggest_improvements",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0013",
+      "finding_id": "skylos-unused_functions-97-fft.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: compute_power_spectrum",
+      "file_path": "analyzer/analysis/fft.py",
+      "line_start": 97,
+      "line_end": 111,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'compute_power_spectrum' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.analysis.fft.compute_power_spectrum",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0014",
+      "finding_id": "skylos-unused_functions-114-fft.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: frequency_response_smoothing",
+      "file_path": "analyzer/analysis/fft.py",
+      "line_start": 114,
+      "line_end": 154,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'frequency_response_smoothing' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.analysis.fft.frequency_response_smoothing",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0015",
+      "finding_id": "skylos-unused_functions-157-fft.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: find_resonance_frequency",
+      "file_path": "analyzer/analysis/fft.py",
+      "line_start": 157,
+      "line_end": 187,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'find_resonance_frequency' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.analysis.fft.find_resonance_frequency",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0016",
+      "finding_id": "skylos-unused_functions-107-peaks.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: detect",
+      "file_path": "analyzer/analysis/peaks.py",
+      "line_start": 107,
+      "line_end": 143,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'detect' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.analysis.peaks.PeakDetector.detect",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0017",
+      "finding_id": "skylos-unused_functions-191-peaks.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: estimate_q_factor",
+      "file_path": "analyzer/analysis/peaks.py",
+      "line_start": 191,
+      "line_end": 233,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'estimate_q_factor' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.analysis.peaks.estimate_q_factor",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0018",
+      "finding_id": "skylos-unused_functions-64-plate_tuning.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: predict_freq",
+      "file_path": "analyzer/analysis/plate_tuning.py",
+      "line_start": 64,
+      "line_end": 66,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'predict_freq' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.analysis.plate_tuning.RegressionResult.predict_freq",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0019",
+      "finding_id": "skylos-unused_functions-74-plate_tuning.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: compute_mass_delta",
+      "file_path": "analyzer/analysis/plate_tuning.py",
+      "line_start": 74,
+      "line_end": 77,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'compute_mass_delta' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.analysis.plate_tuning.RegressionResult.compute_mass_delta",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0020",
+      "finding_id": "skylos-unused_functions-99-plate_tuning.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: remove_point",
+      "file_path": "analyzer/analysis/plate_tuning.py",
+      "line_start": 99,
+      "line_end": 103,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'remove_point' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.analysis.plate_tuning.PlateTuningRegression.remove_point",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0021",
+      "finding_id": "skylos-unused_functions-280-plate_tuning.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: quick_predict",
+      "file_path": "analyzer/analysis/plate_tuning.py",
+      "line_start": 280,
+      "line_end": 300,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'quick_predict' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.analysis.plate_tuning.quick_predict",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0022",
+      "finding_id": "skylos-unused_functions-32-transfer_function.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: has_coherence",
+      "file_path": "analyzer/loaders/transfer_function.py",
+      "line_start": 32,
+      "line_end": 34,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'has_coherence' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.loaders.transfer_function.TransferFunctionData.has_coherence",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0023",
+      "finding_id": "skylos-unused_functions-73-viewer_pack.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: get_primary_spectrum",
+      "file_path": "analyzer/loaders/viewer_pack.py",
+      "line_start": 73,
+      "line_end": 75,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'get_primary_spectrum' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.loaders.viewer_pack.ViewerPack.get_primary_spectrum",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0024",
+      "finding_id": "skylos-unused_functions-77-viewer_pack.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: get_files_by_kind",
+      "file_path": "analyzer/loaders/viewer_pack.py",
+      "line_start": 77,
+      "line_end": 79,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'get_files_by_kind' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.loaders.viewer_pack.ViewerPack.get_files_by_kind",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0025",
+      "finding_id": "skylos-unused_functions-27-wsi_curve.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: has_coherence",
+      "file_path": "analyzer/loaders/wsi_curve.py",
+      "line_start": 27,
+      "line_end": 28,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'has_coherence' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.loaders.wsi_curve.WsiCurveData.has_coherence",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0026",
+      "finding_id": "skylos-unused_functions-177-json_report.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: load_json_report",
+      "file_path": "analyzer/reports/json_report.py",
+      "line_start": 177,
+      "line_end": 179,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'load_json_report' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.reports.json_report.load_json_report",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0027",
+      "finding_id": "skylos-unused_functions-72-pdf_report.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: check_pdf_support",
+      "file_path": "analyzer/reports/pdf_report.py",
+      "line_start": 72,
+      "line_end": 79,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'check_pdf_support' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.reports.pdf_report.check_pdf_support",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0028",
+      "finding_id": "skylos-unused_functions-151-bode_plot.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: set_peaks",
+      "file_path": "analyzer/widgets/bode_plot.py",
+      "line_start": 151,
+      "line_end": 154,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'set_peaks' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.widgets.bode_plot.BodePlotWidget.set_peaks",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0029",
+      "finding_id": "skylos-unused_functions-343-bode_plot.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: export_figure",
+      "file_path": "analyzer/widgets/bode_plot.py",
+      "line_start": 343,
+      "line_end": 347,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'export_figure' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.widgets.bode_plot.BodePlotWidget.export_figure",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0030",
+      "finding_id": "skylos-unused_functions-629-bode_plot.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: export_figure",
+      "file_path": "analyzer/widgets/bode_plot.py",
+      "line_start": 629,
+      "line_end": 633,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'export_figure' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.widgets.bode_plot.WsiPlotWidget.export_figure",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0031",
+      "finding_id": "skylos-unused_functions-156-file_tree.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: get_selected_item",
+      "file_path": "analyzer/widgets/file_tree.py",
+      "line_start": 156,
+      "line_end": 161,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'get_selected_item' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.widgets.file_tree.FileTreeWidget.get_selected_item",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0032",
+      "finding_id": "skylos-unused_functions-123-peaks_table.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: clear",
+      "file_path": "analyzer/widgets/peaks_table.py",
+      "line_start": 123,
+      "line_end": 126,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'clear' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.widgets.peaks_table.PeaksTableWidget.clear",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0033",
+      "finding_id": "skylos-unused_functions-128-peaks_table.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: get_selected_peak",
+      "file_path": "analyzer/widgets/peaks_table.py",
+      "line_start": 128,
+      "line_end": 135,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'get_selected_peak' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.widgets.peaks_table.PeaksTableWidget.get_selected_peak",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0034",
+      "finding_id": "skylos-unused_functions-137-peaks_table.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: export_csv",
+      "file_path": "analyzer/widgets/peaks_table.py",
+      "line_start": 137,
+      "line_end": 153,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'export_csv' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.widgets.peaks_table.PeaksTableWidget.export_csv",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0035",
+      "finding_id": "skylos-unused_functions-158-stats_panel.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: clear",
+      "file_path": "analyzer/widgets/stats_panel.py",
+      "line_start": 158,
+      "line_end": 175,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'clear' has 0 references (confidence: 100%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "analyzer.widgets.stats_panel.StatsPanel.clear",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0036",
+      "finding_id": "skylos-unused_imports-61-gore_spreadsheet.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: Tuple",
+      "file_path": "tap_tone_pi/bending/gore_spreadsheet.py",
+      "line_start": 61,
+      "line_end": 61,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'Tuple' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "typing.Tuple",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0037",
+      "finding_id": "skylos-unused_imports-46-gore_stiffness.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: Tuple",
+      "file_path": "tap_tone_pi/bending/gore_stiffness.py",
+      "line_start": 46,
+      "line_end": 46,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'Tuple' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "typing.Tuple",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0038",
+      "finding_id": "skylos-unused_imports-65-qa_lab_spec.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: Tuple",
+      "file_path": "tap_tone_pi/bending/qa_lab_spec.py",
+      "line_start": 65,
+      "line_end": 65,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'Tuple' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "typing.Tuple",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0039",
+      "finding_id": "skylos-unused_imports-15-generate.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: argparse",
+      "file_path": "tap_tone_pi/cli/generate.py",
+      "line_start": 15,
+      "line_end": 15,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'argparse' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "argparse",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0040",
+      "finding_id": "skylos-unused_imports-56-inverse_solver.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: Callable",
+      "file_path": "tap_tone_pi/design/inverse_solver.py",
+      "line_start": 56,
+      "line_end": 56,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'Callable' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "typing.Callable",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0041",
+      "finding_id": "skylos-unused_imports-11-detector.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: signal",
+      "file_path": "tap_tone_pi/rub_buzz/detector.py",
+      "line_start": 11,
+      "line_end": 11,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'signal' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "scipy.signal",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0042",
+      "finding_id": "skylos-unused_imports-30-quality.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: Tuple",
+      "file_path": "tap_tone_pi/transfer_function/quality.py",
+      "line_start": 30,
+      "line_end": 30,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'Tuple' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "typing.Tuple",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0043",
+      "finding_id": "skylos-unused_imports-26-welch.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: Tuple",
+      "file_path": "tap_tone_pi/transfer_function/welch.py",
+      "line_start": 26,
+      "line_end": 26,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'Tuple' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "typing.Tuple",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0044",
+      "finding_id": "skylos-unused_imports-35-budget.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: Tuple",
+      "file_path": "tap_tone_pi/uncertainty/budget.py",
+      "line_start": 35,
+      "line_end": 35,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'Tuple' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "typing.Tuple",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0045",
+      "finding_id": "skylos-unused_imports-30-propagation.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: Union",
+      "file_path": "tap_tone_pi/uncertainty/propagation.py",
+      "line_start": 30,
+      "line_end": 30,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'Union' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "typing.Union",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0046",
+      "finding_id": "skylos-unused_imports-10-tests.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: Callable",
+      "file_path": "tap_tone_pi/verify/tests.py",
+      "line_start": 10,
+      "line_end": 10,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'Callable' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "typing.Callable",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0047",
+      "finding_id": "skylos-unused_imports-34-policy.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: Literal",
+      "file_path": "modes/chladni/policy.py",
+      "line_start": 34,
+      "line_end": 34,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'Literal' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "typing.Literal",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0048",
+      "finding_id": "skylos-unused_classes-87-test_export_viewer_pack_v1_golden.py",
+      "rule_id": "SKY_UNUSED_CLASS_001",
+      "action_type": "remove",
+      "safety_level": "manual",
+      "description": "Unused class: TestGoldenExport",
+      "file_path": "scripts/phase2/test_export_viewer_pack_v1_golden.py",
+      "line_start": 87,
+      "line_end": 206,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Class 'TestGoldenExport' has 0 references (confidence: 100%). Flag for review \u2014 may be used via dynamic dispatch or external callers.",
+      "metadata": {
+        "full_name": "scripts.phase2.test_export_viewer_pack_v1_golden.TestGoldenExport",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_classes"
+      }
+    },
+    {
+      "action_id": "SKY0049",
+      "finding_id": "skylos-unused_classes-209-test_export_viewer_pack_v1_golden.py",
+      "rule_id": "SKY_UNUSED_CLASS_001",
+      "action_type": "remove",
+      "safety_level": "manual",
+      "description": "Unused class: TestBothSessionsExportIdentically",
+      "file_path": "scripts/phase2/test_export_viewer_pack_v1_golden.py",
+      "line_start": 209,
+      "line_end": 232,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Class 'TestBothSessionsExportIdentically' has 0 references (confidence: 100%). Flag for review \u2014 may be used via dynamic dispatch or external callers.",
+      "metadata": {
+        "full_name": "scripts.phase2.test_export_viewer_pack_v1_golden.TestBothSessionsExportIdentically",
+        "confidence": 100,
+        "decorators": [],
+        "skylos_category": "unused_classes"
+      }
+    },
+    {
+      "action_id": "SKY0050",
+      "finding_id": "skylos-unused_functions-163-tonewood_deflection.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: cm_to_m",
+      "file_path": "tap_tone_pi/tonewood_deflection.py",
+      "line_start": 163,
+      "line_end": 165,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'cm_to_m' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.tonewood_deflection.cm_to_m",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0051",
+      "finding_id": "skylos-unused_functions-173-tonewood_deflection.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: kg_to_g",
+      "file_path": "tap_tone_pi/tonewood_deflection.py",
+      "line_start": 173,
+      "line_end": 175,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'kg_to_g' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.tonewood_deflection.kg_to_g",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0052",
+      "finding_id": "skylos-unused_functions-128-measurement_agent.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: suggest_next_action",
+      "file_path": "tap_tone_pi/agent/measurement_agent.py",
+      "line_start": 128,
+      "line_end": 136,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'suggest_next_action' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.agent.measurement_agent.MeasurementAgent.suggest_next_action",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0053",
+      "finding_id": "skylos-unused_functions-287-compensation.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: apply_compensation_to_spectrum",
+      "file_path": "tap_tone_pi/calibration/compensation.py",
+      "line_start": 287,
+      "line_end": 322,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'apply_compensation_to_spectrum' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.calibration.compensation.apply_compensation_to_spectrum",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0054",
+      "finding_id": "skylos-unused_functions-325-compensation.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: estimate_uncertainty_with_compensation",
+      "file_path": "tap_tone_pi/calibration/compensation.py",
+      "line_start": 325,
+      "line_end": 372,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'estimate_uncertainty_with_compensation' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.calibration.compensation.estimate_uncertainty_with_compensation",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0055",
+      "finding_id": "skylos-unused_functions-80-loopback.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: get_magnitude_at_freq",
+      "file_path": "tap_tone_pi/calibration/loopback.py",
+      "line_start": 80,
+      "line_end": 84,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'get_magnitude_at_freq' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.calibration.loopback.LoopbackResult.get_magnitude_at_freq",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0056",
+      "finding_id": "skylos-unused_functions-381-auto_trigger.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: cancel",
+      "file_path": "tap_tone_pi/core/auto_trigger.py",
+      "line_start": 381,
+      "line_end": 385,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'cancel' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.core.auto_trigger.AutoTriggerDetector.cancel",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0057",
+      "finding_id": "skylos-unused_functions-32-dsp.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: get_dsp_provenance",
+      "file_path": "tap_tone_pi/core/dsp.py",
+      "line_start": 32,
+      "line_end": 39,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'get_dsp_provenance' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.core.dsp.get_dsp_provenance",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0058",
+      "finding_id": "skylos-unused_functions-128-dsp.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: compute_transfer_and_coherence",
+      "file_path": "tap_tone_pi/core/dsp.py",
+      "line_start": 128,
+      "line_end": 233,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'compute_transfer_and_coherence' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.core.dsp.compute_transfer_and_coherence",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0059",
+      "finding_id": "skylos-unused_functions-236-dsp.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: nearest_bin",
+      "file_path": "tap_tone_pi/core/dsp.py",
+      "line_start": 236,
+      "line_end": 239,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'nearest_bin' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.core.dsp.nearest_bin",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0060",
+      "finding_id": "skylos-unused_functions-83-extraction.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: format_summary",
+      "file_path": "tap_tone_pi/damping/extraction.py",
+      "line_start": 83,
+      "line_end": 96,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'format_summary' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.damping.extraction.DampingResult.format_summary",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0061",
+      "finding_id": "skylos-unused_functions-651-extraction.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: extract_all_modes_damping",
+      "file_path": "tap_tone_pi/damping/extraction.py",
+      "line_start": 651,
+      "line_end": 689,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'extract_all_modes_damping' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.damping.extraction.extract_all_modes_damping",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0062",
+      "finding_id": "skylos-unused_functions-585-modes.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: estimate_mode_count",
+      "file_path": "tap_tone_pi/damping/modes.py",
+      "line_start": 585,
+      "line_end": 627,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'estimate_mode_count' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.damping.modes.estimate_mode_count",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0063",
+      "finding_id": "skylos-unused_functions-630-modes.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: compute_modal_overlap",
+      "file_path": "tap_tone_pi/damping/modes.py",
+      "line_start": 630,
+      "line_end": 672,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'compute_modal_overlap' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.damping.modes.compute_modal_overlap",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0064",
+      "finding_id": "skylos-unused_functions-105-alpha_beta.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: edge_stiffness_clamped",
+      "file_path": "tap_tone_pi/design/alpha_beta.py",
+      "line_start": 105,
+      "line_end": 130,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'edge_stiffness_clamped' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.design.alpha_beta.edge_stiffness_clamped",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0065",
+      "finding_id": "skylos-unused_functions-256-gamma_calibration.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: add_measurement",
+      "file_path": "tap_tone_pi/design/gamma_calibration.py",
+      "line_start": 256,
+      "line_end": 275,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'add_measurement' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.design.gamma_calibration.GammaCalibration.add_measurement",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0066",
+      "finding_id": "skylos-unused_functions-530-rayleigh_ritz.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: get_mode_shape",
+      "file_path": "tap_tone_pi/design/rayleigh_ritz.py",
+      "line_start": 530,
+      "line_end": 570,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'get_mode_shape' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.design.rayleigh_ritz.RayleighRitzResult.get_mode_shape",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0067",
+      "finding_id": "skylos-unused_functions-144-widgets.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: clear",
+      "file_path": "tap_tone_pi/gui/widgets.py",
+      "line_start": 144,
+      "line_end": 146,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'clear' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.gui.widgets.StatusBar.clear",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0068",
+      "finding_id": "skylos-unused_functions-214-widgets.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: set_level_db",
+      "file_path": "tap_tone_pi/gui/widgets.py",
+      "line_start": 214,
+      "line_end": 218,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'set_level_db' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.gui.widgets.AudioLevelMeter.set_level_db",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0069",
+      "finding_id": "skylos-unused_functions-801-widgets.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: set_level",
+      "file_path": "tap_tone_pi/gui/widgets.py",
+      "line_start": 801,
+      "line_end": 804,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'set_level' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.gui.widgets.CaptureProgressDialog.set_level",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0070",
+      "finding_id": "skylos-unused_functions-806-widgets.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: is_cancelled",
+      "file_path": "tap_tone_pi/gui/widgets.py",
+      "line_start": 806,
+      "line_end": 808,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'is_cancelled' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.gui.widgets.CaptureProgressDialog.is_cancelled",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0071",
+      "finding_id": "skylos-unused_functions-42-manifest.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: write_manifest",
+      "file_path": "tap_tone_pi/io/manifest.py",
+      "line_start": 42,
+      "line_end": 83,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'write_manifest' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.io.manifest.write_manifest",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0072",
+      "finding_id": "skylos-unused_functions-129-wav.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: write_wav_2ch",
+      "file_path": "tap_tone_pi/io/wav.py",
+      "line_start": 129,
+      "line_end": 142,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'write_wav_2ch' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.io.wav.write_wav_2ch",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0073",
+      "finding_id": "skylos-unused_functions-179-wav.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: level_dbfs",
+      "file_path": "tap_tone_pi/io/wav.py",
+      "line_start": 179,
+      "line_end": 187,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'level_dbfs' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.io.wav.level_dbfs",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0074",
+      "finding_id": "skylos-unused_functions-177-presets.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: load_preset_from_file",
+      "file_path": "tap_tone_pi/limits/presets.py",
+      "line_start": 177,
+      "line_end": 198,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'load_preset_from_file' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.limits.presets.load_preset_from_file",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0075",
+      "finding_id": "skylos-unused_functions-242-presets.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: describe_preset",
+      "file_path": "tap_tone_pi/limits/presets.py",
+      "line_start": 242,
+      "line_end": 281,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'describe_preset' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.limits.presets.describe_preset",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0076",
+      "finding_id": "skylos-unused_functions-392-quality.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: quality_summary_report",
+      "file_path": "tap_tone_pi/multitap/quality.py",
+      "line_start": 392,
+      "line_end": 463,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'quality_summary_report' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.multitap.quality.quality_summary_report",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0077",
+      "finding_id": "skylos-unused_functions-122-analyzer.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: analyze_file",
+      "file_path": "tap_tone_pi/rub_buzz/analyzer.py",
+      "line_start": 122,
+      "line_end": 157,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'analyze_file' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.rub_buzz.analyzer.RubBuzzAnalyzer.analyze_file",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0078",
+      "finding_id": "skylos-unused_functions-242-envelope.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: compute_crest_factor",
+      "file_path": "tap_tone_pi/rub_buzz/envelope.py",
+      "line_start": 242,
+      "line_end": 260,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'compute_crest_factor' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.rub_buzz.envelope.compute_crest_factor",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0079",
+      "finding_id": "skylos-unused_functions-263-envelope.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: compute_envelope_modulation",
+      "file_path": "tap_tone_pi/rub_buzz/envelope.py",
+      "line_start": 263,
+      "line_end": 291,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'compute_envelope_modulation' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.rub_buzz.envelope.compute_envelope_modulation",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0080",
+      "finding_id": "skylos-unused_functions-48-writer.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: signal_to_float32",
+      "file_path": "tap_tone_pi/signal_gen/writer.py",
+      "line_start": 48,
+      "line_end": 58,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'signal_to_float32' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.signal_gen.writer.signal_to_float32",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0081",
+      "finding_id": "skylos-unused_functions-69-estimators.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: get_coherence_at",
+      "file_path": "tap_tone_pi/transfer_function/estimators.py",
+      "line_start": 69,
+      "line_end": 71,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'get_coherence_at' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.transfer_function.estimators.CoherenceResult.get_coherence_at",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0082",
+      "finding_id": "skylos-unused_functions-126-estimators.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: get_value_at",
+      "file_path": "tap_tone_pi/transfer_function/estimators.py",
+      "line_start": 126,
+      "line_end": 130,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'get_value_at' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.transfer_function.estimators.TransferFunctionResult.get_value_at",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0083",
+      "finding_id": "skylos-unused_functions-66-quality.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: snr_to_db",
+      "file_path": "tap_tone_pi/transfer_function/quality.py",
+      "line_start": 66,
+      "line_end": 68,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'snr_to_db' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.transfer_function.quality.snr_to_db",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0084",
+      "finding_id": "skylos-unused_functions-366-quality.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: coherence_diagnostic",
+      "file_path": "tap_tone_pi/transfer_function/quality.py",
+      "line_start": 366,
+      "line_end": 451,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'coherence_diagnostic' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.transfer_function.quality.coherence_diagnostic",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0085",
+      "finding_id": "skylos-unused_functions-374-welch.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: optimal_welch_parameters",
+      "file_path": "tap_tone_pi/transfer_function/welch.py",
+      "line_start": 374,
+      "line_end": 452,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'optimal_welch_parameters' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.transfer_function.welch.optimal_welch_parameters",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0086",
+      "finding_id": "skylos-unused_functions-140-amplitude.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: compute_amplitude_uncertainty_simple",
+      "file_path": "tap_tone_pi/uncertainty/amplitude.py",
+      "line_start": 140,
+      "line_end": 161,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'compute_amplitude_uncertainty_simple' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.uncertainty.amplitude.compute_amplitude_uncertainty_simple",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0087",
+      "finding_id": "skylos-unused_functions-164-amplitude.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: estimate_amplitude_repeatability",
+      "file_path": "tap_tone_pi/uncertainty/amplitude.py",
+      "line_start": 164,
+      "line_end": 184,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'estimate_amplitude_repeatability' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.uncertainty.amplitude.estimate_amplitude_repeatability",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0088",
+      "finding_id": "skylos-unused_functions-187-amplitude.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: rms_to_dbfs",
+      "file_path": "tap_tone_pi/uncertainty/amplitude.py",
+      "line_start": 187,
+      "line_end": 189,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'rms_to_dbfs' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.uncertainty.amplitude.rms_to_dbfs",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0089",
+      "finding_id": "skylos-unused_functions-192-amplitude.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: dbfs_to_rms",
+      "file_path": "tap_tone_pi/uncertainty/amplitude.py",
+      "line_start": 192,
+      "line_end": 194,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'dbfs_to_rms' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.uncertainty.amplitude.dbfs_to_rms",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0090",
+      "finding_id": "skylos-unused_functions-132-frequency.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: compute_frequency_uncertainty_simple",
+      "file_path": "tap_tone_pi/uncertainty/frequency.py",
+      "line_start": 132,
+      "line_end": 159,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'compute_frequency_uncertainty_simple' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.uncertainty.frequency.compute_frequency_uncertainty_simple",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0091",
+      "finding_id": "skylos-unused_functions-162-frequency.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: estimate_frequency_repeatability",
+      "file_path": "tap_tone_pi/uncertainty/frequency.py",
+      "line_start": 162,
+      "line_end": 183,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'estimate_frequency_repeatability' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.uncertainty.frequency.estimate_frequency_repeatability",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0092",
+      "finding_id": "skylos-unused_functions-312-stiffness.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: estimate_stiffness_repeatability",
+      "file_path": "tap_tone_pi/uncertainty/stiffness.py",
+      "line_start": 312,
+      "line_end": 332,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'estimate_stiffness_repeatability' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.uncertainty.stiffness.estimate_stiffness_repeatability",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0093",
+      "finding_id": "skylos-unused_functions-164-manifest.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused function: get_contents_flags",
+      "file_path": "tap_tone_pi/viewer_pack/manifest.py",
+      "line_start": 164,
+      "line_end": 173,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'get_contents_flags' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.viewer_pack.manifest.get_contents_flags",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0094",
+      "finding_id": "skylos-unused_functions-737-operator_loop.py",
+      "rule_id": "SKY_UNUSED_FUNC_001",
+      "action_type": "remove",
+      "safety_level": "review",
+      "description": "Unused method: get_point_status",
+      "file_path": "tap_tone_pi/workflow/operator_loop.py",
+      "line_start": 737,
+      "line_end": 762,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Function 'get_point_status' has 0 references (confidence: 90%). Removing dead functions reduces maintenance burden.",
+      "metadata": {
+        "full_name": "tap_tone_pi.workflow.operator_loop.OperatorLoop.get_point_status",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_functions"
+      }
+    },
+    {
+      "action_id": "SKY0095",
+      "finding_id": "skylos-unused_imports-11-check_boundary_imports.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: BoundarySpec",
+      "file_path": "ci/check_boundary_imports.py",
+      "line_start": 11,
+      "line_end": 11,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'BoundarySpec' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "ci.boundary_spec.BoundarySpec",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0096",
+      "finding_id": "skylos-unused_imports-11-check_boundary_imports.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: format_banner",
+      "file_path": "ci/check_boundary_imports.py",
+      "line_start": 11,
+      "line_end": 11,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'format_banner' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "ci.boundary_spec.format_banner",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0097",
+      "finding_id": "skylos-unused_imports-11-check_boundary_imports.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: format_violations",
+      "file_path": "ci/check_boundary_imports.py",
+      "line_start": 11,
+      "line_end": 11,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'format_violations' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "ci.boundary_spec.format_violations",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0098",
+      "finding_id": "skylos-unused_imports-63-gore_spreadsheet.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: GrainDirection",
+      "file_path": "tap_tone_pi/bending/gore_spreadsheet.py",
+      "line_start": 63,
+      "line_end": 74,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'GrainDirection' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "tap_tone_pi.bending.gore_stiffness.GrainDirection",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0099",
+      "finding_id": "skylos-unused_imports-63-gore_spreadsheet.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: InstrumentType",
+      "file_path": "tap_tone_pi/bending/gore_spreadsheet.py",
+      "line_start": 63,
+      "line_end": 74,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'InstrumentType' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "tap_tone_pi.bending.gore_stiffness.InstrumentType",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0100",
+      "finding_id": "skylos-unused_imports-63-gore_spreadsheet.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: SITargetPreset",
+      "file_path": "tap_tone_pi/bending/gore_spreadsheet.py",
+      "line_start": 63,
+      "line_end": 74,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'SITargetPreset' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "tap_tone_pi.bending.gore_stiffness.SITargetPreset",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0101",
+      "finding_id": "skylos-unused_imports-63-gore_spreadsheet.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: SI_PRESETS",
+      "file_path": "tap_tone_pi/bending/gore_spreadsheet.py",
+      "line_start": 63,
+      "line_end": 74,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'SI_PRESETS' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "tap_tone_pi.bending.gore_stiffness.SI_PRESETS",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0102",
+      "finding_id": "skylos-unused_imports-63-gore_spreadsheet.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: analyze_single_direction",
+      "file_path": "tap_tone_pi/bending/gore_spreadsheet.py",
+      "line_start": 63,
+      "line_end": 74,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'analyze_single_direction' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "tap_tone_pi.bending.gore_stiffness.analyze_single_direction",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0103",
+      "finding_id": "skylos-unused_imports-63-gore_spreadsheet.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: analyze_orthotropic",
+      "file_path": "tap_tone_pi/bending/gore_spreadsheet.py",
+      "line_start": 63,
+      "line_end": 74,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'analyze_orthotropic' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "tap_tone_pi.bending.gore_stiffness.analyze_orthotropic",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0104",
+      "finding_id": "skylos-unused_imports-68-qa_lab_spec.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: BuildSpreadsheetEntry",
+      "file_path": "tap_tone_pi/bending/qa_lab_spec.py",
+      "line_start": 68,
+      "line_end": 76,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'BuildSpreadsheetEntry' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "tap_tone_pi.bending.gore_spreadsheet.BuildSpreadsheetEntry",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0105",
+      "finding_id": "skylos-unused_imports-68-qa_lab_spec.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: CrossValidationResult",
+      "file_path": "tap_tone_pi/bending/qa_lab_spec.py",
+      "line_start": 68,
+      "line_end": 76,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'CrossValidationResult' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "tap_tone_pi.bending.gore_spreadsheet.CrossValidationResult",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0106",
+      "finding_id": "skylos-unused_imports-68-qa_lab_spec.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: build_spreadsheet_entry",
+      "file_path": "tap_tone_pi/bending/qa_lab_spec.py",
+      "line_start": 68,
+      "line_end": 76,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'build_spreadsheet_entry' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "tap_tone_pi.bending.gore_spreadsheet.build_spreadsheet_entry",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0107",
+      "finding_id": "skylos-unused_imports-116-limits_integration.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: format_test_result",
+      "file_path": "tap_tone_pi/cli/limits_integration.py",
+      "line_start": 116,
+      "line_end": 116,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'format_test_result' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "tap_tone_pi.limits.testing.format_test_result",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0108",
+      "finding_id": "skylos-unused_imports-29-audio_container.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: WavMeta",
+      "file_path": "tap_tone_pi/io/audio_container.py",
+      "line_start": 29,
+      "line_end": 29,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'WavMeta' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "tap_tone_pi.io.wav.WavMeta",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    },
+    {
+      "action_id": "SKY0109",
+      "finding_id": "skylos-unused_imports-10-amplitude.py",
+      "rule_id": "SKY_UNUSED_IMPORT_001",
+      "action_type": "remove",
+      "safety_level": "safe",
+      "description": "Unused import: get_snr_uncertainty_factor",
+      "file_path": "tap_tone_pi/uncertainty/amplitude.py",
+      "line_start": 10,
+      "line_end": 15,
+      "original_code": null,
+      "replacement_code": null,
+      "rationale": "Import 'get_snr_uncertainty_factor' has 0 references. Removing unused imports improves readability and startup time.",
+      "metadata": {
+        "full_name": "tap_tone_pi.uncertainty.budget.get_snr_uncertainty_factor",
+        "confidence": 90,
+        "decorators": [],
+        "skylos_category": "unused_imports"
+      }
+    }
+  ]
+}

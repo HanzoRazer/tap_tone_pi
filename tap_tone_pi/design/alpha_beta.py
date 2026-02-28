@@ -50,10 +50,10 @@ AIR_SPEED_OF_SOUND_M_S = 343.0
 
 
 def plate_bending_stiffness(
-    E_L: float,      # Pa - longitudinal modulus
-    E_C: float,      # Pa - cross-grain modulus
-    h: float,        # m - thickness
-    nu: float = 0.3, # Poisson's ratio
+    E_L: float,  # Pa - longitudinal modulus
+    E_C: float,  # Pa - cross-grain modulus
+    h: float,  # m - thickness
+    nu: float = 0.3,  # Poisson's ratio
 ) -> float:
     """
     Compute effective bending stiffness D for an orthotropic plate.
@@ -72,14 +72,14 @@ def plate_bending_stiffness(
         Bending stiffness D (N·m)
     """
     E_eff = math.sqrt(E_L * E_C)  # Geometric mean for orthotropic
-    D = E_eff * (h ** 3) / (12.0 * (1.0 - nu ** 2))
+    D = E_eff * (h**3) / (12.0 * (1.0 - nu**2))
     return D
 
 
 def edge_stiffness_simply_supported(
-    D: float,        # N·m - plate bending stiffness
-    a: float,        # m - plate length
-    b: float,        # m - plate width
+    D: float,  # N·m - plate bending stiffness
+    a: float,  # m - plate length
+    b: float,  # m - plate width
 ) -> float:
     """
     Compute effective edge stiffness for simply-supported boundary.
@@ -97,15 +97,15 @@ def edge_stiffness_simply_supported(
     Returns:
         Edge stiffness contribution (N/m)
     """
-    term = (1.0 / a ** 2) + (1.0 / b ** 2)
-    k_edge = D * (math.pi ** 4 / 4.0) * (term ** 2)
+    term = (1.0 / a**2) + (1.0 / b**2)
+    k_edge = D * (math.pi**4 / 4.0) * (term**2)
     return k_edge
 
 
 def edge_stiffness_clamped(
-    D: float,        # N·m - plate bending stiffness
-    a: float,        # m - plate length
-    b: float,        # m - plate width
+    D: float,  # N·m - plate bending stiffness
+    a: float,  # m - plate length
+    b: float,  # m - plate width
 ) -> float:
     """
     Compute effective edge stiffness for clamped (fixed) boundary.
@@ -131,11 +131,11 @@ def edge_stiffness_clamped(
 
 
 def brace_stiffness(
-    E_brace: float,    # Pa - brace modulus (along brace length)
-    h_brace: float,    # m - brace height
-    w_brace: float,    # m - brace width
-    L_brace: float,    # m - brace length
-    n_braces: int = 1, # number of similar braces
+    E_brace: float,  # Pa - brace modulus (along brace length)
+    h_brace: float,  # m - brace height
+    w_brace: float,  # m - brace width
+    L_brace: float,  # m - brace length
+    n_braces: int = 1,  # number of similar braces
 ) -> float:
     """
     Compute stiffness contribution from braces.
@@ -159,22 +159,22 @@ def brace_stiffness(
         Total brace stiffness contribution (N/m)
     """
     # Second moment of area for rectangular cross-section
-    I_brace = w_brace * (h_brace ** 3) / 12.0
+    I_brace = w_brace * (h_brace**3) / 12.0
 
     # Effective stiffness (beam bending approximation)
     # Factor of 48 for uniformly loaded beam with fixed ends
-    k_single = 48.0 * E_brace * I_brace / (L_brace ** 3)
+    k_single = 48.0 * E_brace * I_brace / (L_brace**3)
 
     return k_single * n_braces
 
 
 def compute_alpha(
     # Plate properties
-    E_L: float,          # Pa
-    E_C: float,          # Pa
-    h: float,            # m
-    a: float,            # m
-    b: float,            # m
+    E_L: float,  # Pa
+    E_C: float,  # Pa
+    h: float,  # m
+    a: float,  # m
+    b: float,  # m
     # Boundary condition
     boundary: str = "glued",  # "free", "simply_supported", "clamped", "glued"
     # Bracing (optional)
@@ -262,10 +262,10 @@ def compute_alpha(
 
 
 def plate_mass(
-    rho: float,      # kg/m³ - density
-    h: float,        # m - thickness
-    a: float,        # m - length
-    b: float,        # m - width
+    rho: float,  # kg/m³ - density
+    h: float,  # m - thickness
+    a: float,  # m - length
+    b: float,  # m - width
 ) -> float:
     """
     Compute plate mass.
@@ -285,8 +285,8 @@ def plate_mass(
 
 
 def air_virtual_mass(
-    a: float,        # m - plate length
-    b: float,        # m - plate width
+    a: float,  # m - plate length
+    b: float,  # m - plate width
     rho_air: float = AIR_DENSITY_KG_M3,
 ) -> float:
     """
@@ -313,15 +313,15 @@ def air_virtual_mass(
 
     # Virtual mass for circular piston (approximation)
     # m_air = (8/3) × ρ_air × r_eff³
-    m_air = (8.0 / 3.0) * rho_air * (r_eff ** 3)
+    m_air = (8.0 / 3.0) * rho_air * (r_eff**3)
 
     return m_air
 
 
 def air_virtual_mass_cavity(
-    a: float,            # m - plate length
-    b: float,            # m - plate width
-    cavity_depth: float, # m - average cavity depth
+    a: float,  # m - plate length
+    b: float,  # m - plate width
+    cavity_depth: float,  # m - average cavity depth
     rho_air: float = AIR_DENSITY_KG_M3,
 ) -> float:
     """
@@ -348,7 +348,7 @@ def air_virtual_mass_cavity(
 
     # Cavity confinement factor
     if cavity_depth > 0:
-        confinement = 1.0 + (a * b) / (math.pi * cavity_depth ** 2)
+        confinement = 1.0 + (a * b) / (math.pi * cavity_depth**2)
         # Limit to reasonable range
         confinement = min(confinement, 3.0)
     else:
@@ -359,10 +359,10 @@ def air_virtual_mass_cavity(
 
 def brace_mass(
     rho_brace: float,  # kg/m³ - brace density
-    h_brace: float,    # m - brace height
-    w_brace: float,    # m - brace width
-    L_brace: float,    # m - brace length
-    n_braces: int = 1, # number of similar braces
+    h_brace: float,  # m - brace height
+    w_brace: float,  # m - brace width
+    L_brace: float,  # m - brace length
+    n_braces: int = 1,  # number of similar braces
 ) -> float:
     """
     Compute mass contribution from braces.
@@ -384,10 +384,10 @@ def brace_mass(
 
 def compute_beta(
     # Plate properties
-    rho: float,          # kg/m³
-    h: float,            # m
-    a: float,            # m
-    b: float,            # m
+    rho: float,  # kg/m³
+    h: float,  # m
+    a: float,  # m
+    b: float,  # m
     # Air loading
     include_air_loading: bool = True,
     cavity_depth: float = 0.0,  # m - 0 = free-field, >0 = cavity
@@ -508,12 +508,12 @@ class AlphaBetaResult:
 
 def analyze_alpha_beta(
     # Plate properties
-    E_L: float,          # Pa
-    E_C: float,          # Pa
-    rho: float,          # kg/m³
-    h: float,            # m
-    a: float,            # m
-    b: float,            # m
+    E_L: float,  # Pa
+    E_C: float,  # Pa
+    rho: float,  # kg/m³
+    h: float,  # m
+    a: float,  # m
+    b: float,  # m
     # Free-plate frequency (measured or calculated)
     f_free_Hz: float,
     # Boundary and cavity
@@ -544,14 +544,21 @@ def analyze_alpha_beta(
     """
     # Compute α
     alpha, alpha_info = compute_alpha(
-        E_L=E_L, E_C=E_C, h=h, a=a, b=b,
+        E_L=E_L,
+        E_C=E_C,
+        h=h,
+        a=a,
+        b=b,
         boundary=boundary,
         brace_stiffness_total=brace_stiffness_total,
     )
 
     # Compute β
     beta, beta_info = compute_beta(
-        rho=rho, h=h, a=a, b=b,
+        rho=rho,
+        h=h,
+        a=a,
+        b=b,
         include_air_loading=True,
         cavity_depth=cavity_depth,
         brace_mass_total=brace_mass_total,
@@ -590,7 +597,9 @@ def format_alpha_beta_report(result: AlphaBetaResult) -> str:
     lines.append("=" * 65)
 
     lines.append("\nStiffness Factor (alpha):")
-    lines.append(f"  alpha = {result.alpha:.4f} (+{result.stiffness_increase_pct:.1f}% stiffness)")
+    lines.append(
+        f"  alpha = {result.alpha:.4f} (+{result.stiffness_increase_pct:.1f}% stiffness)"
+    )
     lines.append(f"    boundary factor : {result.alpha_info['alpha_boundary']:.3f}")
     lines.append(f"    bracing factor  : {result.alpha_info['alpha_braces']:.3f}")
     lines.append(f"    brace count     : {result.alpha_info['brace_count']}")
@@ -598,9 +607,9 @@ def format_alpha_beta_report(result: AlphaBetaResult) -> str:
 
     lines.append("\nMass Factor (beta):")
     lines.append(f"  beta = {result.beta:.4f} (+{result.mass_increase_pct:.1f}% mass)")
-    lines.append(f"    m_plate : {result.beta_info['m_plate_kg']*1000:.1f} g")
-    lines.append(f"    m_air   : {result.beta_info['m_air_kg']*1000:.1f} g")
-    lines.append(f"    m_braces: {result.beta_info['m_braces_kg']*1000:.1f} g")
+    lines.append(f"    m_plate : {result.beta_info['m_plate_kg'] * 1000:.1f} g")
+    lines.append(f"    m_air   : {result.beta_info['m_air_kg'] * 1000:.1f} g")
+    lines.append(f"    m_braces: {result.beta_info['m_braces_kg'] * 1000:.1f} g")
 
     lines.append("\nTransfer Coefficient:")
     lines.append(f"  gamma = sqrt(alpha/beta) = {result.gamma:.4f}")

@@ -66,7 +66,9 @@ def compute_deflection_moe_uncertainty(
     rel_force = force_uncertainty_N / force_N if force_N > 0 else 0.1
     rel_span = span_uncertainty_mm / span_mm if span_mm > 0 else 0.01
     rel_width = width_uncertainty_mm / width_mm if width_mm > 0 else 0.01
-    rel_thickness = thickness_uncertainty_mm / thickness_mm if thickness_mm > 0 else 0.01
+    rel_thickness = (
+        thickness_uncertainty_mm / thickness_mm if thickness_mm > 0 else 0.01
+    )
     rel_deflection = (
         deflection_uncertainty_mm / deflection_mm if deflection_mm > 0 else 0.1
     )
@@ -202,7 +204,9 @@ def compute_tap_tone_moe_uncertainty(
     # Relative uncertainties
     rel_freq = frequency_uncertainty_hz / frequency_hz if frequency_hz > 0 else 0.01
     rel_length = length_uncertainty_mm / length_mm if length_mm > 0 else 0.01
-    rel_thickness = thickness_uncertainty_mm / thickness_mm if thickness_mm > 0 else 0.01
+    rel_thickness = (
+        thickness_uncertainty_mm / thickness_mm if thickness_mm > 0 else 0.01
+    )
     rel_density = (
         density_uncertainty_kg_m3 / density_kg_m3 if density_kg_m3 > 0 else 0.03
     )
