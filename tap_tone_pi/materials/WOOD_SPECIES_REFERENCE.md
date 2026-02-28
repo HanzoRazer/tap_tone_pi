@@ -1,9 +1,9 @@
 # Wood Species Reference
 
-**Version:** 4.0.0  
-**Total species:** 472  
-**Last updated:** February 2026  
-**Source data:** [`wood_species.json`](wood_species.json)  
+**Version:** 4.0.0
+**Total species:** 472
+**Last updated:** February 2026
+**Source data:** [`wood_species.json`](wood_species.json)
 **Methodology & citations:** [`SOURCES.md`](SOURCES.md)
 
 ---

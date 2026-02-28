@@ -129,22 +129,13 @@ class RubBuzzAnalyzer:
         Returns:
             RubBuzzResult with verdict and details
         """
-        from scipy.io import wavfile
+        from tap_tone_pi.io.wav import read_wav_mono
 
         filepath = Path(filepath)
-        sample_rate, data = wavfile.read(filepath)
+        sample_rate, signal = read_wav_mono(filepath)
 
-        # Convert to float
-        if data.dtype == np.int16:
-            signal = data.astype(np.float64) / 32768.0
-        elif data.dtype == np.int32:
-            signal = data.astype(np.float64) / 2147483648.0
-        else:
-            signal = data.astype(np.float64)
-
-        # Handle stereo by taking first channel
-        if signal.ndim > 1:
-            signal = signal[:, 0]
+        # read_wav_mono returns float32 in [-1, 1] and handles stereo
+        signal = signal.astype(np.float64)
 
         # Update sample rate
         self.sample_rate = sample_rate
