@@ -89,7 +89,9 @@ try:
     )
 
     HAS_AUTO_TRIGGER = True
-except ImportError:
+except (ImportError, OSError):
+    # ImportError: module not available
+    # OSError: sounddevice installed but PortAudio library not found
     HAS_AUTO_TRIGGER = False
 
 # UI widgets (Phase 8 enhancement)

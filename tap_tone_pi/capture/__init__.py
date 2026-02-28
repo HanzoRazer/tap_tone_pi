@@ -348,24 +348,31 @@ def play_and_record(
 
 
 def _get_auto_trigger_exports() -> dict[str, Any]:
-    """Lazy load auto-trigger support to improve startup time."""
-    from tap_tone_pi.core.auto_trigger import (
-        TriggerState,
-        TriggerConfig,
-        TriggerResult,
-        TriggerCallback,
-        AutoTriggerDetector,
-        record_audio_triggered,
-    )
+    """Lazy load auto-trigger support to improve startup time.
+    
+    Returns empty dict if sounddevice/PortAudio not available.
+    """
+    try:
+        from tap_tone_pi.core.auto_trigger import (
+            TriggerState,
+            TriggerConfig,
+            TriggerResult,
+            TriggerCallback,
+            AutoTriggerDetector,
+            record_audio_triggered,
+        )
 
-    return {
-        "TriggerState": TriggerState,
-        "TriggerConfig": TriggerConfig,
-        "TriggerResult": TriggerResult,
-        "TriggerCallback": TriggerCallback,
-        "AutoTriggerDetector": AutoTriggerDetector,
-        "record_audio_triggered": record_audio_triggered,
-    }
+        return {
+            "TriggerState": TriggerState,
+            "TriggerConfig": TriggerConfig,
+            "TriggerResult": TriggerResult,
+            "TriggerCallback": TriggerCallback,
+            "AutoTriggerDetector": AutoTriggerDetector,
+            "record_audio_triggered": record_audio_triggered,
+        }
+    except (ImportError, OSError):
+        # sounddevice or PortAudio not available
+        return {}
 
 
 def __getattr__(name: str) -> Any:
@@ -380,6 +387,12 @@ def __getattr__(name: str) -> Any:
     }
     if name in _auto_trigger_names:
         exports = _get_auto_trigger_exports()
+        if not exports:
+            # sounddevice/PortAudio not available
+            raise AttributeError(
+                f"module {__name__!r} has no attribute {name!r} "
+                "(sounddevice/PortAudio not available)"
+            )
         # Cache in module globals for future access
         globals().update(exports)
         return exports[name]

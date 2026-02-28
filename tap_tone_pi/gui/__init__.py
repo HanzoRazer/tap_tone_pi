@@ -12,6 +12,10 @@ Usage:
     ttp gui
 """
 
-from .app import App
-
-__all__ = ["App"]
+try:
+    from .app import App
+    __all__ = ["App"]
+except (ImportError, OSError):
+    # GUI requires optional dependencies (sounddevice, PortAudio, etc.)
+    App = None  # type: ignore[assignment,misc]
+    __all__ = []

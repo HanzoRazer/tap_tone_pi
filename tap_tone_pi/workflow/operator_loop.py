@@ -23,10 +23,22 @@ from tap_tone_pi.capture import (
     record_audio,
     list_devices,
     CaptureResult,
-    record_audio_triggered,
-    TriggerState,
-    TriggerResult,
 )
+
+# Auto-trigger imports are optional (require sounddevice + PortAudio)
+try:
+    from tap_tone_pi.capture import (
+        record_audio_triggered,
+        TriggerState,
+        TriggerResult,
+    )
+    HAS_AUTO_TRIGGER = True
+except (ImportError, OSError, AttributeError):
+    # AttributeError: symbols not exported if sounddevice unavailable
+    HAS_AUTO_TRIGGER = False
+    record_audio_triggered = None  # type: ignore[assignment]
+    TriggerState = None  # type: ignore[assignment,misc]
+    TriggerResult = None  # type: ignore[assignment,misc]
 from tap_tone_pi.core.analysis import analyze_tap, AnalysisResult
 from tap_tone_pi.core.quality_gate import check_quality
 from tap_tone_pi.core.quality_policy import QualityVerdict, Verdict

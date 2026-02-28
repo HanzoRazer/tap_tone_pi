@@ -28,8 +28,11 @@ try:
     import sounddevice as sd
 
     HAS_SOUNDDEVICE = True
-except ImportError:
+except (ImportError, OSError):
+    # ImportError: sounddevice not installed
+    # OSError: sounddevice installed but PortAudio library not found
     HAS_SOUNDDEVICE = False
+    sd = None  # type: ignore[assignment]
 
 
 class TriggerState(str, Enum):
