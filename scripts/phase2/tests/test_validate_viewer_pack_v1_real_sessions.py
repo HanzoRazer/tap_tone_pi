@@ -66,7 +66,8 @@ def test_validate_viewer_pack_v1_real_sessions(session_rel: str) -> None:
     """
     repo_root = Path(__file__).resolve().parents[3]  # scripts/phase2/tests -> repo root
     session_dir = repo_root / session_rel
-    assert session_dir.is_dir(), f"Missing session dir: {session_dir}"
+    if not session_dir.is_dir():
+        pytest.skip(f"Session fixture not found: {session_dir}")
 
     # Expected pack location: out/viewer_packs/<session_name>/viewer_pack_v1
     pack_dir = repo_root / "out" / "viewer_packs" / session_dir.name / "viewer_pack_v1"

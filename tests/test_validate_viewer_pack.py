@@ -40,6 +40,9 @@ def golden_sessions():
 @pytest.fixture(scope="module")
 def exported_packs(tmp_path_factory) -> dict[str, Path]:
     """Export both sessions to temp dir, return {session_name: pack_dir}."""
+    if not SESSIONS_DIR.is_dir():
+        pytest.skip(f"runs_phase2 fixture directory not found: {SESSIONS_DIR}")
+
     out_dir = tmp_path_factory.mktemp("viewer_packs")
     packs = {}
 

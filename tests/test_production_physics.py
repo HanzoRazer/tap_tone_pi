@@ -326,8 +326,8 @@ class TestMultiTap:
         values = np.array([100.0, 100.1, 99.9, 100.2, 115.0])  # Last is outlier
         outliers = detect_outliers_chauvenet(values)
 
-        assert outliers[-1] is True  # Last value is outlier
-        assert outliers[0] is False  # First value is not
+        assert outliers[-1]  # Last value is outlier
+        assert not outliers[0]  # First value is not
 
     def test_mad_robust_to_asymmetry(self):
         """Test MAD outlier detection is robust."""
@@ -337,7 +337,7 @@ class TestMultiTap:
         outliers = detect_outliers_mad(values, threshold=3.5)
 
         # 110.0 is clearly an outlier
-        assert outliers[-1] is True
+        assert outliers[-1]
         assert np.sum(outliers) == 1
 
     def test_weighted_average_inverse_variance(self):
@@ -370,7 +370,7 @@ class TestMultiTap:
         values = np.array([100.0, 100.1, 99.9, 100.0, 100.05, 99.95])
         converged, cv, msg = check_convergence(values, min_samples=5, cv_threshold=0.02)
 
-        assert converged is True
+        assert converged
         assert cv < 0.02
 
     def test_analyze_multi_tap_full(self):
@@ -409,7 +409,7 @@ class TestMultiTap:
 
         result = compare_specimens(spruce, maple)
 
-        assert result.statistically_different is True
+        assert result.statistically_different
         assert result.p_value < 0.05
         assert result.effect_interpretation in ["medium", "large"]
 

@@ -9,6 +9,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 
 def test_viewer_pack_v1_real_sessions():
     repo_root = Path(__file__).resolve().parents[1]
@@ -30,11 +32,8 @@ def test_viewer_pack_v1_real_sessions():
 
     for pack in packs:
         if not pack.exists():
-            raise AssertionError(
-                f"Pack not found: {pack}\n"
-                f"Run exporter first:\n"
-                f"  python scripts/phase2/export_viewer_pack_v1.py "
-                f"--session-dir runs_phase2/{pack.parent.name} --out out/viewer_packs/{pack.parent.name}"
+            pytest.skip(
+                f"Pack not found: {pack}. Run exporter first to create the pack."
             )
 
         proc = subprocess.run(

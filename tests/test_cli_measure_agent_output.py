@@ -17,8 +17,20 @@ import pytest
 from tap_tone_pi.cli.main import cmd_measure
 from tap_tone_pi.core.quality_policy import Verdict
 
-
 # --- Minimal fake LoopResult-compatible object (avoid importing numpy/AnalysisResult) ---
+
+
+# Skip tests if sounddevice/PortAudio not available
+try:
+    import sounddevice as _sd  # noqa: F401, E402
+
+    _HAS_SOUNDDEVICE = True
+except (ImportError, OSError):
+    _HAS_SOUNDDEVICE = False
+
+requires_sounddevice = pytest.mark.skipif(
+    not _HAS_SOUNDDEVICE, reason="sounddevice/PortAudio not available"
+)
 
 
 @dataclass
@@ -108,6 +120,7 @@ def _measure_args(tmp_path: Path, *, agent: bool) -> argparse.Namespace:
     )
 
 
+@requires_sounddevice
 def test_measure_agent_enabled_uses_agent_renderer(
     _stub_operator_loop, capsys, tmp_path
 ):
@@ -126,6 +139,7 @@ def test_measure_agent_enabled_uses_agent_renderer(
     assert "[PASS]" not in out
 
 
+@requires_sounddevice
 def test_measure_agent_disabled_uses_legacy_summary(
     _stub_operator_loop, capsys, tmp_path
 ):

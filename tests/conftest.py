@@ -29,6 +29,22 @@ except ImportError:
         returncode=4,
     )
 
+# ---------------------------------------------------------------------------
+# Sounddevice/PortAudio availability check for tests that need audio hardware
+# ---------------------------------------------------------------------------
+try:
+    import sounddevice as _sd  # noqa: F401
+
+    HAS_SOUNDDEVICE = True
+except (ImportError, OSError):
+    # ImportError: sounddevice not installed
+    # OSError: sounddevice installed but PortAudio library not found
+    HAS_SOUNDDEVICE = False
+
+requires_sounddevice = pytest.mark.skipif(
+    not HAS_SOUNDDEVICE, reason="sounddevice/PortAudio not available"
+)
+
 
 def iso_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()

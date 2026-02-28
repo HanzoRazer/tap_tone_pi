@@ -11,6 +11,21 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
+import pytest
+
+
+# Skip tests if sounddevice/PortAudio not available
+try:
+    import sounddevice as _sd  # noqa: F401, E402
+
+    _HAS_SOUNDDEVICE = True
+except (ImportError, OSError):
+    _HAS_SOUNDDEVICE = False
+
+requires_sounddevice = pytest.mark.skipif(
+    not _HAS_SOUNDDEVICE, reason="sounddevice/PortAudio not available"
+)
+
 
 @dataclass
 class _StubAnalysis:
@@ -36,6 +51,7 @@ class _StubResult:
     attempt: str = "attempt_001"
 
 
+@requires_sounddevice
 class TestCmdMeasureFtueWiring:
     """cmd_measure correctly loads, updates, and saves FTUE state."""
 

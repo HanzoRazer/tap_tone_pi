@@ -17,10 +17,24 @@ from tap_tone_pi.core.analysis import AnalysisResult, Peak
 # Import the actual module (not the function shadowed by __init__.py)
 from tap_tone_pi.cli.main import cmd_record
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================
+
+import pytest
+
+
+# Skip tests if sounddevice/PortAudio not available
+try:
+    import sounddevice as _sd  # noqa: F401, E402
+
+    _HAS_SOUNDDEVICE = True
+except (ImportError, OSError):
+    _HAS_SOUNDDEVICE = False
+
+requires_sounddevice = pytest.mark.skipif(
+    not _HAS_SOUNDDEVICE, reason="sounddevice/PortAudio not available"
+)
 
 
 @dataclass
@@ -78,6 +92,7 @@ def _args(out_dir: str, label: str = "test_tap") -> argparse.Namespace:
 # =============================================================================
 
 
+@requires_sounddevice
 class TestCmdRecordQualityCheck:
     """Test that cmd_record emits quality_check.json."""
 
