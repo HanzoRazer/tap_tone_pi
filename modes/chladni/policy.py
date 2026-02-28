@@ -16,7 +16,7 @@ Solution: Use relative tolerance (default 2%) with optional semitone mode.
 Tolerance modes:
   - "relative": tolerance = freq_hz × tolerance_pct (default 2%)
   - "semitone": tolerance = freq_hz × (2^(cents/1200) - 1), default 50 cents
-  - "fixed":    legacy mode, tolerance = fixed Hz value (not recommended)
+  - "fixed":    legacy mode, tolerance = fixed Hz value (use relative for wide ranges)
 
 Environment variables:
   - CHLADNI_TOLERANCE_MODE: "relative" | "semitone" | "fixed" (default: relative)
@@ -31,14 +31,13 @@ import math
 import os
 from dataclasses import dataclass
 from enum import Enum
-from typing import Literal
 
 
 class ToleranceMode(str, Enum):
     """Frequency tolerance calculation mode."""
-    RELATIVE = "relative"  # Percentage of frequency (recommended)
+    RELATIVE = "relative"  # Percentage of frequency - default mode
     SEMITONE = "semitone"  # Musical interval in cents
-    FIXED = "fixed"        # Fixed Hz (legacy, not recommended)
+    FIXED = "fixed"        # Fixed Hz (legacy, legacy)
 
 
 @dataclass(frozen=True)
@@ -71,7 +70,7 @@ class ToleranceConfig:
           50 cents = quarter tone ≈ 2.93%
           100 cents = 1 semitone ≈ 5.95%
 
-        - FIXED: Constant Hz (not recommended for wide frequency ranges)
+        - FIXED: Constant Hz (legacy for wide frequency ranges)
         """
         if freq_hz <= 0:
             return self.fixed_hz  # Fallback for invalid frequency
