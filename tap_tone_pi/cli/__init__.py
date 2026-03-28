@@ -20,8 +20,23 @@ Example:
     ttp devices
     ttp record --out ./out --label A0
     ttp gui
+
+``main`` and ``build_parser`` are loaded lazily so ``import tap_tone_pi.cli.phase2_cmd``
+does not import the full dispatcher (faster tests and tooling).
 """
 
-from .main import main, build_parser
+from __future__ import annotations
 
 __all__ = ["main", "build_parser"]
+
+
+def __getattr__(name: str):
+    if name == "main":
+        from .main import main as _main
+
+        return _main
+    if name == "build_parser":
+        from .main import build_parser as _build_parser
+
+        return _build_parser
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

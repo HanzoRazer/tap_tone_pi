@@ -98,11 +98,11 @@ class Grid:
         created_at: When grid was created
     """
 
-    grid_id: str
-    name: str
     units: str
     origin: str
     points: list[GridPoint]
+    grid_id: str = ""
+    name: str = ""
     created_at: str = field(default_factory=_utc_now)
 
     def __len__(self) -> int:
@@ -500,10 +500,16 @@ class GridSession:
         return cls.from_dict(data)
 
 
+def load_grid(path: str | Path) -> Grid:
+    """Load a :class:`Grid` from JSON (alias for :meth:`Grid.load`)."""
+    return Grid.load(Path(path))
+
+
 __all__ = [
     "PointStatus",
     "GridPoint",
     "Grid",
-    "PointProgress",
     "GridSession",
+    "PointProgress",
+    "load_grid",
 ]

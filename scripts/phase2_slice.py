@@ -44,6 +44,14 @@ from phase2.dsp import compute_transfer_and_coherence, nearest_bin, get_dsp_prov
 from phase2.metrics import PointSpectrum, wsi_curve, get_metrics_provenance
 from phase2.viz import heatmap_scatter, plot_curve
 
+from tap_tone_pi.phase2.session_state import (
+    SESSION_STATE_SCHEMA_VERSION,
+    compute_grid_fingerprint,
+    ensure_resume_grid_matches,
+    load_session_state,
+    save_session_state,
+)
+
 
 def utc_stamp() -> str:
     return dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -133,7 +141,27 @@ def cmd_run(args: argparse.Namespace) -> int:
     out_root = Path(args.out).expanduser().resolve()
     ensure_dir(out_root)
 
-    grid = load_grid(Path(args.grid))
+    grid_path = Path(args.grid).expanduser().resolve()
+    grid = load_grid(grid_path)
+
+    if getattr(args, "resume", None):
+        session_dir = Path(args.resume).expanduser().resolve()
+        if not session_dir.is_dir():
+            print(f"error: --resume path is not a directory: {session_dir}", file=sys.stderr)
+            return 1
+        try:
+            state = load_session_state(session_dir)
+            ensure_resume_grid_matches(state, grid_path)
+        except (FileNotFoundError, ValueError) as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 1
+        print(
+            "Resume: grid fingerprint matches session_state.json. "
+            "Incremental capture is not implemented in this build — exiting.",
+            file=sys.stderr,
+        )
+        return 2
+
     session_id = f"session_{utc_stamp()}"
     session_dir = out_root / session_id
     points_dir = session_dir / "points"
@@ -173,7 +201,21 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     save_json(
         session_dir / "grid.json",
-        json.loads(Path(args.grid).read_text(encoding="utf-8")),
+        json.loads(grid_path.read_text(encoding="utf-8")),
+    )
+
+    gid = compute_grid_fingerprint(grid_path)
+    save_session_state(
+        session_dir,
+        {
+            "schema_version": SESSION_STATE_SCHEMA_VERSION,
+            "grid_id": gid,
+            "grid_path": str(grid_path),
+            "session_id": session_id,
+            "started_at_utc": utc_stamp(),
+            "completed_points": [],
+            "pending_points": [p.id for p in grid.points],
+        },
     )
 
     # 1) CAPTURE (raw first)
@@ -434,6 +476,22 @@ def cmd_run(args: argparse.Namespace) -> int:
         out_path=plots_dir / f"coherence_{target_actual:.1f}Hz.png",
     )
 
+    # Mark all points complete for future resume / fingerprint checks
+    st_path = session_dir / "session_state.json"
+    if st_path.is_file():
+        st = json.loads(st_path.read_text(encoding="utf-8"))
+        st["completed_points"] = [p.id for p in grid.points]
+        st["pending_points"] = []
+        st["finished_at_utc"] = utc_stamp()
+        save_session_state(session_dir, st)
+
+    if not getattr(args, "no_progress", False):
+        # Default: full terminal output (ANSI grid progress hooks go here)
+        pass
+    else:
+        # Plain line-by-line mode for logging / SSH / CI
+        print(f"Phase 2 session (plain progress mode): {session_dir}", file=sys.stderr)
+
     print(f"Wrote Phase 2 session: {session_dir}")
     return 0
 
@@ -501,6 +559,28 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=185.0,
         help="ODS snapshot target frequency",
+    )
+    pr.add_argument(
+        "--resume",
+        type=str,
+        default=None,
+        metavar="SESSION_DIR",
+        help=(
+            "Validate session_state.json grid fingerprint against --grid, then exit "
+            "(incremental capture not implemented yet; exit code 2 on success)."
+        ),
+    )
+    pr.add_argument(
+        "--no-progress",
+        action="store_true",
+        help="Disable ANSI grid progress (plain line-by-line; for logging/SSH/CI).",
+    )
+    pr.add_argument(
+        "--coherence-threshold",
+        type=float,
+        default=0.7,
+        metavar="GAMMA2",
+        help="Per-point coherence gate (reserved; default 0.7).",
     )
     pr.set_defaults(fn=cmd_run)
 

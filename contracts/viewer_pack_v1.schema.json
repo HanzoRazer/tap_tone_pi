@@ -78,7 +78,64 @@
         "ods": { "type": "boolean" },
         "wolf": { "type": "boolean" },
         "plots": { "type": "boolean" },
-        "provenance": { "type": "boolean" }
+        "provenance": { "type": "boolean" },
+        "bending": { "type": "boolean" }
+      }
+    },
+
+    "bending": {
+      "type": "object",
+      "description": "Optional bending stiffness measurements from the same specimen. Critical input for inverse brace engine.",
+      "additionalProperties": false,
+      "properties": {
+        "E_L_GPa": {
+          "type": "number",
+          "description": "Longitudinal (along-grain) Young's modulus in GPa. Stiff direction. Typically 9-12 GPa for spruce.",
+          "minimum": 0.1,
+          "maximum": 50.0
+        },
+        "E_C_GPa": {
+          "type": "number",
+          "description": "Cross-grain (transverse) Young's modulus in GPa. Flexible direction. Typically 0.5-0.9 GPa for spruce.",
+          "minimum": 0.01,
+          "maximum": 10.0
+        },
+        "specific_modulus_GPa_per_gcm3": {
+          "type": "number",
+          "description": "E/density ratio. Key figure of merit for acoustic wood. Higher is better.",
+          "minimum": 0
+        },
+        "c_m_s": {
+          "type": "number",
+          "description": "Speed of sound in material (m/s). sqrt(E/rho).",
+          "minimum": 0
+        },
+        "density_g_cm3": {
+          "type": "number",
+          "description": "Material density in g/cm³. Typically 0.35-0.45 for spruce.",
+          "minimum": 0.1,
+          "maximum": 2.0
+        },
+        "span_mm": {
+          "type": "number",
+          "description": "Test span length in mm. Standard is 400mm.",
+          "minimum": 50,
+          "maximum": 1000
+        },
+        "method": {
+          "type": "string",
+          "enum": ["3point", "4point"],
+          "description": "Bending test method used."
+        },
+        "source_bundle": {
+          "type": "string",
+          "description": "Path or SHA256 of source bending measurement bundle for provenance."
+        },
+        "orthotropic_ratio": {
+          "type": "number",
+          "description": "E_L / E_C ratio. Should be 8:1 to 18:1 for quality acoustic tonewood.",
+          "minimum": 1
+        }
       }
     },
 
@@ -138,6 +195,7 @@
             "plot_png",
             "session_meta",
             "manifest",
+            "bending_moe",
             "unknown"
           ]
         }

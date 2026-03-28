@@ -8,6 +8,7 @@ This module provides:
 - Reference tone verification: 1 kHz known amplitude verification
 - Compensation curves: Per-device calibration storage
 - Calibration expiry: Warn when calibration is stale
+- Session context: Calibration metadata injection for provenance
 
 Usage:
     ttp calibrate loopback     # Measure system frequency response
@@ -46,6 +47,13 @@ from .compensation import (
     build_compensation_curve,
     apply_compensation,
 )
+from .session_context import (
+    CalibrationContext,
+    get_calibration_context,
+    format_calibration_summary,
+    inject_calibration_into_meta,
+    extract_calibration_offsets,
+)
 
 __all__ = [
     # Loopback
@@ -71,4 +79,10 @@ __all__ = [
     "CompensationCurve",
     "build_compensation_curve",
     "apply_compensation",
+    # Session context
+    "CalibrationContext",
+    "get_calibration_context",
+    "format_calibration_summary",
+    "inject_calibration_into_meta",
+    "extract_calibration_offsets",
 ]
