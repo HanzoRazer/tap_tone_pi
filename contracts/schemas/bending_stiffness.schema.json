@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://luthiers-toolbox.local/schemas/bending_stiffness.schema.json",
+  "$id": "https://tap-tone-pi.local/contracts/schemas/bending_stiffness.schema.json",
   "title": "Bending Stiffness Test Result (Measurement-Only) v1.1",
   "type": "object",
   "additionalProperties": false,
