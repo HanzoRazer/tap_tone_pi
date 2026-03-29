@@ -32,6 +32,8 @@ from datetime import datetime
 from pathlib import Path
 
 from tap_tone_pi.cli.export_cmd import cmd_export_pack as _cmd_export_pack_impl
+from tap_tone_pi.server import add_server_subcommand
+from tap_tone_pi.tools import add_grid_template_subcommand
 from tap_tone_pi.cli.session_utils import (
     find_all_sessions,
     count_session_points,
@@ -1027,7 +1029,7 @@ def _bash_completion() -> str:
     """Generate bash completion script."""
     return """
 _ttp_completions() {
-    local commands="setup devices preflight measure record live quick gold-run gui phase2 chladni bending export-pack evidence-check last sessions completion"
+    local commands="setup devices preflight measure record live quick gold-run gui phase2 chladni bending export-pack evidence-check last sessions completion server grid-template"
     COMPREPLY=($(compgen -W "$commands" -- "${COMP_WORDS[COMP_CWORD]}"))
 }
 complete -F _ttp_completions ttp
@@ -1058,6 +1060,8 @@ _ttp() {
         'evidence-check:Preflight validate session evidence artifacts'
         'last:Show most recent session'
         'sessions:List all sessions'
+        'server:Start FastAPI HTTP API (optional: fastapi, uvicorn)'
+        'grid-template:Printable shop floor grid PDF templates (optional: reportlab)'
         'completion:Generate shell completion'
     )
     _describe 'command' commands
@@ -1086,6 +1090,8 @@ complete -c ttp -f -n "__fish_use_subcommand" -a export-pack -d "Export viewer p
 complete -c ttp -f -n "__fish_use_subcommand" -a evidence-check -d "Preflight validate session evidence artifacts"
 complete -c ttp -f -n "__fish_use_subcommand" -a last -d "Show most recent session"
 complete -c ttp -f -n "__fish_use_subcommand" -a sessions -d "List all sessions"
+complete -c ttp -f -n "__fish_use_subcommand" -a server -d "Start FastAPI HTTP API"
+complete -c ttp -f -n "__fish_use_subcommand" -a grid-template -d "Printable shop floor grid PDF templates"
 complete -c ttp -f -n "__fish_use_subcommand" -a completion -d "Generate shell completion"
 
 complete -c tap-tone -w ttp
@@ -1477,6 +1483,10 @@ uploads to ToolBox for analysis.
     from tap_tone_pi.cli.limits_integration import add_limits_args
 
     add_verify_subcommand(sub)
+
+    add_grid_template_subcommand(sub)
+    if add_server_subcommand is not None:
+        add_server_subcommand(sub)
 
     # Add limits args to record, measure, quick commands
     add_limits_args(p_rec)

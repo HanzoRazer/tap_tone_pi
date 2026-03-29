@@ -405,7 +405,7 @@ def add_server_subcommand(subparsers) -> None:
         help="Enable auto-reload for development",
     )
 
-    parser.set_defaults(func=cmd_server)
+    parser.set_defaults(fn=cmd_server)
 
 
 def cmd_server(args) -> int:

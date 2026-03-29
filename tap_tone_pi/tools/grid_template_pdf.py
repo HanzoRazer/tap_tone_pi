@@ -386,7 +386,7 @@ def add_grid_template_subcommand(subparsers) -> None:
         help="Omit crosshair markers",
     )
 
-    parser.set_defaults(func=cmd_grid_template)
+    parser.set_defaults(fn=cmd_grid_template)
 
 
 def cmd_grid_template(args) -> int:
