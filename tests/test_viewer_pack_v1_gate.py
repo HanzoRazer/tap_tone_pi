@@ -432,6 +432,7 @@ class TestViewerPackSchemaFreeze:
             "plot_png",
             "session_meta",
             "manifest",
+            "bending_moe",
             "unknown",
         }
 
