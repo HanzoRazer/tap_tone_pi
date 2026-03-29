@@ -136,6 +136,9 @@ class SessionState:
     auto_retry_on_low_coherence: bool = True
     max_attempts_per_point: int = 3
 
+    # Extensible metadata (calibration, environment, etc.)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
     STATE_FILENAME = "session_state.json"
 
     @classmethod
@@ -221,6 +224,7 @@ class SessionState:
             coherence_threshold=data.get("coherence_threshold", 0.7),
             auto_retry_on_low_coherence=data.get("auto_retry_on_low_coherence", True),
             max_attempts_per_point=data.get("max_attempts_per_point", 3),
+            metadata=data.get("metadata", {}),
         )
 
     @classmethod
@@ -246,6 +250,7 @@ class SessionState:
             "coherence_threshold": self.coherence_threshold,
             "auto_retry_on_low_coherence": self.auto_retry_on_low_coherence,
             "max_attempts_per_point": self.max_attempts_per_point,
+            "metadata": self.metadata,
         }
 
         state_file = self.session_dir / self.STATE_FILENAME

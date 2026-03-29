@@ -29,6 +29,10 @@ from tap_tone_pi.phase2.coherence_gate import (
     check_coherence_from_arrays,
     format_coherence_feedback,
 )
+from tap_tone_pi.calibration.session_context import (
+    get_calibration_context,
+    format_calibration_summary,
+)
 
 
 def cmd_phase2_run(args: argparse.Namespace) -> int:
@@ -76,7 +80,14 @@ def _run_new(args: argparse.Namespace) -> int:
     import shutil
     shutil.copy(grid_path, session_dir / "grid.json")
     
+    # Inject calibration context
+    device_index = getattr(args, "device", None) or 0
+    cal_context = get_calibration_context(device_index)
+    state.metadata["calibration"] = cal_context.to_dict()
+    state.save()
+    
     print(f"Created session: {session_dir}")
+    print(format_calibration_summary(cal_context))
     print(f"Grid: {len(grid.points)} points")
     print(f"Coherence threshold: {args.coherence_threshold}")
     print()
