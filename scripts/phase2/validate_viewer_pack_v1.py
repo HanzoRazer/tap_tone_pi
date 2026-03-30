@@ -57,6 +57,7 @@ ALLOWED_CONTENTS_KEYS = {
     "wolf",
     "plots",
     "provenance",
+    "bending",
 }
 
 ALLOWED_FILE_ENTRY_KEYS = {
