@@ -30,6 +30,12 @@ Coherence drops when:
     - Leakage affects the measurement
 """
 
+# INSTRUMENT CLASS: MEASUREMENT
+# Outputs from this module are calibrated measurement results.
+# They may appear in viewer_pack_v1 and are subject to provenance tracking.
+# See docs/ADR-0009-advisory-boundary.md
+
+
 from dataclasses import dataclass, field
 from typing import Tuple, Optional
 import numpy as np
@@ -55,8 +61,8 @@ class CoherenceResult:
         Fraction of frequencies with coherence > threshold.
     problem_frequencies : np.ndarray
         Frequencies where coherence is low.
-    quality_grade : str
-        Overall quality: "excellent", "good", "acceptable", "poor"
+    coherence_band: str
+        Overall quality: "high", "medium-high", "medium", "low"
     """
 
     frequencies: np.ndarray
@@ -65,7 +71,7 @@ class CoherenceResult:
     min_coherence: float = 0.0
     coherent_fraction: float = 0.0
     problem_frequencies: np.ndarray = field(default_factory=lambda: np.array([]))
-    quality_grade: str = "unknown"
+    coherence_band: str = "unknown"
 
     def get_coherence_at(self, freq: float) -> float:
         """Get coherence at specific frequency via interpolation."""
@@ -290,7 +296,7 @@ def compute_coherence(
     n_averages : int
         Expected number of averages (for quality assessment).
     coherence_threshold : float
-        Threshold for "acceptable" coherence.
+        Threshold for "medium" coherence.
 
     Returns
     -------
@@ -340,13 +346,13 @@ def compute_coherence(
 
     # Quality grade
     if mean_coh > 0.95 and min_coh > 0.8:
-        grade = "excellent"
+        grade = "high"
     elif mean_coh > 0.85 and min_coh > 0.6:
-        grade = "good"
+        grade = "medium-high"
     elif mean_coh > 0.7 and min_coh > 0.4:
-        grade = "acceptable"
+        grade = "medium"
     else:
-        grade = "poor"
+        grade = "low"
 
     return CoherenceResult(
         frequencies=frequencies,
@@ -355,7 +361,7 @@ def compute_coherence(
         min_coherence=min_coh,
         coherent_fraction=coherent_frac,
         problem_frequencies=problem_freqs,
-        quality_grade=grade,
+        coherence_band = grade,
     )
 
 

@@ -30,6 +30,12 @@ Usage:
     result = analyze_wolf_beat(frequencies, magnitude, phase)
 """
 
+# INSTRUMENT CLASS: MEASUREMENT
+# Outputs from this module are calibrated measurement results.
+# They may appear in viewer_pack_v1 and are subject to provenance tracking.
+# See docs/ADR-0009-advisory-boundary.md
+
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

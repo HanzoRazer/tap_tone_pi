@@ -14,6 +14,14 @@ References:
   musical instruments" (Catgut Acoustical Society Journal)
 """
 
+# INSTRUMENT CLASS: DECISION SUPPORT
+# Outputs from this module are physics-grounded recommendations,
+# NOT calibrated measurement results.
+# They MUST NOT appear in viewer_pack_v1 or the provenance chain.
+# Operator expertise is required to interpret recommendations.
+# See docs/ADR-0009-advisory-boundary.md
+
+
 from typing import Dict, Any, Optional, List, Tuple
 from dataclasses import dataclass
 import numpy as np
@@ -42,7 +50,7 @@ class WoodProperties:
     stiffness_cross_gpa: Optional[float]  # Young's modulus across grain
     radiation_coefficient: float  # sqrt(E/ρ) / 1000
     damping_factor: Optional[float]  # Loss factor / internal friction
-    quality_grade: str  # A, B, C, D based on radiation coefficient
+    quality_grade: str  # A/B/C/D — HEURISTIC ONLY, not a calibrated measurement. Do not include in viewer_pack_v1.
     fundamental_hz: float
     confidence: float  # 0-1, how confident we are in estimates
 

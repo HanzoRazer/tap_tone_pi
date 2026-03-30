@@ -22,6 +22,14 @@ Usage:
     directive = generate_wolf_directive(advisor)
 """
 
+# INSTRUMENT CLASS: DECISION SUPPORT
+# Outputs from this module are physics-grounded recommendations,
+# NOT calibrated measurement results.
+# They MUST NOT appear in viewer_pack_v1 or the provenance chain.
+# Operator expertise is required to interpret recommendations.
+# See docs/ADR-0009-advisory-boundary.md
+
+
 from __future__ import annotations
 
 from dataclasses import dataclass
