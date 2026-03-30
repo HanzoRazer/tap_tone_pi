@@ -353,17 +353,146 @@ def create_app() -> "FastAPI":
 
     # --- Viewer Pack Export ---
 
-    @app.get("/export/{session_id}", tags=["Export"])
+    class ExportResponse(BaseModel):
+        session_id: str
+        pack_path: str
+        manifest_sha256: str
+        file_count: int
+        as_zip: bool
+        status: str = "ok"
+
+    @app.post("/export/{session_id}", tags=["Export"])
     async def export_viewer_pack(
         session_id: str,
         directory: str = "./runs_phase2",
         output_dir: str = "./exports",
+        as_zip: bool = True,
+        background_tasks: BackgroundTasks = None,
     ):
-        """Export session as viewer pack."""
-        # Stub - integrate with export module
+        """
+        Export a Phase 2 session as a viewer_pack_v1 bundle.
+
+        Locates the session directory under `directory`, runs the viewer pack
+        exporter, and returns the path and manifest checksum of the output.
+
+        Parameters:
+            session_id:  Session directory name (e.g. session_20260330T120000Z)
+                         or path fragment to match under `directory`.
+            directory:   Root directory containing session folders.
+            output_dir:  Where to write the exported pack.
+            as_zip:      If true, produce a .zip bundle (default: true).
+
+        Returns:
+            ExportResponse with pack path and provenance metadata.
+        """
+        import hashlib
+        from pathlib import Path as P
+        from scripts.phase2.export_viewer_pack_v1 import export_viewer_pack as _export
+
+        # Resolve session directory
+        sessions_root = P(directory).resolve()
+        # Try exact match first, then prefix match
+        session_dir = sessions_root / session_id
+        if not session_dir.exists():
+            # Look for a matching directory
+            matches = sorted(sessions_root.glob(f"{session_id}*"))
+            if not matches:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Session '{session_id}' not found under {directory}",
+                )
+            session_dir = matches[0]
+
+        out_dir = P(output_dir).resolve()
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        try:
+            pack_path = _export(session_dir, out_dir, as_zip=as_zip)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except ValueError as e:
+            # Includes ADR-0009 wolf purity gate failures
+            raise HTTPException(status_code=422, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+        # Compute manifest checksum for provenance
+        manifest_sha = ""
+        manifest_path = pack_path / "manifest.json" if pack_path.is_dir() else None
+        if manifest_path and manifest_path.exists():
+            manifest_sha = hashlib.sha256(
+                manifest_path.read_bytes()
+            ).hexdigest()[:16]
+        elif pack_path.is_file():
+            manifest_sha = hashlib.sha256(pack_path.read_bytes()).hexdigest()[:16]
+
+        file_count = (
+            sum(1 for _ in pack_path.rglob("*") if _.is_file())
+            if pack_path.is_dir()
+            else 1
+        )
+
+        return ExportResponse(
+            session_id=session_id,
+            pack_path=str(pack_path),
+            manifest_sha256=manifest_sha,
+            file_count=file_count,
+            as_zip=as_zip,
+        )
+
+    @app.get("/export/{session_id}", tags=["Export"])
+    async def export_viewer_pack_get(
+        session_id: str,
+        directory: str = "./runs_phase2",
+        output_dir: str = "./exports",
+        as_zip: bool = True,
+    ):
+        """GET convenience alias for the export endpoint. Same as POST /export/{session_id}."""
+        import hashlib
+        from pathlib import Path as P
+        from scripts.phase2.export_viewer_pack_v1 import export_viewer_pack as _export
+
+        sessions_root = P(directory).resolve()
+        session_dir = sessions_root / session_id
+        if not session_dir.exists():
+            matches = sorted(sessions_root.glob(f"{session_id}*"))
+            if not matches:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Session '{session_id}' not found under {directory}",
+                )
+            session_dir = matches[0]
+
+        out_dir = P(output_dir).resolve()
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        try:
+            pack_path = _export(session_dir, out_dir, as_zip=as_zip)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+        manifest_sha = ""
+        manifest_path = pack_path / "manifest.json" if pack_path.is_dir() else None
+        if manifest_path and manifest_path.exists():
+            manifest_sha = hashlib.sha256(manifest_path.read_bytes()).hexdigest()[:16]
+
+        file_count = (
+            sum(1 for _ in pack_path.rglob("*") if _.is_file())
+            if pack_path.is_dir()
+            else 1
+        )
+
         return {
-            "status": "not_implemented",
-            "message": "Viewer pack export endpoint coming in Phase 3",
+            "session_id": session_id,
+            "pack_path": str(pack_path),
+            "manifest_sha256": manifest_sha,
+            "file_count": file_count,
+            "as_zip": as_zip,
+            "status": "ok",
         }
 
     return app

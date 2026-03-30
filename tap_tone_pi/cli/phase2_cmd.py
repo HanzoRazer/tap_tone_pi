@@ -29,6 +29,10 @@ from tap_tone_pi.phase2.coherence_gate import (
     check_coherence_from_arrays,
     format_coherence_feedback,
 )
+from tap_tone_pi.calibration.gate import (
+    enforce_calibration_gate,
+    print_gate_result,
+)
 from tap_tone_pi.calibration.session_context import (
     get_calibration_context,
     format_calibration_summary,
@@ -63,6 +67,21 @@ def _run_new(args: argparse.Namespace) -> int:
         print(f"Failed to load grid: {e}", file=sys.stderr)
         return 1
     
+    # === CALIBRATION GATE ===
+    device_index = getattr(args, "device", None) or 0
+    force_uncal = getattr(args, "force_uncalibrated", False)
+    force_stale = getattr(args, "force", False) or force_uncal
+
+    gate = enforce_calibration_gate(
+        device_index,
+        allow_stale=force_stale,
+        allow_uncalibrated=force_uncal,
+    )
+    print_gate_result(gate)
+    if not gate.allowed:
+        return 1
+    # === END CALIBRATION GATE ===
+
     # Create session directory
     out_dir = Path(args.out)
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -492,6 +511,17 @@ def add_phase2_subparser(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         dest="no_progress",
         help="Disable ANSI grid display (plain line-by-line output for SSH/logging)"
+    )
+    run_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Proceed with stale calibration (warns but allows)",
+    )
+    run_parser.add_argument(
+        "--force-uncalibrated",
+        action="store_true",
+        dest="force_uncalibrated",
+        help="Proceed without calibration (development/synthetic only)",
     )
     run_parser.set_defaults(func=cmd_phase2_run)
     

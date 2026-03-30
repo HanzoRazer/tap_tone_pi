@@ -69,6 +69,8 @@ jobs:
           pip install -r requirements-dev.txt
           # project deps used by tests
           pip install -r requirements.txt || true
+          # Server deps for FastAPI export endpoint tests
+          pip install -e ".[server]"
 
       - name: Run tests
         run: pytest -q

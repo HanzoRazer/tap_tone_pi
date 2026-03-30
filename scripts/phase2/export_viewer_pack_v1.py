@@ -336,6 +336,7 @@ def _add_derived(session_dir: Path, add_file_fn) -> None:
     if ods.exists():
         add_file_fn(ods, "ods/ods_snapshot.json")
     if wc.exists():
+        _validate_wolf_candidates_clean(wc)
         add_file_fn(wc, "wolf/wolf_candidates.json")
     if wsi.exists():
         add_file_fn(wsi, "wolf/wsi_curve.csv")
@@ -461,6 +462,66 @@ def _zip_pack(pack_root: Path, out_dir: Path, session_dir: Path) -> Path:
 # -------------------------------------------------------------------------
 # Main export function
 # -------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Wolf candidates purity gate (ADR-0009)
+# ---------------------------------------------------------------------------
+
+#: Fields that indicate WolfAdvisor output has leaked into wolf_candidates.json.
+#: These are decision-support fields and must never appear in viewer_pack_v1.
+_PROHIBITED_WOLF_ADVISORY_FIELDS = frozenset({
+    "mitigation_suggestions",
+    "recommendations",
+    "advisor_output",
+    "mitigations",
+    "recommended_action",
+    "confidence_level",   # WolfAdvisor.ConfidenceLevel
+    "mitigation_type",    # WolfAdvisor.MitigationType
+    "wolf_directive",
+    "directive_id",
+})
+
+
+def _validate_wolf_candidates_clean(wc_path: Path) -> None:
+    """
+    Assert wolf_candidates.json contains no advisory fields.
+
+    Raises ValueError if any WolfAdvisor-specific field is present.
+    This is a hard stop — the export fails rather than silently
+    contaminating the bundle with decision-support data.
+
+    See docs/ADR-0009-advisory-boundary.md §3.
+    """
+    try:
+        data = json.loads(wc_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return  # Parse errors are caught by other validators
+
+    if not isinstance(data, dict):
+        return
+
+    # Check top-level keys
+    found_top = _PROHIBITED_WOLF_ADVISORY_FIELDS & set(data.keys())
+
+    # Also check inside a "wolf_candidates" or "candidates" list if present
+    found_nested: set[str] = set()
+    for candidate_key in ("wolf_candidates", "candidates", "results"):
+        candidates = data.get(candidate_key, [])
+        if isinstance(candidates, list):
+            for item in candidates:
+                if isinstance(item, dict):
+                    found_nested |= _PROHIBITED_WOLF_ADVISORY_FIELDS & set(item.keys())
+
+    found = found_top | found_nested
+    if found:
+        raise ValueError(
+            f"wolf_candidates.json contains advisory fields: {sorted(found)}. "
+            f"WolfAdvisor output (WolfAdvisor.get_recommendations(), "
+            f"generate_wolf_directive()) must not appear in viewer_pack_v1. "
+            f"Route advisory output to the agentic spine (AttentionDirectiveV1) "
+            f"instead. See docs/ADR-0009-advisory-boundary.md"
+        )
 
 
 def export_viewer_pack(
