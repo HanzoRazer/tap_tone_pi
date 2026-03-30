@@ -352,6 +352,99 @@ def _add_coherence(session_dir: Path, add_file_fn) -> None:
         add_file_fn(coh, "coherence/coherence_summary.json")
 
 
+def _read_bending_moe(session_dir: Path) -> Optional[Dict[str, Any]]:
+    """
+    Locate and parse bending_moe.json from a session directory.
+
+    Searches these locations in order (most to least specific):
+      1. session_dir/bending/bending_moe.json
+      2. session_dir/bending_moe.json
+      3. session_dir/out/bending_moe.json
+
+    Returns a dict with bending fields ready for the manifest, or None
+    if no bending data is present for this session.
+    """
+    candidates = [
+        session_dir / "bending" / "bending_moe.json",
+        session_dir / "bending_moe.json",
+        session_dir / "out" / "bending_moe.json",
+    ]
+    for path in candidates:
+        if path.exists():
+            try:
+                raw = json.loads(path.read_text(encoding="utf-8"))
+                # Extract fields that map to viewer_pack_v1 bending schema
+                result: Dict[str, Any] = {}
+                geom = raw.get("geometry", {})
+                # Primary E value — use plate-corrected if available, else corrected
+                e_gpa = raw.get("E_GPa")
+                if e_gpa is not None:
+                    # Determine orientation from geometry grain_orientation field
+                    orientation = geom.get("grain_orientation", "unknown")
+                    if orientation == "longitudinal":
+                        result["E_L_GPa"] = round(e_gpa, 4)
+                    elif orientation == "cross":
+                        result["E_C_GPa"] = round(e_gpa, 4)
+                    else:
+                        # Unknown orientation — store as E_L by convention
+                        result["E_L_GPa"] = round(e_gpa, 4)
+
+                if "density_g_cm3" in raw:
+                    result["density_g_cm3"] = round(raw["density_g_cm3"], 4)
+                if "specific_modulus_GPa_per_gcm3" in raw:
+                    result["specific_modulus_GPa_per_gcm3"] = round(
+                        raw["specific_modulus_GPa_per_gcm3"], 4
+                    )
+                if "c_m_s" in raw:
+                    result["c_m_s"] = round(raw["c_m_s"], 2)
+                if "span_mm" in geom:
+                    result["span_mm"] = geom["span_mm"]
+                if "method" in raw:
+                    method = raw["method"]
+                    # Normalise bending_stiffness_mode.py naming conventions
+                    if method in ("three_point_bending", "3point"):
+                        result["method"] = "3point"
+                    elif method in ("four_point_bending", "4point"):
+                        result["method"] = "4point"
+
+                # Orthotropic ratio if both directions present
+                e_l = result.get("E_L_GPa")
+                e_c = result.get("E_C_GPa")
+                if e_l and e_c and e_c > 0:
+                    result["orthotropic_ratio"] = round(e_l / e_c, 2)
+
+                result["source_bundle"] = sha256_file(path)
+
+                return result if result else None
+            except (json.JSONDecodeError, OSError):
+                continue
+    return None
+
+
+def _add_bending(session_dir: Path, add_file_fn) -> Optional[Dict[str, Any]]:
+    """
+    Add bending measurement files to the pack and return the bending
+    manifest dict for embedding in manifest.json.
+
+    Files added (if present):
+      bending/bending_moe.json  → bending/bending_moe.json in pack
+
+    Returns the bending dict for the manifest, or None if no bending
+    data is available for this session.
+    """
+    candidates = [
+        session_dir / "bending" / "bending_moe.json",
+        session_dir / "bending_moe.json",
+        session_dir / "out" / "bending_moe.json",
+    ]
+    for path in candidates:
+        if path.exists():
+            add_file_fn(path, "bending/bending_moe.json")
+            break
+
+    return _read_bending_moe(session_dir)
+
+
 def _add_plots(session_dir: Path, add_file_fn) -> None:
     """Add plots."""
     plots_dir = session_dir / "plots"
@@ -377,6 +470,7 @@ def _build_manifest(
     files: List[FileEntry],
     session_dir: Path,
     point_ids: List[str],
+    bending_data: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Build manifest dict and compute bundle_sha256."""
     manifest: Dict[str, Any] = {
@@ -389,25 +483,30 @@ def _build_manifest(
         "interpretation": "deferred",
         "points": point_ids,
         "contents": {
-            "audio": any(e.relpath.startswith("audio/") for e in files),
-            "spectra": any(e.relpath.startswith("spectra/") for e in files),
-            "coherence": any(e.relpath.startswith("coherence/") for e in files),
-            "ods": any(e.relpath.startswith("ods/") for e in files),
-            "wolf": any(e.relpath.startswith("wolf/") for e in files),
-            "plots": any(e.relpath.startswith("plots/") for e in files),
+            "audio":      any(e.relpath.startswith("audio/")      for e in files),
+            "spectra":    any(e.relpath.startswith("spectra/")    for e in files),
+            "coherence":  any(e.relpath.startswith("coherence/")  for e in files),
+            "ods":        any(e.relpath.startswith("ods/")        for e in files),
+            "wolf":       any(e.relpath.startswith("wolf/")       for e in files),
+            "plots":      any(e.relpath.startswith("plots/")      for e in files),
             "provenance": any(e.relpath.startswith("provenance/") for e in files),
+            "bending":    any(e.relpath.startswith("bending/")    for e in files),
         },
         "files": [
             {
                 "relpath": e.relpath,
-                "sha256": e.sha256,
-                "bytes": e.bytes,
-                "mime": e.mime,
-                "kind": e.kind,
+                "sha256":  e.sha256,
+                "bytes":   e.bytes,
+                "mime":    e.mime,
+                "kind":    e.kind,
             }
             for e in sorted(files, key=lambda x: x.relpath)
         ],
     }
+
+    # Embed bending data when present — critical input for inverse brace engine
+    if bending_data:
+        manifest["bending"] = bending_data
 
     # bundle sha = sha256 of manifest JSON bytes (before adding bundle_sha256)
     manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8")
@@ -559,11 +658,12 @@ def export_viewer_pack(
     point_ids = _add_points(session_dir, add_file)
     _add_derived(session_dir, add_file)
     _add_coherence(session_dir, add_file)
+    bending_data = _add_bending(session_dir, add_file)
     _add_plots(session_dir, add_file)
     _add_timeline(session_dir, add_file)
 
     # Build and write manifest
-    manifest = _build_manifest(files, session_dir, point_ids)
+    manifest = _build_manifest(files, session_dir, point_ids, bending_data)
     manifest_path = pack_root / "manifest.json"
     manifest_path.write_text(
         json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"

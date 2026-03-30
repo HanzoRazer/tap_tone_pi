@@ -16,7 +16,7 @@ This document consolidates all development phases and tracks progress toward mak
 | Phase 2: Test Hardening | ✅ Complete | Unit tests, retry logic, validators |
 | **Codebase Audit 2026** | ✅ Complete | 4 CRITICAL, 8 MODERATE, 7 MINOR physics fixes |
 | **Advanced Physics Design** | ✅ Complete | Inverse solver, γ calibration, Rayleigh-Ritz |
-| **Phase 3: Analyzer Value** | 🔶 Partial | 3.6-3.8 complete; 3.1-3.5 pending |
+| **Phase 3: Analyzer Value** | ✅ Complete | All items complete — v2.3.0-alpha.4 through v2.3.0-alpha.7 |
 
 ---
 
@@ -319,21 +319,19 @@ Based on [ANALYZER_COMPARISON.md](ANALYZER_COMPARISON.md), these improvements ca
 
 **Completed:** Full signal generator with WAV export, 24 unit tests passing
 
-### 3.5 Limit/Mask Testing — P1 (🔶 Partial)
-**Gap:** Quality gates exist but no visual limit curves
-**Solution:** Add graphical limit testing
+### 3.5 Limit/Mask Testing — P1 ✅ Complete (Sprint LME, v2.3.0-alpha.7)
 
 | Task | Status | Description |
 |------|--------|-------------|
 | Limit curve format | ✅ Complete | `limits/curves.py` — LimitCurve, LimitPoint, JSON serialization |
 | Mask regions | ✅ Complete | `limits/masks.py` — FrequencyMask, exclude regions from testing |
 | Pass/fail with margin | ✅ Complete | `limits/testing.py` — check_against_limits(), PASS/WARN/FAIL verdict |
-| Template library | ✅ Complete | `limits/presets.py` — tonewood_tap, speaker_response, noise_floor |
+| Template library | ✅ Complete | `limits/presets.py` — tonewood_tap, speaker_response, noise_floor, calibration_flat |
 | CLI integration | ✅ Complete | `cli/limits_integration.py` — `--limits`, `--limits-preset`, `--limits-fail` flags |
-| Limit editor | ⬜ Pending | Draw/import limit curves (GUI) |
+| Limit editor | ✅ Complete | `analyzer/widgets/limit_overlay.py` — renders limit curves on spectrum, PASS/WARN/FAIL badge |
+| Limit editor panel | ✅ Complete | `analyzer/widgets/limit_editor_panel.py` — QDockWidget: preset picker, verdict card, violations list |
 
-**Completed:** Core limit/mask testing engine + CLI integration with 60 unit tests passing
-**Remaining:** GUI editor only
+**Sprint LME delivered:** 25 tests passing. Limit curves rendered as dashed overlays on `ax_mag`. Unit conversion (dB ↔ linear) handled internally. Violation markers drawn at offending frequencies. Warn margin adjustable via panel spinner. Preset load and JSON file load both wired to `main_window.py`.
 
 ### 3.6 Application Notes — P2 ✅
 **Gap:** Users don't know how to apply the analyzer to their problems
@@ -408,7 +406,7 @@ Strengths: Quality gate, operator loop, auto-trigger, pack export
 Limitations: No calibration, no generator, limited documentation
 ```
 
-### Target State (After Phase 3 P0+P1)
+### Phase 3 Completion Summary (v2.3.0-alpha.4 through v2.3.0-alpha.7)
 ```
 Cost: $200 (software only)
 Capability: ~95% of $10k analyzer
@@ -451,11 +449,37 @@ For applications requiring these specifications, commercial analyzers remain app
 | **Gore Stiffness + QA Lab** | **88** | ✅ |
 | **Inverse Solver** | **29** | ✅ |
 | **γ Calibration** | **24** | ✅ |
-| **Total** | **1573+** | ✅ |
+| DSP cross-validation | 21 | ✅ |
+| Advisory boundary | 16 | ✅ |
+| Calibration gate + export | 38 | ✅ |
+| **Analyzer Guidance Engine** | **19** | ✅ |
+| **Limit curve overlay** | **25** | ✅ |
+| **Whole-plate bending** | **31** | ✅ |
+| **Total** | **~2,150+** | ✅ |
 
 ---
 
+---
+
+## Phase 4: Production Shop Integration
+
+**Status:** Planning  
+**Target version:** v2.4.x  
+**Prerequisite:** v2.3.0-alpha.7 tag (all Phase 3 items complete)
+
+The viewer_pack_v1 bundle now carries everything the Production Shop inverse brace engine needs — modal peaks, transfer function, coherence, wood properties, and bending stiffness. Phase 4 closes the loop from measurement to prescription.
+
+| Item | Priority | Description |
+|------|----------|-------------|
+| ADR-0009 markdown document | P0 | Write `docs/ADR-0009-advisory-boundary.md` — the CI gate references it but the file does not exist |
+| Inverse brace engine integration | P0 | Wire viewer_pack_v1 export into Production Shop `inverse_optimizer.py` |
+| Bending data in viewer_pack_v1 | P1 | Add `bending/` section to viewer_pack_v1 schema; update `export_viewer_pack_v1.py` |
+| Cross-session comparison | P1 | Load two packs and diff modal frequencies — before/after bracing workflow |
+| `--method full_plate` auto Poisson | P2 | Lookup table: species → default Poisson ratio so `--poisson` is not required |
+| Analyzer guidance: full-analysis trigger | P2 | Add `on_full_analysis_complete` trigger to `AnalyzerGuidanceEngine` for workflow summary |
+
 ## References
+
 
 - [ANALYZER_COMPARISON.md](ANALYZER_COMPARISON.md) — Commercial analyzer comparison
 - [API.md](API.md) — API reference
