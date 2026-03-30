@@ -348,11 +348,11 @@ class TestReferenceTone:
         assert len(tone) == 48000
         assert tone.dtype == np.float32
 
-        # Check amplitude (should be close to -20 dBFS peak)
-        # RMS of sine = peak / sqrt(2), so RMS dBFS = peak dBFS - 3.01 dB
+        # Check amplitude (should be close to -20 dBFS RMS)
+        # With RMS-based amplitude scaling, measured RMS should match requested
         rms = np.sqrt(np.mean(tone[4800:-4800] ** 2))  # Skip fades
         dbfs = 20 * np.log10(rms + 1e-10)
-        expected_rms_dbfs = -20.0 - 3.01  # Peak to RMS conversion
+        expected_rms_dbfs = -20.0  # Now RMS-based (no peak conversion needed)
         assert abs(dbfs - expected_rms_dbfs) < 1.0
 
     def test_measure_amplitude_dbfs(self):

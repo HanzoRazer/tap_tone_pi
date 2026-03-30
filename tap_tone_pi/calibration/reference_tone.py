@@ -72,8 +72,11 @@ def generate_reference_tone(config: ReferenceToneConfig) -> np.ndarray:
     signal = np.sin(2 * np.pi * config.frequency_hz * t)
 
     # Convert dBFS to linear amplitude
-    amplitude = 10 ** (config.amplitude_dbfs / 20.0)
-    signal *= amplitude
+    # dBFS is RMS-based for sine waves: RMS = peak / sqrt(2)
+    # So to get desired RMS level, we need: peak = 10^(dBFS/20) * sqrt(2)
+    amplitude_rms = 10 ** (config.amplitude_dbfs / 20.0)
+    amplitude_peak = amplitude_rms * np.sqrt(2)
+    signal *= amplitude_peak
 
     # Apply fade in/out to avoid clicks
     fade_samples = int(0.01 * config.sample_rate)  # 10ms fade
