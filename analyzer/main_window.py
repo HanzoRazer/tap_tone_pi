@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QMessageBox,
     QTabWidget,
+    QDockWidget,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QKeySequence
@@ -37,6 +38,9 @@ from analyzer.analysis.wood_properties import (
 )
 from analyzer.reports.html_report import generate_html_report
 from analyzer.reports.json_report import generate_json_report
+from analyzer.guidance import AnalyzerGuidanceEngine, GuidancePanelWidget
+from analyzer.widgets.limit_overlay import LimitOverlay
+from analyzer.widgets.limit_editor_panel import LimitEditorPanel
 
 
 class MainWindow(QMainWindow):
@@ -60,6 +64,27 @@ class MainWindow(QMainWindow):
         self._setup_toolbar()
         self._setup_ui()
         self._setup_statusbar()
+
+        # ── Guidance engine + panel ───────────────────────────────────────
+        self._guidance_engine = AnalyzerGuidanceEngine()
+        self._guidance_panel  = GuidancePanelWidget(self)
+        self._guidance_engine.on_directive = self._guidance_panel.show_directive
+        self._guidance_panel.stage_changed.connect(self._guidance_engine.set_stage)
+        self._guidance_panel.act_requested.connect(self._on_guidance_act)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self._guidance_panel)
+        self._guidance_panel.hide()
+
+        # ── Limit overlay + editor panel ──────────────────────────────────
+        self._limit_overlay = LimitOverlay()
+        self._limit_overlay.set_axes(self.spectrum_chart.ax_mag)
+
+        self._limit_panel = LimitEditorPanel(self)
+        self._limit_panel.preset_selected.connect(self._on_limit_preset_selected)
+        self._limit_panel.file_selected.connect(self._on_limit_file_selected)
+        self._limit_panel.limits_cleared.connect(self._on_limits_cleared)
+        self._limit_panel.warn_margin_changed.connect(self._on_warn_margin_changed)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self._limit_panel)
+        self._limit_panel.hide()
 
     def _setup_menu(self):
         """Create the menu bar."""
@@ -172,6 +197,35 @@ class MainWindow(QMainWindow):
         full_analysis_action.setShortcut("Ctrl+Shift+A")
         full_analysis_action.triggered.connect(self._run_full_analysis)
         analysis_menu.addAction(full_analysis_action)
+
+        analysis_menu.addSeparator()
+
+        # Limit curves submenu
+        limit_menu = analysis_menu.addMenu("Limit &Curves")
+
+        apply_tonewood = QAction("Apply tonewood tap preset", self)
+        apply_tonewood.triggered.connect(lambda: self._on_limit_preset_selected("tonewood_tap"))
+        limit_menu.addAction(apply_tonewood)
+
+        apply_speaker = QAction("Apply speaker response preset", self)
+        apply_speaker.triggered.connect(lambda: self._on_limit_preset_selected("speaker_response"))
+        limit_menu.addAction(apply_speaker)
+
+        limit_menu.addSeparator()
+
+        load_limit_file = QAction("Load limit file...", self)
+        load_limit_file.triggered.connect(lambda: self._limit_panel._on_load_file())
+        limit_menu.addAction(load_limit_file)
+
+        clear_limits = QAction("Clear limits", self)
+        clear_limits.triggered.connect(self._on_limits_cleared)
+        limit_menu.addAction(clear_limits)
+
+        limit_menu.addSeparator()
+
+        show_limit_panel = QAction("Show limit panel", self)
+        show_limit_panel.triggered.connect(self._limit_panel.show)
+        limit_menu.addAction(show_limit_panel)
 
         # Help menu
         help_menu = menubar.addMenu("&Help")
@@ -335,6 +389,7 @@ class MainWindow(QMainWindow):
             self.file_tree.set_pack(self.current_pack)
             self._auto_load_first_spectrum()
             self.statusbar.showMessage(f"Loaded: {path}")
+            self._guidance_engine.on_pack_loaded(self.current_pack)
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load pack:\n{e}")
 
@@ -345,6 +400,7 @@ class MainWindow(QMainWindow):
             self.file_tree.set_pack(self.current_pack)
             self._auto_load_first_spectrum()
             self.statusbar.showMessage(f"Loaded: {path}")
+            self._guidance_engine.on_pack_loaded(self.current_pack)
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load folder:\n{e}")
 
@@ -462,6 +518,77 @@ class MainWindow(QMainWindow):
         """Handle frequency click from Bode/WSI plots."""
         self.statusbar.showMessage(f"Selected frequency: {freq_hz:.1f} Hz")
 
+    def _on_guidance_act(self, target_type: str) -> None:
+        """Navigate analyzer UI from guidance panel Act button. Read-only."""
+        tab_map = {
+            "spectrum_view":   0,
+            "spectrum_region": 0,
+            "bode_plot":       1,
+            "wsi_plot":        2,
+        }
+        tab_index = tab_map.get(target_type)
+        if tab_index is not None:
+            self.chart_tabs.setCurrentIndex(tab_index)
+
+    # ── Limit overlay handlers ────────────────────────────────────────────
+
+    def _redraw_limit_overlay(self) -> None:
+        """Redraw limit curves and update verdict after any spectrum change."""
+        if not self._limit_overlay.has_limits or not self.current_spectrum:
+            return
+        freq = np.array(self.current_spectrum.get("freq_hz", []))
+        mag  = np.array(self.current_spectrum.get("H_mag", []))
+        if len(freq) == 0 or len(mag) == 0:
+            return
+        result = self._limit_overlay.draw(freq, mag)
+        self._update_limit_verdict(result)
+
+    def _update_limit_verdict(self, result) -> None:
+        """Update statusbar and panel with limit test result."""
+        if result is None:
+            return
+        verdict_str = result.verdict.value.upper()
+        n_viol = result.violation_count
+        self.statusbar.showMessage(
+            f"Limits: {verdict_str}  ·  {n_viol} violation(s)  "
+            f"·  worst margin {result.worst_margin_db:+.1f} dB"
+        )
+        self._limit_panel.update_verdict(
+            verdict=result.verdict,
+            violation_count=n_viol,
+            worst_margin_db=abs(result.worst_margin_db) if result.worst_margin_db != float("inf") else 0.0,
+            active_preset=self._limit_overlay.preset_name,
+            violation_details=[v.to_dict() for v in result.violations],
+        )
+
+    def _on_limit_preset_selected(self, preset_name: str) -> None:
+        try:
+            self._limit_overlay.load_preset(preset_name)
+            self._redraw_limit_overlay()
+            self._limit_panel.show()
+        except Exception as e:
+            QMessageBox.warning(self, "Limit Curves", f"Failed to load preset:
+{e}")
+
+    def _on_limit_file_selected(self, path: str) -> None:
+        try:
+            self._limit_overlay.load_from_file(path)
+            self._redraw_limit_overlay()
+        except Exception as e:
+            QMessageBox.warning(self, "Limit Curves", f"Failed to load file:
+{e}")
+
+    def _on_limits_cleared(self) -> None:
+        self._limit_overlay.clear()
+        self._limit_panel.clear_verdict()
+        if self.current_spectrum:
+            self.spectrum_chart.set_data(self.current_spectrum)
+        self.statusbar.showMessage("Limits cleared")
+
+    def _on_warn_margin_changed(self, margin_db: float) -> None:
+        self._limit_overlay._warn_margin_db = margin_db
+        self._redraw_limit_overlay()
+
     def _export_report(self, format: str):
         """Export analysis report."""
         if not self.current_pack:
@@ -555,6 +682,8 @@ class MainWindow(QMainWindow):
             self.stats_panel.set_peaks_stats(peaks)
             self.spectrum_chart.highlight_peaks(peaks)
             self.statusbar.showMessage(f"Found {len(peaks)} peaks")
+            self._guidance_engine.on_peaks_found(peaks)
+            self._redraw_limit_overlay()
         else:
             QMessageBox.warning(self, "Warning", "No spectrum data loaded.")
 
@@ -572,6 +701,7 @@ class MainWindow(QMainWindow):
                 full_stats = analyze_coherence_quality(coherence)
                 self.current_coherence_stats = full_stats
                 self.stats_panel.set_coherence_stats(full_stats)
+                self._guidance_engine.on_coherence_analyzed(full_stats)
 
                 grade = full_stats.get("quality_grade", "?")
                 self.statusbar.showMessage(
@@ -628,6 +758,7 @@ class MainWindow(QMainWindow):
 
             self.current_wood_props = props.to_dict()
             self.stats_panel.set_wood_properties(self.current_wood_props)
+            self._guidance_engine.on_wood_properties_estimated(self.current_wood_props)
 
             self.statusbar.showMessage(
                 f"Wood: {props.radiation_coefficient:.1f} R-coeff, "
