@@ -8,7 +8,6 @@ stage suppression, history, and threading behaviour.
 
 from __future__ import annotations
 
-import os
 import time
 from typing import Dict, Any, List
 
@@ -20,13 +19,6 @@ from tap_tone_pi.agentic.contracts.analyzer_attention import (
     AttentionDirectiveV1,
 )
 from analyzer.guidance.engine import AnalyzerGuidanceEngine
-
-
-@pytest.fixture(autouse=True)
-def _no_api_key(monkeypatch):
-    """Ensure tests run without API key to test fallback path."""
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-
 
 PACK = {"metadata": {"session": {"specimen_id": "SP_001", "calibration": {"status": "valid"}}}}
 PEAKS = [{"freq_hz": 203.1, "magnitude": 0.85}, {"freq_hz": 378.4, "magnitude": 0.52}]
