@@ -328,3 +328,184 @@ def compute_residuals(predicted: PredictedValues, measured: MeasuredSummary) -> 
         bridge_deflection_residual_pct=defl_pct,
         computed_at_utc=datetime.now(timezone.utc).isoformat(),
     )
+
+
+# -----------------------------------------------------------------------------
+# BuildDatabase — CRUD operations
+# -----------------------------------------------------------------------------
+
+class BuildNotFoundError(KeyError):
+    """Raised when a build_id is not found in the database."""
+
+
+class DuplicateBuildError(ValueError):
+    """Raised when attempting to add a build with an existing ID."""
+
+
+class BuildDatabase:
+    """Persistent JSON store for instrument build records.
+
+    Usage:
+        db = BuildDatabase()  # uses default path or TTP_BUILDS_DB_PATH env
+        db.load()
+
+        build = BuildRecord(...)
+        db.add_build(build)
+        db.save()
+
+    Thread safety is not provided — callers must synchronize if needed.
+    """
+
+    def __init__(self, path: Optional[Path] = None) -> None:
+        """Initialize database with optional custom path.
+
+        Args:
+            path: Path to database JSON file. If None, uses get_builds_path().
+        """
+        self._path = path if path is not None else get_builds_path()
+        self._builds: dict[str, BuildRecord] = {}
+        self._loaded = False
+
+    @property
+    def path(self) -> Path:
+        """Return the database file path."""
+        return self._path
+
+    def load(self) -> None:
+        """Load build records from JSON file.
+
+        Creates an empty database if the file does not exist.
+        Validates each record against the schema on load.
+        """
+        if not self._path.exists():
+            self._builds = {}
+            self._loaded = True
+            return
+
+        with open(self._path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        self._builds = {}
+        for record_dict in data:
+            build = build_from_dict(record_dict)
+            validate_build(build)
+            self._builds[build.build_id] = build
+
+        self._loaded = True
+
+    def save(self) -> None:
+        """Persist all build records to JSON file.
+
+        Creates parent directories if they do not exist.
+        """
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+
+        records = [build_to_dict(b) for b in self._builds.values()]
+
+        with open(self._path, "w", encoding="utf-8") as f:
+            json.dump(records, f, indent=2)
+
+    def add_build(self, build: BuildRecord) -> None:
+        """Add a new build record to the database.
+
+        Args:
+            build: BuildRecord to add
+
+        Raises:
+            DuplicateBuildError: If build_id already exists
+        """
+        if build.build_id in self._builds:
+            raise DuplicateBuildError(
+                f"Build {build.build_id!r} already exists in database"
+            )
+        validate_build(build)
+        self._builds[build.build_id] = build
+
+    def get_build(self, build_id: str) -> BuildRecord:
+        """Retrieve a build by ID.
+
+        Args:
+            build_id: The build identifier
+
+        Returns:
+            BuildRecord for the given ID
+
+        Raises:
+            BuildNotFoundError: If build_id not found
+        """
+        if build_id not in self._builds:
+            raise BuildNotFoundError(f"Build {build_id!r} not found")
+        return self._builds[build_id]
+
+    def update_build(self, build: BuildRecord) -> None:
+        """Update an existing build record.
+
+        The build_id must already exist in the database.
+        Automatically updates updated_at_utc timestamp.
+
+        Args:
+            build: BuildRecord with updated data
+
+        Raises:
+            BuildNotFoundError: If build_id not found
+        """
+        if build.build_id not in self._builds:
+            raise BuildNotFoundError(
+                f"Cannot update: build {build.build_id!r} not found"
+            )
+        build.updated_at_utc = datetime.now(timezone.utc).isoformat()
+        validate_build(build)
+        self._builds[build.build_id] = build
+
+    def delete_build(self, build_id: str) -> None:
+        """Remove a build from the database.
+
+        Args:
+            build_id: The build identifier to remove
+
+        Raises:
+            BuildNotFoundError: If build_id not found
+        """
+        if build_id not in self._builds:
+            raise BuildNotFoundError(f"Build {build_id!r} not found")
+        del self._builds[build_id]
+
+    def list_builds(self) -> list[str]:
+        """Return all build IDs in the database."""
+        return sorted(self._builds.keys())
+
+    def list_by_design(self, design_name: str) -> list[str]:
+        """Return build IDs filtered by design name.
+
+        Args:
+            design_name: Design name to filter by
+
+        Returns:
+            Sorted list of build IDs with matching design
+        """
+        return sorted(
+            bid for bid, b in self._builds.items()
+            if b.design_name == design_name
+        )
+
+    def list_in_progress(self) -> list[str]:
+        """Return build IDs for builds not yet completed."""
+        return sorted(
+            bid for bid, b in self._builds.items()
+            if b.build_completed is None
+        )
+
+    def list_completed(self) -> list[str]:
+        """Return build IDs for completed builds."""
+        return sorted(
+            bid for bid, b in self._builds.items()
+            if b.build_completed is not None
+        )
+
+    def __len__(self) -> int:
+        """Return number of builds in database."""
+        return len(self._builds)
+
+    def __contains__(self, build_id: str) -> bool:
+        """Check if build_id exists in database."""
+        return build_id in self._builds

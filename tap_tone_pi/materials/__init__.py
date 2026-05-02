@@ -220,7 +220,10 @@ from tap_tone_pi.materials.wood_db import (
 from tap_tone_pi.materials.build_record import (
     AsBuiltDimensions,
     BraceDimension,
+    BuildDatabase,
+    BuildNotFoundError,
     BuildRecord,
+    DuplicateBuildError,
     MeasuredSummary,
     MeasurementPaths,
     PlayerEvaluation,
@@ -260,6 +263,9 @@ __all__ = [
     "get_db_path",
     # Build record (build_record.py)
     "BuildRecord",
+    "BuildDatabase",
+    "BuildNotFoundError",
+    "DuplicateBuildError",
     "WoodSelection",
     "AsBuiltDimensions",
     "BraceDimension",
