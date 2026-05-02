@@ -202,10 +202,14 @@ def search_species(query: str) -> list[str]:
 
 
 from tap_tone_pi.materials.wood_db import (
+    DuplicateFlitchError,
+    FlitchNotFoundError,
     FlitchRecord,
     PlateMeasurement,
+    WoodDatabase,
     flitch_from_dict,
     flitch_to_dict,
+    get_db_path,
     is_known_species,
     normalize_species_freetext,
     validate_flitch,
@@ -223,9 +227,13 @@ __all__ = [
     # Flitch database (wood_db.py)
     "FlitchRecord",
     "PlateMeasurement",
+    "WoodDatabase",
+    "FlitchNotFoundError",
+    "DuplicateFlitchError",
     "is_known_species",
     "normalize_species_freetext",
     "flitch_to_dict",
     "flitch_from_dict",
     "validate_flitch",
+    "get_db_path",
 ]

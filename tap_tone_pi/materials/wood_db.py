@@ -233,3 +233,185 @@ def validate_flitch(flitch: FlitchRecord) -> None:
     d = flitch_to_dict(flitch)
     schema = _load_schema()
     jsonschema.validate(instance=d, schema=schema)
+
+
+# -----------------------------------------------------------------------------
+# WoodDatabase — CRUD operations
+# -----------------------------------------------------------------------------
+
+class FlitchNotFoundError(KeyError):
+    """Raised when a flitch_id is not found in the database."""
+
+
+class DuplicateFlitchError(ValueError):
+    """Raised when attempting to add a flitch with an existing ID."""
+
+
+class WoodDatabase:
+    """Persistent JSON store for wood flitch records.
+
+    Usage:
+        db = WoodDatabase()  # uses default path or TTP_WOOD_DB_PATH env
+        db.load()
+
+        flitch = FlitchRecord(...)
+        db.add_flitch(flitch)
+        db.save()
+
+    The database file is a JSON array of flitch records. Thread safety is
+    not provided — callers must synchronize if needed.
+    """
+
+    def __init__(self, path: Optional[Path] = None) -> None:
+        """Initialize database with optional custom path.
+
+        Args:
+            path: Path to database JSON file. If None, uses get_db_path().
+        """
+        self._path = path if path is not None else get_db_path()
+        self._flitches: dict[str, FlitchRecord] = {}
+        self._loaded = False
+
+    @property
+    def path(self) -> Path:
+        """Return the database file path."""
+        return self._path
+
+    def load(self) -> None:
+        """Load flitch records from JSON file.
+
+        Creates an empty database if the file does not exist.
+        Validates each record against the schema on load.
+        """
+        if not self._path.exists():
+            self._flitches = {}
+            self._loaded = True
+            return
+
+        with open(self._path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        self._flitches = {}
+        for record_dict in data:
+            flitch = flitch_from_dict(record_dict)
+            validate_flitch(flitch)
+            self._flitches[flitch.flitch_id] = flitch
+
+        self._loaded = True
+
+    def save(self) -> None:
+        """Persist all flitch records to JSON file.
+
+        Creates parent directories if they do not exist.
+        """
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+
+        records = [flitch_to_dict(f) for f in self._flitches.values()]
+
+        with open(self._path, "w", encoding="utf-8") as f:
+            json.dump(records, f, indent=2)
+
+    def add_flitch(self, flitch: FlitchRecord) -> None:
+        """Add a new flitch record to the database.
+
+        Args:
+            flitch: FlitchRecord to add
+
+        Raises:
+            DuplicateFlitchError: If flitch_id already exists
+        """
+        if flitch.flitch_id in self._flitches:
+            raise DuplicateFlitchError(
+                f"Flitch {flitch.flitch_id!r} already exists in database"
+            )
+        validate_flitch(flitch)
+        self._flitches[flitch.flitch_id] = flitch
+
+    def get_flitch(self, flitch_id: str) -> FlitchRecord:
+        """Retrieve a flitch by ID.
+
+        Args:
+            flitch_id: The flitch identifier
+
+        Returns:
+            FlitchRecord for the given ID
+
+        Raises:
+            FlitchNotFoundError: If flitch_id not found
+        """
+        if flitch_id not in self._flitches:
+            raise FlitchNotFoundError(f"Flitch {flitch_id!r} not found")
+        return self._flitches[flitch_id]
+
+    def update_flitch(self, flitch: FlitchRecord) -> None:
+        """Update an existing flitch record.
+
+        The flitch_id must already exist in the database.
+
+        Args:
+            flitch: FlitchRecord with updated data
+
+        Raises:
+            FlitchNotFoundError: If flitch_id not found
+        """
+        if flitch.flitch_id not in self._flitches:
+            raise FlitchNotFoundError(
+                f"Cannot update: flitch {flitch.flitch_id!r} not found"
+            )
+        validate_flitch(flitch)
+        self._flitches[flitch.flitch_id] = flitch
+
+    def delete_flitch(self, flitch_id: str) -> None:
+        """Remove a flitch from the database.
+
+        Args:
+            flitch_id: The flitch identifier to remove
+
+        Raises:
+            FlitchNotFoundError: If flitch_id not found
+        """
+        if flitch_id not in self._flitches:
+            raise FlitchNotFoundError(f"Flitch {flitch_id!r} not found")
+        del self._flitches[flitch_id]
+
+    def add_measurement(
+        self, flitch_id: str, measurement: PlateMeasurement
+    ) -> None:
+        """Append a measurement to an existing flitch.
+
+        Args:
+            flitch_id: The flitch to add measurement to
+            measurement: PlateMeasurement to append
+
+        Raises:
+            FlitchNotFoundError: If flitch_id not found
+        """
+        flitch = self.get_flitch(flitch_id)
+        flitch.measurements.append(measurement)
+        validate_flitch(flitch)
+
+    def list_flitches(self) -> list[str]:
+        """Return all flitch IDs in the database."""
+        return sorted(self._flitches.keys())
+
+    def list_by_species(self, species_id: str) -> list[str]:
+        """Return flitch IDs filtered by species.
+
+        Args:
+            species_id: Canonical species identifier
+
+        Returns:
+            Sorted list of flitch IDs with matching species
+        """
+        return sorted(
+            fid for fid, f in self._flitches.items()
+            if f.species_id == species_id
+        )
+
+    def __len__(self) -> int:
+        """Return number of flitches in database."""
+        return len(self._flitches)
+
+    def __contains__(self, flitch_id: str) -> bool:
+        """Check if flitch_id exists in database."""
+        return flitch_id in self._flitches
