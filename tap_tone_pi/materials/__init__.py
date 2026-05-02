@@ -217,6 +217,24 @@ from tap_tone_pi.materials.wood_db import (
     validate_flitch,
 )
 
+from tap_tone_pi.materials.build_record import (
+    AsBuiltDimensions,
+    BraceDimension,
+    BuildRecord,
+    MeasuredSummary,
+    MeasurementPaths,
+    PlayerEvaluation,
+    PredictedValues,
+    Residuals,
+    SubjectiveEvaluation,
+    WoodSelection,
+    build_from_dict,
+    build_to_dict,
+    compute_residuals,
+    get_builds_path,
+    validate_build,
+)
+
 __all__ = [
     # Species reference (wood_species.json)
     "get_species",
@@ -240,4 +258,20 @@ __all__ = [
     "flitch_from_dict",
     "validate_flitch",
     "get_db_path",
+    # Build record (build_record.py)
+    "BuildRecord",
+    "WoodSelection",
+    "AsBuiltDimensions",
+    "BraceDimension",
+    "MeasurementPaths",
+    "PredictedValues",
+    "MeasuredSummary",
+    "Residuals",
+    "SubjectiveEvaluation",
+    "PlayerEvaluation",
+    "build_to_dict",
+    "build_from_dict",
+    "validate_build",
+    "compute_residuals",
+    "get_builds_path",
 ]
