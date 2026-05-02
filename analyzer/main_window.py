@@ -41,6 +41,11 @@ from analyzer.reports.json_report import generate_json_report
 from analyzer.guidance import AnalyzerGuidanceEngine, GuidancePanelWidget
 from analyzer.widgets.limit_overlay import LimitOverlay
 from analyzer.widgets.limit_editor_panel import LimitEditorPanel
+from analyzer.widgets.phase2_results import Phase2ResultsWidget
+from analyzer.loaders.phase2_session import (
+    load_phase2_session,
+    Phase2SessionLoadError,
+)
 
 
 class MainWindow(QMainWindow):
@@ -58,6 +63,7 @@ class MainWindow(QMainWindow):
         self.current_coherence_stats = None
         self.current_transfer_function = None
         self.current_wsi_data = None
+        self.current_phase2_session = None
         self.loader = ViewerPackLoader()
 
         self._setup_menu()
@@ -102,6 +108,11 @@ class MainWindow(QMainWindow):
         open_folder_action.setShortcut("Ctrl+Shift+O")
         open_folder_action.triggered.connect(self._open_folder)
         file_menu.addAction(open_folder_action)
+
+        open_phase2_action = QAction("Open Phase &2 Session...", self)
+        open_phase2_action.setShortcut("Ctrl+2")
+        open_phase2_action.triggered.connect(self._open_phase2_session)
+        file_menu.addAction(open_phase2_action)
 
         file_menu.addSeparator()
 
@@ -224,7 +235,7 @@ class MainWindow(QMainWindow):
         limit_menu.addSeparator()
 
         show_limit_panel = QAction("Show limit panel", self)
-        show_limit_panel.triggered.connect(self._limit_panel.show)
+        show_limit_panel.triggered.connect(lambda: self._limit_panel.show())
         limit_menu.addAction(show_limit_panel)
 
         # Help menu
@@ -314,6 +325,11 @@ class MainWindow(QMainWindow):
         # Plate tuning tab
         self.plate_tuning = PlateTuningWidget()
         self.chart_tabs.addTab(self.plate_tuning, "Plate Tuning")
+
+        # Phase 2 results tab
+        self.phase2_results = Phase2ResultsWidget()
+        self.phase2_results.frequency_changed.connect(self._on_phase2_frequency_changed)
+        self.chart_tabs.addTab(self.phase2_results, "Phase 2 ODS")
 
         content_splitter.addWidget(self.chart_tabs)
 
@@ -567,16 +583,14 @@ class MainWindow(QMainWindow):
             self._redraw_limit_overlay()
             self._limit_panel.show()
         except Exception as e:
-            QMessageBox.warning(self, "Limit Curves", f"Failed to load preset:
-{e}")
+            QMessageBox.warning(self, "Limit Curves", f"Failed to load preset:\n{e}")
 
     def _on_limit_file_selected(self, path: str) -> None:
         try:
             self._limit_overlay.load_from_file(path)
             self._redraw_limit_overlay()
         except Exception as e:
-            QMessageBox.warning(self, "Limit Curves", f"Failed to load file:
-{e}")
+            QMessageBox.warning(self, "Limit Curves", f"Failed to load file:\n{e}")
 
     def _on_limits_cleared(self) -> None:
         self._limit_overlay.clear()
@@ -838,12 +852,48 @@ class MainWindow(QMainWindow):
         self.chart_tabs.setCurrentWidget(self.plate_tuning)
         self.statusbar.showMessage("Loaded plate tuning demo data - target: 86 Hz")
 
+    def _open_phase2_session(self):
+        """Open a Phase 2 ODS scanning session directory."""
+        folder_path = QFileDialog.getExistingDirectory(
+            self, "Open Phase 2 Session Directory"
+        )
+        if folder_path:
+            self._load_phase2_session(folder_path)
+
+    def _load_phase2_session(self, path: str):
+        """Load a Phase 2 session from a directory."""
+        try:
+            session = load_phase2_session(Path(path))
+            self.current_phase2_session = session
+            self.phase2_results.set_session(session)
+            self.chart_tabs.setCurrentWidget(self.phase2_results)
+            self.statusbar.showMessage(
+                f"Loaded Phase 2 session: {session.n_points} points, "
+                f"{session.n_freqs} frequencies"
+            )
+        except Phase2SessionLoadError as e:
+            QMessageBox.critical(
+                self,
+                "Phase 2 Session Error",
+                f"Failed to load Phase 2 session:\n{e}",
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Unexpected error loading session:\n{e}",
+            )
+
+    def _on_phase2_frequency_changed(self, freq_hz: float):
+        """Handle frequency change in Phase 2 results widget."""
+        self.statusbar.showMessage(f"Phase 2: viewing {freq_hz:.1f} Hz")
+
     def _show_about(self):
         """Show about dialog."""
         QMessageBox.about(
             self,
             "About Tap Tone Analyzer",
-            "Tap Tone Analyzer v0.3.0\n\n"
+            "Tap Tone Analyzer v0.4.0\n\n"
             "Desktop application for viewing and analyzing\n"
             "acoustic tap tone measurements.\n\n"
             "Features:\n"
@@ -851,6 +901,7 @@ class MainWindow(QMainWindow):
             "• Bode plot (Transfer Function)\n"
             "• WSI (Wolf Stress Index) analysis\n"
             "• Plate Tuning Regression\n"
+            "• Phase 2 ODS Scanning Results\n"
             "• Peak detection\n"
             "• Coherence analysis\n"
             "• Wood property estimation\n"
