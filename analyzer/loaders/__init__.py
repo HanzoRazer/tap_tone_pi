@@ -33,6 +33,13 @@ from analyzer.loaders.phase2_session import (
     load_phase2_session,
     try_discover_build_record,
 )
+from analyzer.loaders.prediction_loader import (
+    BuildComparison,
+    ModeComparison,
+    get_measured_mode_frequencies,
+    get_predicted_mode_frequencies,
+    load_build_comparison,
+)
 
 __all__ = [
     # Viewer pack
@@ -63,4 +70,10 @@ __all__ = [
     "Phase2SessionLoadError",
     "load_phase2_session",
     "try_discover_build_record",
+    # Prediction loader
+    "BuildComparison",
+    "ModeComparison",
+    "get_measured_mode_frequencies",
+    "get_predicted_mode_frequencies",
+    "load_build_comparison",
 ]

@@ -25,7 +25,15 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication
 
 from analyzer.loaders.phase2_session import Phase2Session, load_phase2_session
+from analyzer.loaders.prediction_loader import BuildComparison, ModeComparison
 from analyzer.widgets.phase2_results import Phase2ResultsWidget
+from tap_tone_pi.materials import (
+    BuildDatabase,
+    BuildRecord,
+    MeasuredSummary,
+    PredictedValues,
+    Residuals,
+)
 
 
 @pytest.fixture(scope="module")
@@ -285,3 +293,82 @@ class TestPhase2ResultsWidgetHeatmap:
         # Values should change (peak has higher magnitude)
         new_range = widget._heatmap.value_range
         assert new_range[1] > initial_range[1]  # Max should be higher at peak
+
+
+class TestPhase2ResultsWidgetComparison:
+    """Tests for comparison mode (DO-006)."""
+
+    @pytest.fixture
+    def build_db(self, tmp_path: Path, monkeypatch) -> BuildDatabase:
+        """Create a temporary database with test builds."""
+        db_path = tmp_path / "test_builds_db.json"
+        monkeypatch.setenv("TTP_BUILDS_DB_PATH", str(db_path))
+
+        db = BuildDatabase(db_path)
+        db.load()
+        db.add_build(
+            BuildRecord(
+                build_id="TEST_BUILD_001",
+                design_name="Test Jumbo",
+                build_started="2026-05-01",
+                created_at_utc="2026-05-01T10:00:00Z",
+                predicted=PredictedValues(T1_hz=180.0, A0_hz=100.0),
+                measured_summary=MeasuredSummary(T1_hz=175.0, A0_hz=102.0),
+                residuals=Residuals(
+                    T1_residual_hz=-5.0,
+                    T1_residual_pct=-2.78,
+                    A0_residual_hz=2.0,
+                    A0_residual_pct=2.0,
+                ),
+            )
+        )
+        db.save()
+        return db
+
+    def test_initial_no_comparison(self, widget: Phase2ResultsWidget):
+        """Widget starts with no comparison data."""
+        assert not widget.has_comparison()
+        assert widget.comparison is None
+
+    def test_load_comparison_success(
+        self, widget: Phase2ResultsWidget, session: Phase2Session, build_db: BuildDatabase
+    ):
+        """load_comparison loads data from build database."""
+        widget.set_session(session)
+        widget.load_comparison("TEST_BUILD_001")
+
+        assert widget.has_comparison()
+        assert widget.comparison is not None
+        assert widget.comparison.build_id == "TEST_BUILD_001"
+
+    def test_auto_loads_comparison_on_set_session(
+        self, widget: Phase2ResultsWidget, session: Phase2Session, build_db: BuildDatabase
+    ):
+        """set_session auto-loads comparison for session.build_id."""
+        widget.set_session(session)
+
+        # Session has build_id=TEST_BUILD_001, should auto-load
+        assert widget.has_comparison()
+        assert widget.comparison.build_id == "TEST_BUILD_001"
+
+    def test_comparison_display_updated(
+        self, widget: Phase2ResultsWidget, session: Phase2Session, build_db: BuildDatabase
+    ):
+        """Comparison panel shows mode data."""
+        widget.set_session(session)
+
+        # Check comparison label was updated
+        assert "TEST_BUILD_001" in widget._comparison_label.text()
+
+        # Check comparison list has entries
+        assert widget._comparison_list.count() >= 2  # T1 and A0
+
+    def test_load_comparison_missing_build(
+        self, widget: Phase2ResultsWidget, session: Phase2Session, build_db: BuildDatabase
+    ):
+        """load_comparison handles missing build gracefully."""
+        widget.set_session(session)
+        widget.load_comparison("NONEXISTENT_BUILD")
+
+        assert not widget.has_comparison()
+        assert "No comparison data" in widget._comparison_label.text()

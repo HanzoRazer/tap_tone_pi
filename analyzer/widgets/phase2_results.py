@@ -30,6 +30,7 @@ from PyQt6.QtWidgets import (
 )
 
 from analyzer.loaders.phase2_session import Phase2Session
+from analyzer.loaders.prediction_loader import BuildComparison, load_build_comparison
 from analyzer.widgets._heatmap import HeatmapWidget
 
 
@@ -43,6 +44,7 @@ class Phase2ResultsWidget(QWidget):
 
         self._session: Optional[Phase2Session] = None
         self._current_freq_idx: int = 0
+        self._comparison: Optional[BuildComparison] = None
 
         self._setup_ui()
         self._apply_dark_theme()
@@ -137,6 +139,21 @@ class Phase2ResultsWidget(QWidget):
 
         right_layout.addWidget(self._peaks_group, stretch=1)
 
+        # Comparison panel (predictions vs measurements)
+        self._comparison_group = QGroupBox("Predicted vs Measured")
+        comparison_layout = QVBoxLayout(self._comparison_group)
+        comparison_layout.setContentsMargins(8, 8, 8, 8)
+
+        self._comparison_label = QLabel("No comparison data")
+        self._comparison_label.setWordWrap(True)
+        comparison_layout.addWidget(self._comparison_label)
+
+        self._comparison_list = QListWidget()
+        self._comparison_list.setMaximumHeight(150)
+        comparison_layout.addWidget(self._comparison_list)
+
+        right_layout.addWidget(self._comparison_group)
+
         splitter.addWidget(right_widget)
 
         # Set splitter proportions
@@ -209,6 +226,10 @@ class Phase2ResultsWidget(QWidget):
         # Update heatmap for initial frequency
         self._update_heatmap_for_freq_idx(0)
 
+        # Auto-load comparison if build_id present
+        if session.build_id:
+            self.load_comparison(session.build_id)
+
     def _populate_peaks(self):
         """Find peaks and populate the peaks list."""
         self._peaks_list.clear()
@@ -279,6 +300,9 @@ class Phase2ResultsWidget(QWidget):
             self._wsi_ax.set_title("Mean Response (no WSI data)")
             self._wsi_ax.grid(True, alpha=0.3, color="#3d3d3d")
 
+        # Add comparison markers if available
+        self._add_comparison_markers_to_wsi()
+
         self._apply_dark_theme()
         self._wsi_figure.tight_layout()
         self._wsi_canvas.draw()
@@ -338,3 +362,91 @@ class Phase2ResultsWidget(QWidget):
     def has_session(self) -> bool:
         """Check if a session is loaded."""
         return self._session is not None
+
+    def load_comparison(self, build_id: Optional[str] = None):
+        """Load comparison data for the given build (or session's build).
+
+        Args:
+            build_id: Build ID to look up. If None, uses session's build_id.
+        """
+        if build_id is None and self._session:
+            build_id = self._session.build_id
+
+        if not build_id:
+            self._comparison = None
+            self._update_comparison_display()
+            return
+
+        self._comparison = load_build_comparison(build_id)
+        self._update_comparison_display()
+        self._plot_wsi()  # Re-plot with markers
+
+    def _update_comparison_display(self):
+        """Update the comparison panel with current data."""
+        self._comparison_list.clear()
+
+        if not self._comparison:
+            self._comparison_label.setText("No comparison data")
+            return
+
+        comp = self._comparison
+        self._comparison_label.setText(
+            f"Build: {comp.build_id}\nDesign: {comp.design_name}"
+        )
+
+        for mode in comp.modes:
+            if mode.predicted_hz is None and mode.measured_hz is None:
+                continue
+
+            pred_str = f"{mode.predicted_hz:.1f}" if mode.predicted_hz else "-"
+            meas_str = f"{mode.measured_hz:.1f}" if mode.measured_hz else "-"
+
+            if mode.has_both and mode.residual_hz is not None:
+                sign = "+" if mode.residual_hz >= 0 else ""
+                item_text = (
+                    f"{mode.mode_name}: pred={pred_str} Hz, meas={meas_str} Hz "
+                    f"({sign}{mode.residual_hz:.1f} Hz, {sign}{mode.residual_pct:.1f}%)"
+                )
+            else:
+                item_text = f"{mode.mode_name}: pred={pred_str} Hz, meas={meas_str} Hz"
+
+            self._comparison_list.addItem(item_text)
+
+    def _add_comparison_markers_to_wsi(self):
+        """Add vertical markers for predicted mode frequencies on WSI plot."""
+        if not self._comparison or not self._session:
+            return
+
+        colors = {"T1": "#ff6b6b", "A0": "#4ecdc4", "T2": "#ffe66d", "T3": "#a8dadc"}
+
+        for mode in self._comparison.modes:
+            if mode.predicted_hz is None:
+                continue
+
+            color = colors.get(mode.mode_name, "#ffffff")
+            self._wsi_ax.axvline(
+                x=mode.predicted_hz,
+                color=color,
+                linestyle="--",
+                alpha=0.7,
+                linewidth=1.5,
+                label=f"{mode.mode_name} pred",
+            )
+
+            if mode.measured_hz is not None:
+                self._wsi_ax.axvline(
+                    x=mode.measured_hz,
+                    color=color,
+                    linestyle="-",
+                    alpha=0.5,
+                    linewidth=1.0,
+                )
+
+    @property
+    def comparison(self) -> Optional[BuildComparison]:
+        """Get the currently loaded comparison data."""
+        return self._comparison
+
+    def has_comparison(self) -> bool:
+        """Check if comparison data is loaded."""
+        return self._comparison is not None
