@@ -201,7 +201,18 @@ def search_species(query: str) -> list[str]:
     return sorted(set(results))
 
 
+from tap_tone_pi.materials.wood_db import (
+    FlitchRecord,
+    PlateMeasurement,
+    flitch_from_dict,
+    flitch_to_dict,
+    is_known_species,
+    normalize_species_freetext,
+    validate_flitch,
+)
+
 __all__ = [
+    # Species reference (wood_species.json)
     "get_species",
     "list_species",
     "get_acoustic_properties",
@@ -209,4 +220,12 @@ __all__ = [
     "get_metadata",
     "species_count",
     "search_species",
+    # Flitch database (wood_db.py)
+    "FlitchRecord",
+    "PlateMeasurement",
+    "is_known_species",
+    "normalize_species_freetext",
+    "flitch_to_dict",
+    "flitch_from_dict",
+    "validate_flitch",
 ]
