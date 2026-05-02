@@ -415,3 +415,149 @@ class WoodDatabase:
     def __contains__(self, flitch_id: str) -> bool:
         """Check if flitch_id exists in database."""
         return flitch_id in self._flitches
+
+    # -------------------------------------------------------------------------
+    # Stage D: Statistics queries
+    # -------------------------------------------------------------------------
+
+    def get_latest_measurement(self, flitch_id: str) -> Optional[PlateMeasurement]:
+        """Return the most recent measurement for a flitch.
+
+        Args:
+            flitch_id: The flitch identifier
+
+        Returns:
+            Most recent PlateMeasurement by measured_at_utc, or None if no measurements
+
+        Raises:
+            FlitchNotFoundError: If flitch_id not found
+        """
+        flitch = self.get_flitch(flitch_id)
+        if not flitch.measurements:
+            return None
+        return max(flitch.measurements, key=lambda m: m.measured_at_utc)
+
+    def get_all_measurements(self) -> list[tuple[str, PlateMeasurement]]:
+        """Return all measurements across all flitches.
+
+        Returns:
+            List of (flitch_id, PlateMeasurement) tuples, sorted by measured_at_utc
+        """
+        result: list[tuple[str, PlateMeasurement]] = []
+        for flitch_id, flitch in self._flitches.items():
+            for m in flitch.measurements:
+                result.append((flitch_id, m))
+        return sorted(result, key=lambda x: x[1].measured_at_utc)
+
+    def get_species_stats(self, species_id: str) -> "SpeciesStats":
+        """Compute aggregate statistics for a species.
+
+        Args:
+            species_id: Canonical species identifier
+
+        Returns:
+            SpeciesStats with computed means and standard deviations
+
+        Raises:
+            InsufficientDataError: If no measurements exist for species
+        """
+        measurements: list[PlateMeasurement] = []
+        flitch_ids = self.list_by_species(species_id)
+
+        for fid in flitch_ids:
+            flitch = self.get_flitch(fid)
+            measurements.extend(flitch.measurements)
+
+        if not measurements:
+            raise InsufficientDataError(
+                f"No measurements found for species {species_id!r}"
+            )
+
+        return SpeciesStats.from_measurements(species_id, measurements)
+
+
+# -----------------------------------------------------------------------------
+# Stage D: SpeciesStats dataclass
+# -----------------------------------------------------------------------------
+
+class InsufficientDataError(ValueError):
+    """Raised when there is not enough data to compute statistics."""
+
+
+@dataclass
+class SpeciesStats:
+    """Aggregate statistics for a wood species.
+
+    Computed from all measurements of flitches with the given species_id.
+    Fields are None when fewer than 2 non-null values are available for
+    standard deviation calculation.
+    """
+
+    species_id: str
+    flitch_count: int
+    measurement_count: int
+
+    density_kg_m3_mean: Optional[float] = None
+    density_kg_m3_std: Optional[float] = None
+
+    thickness_mm_mean: Optional[float] = None
+    thickness_mm_std: Optional[float] = None
+
+    E_L_GPa_mean: Optional[float] = None
+    E_L_GPa_std: Optional[float] = None
+
+    E_C_GPa_mean: Optional[float] = None
+    E_C_GPa_std: Optional[float] = None
+
+    @classmethod
+    def from_measurements(
+        cls, species_id: str, measurements: list[PlateMeasurement]
+    ) -> "SpeciesStats":
+        """Compute statistics from a list of measurements.
+
+        Args:
+            species_id: The species identifier
+            measurements: List of PlateMeasurement objects
+
+        Returns:
+            SpeciesStats with computed values
+        """
+        import math
+
+        def mean_std(values: list[float]) -> tuple[Optional[float], Optional[float]]:
+            """Compute mean and sample std, returning None if insufficient data."""
+            if not values:
+                return None, None
+            n = len(values)
+            mean = sum(values) / n
+            if n < 2:
+                return mean, None
+            variance = sum((x - mean) ** 2 for x in values) / (n - 1)
+            return mean, math.sqrt(variance)
+
+        densities = [m.density_kg_m3 for m in measurements]
+        thicknesses = [m.thickness_mm_mean for m in measurements]
+        e_l_values = [m.E_L_GPa for m in measurements if m.E_L_GPa is not None]
+        e_c_values = [m.E_C_GPa for m in measurements if m.E_C_GPa is not None]
+
+        d_mean, d_std = mean_std(densities)
+        t_mean, t_std = mean_std(thicknesses)
+        el_mean, el_std = mean_std(e_l_values)
+        ec_mean, ec_std = mean_std(e_c_values)
+
+        flitch_ids = {m.session_path for m in measurements if m.session_path}
+        flitch_count = len(flitch_ids) if flitch_ids else len(measurements)
+
+        return cls(
+            species_id=species_id,
+            flitch_count=flitch_count,
+            measurement_count=len(measurements),
+            density_kg_m3_mean=d_mean,
+            density_kg_m3_std=d_std,
+            thickness_mm_mean=t_mean,
+            thickness_mm_std=t_std,
+            E_L_GPa_mean=el_mean,
+            E_L_GPa_std=el_std,
+            E_C_GPa_mean=ec_mean,
+            E_C_GPa_std=ec_std,
+        )
