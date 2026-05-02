@@ -154,6 +154,15 @@
       "schema_version_const": "wood_flitch_record_v1",
       "status": "stable",
       "version": "1.0.0"
+    },
+    "instrument_build_record": {
+      "description": "Per-build instrument record linking wood, measurements, predictions, and evaluations",
+      "file": "instrument_build_record_v1.schema.json",
+      "owner": "measurement-team",
+      "path": "contracts/instrument_build_record_v1.schema.json",
+      "schema_version_const": "instrument_build_record_v1",
+      "status": "stable",
+      "version": "1.0.0"
     }
   },
   "title": "tap_tone_pi Schema Registry",
