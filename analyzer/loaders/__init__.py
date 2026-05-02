@@ -26,6 +26,13 @@ from analyzer.loaders.wsi_curve import (
     parse_wsi_curve,
     WsiCurveData,
 )
+from analyzer.loaders.phase2_session import (
+    Phase2Point,
+    Phase2Session,
+    Phase2SessionLoadError,
+    load_phase2_session,
+    try_discover_build_record,
+)
 
 __all__ = [
     # Viewer pack
@@ -50,4 +57,10 @@ __all__ = [
     # WSI curve
     "parse_wsi_curve",
     "WsiCurveData",
+    # Phase 2 session
+    "Phase2Point",
+    "Phase2Session",
+    "Phase2SessionLoadError",
+    "load_phase2_session",
+    "try_discover_build_record",
 ]
