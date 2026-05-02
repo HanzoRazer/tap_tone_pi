@@ -12,10 +12,12 @@ try:
     from analyzer.widgets.plate_tuning import PlateTuningWidget
     from analyzer.widgets.limit_overlay import LimitOverlay
     from analyzer.widgets.limit_editor_panel import LimitEditorPanel
+    from analyzer.widgets._heatmap import HeatmapWidget
+    from analyzer.widgets.phase2_results import Phase2ResultsWidget
     __all__ = [
         "SpectrumChartWidget", "PeaksTableWidget", "FileTreeWidget",
         "StatsPanel", "BodePlotWidget", "WsiPlotWidget", "PlateTuningWidget",
-        "LimitOverlay", "LimitEditorPanel",
+        "LimitOverlay", "LimitEditorPanel", "HeatmapWidget", "Phase2ResultsWidget",
     ]
 except ImportError:
     # PyQt6 not installed — headless/CI mode
