@@ -509,3 +509,90 @@ class BuildDatabase:
     def __contains__(self, build_id: str) -> bool:
         """Check if build_id exists in database."""
         return build_id in self._builds
+
+    # -------------------------------------------------------------------------
+    # Stage D: Cross-reference queries
+    # -------------------------------------------------------------------------
+
+    def get_builds_using_flitch(self, flitch_id: str) -> list[str]:
+        """Find all builds that reference a given flitch_id.
+
+        Searches all wood selection fields (top, back, sides, neck, etc.)
+        for the specified flitch_id.
+
+        Args:
+            flitch_id: The flitch identifier to search for
+
+        Returns:
+            Sorted list of build_ids that reference this flitch
+        """
+        results = []
+        for build_id, build in self._builds.items():
+            wood = build.wood
+            flitch_ids = [
+                wood.top_flitch_id,
+                wood.back_flitch_id,
+                wood.sides_flitch_id,
+                wood.neck_flitch_id,
+                wood.brace_stock_flitch_id,
+                wood.fretboard_flitch_id,
+                wood.bridge_flitch_id,
+            ]
+            if flitch_id in flitch_ids:
+                results.append(build_id)
+        return sorted(results)
+
+    def compute_and_set_residuals(self, build_id: str) -> Residuals:
+        """Compute residuals for a build and update the record.
+
+        Requires both predicted and measured_summary to be set.
+
+        Args:
+            build_id: The build to compute residuals for
+
+        Returns:
+            The computed Residuals object
+
+        Raises:
+            BuildNotFoundError: If build_id not found
+            ValueError: If predicted or measured_summary is not set
+        """
+        build = self.get_build(build_id)
+
+        if build.predicted is None:
+            raise ValueError(f"Build {build_id!r} has no predicted values")
+        if build.measured_summary is None:
+            raise ValueError(f"Build {build_id!r} has no measured summary")
+
+        residuals = compute_residuals(build.predicted, build.measured_summary)
+        build.residuals = residuals
+        self.update_build(build)
+
+        return residuals
+
+    def get_referenced_flitch_ids(self, build_id: str) -> list[str]:
+        """Get all non-null flitch_ids referenced by a build.
+
+        Args:
+            build_id: The build to get flitch references for
+
+        Returns:
+            List of flitch_ids (unique, sorted)
+
+        Raises:
+            BuildNotFoundError: If build_id not found
+        """
+        build = self.get_build(build_id)
+        wood = build.wood
+
+        flitch_ids = [
+            wood.top_flitch_id,
+            wood.back_flitch_id,
+            wood.sides_flitch_id,
+            wood.neck_flitch_id,
+            wood.brace_stock_flitch_id,
+            wood.fretboard_flitch_id,
+            wood.bridge_flitch_id,
+        ]
+
+        return sorted(set(fid for fid in flitch_ids if fid is not None))
