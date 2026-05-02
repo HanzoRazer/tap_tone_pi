@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/wood_flitch_record_v1.schema.json",
+  "title": "WoodFlitchRecord",
+  "description": "A single flitch (board) of wood with one or more measurement events over time.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "flitch_id", "species_id", "created_at_utc", "measurements"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "wood_flitch_record_v1"
+    },
+    "flitch_id": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]{2,80}$",
+      "description": "Unique flitch identifier. Convention: SPECIES_YEAR_VENDOR_BATCH (e.g., SITKA_2026_PACIFIC_001)."
+    },
+    "species_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{1,40}$",
+      "description": "Species ID matching tap_tone_pi/materials/wood_species.json (e.g., 'spruce_sitka')."
+    },
+    "species_id_freetext_original": {
+      "type": ["string", "null"],
+      "description": "Optional: preserves original free-text species name when ingested from legacy callers. Null for new records."
+    },
+    "supplier": { "type": ["string", "null"] },
+    "purchase_lot": { "type": ["string", "null"] },
+    "purchase_date": { "type": ["string", "null"], "format": "date" },
+    "estimated_age_years": { "type": ["number", "null"], "minimum": 0 },
+    "moisture_content_pct_at_purchase": { "type": ["number", "null"] },
+    "notes": { "type": "string", "default": "" },
+    "created_at_utc": { "type": "string", "format": "date-time" },
+    "measurements": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/PlateMeasurement" }
+    }
+  },
+  "$defs": {
+    "PlateMeasurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["measurement_id", "measured_at_utc", "thickness_mm_mean", "mass_g", "density_kg_m3"],
+      "properties": {
+        "measurement_id": {
+          "type": "string",
+          "pattern": "^[A-Z0-9][A-Z0-9_]{2,80}$"
+        },
+        "measured_at_utc": { "type": "string", "format": "date-time" },
+        "plate_subid": {
+          "type": ["string", "null"],
+          "description": "Which piece of the flitch (e.g., 'TOP_HALF_A')"
+        },
+        "rh_at_measurement_pct": { "type": ["number", "null"] },
+        "tempC_at_measurement": { "type": ["number", "null"] },
+        "thickness_mm_grid": {
+          "type": ["array", "null"],
+          "items": { "type": "array", "items": { "type": "number" } },
+          "description": "2D grid of thickness samples. Null if only mean is available."
+        },
+        "thickness_mm_mean": { "type": "number", "exclusiveMinimum": 0 },
+        "thickness_mm_std": { "type": ["number", "null"], "minimum": 0 },
+        "length_mm": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "width_mm": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "mass_g": { "type": "number", "exclusiveMinimum": 0 },
+        "density_kg_m3": { "type": "number", "exclusiveMinimum": 0 },
+        "E_L_GPa": { "type": ["number", "null"] },
+        "E_L_uncertainty_GPa": { "type": ["number", "null"], "minimum": 0 },
+        "E_L_expanded_uncertainty_GPa": { "type": ["number", "null"], "minimum": 0 },
+        "E_C_GPa": { "type": ["number", "null"] },
+        "E_C_uncertainty_GPa": { "type": ["number", "null"], "minimum": 0 },
+        "E_C_expanded_uncertainty_GPa": { "type": ["number", "null"], "minimum": 0 },
+        "coverage_factor": { "type": "number", "default": 2.0 },
+        "degrees_of_freedom": { "type": ["integer", "null"] },
+        "modal_freqs_hz": {
+          "type": ["object", "null"],
+          "additionalProperties": { "type": "number" },
+          "description": "Mode shape index to frequency. Keys like '(1,1)', '(2,1)'."
+        },
+        "Q_factors": {
+          "type": ["object", "null"],
+          "additionalProperties": { "type": "number" }
+        },
+        "session_path": {
+          "type": ["string", "null"],
+          "description": "Relative path to the measurement session directory that produced this record."
+        },
+        "notes": { "type": "string", "default": "" }
+      }
+    }
+  }
+}

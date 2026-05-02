@@ -26,11 +26,12 @@
       ]
     },
     "measurement-team": {
-      "description": "Phase 1 tap peaks, bending MOE, manifests",
+      "description": "Phase 1 tap peaks, bending MOE, manifests, wood database",
       "schemas": [
         "tap_peaks",
         "moe_result",
-        "manifest"
+        "manifest",
+        "wood_flitch_record"
       ]
     }
   },
@@ -142,6 +143,15 @@
       "file": "tap_peaks.schema.json",
       "owner": "measurement-team",
       "path": "contracts/schemas/tap_peaks.schema.json",
+      "status": "stable",
+      "version": "1.0.0"
+    },
+    "wood_flitch_record": {
+      "description": "Per-flitch wood property database record with measurements over time",
+      "file": "wood_flitch_record_v1.schema.json",
+      "owner": "measurement-team",
+      "path": "contracts/wood_flitch_record_v1.schema.json",
+      "schema_version_const": "wood_flitch_record_v1",
       "status": "stable",
       "version": "1.0.0"
     }
