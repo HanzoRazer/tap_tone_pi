@@ -10,6 +10,7 @@ Displays Phase 2 session data:
 
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 import numpy as np
@@ -32,6 +33,14 @@ from PyQt6.QtWidgets import (
 from analyzer.loaders.phase2_session import Phase2Session
 from analyzer.loaders.prediction_loader import BuildComparison, load_build_comparison
 from analyzer.widgets._heatmap import HeatmapWidget
+from tap_tone_pi.materials import (
+    BuildDatabase,
+    BuildNotFoundError,
+    BuildRecord,
+    get_builds_path,
+)
+
+_log = logging.getLogger(__name__)
 
 
 class Phase2ResultsWidget(QWidget):
@@ -45,6 +54,8 @@ class Phase2ResultsWidget(QWidget):
         self._session: Optional[Phase2Session] = None
         self._current_freq_idx: int = 0
         self._comparison: Optional[BuildComparison] = None
+        self._discovered_build: Optional[BuildRecord] = None
+        self._auto_discover_enabled: bool = True
 
         self._setup_ui()
         self._apply_dark_theme()
@@ -183,6 +194,8 @@ class Phase2ResultsWidget(QWidget):
         """
         self._session = session
         self._current_freq_idx = 0
+        self._comparison = None
+        self._discovered_build = None
 
         # Update slider range
         self._freq_slider.setMaximum(session.n_freqs - 1)
@@ -205,11 +218,6 @@ class Phase2ResultsWidget(QWidget):
             f"Origin: {origin_str}"
         )
 
-        if session.build_id:
-            self._build_label.setText(f"Build: {session.build_id}")
-        else:
-            self._build_label.setText("")
-
         # Set heatmap points
         coords = session.get_point_coords()
         point_ids = [c[0] for c in coords]
@@ -226,9 +234,98 @@ class Phase2ResultsWidget(QWidget):
         # Update heatmap for initial frequency
         self._update_heatmap_for_freq_idx(0)
 
-        # Auto-load comparison if build_id present
-        if session.build_id:
-            self.load_comparison(session.build_id)
+        # Auto-discover build context and load comparison
+        self._try_discover_build()
+
+    def _try_discover_build(self) -> None:
+        """Attempt to find and load the build record matching the current session.
+
+        Called from set_session() after a session is successfully loaded.
+        Reads build_id from session, looks up the build record in the database,
+        and stores the result if found. Also loads comparison data.
+
+        Silent on miss; warns on corrupt build record without blocking session
+        display.
+        """
+        self._discovered_build = None
+        self._update_status_with_build()
+
+        if not self._auto_discover_enabled:
+            return
+
+        if self._session is None:
+            return
+
+        build_id = self._session.build_id
+        if not build_id:
+            _log.debug(
+                "No build_id in session; skipping build discovery"
+            )
+            return
+
+        try:
+            db = BuildDatabase()
+            db.load()
+            record = db.get_build(build_id)
+        except BuildNotFoundError:
+            _log.info(
+                "No build record found for build_id %r (looked in %s)",
+                build_id,
+                get_builds_path(),
+            )
+            # Still show build_id in label even without full record
+            self._build_label.setText(f"Build: {build_id} (no record)")
+            # Load comparison data anyway (it may exist)
+            self.load_comparison(build_id)
+            return
+        except FileNotFoundError:
+            _log.info("Build database file not found at %s", get_builds_path())
+            self._build_label.setText(f"Build: {build_id} (no db)")
+            self.load_comparison(build_id)
+            return
+        except Exception as e:
+            _log.warning(
+                "Failed to load build record %r: %s",
+                build_id,
+                e,
+            )
+            self._build_label.setText(f"Build: {build_id} (error)")
+            return
+
+        self._discovered_build = record
+        _log.info(
+            "Discovered build record %s (design=%s)",
+            record.build_id,
+            record.design_name,
+        )
+
+        self._update_status_with_build()
+        self.load_comparison(build_id)
+
+    def _update_status_with_build(self) -> None:
+        """Update build label with discovered build context."""
+        if self._session is None:
+            self._build_label.setText("")
+            return
+
+        if self._discovered_build is not None:
+            record = self._discovered_build
+            status_parts = [f"Build: {record.build_id}"]
+            if record.design_name:
+                status_parts.append(f"({record.design_name})")
+            if record.build_completed:
+                status_parts.append("[completed]")
+            elif record.build_started:
+                status_parts.append("[in progress]")
+            self._build_label.setText(" ".join(status_parts))
+        elif self._session.build_id:
+            self._build_label.setText(f"Build: {self._session.build_id}")
+        else:
+            self._build_label.setText("")
+
+    def set_auto_discover(self, enabled: bool) -> None:
+        """Enable or disable auto-discovery of build context on session load."""
+        self._auto_discover_enabled = enabled
 
     def _populate_peaks(self):
         """Find peaks and populate the peaks list."""
@@ -450,3 +547,12 @@ class Phase2ResultsWidget(QWidget):
     def has_comparison(self) -> bool:
         """Check if comparison data is loaded."""
         return self._comparison is not None
+
+    @property
+    def discovered_build(self) -> Optional[BuildRecord]:
+        """Get the discovered build record, if any."""
+        return self._discovered_build
+
+    def has_discovered_build(self) -> bool:
+        """Check if a build record was discovered."""
+        return self._discovered_build is not None
