@@ -179,6 +179,14 @@ class MainWindow(QMainWindow):
         reset_zoom_action.triggered.connect(self._reset_zoom)
         view_menu.addAction(reset_zoom_action)
 
+        view_menu.addSeparator()
+
+        self.auto_discover_action = QAction("Auto-discover &build context", self)
+        self.auto_discover_action.setCheckable(True)
+        self.auto_discover_action.setChecked(True)
+        self.auto_discover_action.toggled.connect(self._on_auto_discover_toggled)
+        view_menu.addAction(self.auto_discover_action)
+
         # Analysis menu
         analysis_menu = menubar.addMenu("&Analysis")
 
@@ -887,6 +895,11 @@ class MainWindow(QMainWindow):
     def _on_phase2_frequency_changed(self, freq_hz: float):
         """Handle frequency change in Phase 2 results widget."""
         self.statusbar.showMessage(f"Phase 2: viewing {freq_hz:.1f} Hz")
+
+    def _on_auto_discover_toggled(self, checked: bool) -> None:
+        """Forward auto-discover toggle to the Phase 2 widget."""
+        if hasattr(self, "phase2_results") and self.phase2_results is not None:
+            self.phase2_results.set_auto_discover(checked)
 
     def _show_about(self):
         """Show about dialog."""
