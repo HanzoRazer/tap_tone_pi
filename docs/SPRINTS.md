@@ -38,9 +38,30 @@ Living document tracking sprint history, open work, and methodology for the tap_
 
 ---
 
+### Sprint 2 — Build Context Integration (2026-05-03)
+
+**Theme:** Auto-surface build context when opening Phase 2 sessions; cleanup from Sprint 1.
+
+**Duration:** Single day (2026-05-03)
+**Commits:** 4
+**Tests added:** 15 (total suite: 2550)
+
+| Dev Order | Title | Tests | Status |
+|-----------|-------|-------|--------|
+| DO-008 | Build record auto-discovery + cleanup | 15 | COMPLETED |
+
+**Key deliverables:**
+- PyQt6 dependency in pyproject.toml
+- `_try_discover_build()` in Phase2ResultsWidget
+- View > Auto-discover build context menu toggle
+
+**Completion docs:** `docs/dev_orders/completed/DO-008.md`
+
+---
+
 ## Open Work — In Progress
 
-None. Sprint 1 complete.
+None. Sprint 2 complete.
 
 ---
 
@@ -49,10 +70,9 @@ None. Sprint 1 complete.
 | Dev Order | Title | Priority | Blocks |
 |-----------|-------|----------|--------|
 | DO-007 | DXF writer consolidation | BLOCKING | All new DXF work |
-| DO-008 | Blueprint vectorizer Loop 1 (intra-frame validation) | HIGH | DO-009 |
-| DO-009 | Blueprint vectorizer AGE integration | HIGH | — |
-| DO-010 | Wood species JSON per-field attribution | MEDIUM | — |
-| DO-011 | PyQt6 dependency formalization | LOW | — |
+| DO-009 | Blueprint vectorizer Loop 1 (intra-frame validation) | HIGH | DO-010 |
+| DO-010 | Blueprint vectorizer AGE integration | HIGH | — |
+| DO-011 | Wood species JSON per-field attribution | MEDIUM | — |
 | DO-012 | Sprint bundle archival | LOW | — |
 | DO-013 | Baseline test failure resolution | MEDIUM | — |
 
@@ -66,7 +86,7 @@ None. Sprint 1 complete.
 - Refactor existing generators to call it
 - Enforce standards: SPLINE/LINE only, no LWPOLYLINE on R12, valid EXTMIN/EXTMAX
 
-### DO-008 — Blueprint vectorizer Loop 1
+### DO-009 — Blueprint vectorizer Loop 1
 
 **Priority:** HIGH
 **Rationale:** CLAUDE.md vectorizer architecture decision requires intra-frame validation before export.

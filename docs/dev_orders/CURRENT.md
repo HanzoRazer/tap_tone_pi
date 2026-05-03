@@ -1,12 +1,12 @@
 # Active Dev Order
 
 **Current:** None — sprint complete
-**Previous:** DO-005+DO-006 (combined) — Analyzer GUI: Phase 2 results widget + comparison mode
-**Completed:** 2026-05-02
+**Previous:** DO-008 — Build record auto-discovery + cleanup
+**Completed:** 2026-05-03
 
 ## Sprint Summary
 
-DO-001 through DO-006 completed. The tap_tone_pi modal mapping toolchain now has:
+DO-001 through DO-008 completed. The tap_tone_pi modal mapping toolchain now has:
 
 | Dev Order | Description | Status |
 |---|---|---|
@@ -16,6 +16,7 @@ DO-001 through DO-006 completed. The tap_tone_pi modal mapping toolchain now has
 | DO-004 | Per-build instrument record schema | COMPLETED |
 | DO-005 | Analyzer GUI: Phase 2 results widget | COMPLETED |
 | DO-006 | Predicted-vs-measured comparison overlay | COMPLETED |
+| DO-008 | Build record auto-discovery + cleanup | COMPLETED |
 
 ## Pre-existing test failures (baseline)
 
@@ -27,6 +28,13 @@ DO-001 through DO-006 completed. The tap_tone_pi modal mapping toolchain now has
 These are documented baseline failures, not introduced by this sprint.
 
 ## Daily log
+
+### 2026-05-03
+- DO-008 Stage A: Doc reconciliation — no-op (no prediction.py refs found)
+- DO-008 Stage B: PyQt6 dependency declaration (1 test)
+- DO-008 Stage C: Build record auto-discovery (11 tests)
+- DO-008 Stage D: View menu opt-out toggle (3 tests)
+- DO-008 complete — 15 new tests
 
 ### 2026-05-02
 - DO-001, DO-002, DO-003, DO-004 completed
