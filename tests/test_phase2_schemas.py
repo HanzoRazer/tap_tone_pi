@@ -3,13 +3,12 @@ Phase 2 schema validation tests.
 
 Validates that phase2_slice.py output matches contracts/*.schema.json.
 """
+
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -17,6 +16,7 @@ import pytest
 # Attempt jsonschema import; skip tests if not available
 try:
     import jsonschema
+
     HAS_JSONSCHEMA = True
 except ImportError:
     HAS_JSONSCHEMA = False
@@ -60,7 +60,9 @@ def synthetic_session_dir(tmp_path_factory) -> Path:
     # Set PYTHONPATH to include repo root for 'modes' module
     env = os.environ.copy()
     existing_path = env.get("PYTHONPATH", "")
-    env["PYTHONPATH"] = str(REPO_ROOT) + (os.pathsep + existing_path if existing_path else "")
+    env["PYTHONPATH"] = str(REPO_ROOT) + (
+        os.pathsep + existing_path if existing_path else ""
+    )
 
     # Run phase2_slice.py run --synthetic
     result = subprocess.run(
@@ -68,11 +70,15 @@ def synthetic_session_dir(tmp_path_factory) -> Path:
             sys.executable,
             str(SCRIPTS_DIR / "phase2_slice.py"),
             "run",
-            "--grid", str(grid_path),
-            "--out", str(out_root),
+            "--grid",
+            str(grid_path),
+            "--out",
+            str(out_root),
             "--synthetic",
-            "--top-n", "5",
-            "--ods-target-hz", "185",
+            "--top-n",
+            "5",
+            "--ods-target-hz",
+            "185",
         ],
         capture_output=True,
         text=True,
@@ -122,7 +128,9 @@ class TestPhase2WolfCandidatesSchema:
         assert "numpy_version" in prov
         assert "computed_at_utc" in prov
 
-    def test_wolf_candidates_has_top_points_per_candidate(self, synthetic_session_dir: Path):
+    def test_wolf_candidates_has_top_points_per_candidate(
+        self, synthetic_session_dir: Path
+    ):
         path = synthetic_session_dir / "derived" / "wolf_candidates.json"
         data = json.loads(path.read_text(encoding="utf-8"))
 
@@ -200,14 +208,22 @@ class TestPhase2ODSSnapshotSchema:
 
             # Validate arrays
             assert isinstance(pt["H_mag"], list), f"Point {i} H_mag should be array"
-            assert isinstance(pt["H_phase_deg"], list), f"Point {i} H_phase_deg should be array"
-            assert isinstance(pt["coherence"], list), f"Point {i} coherence should be array"
+            assert isinstance(pt["H_phase_deg"], list), (
+                f"Point {i} H_phase_deg should be array"
+            )
+            assert isinstance(pt["coherence"], list), (
+                f"Point {i} coherence should be array"
+            )
 
             # Array lengths should match freqs_hz length
             n_freqs = len(data["freqs_hz"])
             assert len(pt["H_mag"]) == n_freqs, f"Point {i} H_mag length mismatch"
-            assert len(pt["H_phase_deg"]) == n_freqs, f"Point {i} H_phase_deg length mismatch"
-            assert len(pt["coherence"]) == n_freqs, f"Point {i} coherence length mismatch"
+            assert len(pt["H_phase_deg"]) == n_freqs, (
+                f"Point {i} H_phase_deg length mismatch"
+            )
+            assert len(pt["coherence"]) == n_freqs, (
+                f"Point {i} coherence length mismatch"
+            )
 
 
 class TestPhase2NoExtraFields:
@@ -217,7 +233,13 @@ class TestPhase2NoExtraFields:
         path = synthetic_session_dir / "derived" / "wolf_candidates.json"
         data = json.loads(path.read_text(encoding="utf-8"))
 
-        allowed_root = {"schema_version", "wsi_threshold", "coherence_threshold", "candidates", "provenance"}
+        allowed_root = {
+            "schema_version",
+            "wsi_threshold",
+            "coherence_threshold",
+            "candidates",
+            "provenance",
+        }
         actual_root = set(data.keys())
         extra = actual_root - allowed_root
         assert not extra, f"Extra root fields in wolf_candidates.json: {extra}"

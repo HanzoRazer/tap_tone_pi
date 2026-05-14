@@ -22,7 +22,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, List
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -59,7 +59,9 @@ def read_wav_mono_or_stereo(wav_path: Path) -> tuple[int, np.ndarray]:
 
     # decode PCM (supports 16-bit only here; keep simple)
     if sampwidth != 2:
-        raise ValueError(f"Unsupported WAV sample width {sampwidth*8} bits. Expected 16-bit PCM.")
+        raise ValueError(
+            f"Unsupported WAV sample width {sampwidth * 8} bits. Expected 16-bit PCM."
+        )
     x = np.frombuffer(frames, dtype=np.int16).astype(np.float32) / 32767.0
     if ch > 1:
         x = x.reshape(-1, ch)
@@ -124,12 +126,83 @@ def save_two_line_plot(
     plt.close(fig)
 
 
+def _plot_optional_extras(
+    cap_dir: Path,
+    args: argparse.Namespace,
+) -> List[Path]:
+    """Plot optional spectrum and waveform PNGs. Returns paths of files written."""
+    written: List[Path] = []
+
+    spec_path = cap_dir / "spectrum.csv"
+    if args.plot_spectrum and spec_path.exists():
+        f, m0, m1 = read_spectrum_csv(spec_path)
+        if f.size:
+            out = cap_dir / "spectrum.png"
+            save_two_line_plot(
+                out_path=out,
+                x=f,
+                y0=m0,
+                y1=m1,
+                title="Spectrum (normalized)",
+                xlabel="Frequency (Hz)",
+                ylabel="Magnitude",
+                xlim=(0.0, float(args.max_hz)),
+            )
+            written.append(out)
+
+    wav_path = cap_dir / "audio.wav"
+    if args.plot_waveform and wav_path.exists():
+        fs, x = read_wav_mono_or_stereo(wav_path)
+        t = np.arange(x.shape[0], dtype=np.float32) / float(fs)
+        if x.shape[1] == 1:
+            out = cap_dir / "waveform.png"
+            save_line_plot(
+                out_path=out,
+                x=t,
+                y=x[:, 0],
+                title="Waveform (ch0)",
+                xlabel="Time (s)",
+                ylabel="Amplitude",
+            )
+            written.append(out)
+        else:
+            out = cap_dir / "waveform.png"
+            save_two_line_plot(
+                out_path=out,
+                x=t,
+                y0=x[:, 0],
+                y1=x[:, 1],
+                title="Waveform (ch0,ch1)",
+                xlabel="Time (s)",
+                ylabel="Amplitude",
+                labels=("ch0", "ch1"),
+            )
+            written.append(out)
+
+    return written
+
+
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Plot coherence/phase (+ optional spectrum/waveform) to PNGs.")
+    ap = argparse.ArgumentParser(
+        description="Plot coherence/phase (+ optional spectrum/waveform) to PNGs."
+    )
     ap.add_argument("--capture-dir", required=True, help="Path to capture_<ts>/ folder")
-    ap.add_argument("--max-hz", type=float, default=2000.0, help="Max frequency to plot for spectrum/coh/phase")
-    ap.add_argument("--plot-spectrum", action="store_true", help="Plot spectrum.png if spectrum.csv exists")
-    ap.add_argument("--plot-waveform", action="store_true", help="Plot waveform.png if audio.wav exists")
+    ap.add_argument(
+        "--max-hz",
+        type=float,
+        default=2000.0,
+        help="Max frequency to plot for spectrum/coh/phase",
+    )
+    ap.add_argument(
+        "--plot-spectrum",
+        action="store_true",
+        help="Plot spectrum.png if spectrum.csv exists",
+    )
+    ap.add_argument(
+        "--plot-waveform",
+        action="store_true",
+        help="Plot waveform.png if audio.wav exists",
+    )
     args = ap.parse_args()
 
     cap_dir = Path(args.capture_dir).expanduser().resolve()
@@ -180,55 +253,14 @@ def main() -> None:
         ylim=None,
     )
 
-    # optional spectrum
-    spec_path = cap_dir / "spectrum.csv"
-    if args.plot_spectrum and spec_path.exists():
-        f, m0, m1 = read_spectrum_csv(spec_path)
-        if f.size:
-            save_two_line_plot(
-                out_path=cap_dir / "spectrum.png",
-                x=f,
-                y0=m0,
-                y1=m1,
-                title="Spectrum (normalized)",
-                xlabel="Frequency (Hz)",
-                ylabel="Magnitude",
-                xlim=(0.0, float(args.max_hz)),
-            )
-
-    # optional waveform
-    wav_path = cap_dir / "audio.wav"
-    if args.plot_waveform and wav_path.exists():
-        fs, x = read_wav_mono_or_stereo(wav_path)
-        t = np.arange(x.shape[0], dtype=np.float32) / float(fs)
-        if x.shape[1] == 1:
-            save_line_plot(
-                out_path=cap_dir / "waveform.png",
-                x=t,
-                y=x[:, 0],
-                title="Waveform (ch0)",
-                xlabel="Time (s)",
-                ylabel="Amplitude",
-            )
-        else:
-            save_two_line_plot(
-                out_path=cap_dir / "waveform.png",
-                x=t,
-                y0=x[:, 0],
-                y1=x[:, 1],
-                title="Waveform (ch0,ch1)",
-                xlabel="Time (s)",
-                ylabel="Amplitude",
-                labels=("ch0", "ch1"),
-            )
+    # optional extras (spectrum, waveform)
+    extra_paths = _plot_optional_extras(cap_dir, args)
 
     print("[OK] Wrote PNGs:")
-    print(f"  {cap_dir/'coherence.png'}")
-    print(f"  {cap_dir/'phase_deg.png'}")
-    if args.plot_spectrum and spec_path.exists():
-        print(f"  {cap_dir/'spectrum.png'}")
-    if args.plot_waveform and wav_path.exists():
-        print(f"  {cap_dir/'waveform.png'}")
+    print(f"  {cap_dir / 'coherence.png'}")
+    print(f"  {cap_dir / 'phase_deg.png'}")
+    for p in extra_paths:
+        print(f"  {p}")
 
 
 if __name__ == "__main__":

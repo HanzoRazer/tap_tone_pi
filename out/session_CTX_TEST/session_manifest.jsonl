@@ -1,6 +1,0 @@
-{"bundle_id": "b001", "specimen_id": "SP_001", "mode": "bend", "ts_utc": "2025-12-29T01:00:00Z"}
-{"bundle_id": "b002", "specimen_id": "SP_001", "mode": "bend", "ts_utc": "2025-12-29T01:05:00Z"}
-{"bundle_id": "b003", "specimen_id": "SP_002", "mode": "tap", "ts_utc": "2025-12-29T01:10:00Z"}
-{"bundle_id": "b004", "specimen_id": "SP_002", "mode": "tap", "ts_utc": "2025-12-29T01:15:00Z"}
-{"bundle_id": "b005", "specimen_id": "SP_003", "mode": "bend", "ts_utc": "2025-12-29T01:20:00Z"}
-{"bundle_id": "b006", MALFORMED: partial write crash

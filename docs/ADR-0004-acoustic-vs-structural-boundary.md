@@ -1,8 +1,8 @@
 # ADR-0004: Acoustic vs Structural Interpretation Boundary
 
-**Status:** Accepted  
-**Date:** 2025-12-25  
-**Context:** Tap-Tone Measurement Node / Multi-Channel Acoustic Testing  
+**Status:** Accepted
+**Date:** 2025-12-25
+**Context:** Tap-Tone Measurement Node / Multi-Channel Acoustic Testing
 **Decision Drivers:** Scientific defensibility, correct claims, scope control, future extensibility
 
 ---

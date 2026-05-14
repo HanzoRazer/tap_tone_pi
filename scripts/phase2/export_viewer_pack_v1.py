@@ -39,6 +39,82 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from zipfile import ZipFile, ZIP_DEFLATED
 
+# Pre-export validation gate
+from tap_tone_pi.validate.viewer_pack_v1 import validate_pack, write_validation_report
+
+# Session metadata export
+from tap_tone_pi.export_metadata import SessionMetaV1, write_session_meta
+
+
+def extract_session_metadata(session_dir: Path) -> Dict[str, Any]:
+    """
+    Extract metadata from existing session files.
+
+    Reads from metadata.json, grid.json, and capture_meta.json to populate
+    session-level metadata for ToolBox compare UI.
+    """
+    meta: Dict[str, Any] = {}
+
+    # Try metadata.json (session-level config)
+    metadata_file = session_dir / "metadata.json"
+    if metadata_file.exists():
+        try:
+            with open(metadata_file) as f:
+                data = json.load(f)
+            meta["specimen_id"] = data.get("specimen_id", data.get("sample_id", ""))
+            meta["device_id"] = data.get("device_id", "")
+            meta["fixture_id"] = data.get("fixture_id", "")
+            meta["mic_id"] = data.get("mic_id", "")
+            meta["mic_gain_db"] = data.get("mic_gain_db")
+            meta["preamp_model"] = data.get("preamp_model")
+            meta["sample_rate_hz"] = data.get("sample_rate_hz")
+            meta["tap_protocol"] = data.get("tap_protocol", data.get("protocol", ""))
+            meta["ambient_notes"] = data.get("ambient_notes", data.get("notes", ""))
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    # Try grid.json for point count
+    grid_file = session_dir / "grid.json"
+    if grid_file.exists():
+        try:
+            with open(grid_file) as f:
+                grid = json.load(f)
+            points = grid.get("points", [])
+            meta["tap_count"] = len(points)
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    # Count actual point folders if grid.json not available
+    if "tap_count" not in meta or meta["tap_count"] is None:
+        points_dir = session_dir / "points"
+        if points_dir.exists():
+            point_count = sum(
+                1
+                for p in points_dir.iterdir()
+                if p.is_dir() and p.name.startswith("point_")
+            )
+            meta["tap_count"] = point_count
+
+    # Try first capture_meta.json for sample rate if not in metadata.json
+    if not meta.get("sample_rate_hz"):
+        points_dir = session_dir / "points"
+        if points_dir.exists():
+            for point_folder in sorted(points_dir.iterdir()):
+                cap_meta = point_folder / "capture_meta.json"
+                if cap_meta.exists():
+                    try:
+                        with open(cap_meta) as f:
+                            cap = json.load(f)
+                        meta["sample_rate_hz"] = cap.get("sample_rate_hz")
+                        break
+                    except (json.JSONDecodeError, OSError):
+                        pass
+
+    # Use session folder name as run_id if not set
+    meta["run_id"] = session_dir.name
+
+    return meta
+
 
 # Canonical kind vocabulary (single source of truth)
 # ToolBox viewer dispatches on these exact strings
@@ -62,7 +138,10 @@ KIND_BY_RELPATH_RULES: List[Tuple[re.Pattern, str]] = [
     (re.compile(r"^spectra/points/.+/spectrum\.csv$", re.I), "spectrum_csv"),
     (re.compile(r"^spectra/points/.+/analysis\.json$", re.I), "analysis_peaks"),
     (re.compile(r"^coherence/.+\.json$", re.I), "coherence"),
-    (re.compile(r"^ods/.+\.json$", re.I), "transfer_function"),  # ODS = transfer_function
+    (
+        re.compile(r"^ods/.+\.json$", re.I),
+        "transfer_function",
+    ),  # ODS = transfer_function
     (re.compile(r"^wolf/.+candidates\.json$", re.I), "wolf_candidates"),
     (re.compile(r"^wolf/wsi_curve\.csv$", re.I), "wsi_curve"),
     (re.compile(r"^provenance/.+\.json$", re.I), "provenance"),
@@ -84,7 +163,12 @@ def sha256_bytes(b: bytes) -> str:
 
 
 def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def detect_kind(relpath: str) -> str:
@@ -127,20 +211,416 @@ def write_text(dst: Path, text: str) -> None:
 
 
 def build_readme(session_dir: Path) -> str:
-    return "\n".join([
-        "Tap Tone Viewer Pack v1",
-        "",
-        f"Source session: {session_dir.name}",
-        "Contents:",
-        "- audio/points/*.wav (2-ch: ch0 reference, ch1 roving)",
-        "- spectra/points/*/spectrum.csv (freq_hz,H_mag,coherence,phase_deg)",
-        "- spectra/points/*/analysis.json (summary/peaks metadata)",
-        "- meta/grid.json + meta/metadata.json",
-        "- ods/, wolf/, plots/ as available",
-        "",
-        "Viewer rule: dispatch by manifest.files[].kind",
-        ""
-    ])
+    return "\n".join(
+        [
+            "Tap Tone Viewer Pack v1",
+            "",
+            f"Source session: {session_dir.name}",
+            "Contents:",
+            "- audio/points/*.wav (2-ch: ch0 reference, ch1 roving)",
+            "- spectra/points/*/spectrum.csv (freq_hz,H_mag,coherence,phase_deg)",
+            "- spectra/points/*/analysis.json (summary/peaks metadata)",
+            "- meta/grid.json + meta/metadata.json",
+            "- ods/, wolf/, plots/ as available",
+            "",
+            "Viewer rule: dispatch by manifest.files[].kind",
+            "",
+        ]
+    )
+
+
+# -------------------------------------------------------------------------
+# Export helpers
+# -------------------------------------------------------------------------
+
+
+def _add_readme(pack_root: Path, session_dir: Path, files: List[FileEntry]) -> None:
+    """Add README.txt to pack."""
+    readme_text = build_readme(session_dir)
+    readme_path = pack_root / "README.txt"
+    write_text(readme_path, readme_text)
+    files.append(
+        FileEntry(
+            relpath="README.txt",
+            sha256=sha256_file(readme_path),
+            bytes=readme_path.stat().st_size,
+            mime="text/plain",
+            kind="provenance",
+        )
+    )
+
+
+def _add_session_meta(
+    pack_root: Path,
+    session_dir: Path,
+    files: List[FileEntry],
+    add_file_fn,
+) -> None:
+    """Add session metadata files (grid.json, metadata.json, session_meta.json)."""
+    grid = session_dir / "grid.json"
+    metadata = session_dir / "metadata.json"
+    if grid.exists():
+        add_file_fn(grid, "meta/grid.json")
+    if metadata.exists():
+        add_file_fn(metadata, "meta/metadata.json")
+
+    # session_meta.json (canonical metadata for ToolBox compare UI)
+    extracted = extract_session_metadata(session_dir)
+    session_meta = SessionMetaV1(
+        specimen_id=extracted.get("specimen_id", ""),
+        run_id=extracted.get("run_id", session_dir.name),
+        device_id=extracted.get("device_id", ""),
+        fixture_id=extracted.get("fixture_id", ""),
+        mic_id=extracted.get("mic_id", ""),
+        mic_gain_db=extracted.get("mic_gain_db"),
+        preamp_model=extracted.get("preamp_model"),
+        sample_rate_hz=extracted.get("sample_rate_hz"),
+        tap_count=extracted.get("tap_count"),
+        tap_protocol=extracted.get("tap_protocol"),
+        ambient_notes=extracted.get("ambient_notes"),
+    )
+    session_meta_path = write_session_meta(pack_root, session_meta)
+    files.append(
+        FileEntry(
+            relpath="meta/session_meta.json",
+            sha256=sha256_file(session_meta_path),
+            bytes=session_meta_path.stat().st_size,
+            mime="application/json",
+            kind="session_meta",
+        )
+    )
+
+
+def _add_points(
+    session_dir: Path,
+    add_file_fn,
+) -> List[str]:
+    """Add point data (audio, spectra, analysis, provenance). Returns point IDs."""
+    points_dir = session_dir / "points"
+    if not points_dir.exists():
+        raise FileNotFoundError(f"Phase2 points/ missing: {points_dir}")
+
+    point_ids: List[str] = []
+
+    for point_folder in sorted([p for p in points_dir.iterdir() if p.is_dir()]):
+        pid = point_id_from_folder(point_folder.name)
+        if not pid:
+            continue
+        point_ids.append(pid)
+
+        wav = point_folder / "audio.wav"
+        cap = point_folder / "capture_meta.json"
+        spectrum = point_folder / "spectrum.csv"
+        analysis = point_folder / "analysis.json"
+
+        if wav.exists():
+            add_file_fn(wav, f"audio/points/{pid}.wav")
+        if spectrum.exists():
+            add_file_fn(spectrum, f"spectra/points/{pid}/spectrum.csv")
+        if analysis.exists():
+            add_file_fn(analysis, f"spectra/points/{pid}/analysis.json")
+        if cap.exists():
+            add_file_fn(cap, f"provenance/points/{pid}/capture_meta.json")
+
+    return point_ids
+
+
+def _add_derived(session_dir: Path, add_file_fn) -> None:
+    """Add derived artifacts (ods, wolf)."""
+    derived_dir = session_dir / "derived"
+    if not derived_dir.exists():
+        return
+    ods = derived_dir / "ods_snapshot.json"
+    wc = derived_dir / "wolf_candidates.json"
+    wsi = derived_dir / "wsi_curve.csv"
+    if ods.exists():
+        add_file_fn(ods, "ods/ods_snapshot.json")
+    if wc.exists():
+        _validate_wolf_candidates_clean(wc)
+        add_file_fn(wc, "wolf/wolf_candidates.json")
+    if wsi.exists():
+        add_file_fn(wsi, "wolf/wsi_curve.csv")
+
+
+def _add_coherence(session_dir: Path, add_file_fn) -> None:
+    """Add coherence data (optional)."""
+    coh_dir = session_dir / "coherence"
+    if not coh_dir.exists():
+        return
+    coh = coh_dir / "coherence_summary.json"
+    if coh.exists():
+        add_file_fn(coh, "coherence/coherence_summary.json")
+
+
+def _read_bending_moe(session_dir: Path) -> Optional[Dict[str, Any]]:
+    """
+    Locate and parse bending_moe.json from a session directory.
+
+    Searches these locations in order (most to least specific):
+      1. session_dir/bending/bending_moe.json
+      2. session_dir/bending_moe.json
+      3. session_dir/out/bending_moe.json
+
+    Returns a dict with bending fields ready for the manifest, or None
+    if no bending data is present for this session.
+    """
+    candidates = [
+        session_dir / "bending" / "bending_moe.json",
+        session_dir / "bending_moe.json",
+        session_dir / "out" / "bending_moe.json",
+    ]
+    for path in candidates:
+        if path.exists():
+            try:
+                raw = json.loads(path.read_text(encoding="utf-8"))
+                # Extract fields that map to viewer_pack_v1 bending schema
+                result: Dict[str, Any] = {}
+                geom = raw.get("geometry", {})
+                # Primary E value — use plate-corrected if available, else corrected
+                e_gpa = raw.get("E_GPa")
+                if e_gpa is not None:
+                    # Determine orientation from geometry grain_orientation field
+                    orientation = geom.get("grain_orientation", "unknown")
+                    if orientation == "longitudinal":
+                        result["E_L_GPa"] = round(e_gpa, 4)
+                    elif orientation == "cross":
+                        result["E_C_GPa"] = round(e_gpa, 4)
+                    else:
+                        # Unknown orientation — store as E_L by convention
+                        result["E_L_GPa"] = round(e_gpa, 4)
+
+                if "density_g_cm3" in raw:
+                    result["density_g_cm3"] = round(raw["density_g_cm3"], 4)
+                if "specific_modulus_GPa_per_gcm3" in raw:
+                    result["specific_modulus_GPa_per_gcm3"] = round(
+                        raw["specific_modulus_GPa_per_gcm3"], 4
+                    )
+                if "c_m_s" in raw:
+                    result["c_m_s"] = round(raw["c_m_s"], 2)
+                if "span_mm" in geom:
+                    result["span_mm"] = geom["span_mm"]
+                if "method" in raw:
+                    method = raw["method"]
+                    # Normalise bending_stiffness_mode.py naming conventions
+                    if method in ("three_point_bending", "3point"):
+                        result["method"] = "3point"
+                    elif method in ("four_point_bending", "4point"):
+                        result["method"] = "4point"
+
+                # Orthotropic ratio if both directions present
+                e_l = result.get("E_L_GPa")
+                e_c = result.get("E_C_GPa")
+                if e_l and e_c and e_c > 0:
+                    result["orthotropic_ratio"] = round(e_l / e_c, 2)
+
+                result["source_bundle"] = sha256_file(path)
+
+                return result if result else None
+            except (json.JSONDecodeError, OSError):
+                continue
+    return None
+
+
+def _add_bending(session_dir: Path, add_file_fn) -> Optional[Dict[str, Any]]:
+    """
+    Add bending measurement files to the pack and return the bending
+    manifest dict for embedding in manifest.json.
+
+    Files added (if present):
+      bending/bending_moe.json  → bending/bending_moe.json in pack
+
+    Returns the bending dict for the manifest, or None if no bending
+    data is available for this session.
+    """
+    candidates = [
+        session_dir / "bending" / "bending_moe.json",
+        session_dir / "bending_moe.json",
+        session_dir / "out" / "bending_moe.json",
+    ]
+    for path in candidates:
+        if path.exists():
+            add_file_fn(path, "bending/bending_moe.json")
+            break
+
+    return _read_bending_moe(session_dir)
+
+
+def _add_plots(session_dir: Path, add_file_fn) -> None:
+    """Add plots."""
+    plots_dir = session_dir / "plots"
+    if not plots_dir.exists():
+        return
+    for png in sorted(plots_dir.glob("*.png")):
+        add_file_fn(png, f"plots/{png.name}")
+
+
+def _add_timeline(session_dir: Path, add_file_fn) -> None:
+    """Add session timeline (PR #17, fail-closed)."""
+    try:
+        from tap_tone_pi.core.session_timeline import export_session_timeline
+
+        tl_path = export_session_timeline(session_dir)
+        if tl_path is not None and tl_path.is_file():
+            add_file_fn(tl_path, "meta/session_timeline_v1.json")
+    except (ImportError, OSError, ValueError, KeyError):
+        pass  # Non-fatal: pack is valid without timeline
+
+
+def _build_manifest(
+    files: List[FileEntry],
+    session_dir: Path,
+    point_ids: List[str],
+    bending_data: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Build manifest dict and compute bundle_sha256."""
+    manifest: Dict[str, Any] = {
+        "schema_version": "v1",
+        "schema_id": "viewer_pack_v1",
+        "created_at_utc": utc_now_iso(),
+        "source_capdir": session_dir.name,
+        "detected_phase": "phase2",
+        "measurement_only": True,
+        "interpretation": "deferred",
+        "points": point_ids,
+        "contents": {
+            "audio":      any(e.relpath.startswith("audio/")      for e in files),
+            "spectra":    any(e.relpath.startswith("spectra/")    for e in files),
+            "coherence":  any(e.relpath.startswith("coherence/")  for e in files),
+            "ods":        any(e.relpath.startswith("ods/")        for e in files),
+            "wolf":       any(e.relpath.startswith("wolf/")       for e in files),
+            "plots":      any(e.relpath.startswith("plots/")      for e in files),
+            "provenance": any(e.relpath.startswith("provenance/") for e in files),
+            "bending":    any(e.relpath.startswith("bending/")    for e in files),
+        },
+        "files": [
+            {
+                "relpath": e.relpath,
+                "sha256":  e.sha256,
+                "bytes":   e.bytes,
+                "mime":    e.mime,
+                "kind":    e.kind,
+            }
+            for e in sorted(files, key=lambda x: x.relpath)
+        ],
+    }
+
+    # Embed bending data when present — critical input for inverse brace engine
+    if bending_data:
+        manifest["bending"] = bending_data
+
+    # bundle sha = sha256 of manifest JSON bytes (before adding bundle_sha256)
+    manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8")
+    bundle_sha = sha256_bytes(manifest_bytes)
+    manifest["bundle_sha256"] = bundle_sha
+
+    return manifest
+
+
+def _validate_and_gate(pack_root: Path, manifest_path: Path) -> None:
+    """Run validation and raise on failure."""
+    viewer_pack_json = pack_root / "viewer_pack.json"
+    if not viewer_pack_json.exists():
+        shutil.copy2(manifest_path, viewer_pack_json)
+
+    report = validate_pack(pack_root)
+    report_path = write_validation_report(pack_root, report)
+
+    if not report.passed:
+        excerpt = []
+        for e in (report.errors or [])[:3]:
+            rule = e.get("rule", "?")
+            msg = e.get("message", "")
+            path = e.get("path")
+            if path:
+                excerpt.append(f"{rule}: {msg} ({path})")
+            else:
+                excerpt.append(f"{rule}: {msg}")
+
+        excerpt_txt = "; ".join(excerpt) if excerpt else "No error details available."
+        raise ValueError(
+            f"viewer_pack_v1 validation failed: "
+            f"errors={len(report.errors)} warnings={len(report.warnings)}. "
+            f"{excerpt_txt}. "
+            f"See {report_path}"
+        )
+
+
+def _zip_pack(pack_root: Path, out_dir: Path, session_dir: Path) -> Path:
+    """Create zip archive of pack."""
+    zip_path = out_dir / f"{session_dir.name}__viewer_pack_v1.zip"
+    if zip_path.exists():
+        zip_path.unlink()
+    with ZipFile(zip_path, "w", compression=ZIP_DEFLATED) as z:
+        for fp in pack_root.rglob("*"):
+            if fp.is_file():
+                arc = fp.relative_to(pack_root.parent).as_posix()
+                z.write(fp, arcname=arc)
+    return zip_path
+
+
+# -------------------------------------------------------------------------
+# Main export function
+# -------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Wolf candidates purity gate (ADR-0009)
+# ---------------------------------------------------------------------------
+
+#: Fields that indicate WolfAdvisor output has leaked into wolf_candidates.json.
+#: These are decision-support fields and must never appear in viewer_pack_v1.
+_PROHIBITED_WOLF_ADVISORY_FIELDS = frozenset({
+    "mitigation_suggestions",
+    "recommendations",
+    "advisor_output",
+    "mitigations",
+    "recommended_action",
+    "confidence_level",   # WolfAdvisor.ConfidenceLevel
+    "mitigation_type",    # WolfAdvisor.MitigationType
+    "wolf_directive",
+    "directive_id",
+})
+
+
+def _validate_wolf_candidates_clean(wc_path: Path) -> None:
+    """
+    Assert wolf_candidates.json contains no advisory fields.
+
+    Raises ValueError if any WolfAdvisor-specific field is present.
+    This is a hard stop — the export fails rather than silently
+    contaminating the bundle with decision-support data.
+
+    See docs/ADR-0009-advisory-boundary.md §3.
+    """
+    try:
+        data = json.loads(wc_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return  # Parse errors are caught by other validators
+
+    if not isinstance(data, dict):
+        return
+
+    # Check top-level keys
+    found_top = _PROHIBITED_WOLF_ADVISORY_FIELDS & set(data.keys())
+
+    # Also check inside a "wolf_candidates" or "candidates" list if present
+    found_nested: set[str] = set()
+    for candidate_key in ("wolf_candidates", "candidates", "results"):
+        candidates = data.get(candidate_key, [])
+        if isinstance(candidates, list):
+            for item in candidates:
+                if isinstance(item, dict):
+                    found_nested |= _PROHIBITED_WOLF_ADVISORY_FIELDS & set(item.keys())
+
+    found = found_top | found_nested
+    if found:
+        raise ValueError(
+            f"wolf_candidates.json contains advisory fields: {sorted(found)}. "
+            f"WolfAdvisor output (WolfAdvisor.get_recommendations(), "
+            f"generate_wolf_directive()) must not appear in viewer_pack_v1. "
+            f"Route advisory output to the agentic spine (AttentionDirectiveV1) "
+            f"instead. See docs/ADR-0009-advisory-boundary.md"
+        )
 
 
 def export_viewer_pack(
@@ -152,7 +632,7 @@ def export_viewer_pack(
     if not session_dir.exists():
         raise FileNotFoundError(f"session_dir not found: {session_dir}")
 
-    # pack root
+    # Initialize pack root
     pack_root = out_dir / "viewer_pack_v1"
     if pack_root.exists():
         shutil.rmtree(pack_root)
@@ -172,129 +652,29 @@ def export_viewer_pack(
         )
         files.append(entry)
 
-    # README
-    readme_text = build_readme(session_dir)
-    readme_path = pack_root / "README.txt"
-    write_text(readme_path, readme_text)
-    files.append(FileEntry(
-        relpath="README.txt",
-        sha256=sha256_file(readme_path),
-        bytes=readme_path.stat().st_size,
-        mime="text/plain",
-        kind="provenance",
-    ))
+    # Add pack components
+    _add_readme(pack_root, session_dir, files)
+    _add_session_meta(pack_root, session_dir, files, add_file)
+    point_ids = _add_points(session_dir, add_file)
+    _add_derived(session_dir, add_file)
+    _add_coherence(session_dir, add_file)
+    bending_data = _add_bending(session_dir, add_file)
+    _add_plots(session_dir, add_file)
+    _add_timeline(session_dir, add_file)
 
-    # session meta
-    grid = session_dir / "grid.json"
-    metadata = session_dir / "metadata.json"
-    if grid.exists():
-        add_file(grid, "meta/grid.json")
-    if metadata.exists():
-        add_file(metadata, "meta/metadata.json")
-
-    # points
-    points_dir = session_dir / "points"
-    if not points_dir.exists():
-        raise FileNotFoundError(f"Phase2 points/ missing: {points_dir}")
-
-    point_ids: List[str] = []
-
-    for point_folder in sorted([p for p in points_dir.iterdir() if p.is_dir()]):
-        pid = point_id_from_folder(point_folder.name)
-        if not pid:
-            continue
-        point_ids.append(pid)
-
-        wav = point_folder / "audio.wav"
-        cap = point_folder / "capture_meta.json"
-        spectrum = point_folder / "spectrum.csv"
-        analysis = point_folder / "analysis.json"
-
-        if wav.exists():
-            add_file(wav, f"audio/points/{pid}.wav")
-        if spectrum.exists():
-            add_file(spectrum, f"spectra/points/{pid}/spectrum.csv")
-        if analysis.exists():
-            add_file(analysis, f"spectra/points/{pid}/analysis.json")
-        if cap.exists():
-            add_file(cap, f"provenance/points/{pid}/capture_meta.json")
-
-    # derived
-    derived_dir = session_dir / "derived"
-    if derived_dir.exists():
-        ods = derived_dir / "ods_snapshot.json"
-        wc = derived_dir / "wolf_candidates.json"
-        wsi = derived_dir / "wsi_curve.csv"
-        if ods.exists():
-            add_file(ods, "ods/ods_snapshot.json")
-        if wc.exists():
-            add_file(wc, "wolf/wolf_candidates.json")
-        if wsi.exists():
-            add_file(wsi, "wolf/wsi_curve.csv")
-
-    # coherence (optional separate dir)
-    coh_dir = session_dir / "coherence"
-    if coh_dir.exists():
-        coh = coh_dir / "coherence_summary.json"
-        if coh.exists():
-            add_file(coh, "coherence/coherence_summary.json")
-
-    # plots
-    plots_dir = session_dir / "plots"
-    if plots_dir.exists():
-        for png in sorted(plots_dir.glob("*.png")):
-            add_file(png, f"plots/{png.name}")
-
-    # manifest (schema_version matches contracts/viewer_pack_v1.schema.json)
-    manifest: Dict[str, Any] = {
-        "schema_version": "v1",
-        "schema_id": "viewer_pack_v1",
-        "created_at_utc": utc_now_iso(),
-        "source_capdir": session_dir.name,
-        "detected_phase": "phase2",
-        "measurement_only": True,
-        "interpretation": "deferred",
-        "points": point_ids,
-        "contents": {
-            "audio": any(e.relpath.startswith("audio/") for e in files),
-            "spectra": any(e.relpath.startswith("spectra/") for e in files),
-            "coherence": any(e.relpath.startswith("coherence/") for e in files),
-            "ods": any(e.relpath.startswith("ods/") for e in files),
-            "wolf": any(e.relpath.startswith("wolf/") for e in files),
-            "plots": any(e.relpath.startswith("plots/") for e in files),
-            "provenance": any(e.relpath.startswith("provenance/") for e in files),
-        },
-        "files": [
-            {
-                "relpath": e.relpath,
-                "sha256": e.sha256,
-                "bytes": e.bytes,
-                "mime": e.mime,
-                "kind": e.kind,
-            }
-            for e in sorted(files, key=lambda x: x.relpath)
-        ],
-    }
-
-    # bundle sha = sha256 of manifest JSON bytes (before adding bundle_sha256)
-    manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8")
-    bundle_sha = sha256_bytes(manifest_bytes)
-
-    manifest["bundle_sha256"] = bundle_sha
+    # Build and write manifest
+    manifest = _build_manifest(files, session_dir, point_ids, bending_data)
     manifest_path = pack_root / "manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
+    )
+
+    # Validate
+    _validate_and_gate(pack_root, manifest_path)
 
     # Zip if requested
     if as_zip:
-        zip_path = out_dir / f"{session_dir.name}__viewer_pack_v1.zip"
-        if zip_path.exists():
-            zip_path.unlink()
-        with ZipFile(zip_path, "w", compression=ZIP_DEFLATED) as z:
-            for fp in pack_root.rglob("*"):
-                if fp.is_file():
-                    arc = fp.relative_to(pack_root.parent).as_posix()
-                    z.write(fp, arcname=arc)
-        return zip_path
+        return _zip_pack(pack_root, out_dir, session_dir)
 
     return pack_root
 
@@ -305,7 +685,9 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    ap.add_argument("--session-dir", required=True, help="runs_phase2/session_*/ directory")
+    ap.add_argument(
+        "--session-dir", required=True, help="runs_phase2/session_*/ directory"
+    )
     ap.add_argument("--out", required=True, help="output directory for pack or zip")
     ap.add_argument("--zip", action="store_true", help="emit a .zip bundle")
     args = ap.parse_args()

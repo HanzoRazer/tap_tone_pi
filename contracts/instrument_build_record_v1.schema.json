@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/instrument_build_record_v1.schema.json",
+  "title": "InstrumentBuildRecord",
+  "description": "Canonical record for a single instrument build, linking wood selection, measurements, predictions, and subjective evaluations.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "build_id", "design_name", "build_started", "wood", "created_at_utc"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "instrument_build_record_v1"
+    },
+    "build_id": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]{2,80}$",
+      "description": "Unique build identifier. Convention: DESIGN_SEQUENCE (e.g., CARLOS_JUMBO_001, DREADNOUGHT_002)."
+    },
+    "design_name": {
+      "type": "string",
+      "description": "Human-readable design name (e.g., 'Carlos Jumbo', 'Standard Dreadnought')."
+    },
+    "design_blueprint_path": {
+      "type": ["string", "null"],
+      "description": "Relative path to design blueprint or plan file."
+    },
+    "build_started": {
+      "type": "string",
+      "format": "date",
+      "description": "Date build was started (ISO format YYYY-MM-DD)."
+    },
+    "build_completed": {
+      "type": ["string", "null"],
+      "format": "date",
+      "description": "Date build was completed, or null if in progress."
+    },
+    "created_at_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this record was created."
+    },
+    "updated_at_utc": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "When this record was last updated."
+    },
+    "wood": {
+      "$ref": "#/$defs/WoodSelection"
+    },
+    "as_built_dimensions": {
+      "oneOf": [
+        { "$ref": "#/$defs/AsBuiltDimensions" },
+        { "type": "null" }
+      ],
+      "description": "Actual dimensions as built (filled in during/after construction)."
+    },
+    "measurements": {
+      "oneOf": [
+        { "$ref": "#/$defs/MeasurementPaths" },
+        { "type": "null" }
+      ],
+      "description": "Paths to measurement session outputs."
+    },
+    "predicted": {
+      "oneOf": [
+        { "$ref": "#/$defs/PredictedValues" },
+        { "type": "null" }
+      ],
+      "description": "Pre-build predictions from Rayleigh-Ritz solver."
+    },
+    "measured_summary": {
+      "oneOf": [
+        { "$ref": "#/$defs/MeasuredSummary" },
+        { "type": "null" }
+      ],
+      "description": "Summary of measured values for comparison with predictions."
+    },
+    "residuals": {
+      "oneOf": [
+        { "$ref": "#/$defs/Residuals" },
+        { "type": "null" }
+      ],
+      "description": "Computed residuals between predicted and measured values."
+    },
+    "subjective": {
+      "oneOf": [
+        { "$ref": "#/$defs/SubjectiveEvaluation" },
+        { "type": "null" }
+      ],
+      "description": "Builder notes and player evaluations."
+    },
+    "notes": {
+      "type": "string",
+      "default": "",
+      "description": "General notes about this build."
+    }
+  },
+  "$defs": {
+    "WoodSelection": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Wood flitch selections for the build. IDs reference wood_db flitch records.",
+      "properties": {
+        "top_flitch_id": { "type": ["string", "null"] },
+        "top_subid": { "type": ["string", "null"], "description": "Which piece of the flitch (e.g., 'A', 'B', 'bookmatched_pair')." },
+        "back_flitch_id": { "type": ["string", "null"] },
+        "back_subid": { "type": ["string", "null"] },
+        "sides_flitch_id": { "type": ["string", "null"] },
+        "sides_subid": { "type": ["string", "null"] },
+        "neck_flitch_id": { "type": ["string", "null"] },
+        "neck_subid": { "type": ["string", "null"] },
+        "brace_stock_flitch_id": { "type": ["string", "null"] },
+        "brace_stock_subid": { "type": ["string", "null"] },
+        "fretboard_flitch_id": { "type": ["string", "null"] },
+        "fretboard_subid": { "type": ["string", "null"] },
+        "bridge_flitch_id": { "type": ["string", "null"] },
+        "bridge_subid": { "type": ["string", "null"] }
+      }
+    },
+    "AsBuiltDimensions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "top_thickness_grid_mm": {
+          "type": ["array", "null"],
+          "items": { "type": "array", "items": { "type": "number" } },
+          "description": "2D grid of top thickness measurements."
+        },
+        "back_thickness_grid_mm": {
+          "type": ["array", "null"],
+          "items": { "type": "array", "items": { "type": "number" } },
+          "description": "2D grid of back thickness measurements."
+        },
+        "brace_dimensions": {
+          "type": ["array", "null"],
+          "items": { "$ref": "#/$defs/BraceDimension" },
+          "description": "List of brace measurements."
+        },
+        "soundhole_diameter_mm": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "soundhole_position_mm": { "type": ["number", "null"], "description": "Distance from nut to soundhole center." },
+        "body_depth_mm": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "body_width_lower_bout_mm": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "body_width_upper_bout_mm": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "scale_length_mm": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "tornavoz_spec": {
+          "type": ["object", "null"],
+          "additionalProperties": true,
+          "description": "Tornavoz parameters if installed."
+        }
+      }
+    },
+    "BraceDimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "description": "Brace identifier (e.g., 'X_bass', 'X_treble', 'tone_bar')." },
+        "height_mm": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "width_mm": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "length_mm": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "scallop_depth_mm": { "type": ["number", "null"], "minimum": 0 },
+        "taper_type": { "type": ["string", "null"], "description": "none, linear, parabolic" },
+        "notes": { "type": "string", "default": "" }
+      }
+    },
+    "MeasurementPaths": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Relative paths to measurement session outputs.",
+      "properties": {
+        "modal_scans": {
+          "type": ["array", "null"],
+          "items": { "type": "string" },
+          "description": "Paths to Phase 2 ods_snapshot.json files."
+        },
+        "deflection_measurements": {
+          "type": ["array", "null"],
+          "items": { "type": "string" },
+          "description": "Paths to deflection measurement outputs."
+        },
+        "tap_tone_measurements": {
+          "type": ["array", "null"],
+          "items": { "type": "string" },
+          "description": "Paths to tap-tone measurement outputs."
+        },
+        "bending_measurements": {
+          "type": ["array", "null"],
+          "items": { "type": "string" },
+          "description": "Paths to bending rig measurement outputs."
+        },
+        "setup_measurements": {
+          "type": ["array", "null"],
+          "items": { "type": "string" },
+          "description": "Paths to setup/action measurement outputs."
+        }
+      }
+    },
+    "PredictedValues": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Pre-build predictions from design calculations.",
+      "properties": {
+        "T1_hz": { "type": ["number", "null"], "exclusiveMinimum": 0, "description": "Predicted top fundamental frequency." },
+        "A0_hz": { "type": ["number", "null"], "exclusiveMinimum": 0, "description": "Predicted air cavity resonance." },
+        "T2_hz": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "T3_hz": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "bridge_deflection_mm_at_string_load": { "type": ["number", "null"], "minimum": 0 },
+        "top_monopole_mobility": { "type": ["number", "null"], "minimum": 0 },
+        "prediction_session_path": { "type": ["string", "null"], "description": "Path to Rayleigh-Ritz solver output." }
+      }
+    },
+    "MeasuredSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Summary of measured modal and structural values.",
+      "properties": {
+        "T1_hz": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "A0_hz": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "T2_hz": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "T3_hz": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "bridge_deflection_mm": { "type": ["number", "null"], "minimum": 0 },
+        "top_monopole_mobility": { "type": ["number", "null"], "minimum": 0 },
+        "measurement_date": { "type": ["string", "null"], "format": "date" }
+      }
+    },
+    "Residuals": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Computed residuals between predicted and measured values.",
+      "properties": {
+        "T1_residual_hz": { "type": ["number", "null"] },
+        "T1_residual_pct": { "type": ["number", "null"] },
+        "A0_residual_hz": { "type": ["number", "null"] },
+        "A0_residual_pct": { "type": ["number", "null"] },
+        "T2_residual_hz": { "type": ["number", "null"] },
+        "T2_residual_pct": { "type": ["number", "null"] },
+        "T3_residual_hz": { "type": ["number", "null"] },
+        "T3_residual_pct": { "type": ["number", "null"] },
+        "bridge_deflection_residual_mm": { "type": ["number", "null"] },
+        "bridge_deflection_residual_pct": { "type": ["number", "null"] },
+        "computed_at_utc": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "SubjectiveEvaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "builder_notes": { "type": "string", "default": "" },
+        "player_evaluations": {
+          "type": ["array", "null"],
+          "items": { "$ref": "#/$defs/PlayerEvaluation" }
+        }
+      }
+    },
+    "PlayerEvaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["player_id", "date"],
+      "properties": {
+        "player_id": { "type": "string", "description": "Player identifier or name." },
+        "date": { "type": "string", "format": "date" },
+        "engagement_minutes": { "type": ["number", "null"], "minimum": 0 },
+        "tone_rating": { "type": ["integer", "null"], "minimum": 1, "maximum": 10 },
+        "playability_rating": { "type": ["integer", "null"], "minimum": 1, "maximum": 10 },
+        "notes": { "type": "string", "default": "" }
+      }
+    }
+  }
+}

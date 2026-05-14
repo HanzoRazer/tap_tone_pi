@@ -2,12 +2,55 @@
 # =========================================
 # Usage: make <target> VAR=value ...
 
-.PHONY: validate-schemas
+# ---- Dev Environment ----
 
-# Validate Analyzer artifacts in out/** against contracts/schemas/*
-# Exits 0 if no artifacts exist (keeps CI green on fresh repos).
-validate-schemas:
-	@python scripts/validate_schemas.py --out-root out --schemas-root contracts/schemas
+.PHONY: install-dev
+install-dev:
+	@python -m pip install --upgrade pip
+	@pip install -r requirements-dev.txt
+	@pre-commit install
+	@echo "✅ Dev env ready. Pre-commit hooks installed."
+
+.PHONY: schema-guard
+schema-guard:
+	@python scripts/ci_guard_schema_bump.py
+
+.PHONY: run-tests
+run-tests:
+	@pytest -q
+
+.PHONY: precommit
+precommit:
+	@pre-commit run --all-files --show-diff-on-failure
+
+.PHONY: format
+format:
+	@ruff check --fix .
+	@black .
+
+.PHONY: run-id-demo
+run-id-demo:
+	@python -c "from modes._shared.run_id import new_run_dir; print(new_run_dir('out'))"
+
+# ---- Build & Distribution ----
+
+.PHONY: build dist clean-dist lint typecheck
+
+build:
+	python -m build
+
+dist: clean-dist build
+	@echo "Wheel + sdist ready in dist/"
+
+clean-dist:
+	rm -rf dist/ build/ *.egg-info
+
+lint:
+	ruff check .
+	ruff format --check .
+
+typecheck:
+	mypy tap_tone modes scripts --config-file mypy.ini
 
 # ---- Acquisition: serial sensor capture ----
 
@@ -64,6 +107,38 @@ DPI ?= 150
 TITLE ?= Force vs Displacement
 
 # ---- Phase 2: ODS / Grid Measurement Chain ----
+
+# Gold-Run: one-command automated measurement (dry-run by default in Makefile)
+gold-run:
+	@python -m tap_tone.cli.gold_run \
+	  --specimen-id $(SPECIMEN) \
+	  --device $(DEVICE) \
+	  --out-dir $(GOLD_OUT) \
+	  --points $(GOLD_POINTS) \
+	  $(if $(GOLD_SESSION),--session-id $(GOLD_SESSION),) \
+	  $(if $(GOLD_BATCH),--batch-label $(GOLD_BATCH),) \
+	  $(if $(GOLD_DRY),--dry-run,) \
+	  $(if $(GOLD_JSON),--json,) \
+	  $(if $(GOLD_INGEST),--ingest,)
+
+# Gold-Run: dry-run (safe preview)
+gold-run-dry:
+	@python -m tap_tone.cli.gold_run \
+	  --specimen-id $(SPECIMEN) \
+	  --device $(DEVICE) \
+	  --out-dir $(GOLD_OUT) \
+	  --points $(GOLD_POINTS) \
+	  --dry-run
+
+# Gold-Run defaults
+SPECIMEN     ?= test_plate
+GOLD_OUT     ?= ./exports
+GOLD_POINTS  ?= 3
+GOLD_SESSION ?=
+GOLD_BATCH   ?=
+GOLD_DRY     ?=
+GOLD_JSON    ?=
+GOLD_INGEST  ?=
 
 grid-capture:
 	@python scripts/roving_grid_capture.py capture \
@@ -169,13 +244,39 @@ RH    ?=
 
 # ---- Validation & CI ----
 
+# Code health gates (complexity, maintainability, security, dead code)
+.PHONY: check-complexity check-maintainability check-security check-deadcode check-health ci-dry-run
+
+check-complexity:
+	@python ci/check_code_health.py complexity
+
+check-maintainability:
+	@python ci/check_code_health.py maintainability
+
+check-security:
+	@python ci/check_code_health.py security
+
+check-deadcode:
+	@python ci/check_code_health.py deadcode
+
+check-health:
+	@python ci/check_code_health.py all
+
+ci-dry-run: test check-health
+	@echo ""
+	@echo "✅ CI dry run passed: tests + code health gates"
+
 # Validate output artifacts against contract schemas
 validate-schemas:
 	@python scripts/validate_schemas.py --out-root $(OUT_ROOT) --schemas-root $(SCHEMAS_ROOT)
 
-# Validate viewer pack ZIP integrity
+# Validate viewer pack ZIP integrity (post-export)
 validate-pack:
 	@python scripts/viewer_pack_validate.py $(PACK)
+
+# Validate staged pack directory (pre-export)
+validate-staged-pack:
+	@python -m tap_tone.validate.viewer_pack_v1 $(STAGED_PACK) $(if $(REPORT),--report $(REPORT),) $(if $(AUDIO_REQUIRED),--audio-required,)
 
 # Compare two viewer packs (measurement regression)
 diff-packs:
@@ -189,14 +290,65 @@ test:
 test-wav-io:
 	@python -m pytest tests/test_wav_io.py tests/test_wav_io_roundtrip.py -v
 
+# ToolBox ingest smoke test (validates demo artifacts against registry)
+.PHONY: toolbox-smoke
+toolbox-smoke:
+	@python scripts/toolbox_ingest_smoke.py
+
+# ---- Hardware-free Demos ----
+
+.PHONY: examples-chladni-demo examples-phase2-demo examples-moe-demo
+
+# Chladni v1 demo (creates capture.wav + peaks.json + images + chladni_run.json + manifest)
+examples-chladni-demo:
+	@python examples/chladni/make_demo.py
+	@python scripts/validate_schemas.py --out-root out --schemas-root contracts/schemas
+
+# Phase-2 ODS demo (creates session with canonical filenames)
+examples-phase2-demo:
+	@python examples/phase2/make_demo.py
+	@python scripts/validate_schemas.py --out-root runs_phase2 --schemas-root contracts/schemas
+
+# Hardware-free MOE demo (creates moe_result.json and validates)
+examples-moe-demo:
+	@python examples/moe/make_demo.py
+	@python scripts/validate_schemas.py --out-root out --schemas-root contracts/schemas
+
 # Validation defaults
-OUT_ROOT     ?= out
-SCHEMAS_ROOT ?= contracts/schemas
-PACK         ?=
-BASELINE     ?=
-MODIFIED     ?=
-DIFF_OUT     ?= diff_out
-PLOTS        ?=
+OUT_ROOT       ?= out
+SCHEMAS_ROOT   ?= contracts/schemas
+PACK           ?=
+STAGED_PACK    ?=
+REPORT         ?=
+AUDIO_REQUIRED ?=
+BASELINE       ?=
+MODIFIED       ?=
+DIFF_OUT       ?= diff_out
+PLOTS          ?=
+
+# ---- Agentic Spine Test Suite ----
+
+.PHONY: test-contracts test-moments test-policy test-replay test-spine
+
+test-contracts:
+	@echo "==> Running contract parity tests"
+	@python -m pytest -q tests/test_event_contract_parity.py
+
+test-moments:
+	@echo "==> Running moment detector tests"
+	@python -m pytest -q tests/test_moments_engine_v1.py
+
+test-policy:
+	@echo "==> Running policy engine tests"
+	@python -m pytest -q tests/test_policy_engine_v1.py
+
+test-replay:
+	@echo "==> Running replay smoke test"
+	@python -m pytest -q tests/test_replay_smoke.py
+
+test-spine: test-contracts test-moments test-policy test-replay
+	@echo ""
+	@echo "✅ Agentic spine test suite passed"
 
 # ---- Help ----
 
@@ -206,6 +358,13 @@ PLOTS        ?=
 .PHONY: validate-schemas validate-pack diff-packs test test-wav-io
 
 help:
+	@echo "Agentic Spine Targets:"
+	@echo "  test-spine       Run full spine test suite"
+	@echo "  test-contracts   Run contract parity tests"
+	@echo "  test-moments     Run moment detector tests"
+	@echo "  test-policy      Run policy engine tests"
+	@echo "  test-replay      Run replay smoke test"
+	@echo ""
 	@echo "Acquisition Targets:"
 	@echo "  loadcell        Capture load cell → load_series.json (requires CFG, OUT)"
 	@echo "  dial            Capture dial indicator → displacement_series.json (requires PORT, OUT)"

@@ -3,7 +3,11 @@ import numpy as np
 from scipy.io import wavfile  # used only to craft raw PCM fixtures in tests
 
 from modes._shared.wav_io import (
-    read_wav_mono, read_wav_2ch, write_wav_mono, write_wav_2ch, level_dbfs
+    read_wav_mono,
+    read_wav_2ch,
+    write_wav_mono,
+    write_wav_2ch,
+    level_dbfs,
 )
 from tests._util.gen_tone import sine_tone, rms, db
 

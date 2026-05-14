@@ -373,20 +373,20 @@ from typing import Dict, Any
 
 def compute_facets(index: list[dict]) -> dict:
     """Compute facet counts from attachment meta index.
-    
+
     Args:
         index: List of attachment meta records (from ingested viewer packs)
-        
+
     Returns:
         Facet counts dict suitable for AttachmentMetaFacetsOut
     """
     kind_counts: Counter = Counter()
     mime_counts: Counter = Counter()
-    
+
     for record in index:
         kind_counts[record.get("kind", "unknown")] += 1
         mime_counts[record.get("mime", "application/octet-stream")] += 1
-    
+
     return {
         "facets": {
             "kind": dict(sorted(kind_counts.items())),
@@ -421,4 +421,3 @@ GET /api/rmos/acoustics/index/attachment_meta/recent?kind=...&limit=...
 - `limit`: Max results (default 20, max 100)
 
 **Response:** Same structure as browse, ordered by ingestion timestamp descending.
-

@@ -24,11 +24,7 @@ from pathlib import Path
 
 def total_bytes_in_dir(root: Path) -> int:
     """Sum bytes of all regular files under a directory (recursive)."""
-    return sum(
-        f.stat().st_size
-        for f in root.rglob("*")
-        if f.is_file()
-    )
+    return sum(f.stat().st_size for f in root.rglob("*") if f.is_file())
 
 
 def compute_bytes(path: Path) -> int:
@@ -57,13 +53,17 @@ def main() -> int:
 
     # Guard: file vs dir mismatch
     if full.is_file() != scanned.is_file():
-        raise SystemExit("CBSP21 ERROR: full-path and scanned-path must both be files or both be directories.")
+        raise SystemExit(
+            "CBSP21 ERROR: full-path and scanned-path must both be files or both be directories."
+        )
 
     full_bytes = compute_bytes(full)
     scanned_bytes = compute_bytes(scanned)
 
     if not full_bytes:
-        raise SystemExit("CBSP21 ERROR: full source appears empty - cannot compute coverage.")
+        raise SystemExit(
+            "CBSP21 ERROR: full source appears empty - cannot compute coverage."
+        )
 
     coverage = scanned_bytes / full_bytes
     percent = coverage * 100

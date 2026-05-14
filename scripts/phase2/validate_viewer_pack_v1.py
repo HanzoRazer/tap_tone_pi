@@ -57,6 +57,7 @@ ALLOWED_CONTENTS_KEYS = {
     "wolf",
     "plots",
     "provenance",
+    "bending",
 }
 
 ALLOWED_FILE_ENTRY_KEYS = {
@@ -71,6 +72,7 @@ ALLOWED_FILE_ENTRY_KEYS = {
 # --------------------------
 # Helpers
 # --------------------------
+
 
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
@@ -101,14 +103,18 @@ def ok(msg: str) -> None:
     print(f"[viewer-pack-validate] OK: {msg}", file=sys.stdout)
 
 
-def assert_no_extra_keys(obj: Dict[str, Any], allowed: set, where: str) -> Optional[str]:
+def assert_no_extra_keys(
+    obj: Dict[str, Any], allowed: set, where: str
+) -> Optional[str]:
     extra = sorted(set(obj.keys()) - allowed)
     if extra:
         return f"{where} has unexpected keys: {extra}"
     return None
 
 
-def assert_required_keys(obj: Dict[str, Any], required: Iterable[str], where: str) -> Optional[str]:
+def assert_required_keys(
+    obj: Dict[str, Any], required: Iterable[str], where: str
+) -> Optional[str]:
     missing = [k for k in required if k not in obj]
     if missing:
         return f"{where} missing required keys: {missing}"
@@ -144,6 +150,7 @@ def canonical_manifest_bytes_without_bundle_sha(manifest: Dict[str, Any]) -> byt
 # --------------------------
 # IO Abstraction: dir or zip
 # --------------------------
+
 
 @dataclass
 class PackSource:
@@ -199,8 +206,12 @@ def open_pack(path: str) -> PackSource:
         if len(prefixes) == 1:
             prefix = list(prefixes)[0]
             if prefix + "manifest.json" in names:
-                return PackSource(kind="zip", root=p.resolve(), zf=zf, zip_prefix=prefix)
-        raise FileNotFoundError(f"manifest.json not found at root or in single top-level folder of zip: {path}")
+                return PackSource(
+                    kind="zip", root=p.resolve(), zf=zf, zip_prefix=prefix
+                )
+        raise FileNotFoundError(
+            f"manifest.json not found at root or in single top-level folder of zip: {path}"
+        )
 
     raise FileNotFoundError(f"Not a directory or .zip: {path}")
 
@@ -208,6 +219,64 @@ def open_pack(path: str) -> PackSource:
 # --------------------------
 # Validation
 # --------------------------
+
+
+def _validate_contents_section(contents: Dict[str, Any]) -> Optional[str]:
+    """Validate manifest.contents section."""
+    if not isinstance(contents, dict):
+        return "manifest.contents must be an object"
+    err = assert_no_extra_keys(contents, ALLOWED_CONTENTS_KEYS, "manifest.contents")
+    if err:
+        return err
+    err = assert_required_keys(
+        contents, sorted(ALLOWED_CONTENTS_KEYS), "manifest.contents"
+    )
+    if err:
+        return err
+    for k, v in contents.items():
+        if not isinstance(v, bool):
+            return f"manifest.contents.{k} must be boolean, got {type(v).__name__}"
+    return None
+
+
+def _validate_files_section(files: Any) -> Optional[str]:
+    """Validate manifest.files section."""
+    if not isinstance(files, list):
+        return "manifest.files must be an array"
+    for i, e in enumerate(files):
+        if not isinstance(e, dict):
+            return f"manifest.files[{i}] must be an object"
+        err = assert_no_extra_keys(e, ALLOWED_FILE_ENTRY_KEYS, f"manifest.files[{i}]")
+        if err:
+            return err
+        err = assert_required_keys(
+            e, ["relpath", "sha256", "bytes", "mime", "kind"], f"manifest.files[{i}]"
+        )
+        if err:
+            return err
+        err = _validate_file_entry_fields(e, i)
+        if err:
+            return err
+    return None
+
+
+def _validate_file_entry_fields(e: Dict[str, Any], i: int) -> Optional[str]:
+    """Validate individual file entry fields."""
+    if not isinstance(e["relpath"], str):
+        return f"manifest.files[{i}].relpath must be string"
+    rp_err = validate_relpath(e["relpath"])
+    if rp_err:
+        return f"manifest.files[{i}]: {rp_err}"
+    if not isinstance(e["sha256"], str) or len(e["sha256"]) < 16:
+        return f"manifest.files[{i}].sha256 must be string (looks like hash)"
+    if not isinstance(e["bytes"], int) or e["bytes"] < 0:
+        return f"manifest.files[{i}].bytes must be non-negative int"
+    if not isinstance(e["mime"], str) or not e["mime"]:
+        return f"manifest.files[{i}].mime must be non-empty string"
+    if not isinstance(e["kind"], str) or not e["kind"]:
+        return f"manifest.files[{i}].kind must be non-empty string"
+    return None
+
 
 def validate_manifest_shape(manifest: Dict[str, Any]) -> Optional[str]:
     # additionalProperties:false expectations
@@ -237,48 +306,14 @@ def validate_manifest_shape(manifest: Dict[str, Any]) -> Optional[str]:
     if manifest.get("schema_id") != "viewer_pack_v1":
         return f"manifest.schema_id must be 'viewer_pack_v1', got {manifest.get('schema_id')!r}"
 
-    # contents strict keys
-    contents = manifest.get("contents")
-    if not isinstance(contents, dict):
-        return "manifest.contents must be an object"
-    err = assert_no_extra_keys(contents, ALLOWED_CONTENTS_KEYS, "manifest.contents")
+    err = _validate_contents_section(manifest.get("contents"))
     if err:
         return err
-    err = assert_required_keys(contents, sorted(ALLOWED_CONTENTS_KEYS), "manifest.contents")
+
+    err = _validate_files_section(manifest.get("files"))
     if err:
         return err
-    for k, v in contents.items():
-        if not isinstance(v, bool):
-            return f"manifest.contents.{k} must be boolean, got {type(v).__name__}"
 
-    # files entries
-    files = manifest.get("files")
-    if not isinstance(files, list):
-        return "manifest.files must be an array"
-    for i, e in enumerate(files):
-        if not isinstance(e, dict):
-            return f"manifest.files[{i}] must be an object"
-        err = assert_no_extra_keys(e, ALLOWED_FILE_ENTRY_KEYS, f"manifest.files[{i}]")
-        if err:
-            return err
-        err = assert_required_keys(e, ["relpath", "sha256", "bytes", "mime", "kind"], f"manifest.files[{i}]")
-        if err:
-            return err
-        if not isinstance(e["relpath"], str):
-            return f"manifest.files[{i}].relpath must be string"
-        rp_err = validate_relpath(e["relpath"])
-        if rp_err:
-            return f"manifest.files[{i}]: {rp_err}"
-        if not isinstance(e["sha256"], str) or len(e["sha256"]) < 16:
-            return f"manifest.files[{i}].sha256 must be string (looks like hash)"
-        if not isinstance(e["bytes"], int) or e["bytes"] < 0:
-            return f"manifest.files[{i}].bytes must be non-negative int"
-        if not isinstance(e["mime"], str) or not e["mime"]:
-            return f"manifest.files[{i}].mime must be non-empty string"
-        if not isinstance(e["kind"], str) or not e["kind"]:
-            return f"manifest.files[{i}].kind must be non-empty string"
-
-    # points
     pts = manifest.get("points")
     if not isinstance(pts, list) or not all(isinstance(x, str) for x in pts):
         return "manifest.points must be an array of strings"
@@ -294,7 +329,9 @@ def validate_bundle_sha(manifest: Dict[str, Any]) -> Optional[str]:
     return None
 
 
-def validate_files(pack: PackSource, manifest: Dict[str, Any], *, max_errors: int = 50) -> Tuple[int, List[str]]:
+def validate_files(
+    pack: PackSource, manifest: Dict[str, Any], *, max_errors: int = 50
+) -> Tuple[int, List[str]]:
     errors: List[str] = []
     files: List[Dict[str, Any]] = manifest["files"]
 
@@ -316,9 +353,13 @@ def validate_files(pack: PackSource, manifest: Dict[str, Any], *, max_errors: in
             continue
 
         if got_sha != e["sha256"]:
-            errors.append(f"sha256 mismatch: {relpath}: manifest={e['sha256']} actual={got_sha}")
+            errors.append(
+                f"sha256 mismatch: {relpath}: manifest={e['sha256']} actual={got_sha}"
+            )
         if got_bytes != e["bytes"]:
-            errors.append(f"bytes mismatch: {relpath}: manifest={e['bytes']} actual={got_bytes}")
+            errors.append(
+                f"bytes mismatch: {relpath}: manifest={e['bytes']} actual={got_bytes}"
+            )
 
         if len(errors) >= max_errors:
             return (len(errors), errors)
@@ -330,11 +371,25 @@ def validate_files(pack: PackSource, manifest: Dict[str, Any], *, max_errors: in
 # CLI
 # --------------------------
 
+
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Validate viewer_pack_v1 bundle (dir or zip).")
-    ap.add_argument("--pack", required=True, help="Path to viewer_pack_v1 directory or .zip")
-    ap.add_argument("--manifest", default="manifest.json", help="Manifest path inside pack (default: manifest.json)")
-    ap.add_argument("--max-errors", type=int, default=50, help="Max errors to print before truncating")
+    ap = argparse.ArgumentParser(
+        description="Validate viewer_pack_v1 bundle (dir or zip)."
+    )
+    ap.add_argument(
+        "--pack", required=True, help="Path to viewer_pack_v1 directory or .zip"
+    )
+    ap.add_argument(
+        "--manifest",
+        default="manifest.json",
+        help="Manifest path inside pack (default: manifest.json)",
+    )
+    ap.add_argument(
+        "--max-errors",
+        type=int,
+        default=50,
+        help="Max errors to print before truncating",
+    )
     ap.add_argument("--quiet", action="store_true", help="Only print failures")
     args = ap.parse_args()
 
@@ -379,7 +434,10 @@ def main() -> int:
         pack.zf.close()
 
     if n_err:
-        print(f"[viewer-pack-validate] FAIL: {n_err} file validation errors", file=sys.stderr)
+        print(
+            f"[viewer-pack-validate] FAIL: {n_err} file validation errors",
+            file=sys.stderr,
+        )
         for msg in errors[: args.max_errors]:
             print(f"  - {msg}", file=sys.stderr)
         if n_err > args.max_errors:

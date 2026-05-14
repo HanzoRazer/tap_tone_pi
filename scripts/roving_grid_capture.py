@@ -24,6 +24,7 @@ Usage:
         --device 3 --seconds 3 --sample-rate 48000 \
         --out ./captures/grid_run_001
 """
+
 from __future__ import annotations
 
 import argparse
@@ -43,6 +44,7 @@ from modes._shared.wav_io import write_wav_2ch
 @dataclass
 class GridPoint:
     """A single point in the measurement grid."""
+
     id: str
     x: float
     y: float
@@ -52,7 +54,7 @@ def load_grid(path: str) -> tuple[str, str, List[GridPoint]]:
     """Load grid definition from JSON."""
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    
+
     units = data.get("units", "mm")
     origin = data.get("origin", "unspecified")
     points = [GridPoint(id=p["id"], x=p["x"], y=p["y"]) for p in data["points"]]
@@ -64,12 +66,14 @@ def list_devices() -> List[Dict[str, Any]]:
     devs = sd.query_devices()
     out: List[Dict[str, Any]] = []
     for i, d in enumerate(devs):
-        out.append({
-            "index": i,
-            "name": d.get("name"),
-            "max_input_channels": int(d.get("max_input_channels") or 0),
-            "default_samplerate": d.get("default_samplerate"),
-        })
+        out.append(
+            {
+                "index": i,
+                "name": d.get("name"),
+                "max_input_channels": int(d.get("max_input_channels") or 0),
+                "default_samplerate": d.get("default_samplerate"),
+            }
+        )
     return out
 
 
@@ -80,13 +84,13 @@ def capture_2ch(
 ) -> np.ndarray:
     """
     Capture 2-channel synchronized audio.
-    
+
     Returns:
         np.ndarray of shape (n_samples, 2), float32 in [-1, 1]
     """
     sd.default.samplerate = sample_rate
     sd.default.device = (device, None)
-    
+
     n_samples = int(sample_rate * seconds)
     audio = sd.rec(frames=n_samples, channels=2, dtype="float32", blocking=True)
     audio = np.nan_to_num(audio, nan=0.0)
@@ -105,11 +109,11 @@ def save_point_capture(
     """Save captured audio and metadata for a single point."""
     point_dir = out_dir / "points" / point.id
     point_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Save audio as 2-channel WAV using canonical layer
     audio_path = point_dir / "audio.wav"
     write_wav_2ch(audio_path, sample_rate, audio[:, 0], audio[:, 1])
-    
+
     # Save metadata
     meta = {
         "artifact_type": "grid_point_capture",
@@ -129,11 +133,11 @@ def save_point_capture(
     }
     if device_info:
         meta["device"] = device_info
-    
+
     meta_path = point_dir / "capture_meta.json"
     with open(meta_path, "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2)
-    
+
     return point_dir
 
 
@@ -152,40 +156,44 @@ def cmd_capture(args: argparse.Namespace) -> int:
     units, origin, points = load_grid(args.grid)
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Save grid definition to output
     grid_copy = out_dir / "grid.json"
     with open(args.grid, "r", encoding="utf-8") as f:
         grid_data = json.load(f)
     with open(grid_copy, "w", encoding="utf-8") as f:
         json.dump(grid_data, f, indent=2)
-    
+
     device_info = {"index": args.device, "sample_rate": args.sample_rate}
-    
+
     print(f"Grid capture: {len(points)} points")
     print(f"Output: {out_dir}")
-    print(f"Device: {args.device}, Rate: {args.sample_rate} Hz, Duration: {args.seconds}s")
+    print(
+        f"Device: {args.device}, Rate: {args.sample_rate} Hz, Duration: {args.seconds}s"
+    )
     print("-" * 40)
-    
+
     captured = []
     for i, point in enumerate(points):
-        print(f"\n[{i+1}/{len(points)}] Point {point.id} at ({point.x}, {point.y}) {units}")
+        print(
+            f"\n[{i + 1}/{len(points)}] Point {point.id} at ({point.x}, {point.y}) {units}"
+        )
         input("  Position roving sensor, then press ENTER to capture...")
-        
+
         print("  Capturing...", end="", flush=True)
         audio = capture_2ch(args.device, args.sample_rate, args.seconds)
         print(" done.")
-        
+
         point_dir = save_point_capture(
             out_dir, point, audio, args.sample_rate, units, origin, device_info
         )
         captured.append(point.id)
-        
+
         rms0 = np.sqrt(np.mean(audio[:, 0] ** 2))
         rms1 = np.sqrt(np.mean(audio[:, 1] ** 2))
         print(f"  Saved: {point_dir}")
         print(f"  RMS: ref={rms0:.4f}, roving={rms1:.4f}")
-    
+
     # Write capture summary
     summary = {
         "artifact_type": "grid_capture_summary",
@@ -199,7 +207,7 @@ def cmd_capture(args: argparse.Namespace) -> int:
     }
     with open(out_dir / "capture_summary.json", "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
-    
+
     print(f"\nCapture complete: {len(captured)} points")
     return 0
 
@@ -208,16 +216,21 @@ def cmd_point(args: argparse.Namespace) -> int:
     """Capture a single point (for automation)."""
     out_dir = Path(args.out)
     point = GridPoint(id=args.point_id, x=args.x, y=args.y)
-    
+
     print(f"Capturing point {point.id} at ({point.x}, {point.y})...")
     audio = capture_2ch(args.device, args.sample_rate, args.seconds)
-    
+
     device_info = {"index": args.device, "sample_rate": args.sample_rate}
     point_dir = save_point_capture(
-        out_dir, point, audio, args.sample_rate,
-        units=args.units, origin="manual", device_info=device_info
+        out_dir,
+        point,
+        audio,
+        args.sample_rate,
+        units=args.units,
+        origin="manual",
+        device_info=device_info,
     )
-    
+
     print(f"Saved: {point_dir}")
     return 0
 
@@ -228,11 +241,11 @@ def build_parser() -> argparse.ArgumentParser:
         description="Point-by-point 2-channel capture for ODS grid measurement",
     )
     sub = p.add_subparsers(dest="cmd", required=True)
-    
+
     # devices
     p_dev = sub.add_parser("devices", help="List audio devices")
     p_dev.set_defaults(fn=cmd_devices)
-    
+
     # capture (interactive grid)
     p_cap = sub.add_parser("capture", help="Interactive grid capture")
     p_cap.add_argument("--grid", required=True, help="Grid definition JSON")
@@ -241,7 +254,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_cap.add_argument("--seconds", type=float, default=3.0)
     p_cap.add_argument("--out", required=True, help="Output directory")
     p_cap.set_defaults(fn=cmd_capture)
-    
+
     # point (single point)
     p_pt = sub.add_parser("point", help="Capture single point")
     p_pt.add_argument("--point-id", required=True)
@@ -253,7 +266,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_pt.add_argument("--seconds", type=float, default=3.0)
     p_pt.add_argument("--out", required=True)
     p_pt.set_defaults(fn=cmd_point)
-    
+
     return p
 
 

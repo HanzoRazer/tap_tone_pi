@@ -1,8 +1,8 @@
 # BoundarySpec — ToolBox ↔ Analyzer Boundary
 
-Status: ACCEPTED  
-Date: 2025-12-28  
-Owners: ToolBox maintainers, Analyzer maintainers  
+Status: ACCEPTED
+Date: 2025-12-28
+Owners: ToolBox maintainers, Analyzer maintainers
 
 ## Context
 

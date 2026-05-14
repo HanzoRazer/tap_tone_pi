@@ -1,8 +1,8 @@
 # ADR-0006: RMOS RunArtifact Mapping
 
-**Status:** Accepted  
-**Date:** 2025-12-25  
-**Context:** Tap-Tone Measurement Node → ToolBox/RMOS (Future Integration)  
+**Status:** Accepted
+**Date:** 2025-12-25
+**Context:** Tap-Tone Measurement Node → ToolBox/RMOS (Future Integration)
 **Decision Drivers:** Forward compatibility, minimal coupling, clean ingestion path
 
 ---

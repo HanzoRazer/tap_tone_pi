@@ -1,0 +1,19 @@
+{
+  "schema_id": "viewer_pack_v1",
+  "schema_version": "1.0",
+  "created_at_utc": "2026-02-16T04:07:03.950044Z",
+  "specimen_id": "Sitka Spruce #42",
+  "contents": {
+    "spectra": [
+      "spectra/transfer_function.csv",
+      "spectra/transfer_function.json"
+    ],
+    "peaks": [
+      "peaks/detected_peaks.json"
+    ],
+    "derived": [
+      "derived/wood_properties.json",
+      "derived/wsi_curve.json"
+    ]
+  }
+}

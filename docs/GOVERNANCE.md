@@ -422,6 +422,6 @@ This governance exists to **protect innovation**, not constrain it.
 
 ---
 
-*Adopted: 2025-12-31*  
-*Last Updated: 2025-12-31*  
+*Adopted: 2025-12-31*
+*Last Updated: 2025-12-31*
 *Owner: Ross Echols*

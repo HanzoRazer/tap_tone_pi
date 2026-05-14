@@ -265,6 +265,28 @@ The suite verifies:
 
 ---
 
+## Quick-start Demos
+
+### Chladni v1
+```bash
+make examples-chladni-demo
+```
+Artifacts: `out/DEMO/chladni/{capture.wav, peaks.json, F0148.png, F0226.png, chladni_run.json, manifest.json}`
+
+### Phase-2 mini run
+```bash
+make examples-phase2-demo
+```
+Artifacts under `runs_phase2/DEMO/session_0001/` with canonical filenames.
+
+### MOE (static bending) demo
+```bash
+make examples-moe-demo
+```
+Artifact: `out/DEMO/moe/moe_result.json` (validated against `contracts/schemas/moe_result.schema.json`).
+
+---
+
 ## Chladni Pattern Indexing
 
 **Module:** `modes/chladni/`

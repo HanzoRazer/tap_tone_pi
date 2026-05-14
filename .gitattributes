@@ -1,0 +1,23 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Force Python files to use LF
+*.py text eol=lf
+
+# Force shell scripts to use LF
+*.sh text eol=lf
+
+# Force YAML to use LF
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Force JSON to use LF
+*.json text eol=lf
+
+# Force INI and config files to use LF
+*.ini text eol=lf
+*.toml text eol=lf
+*.cfg text eol=lf
+*.txt text eol=lf
+*.md text eol=lf
+Makefile text eol=lf

@@ -19,11 +19,11 @@ Exit behavior:
 Cross-repo contract with luthiers-toolbox (ToolBox).
 See: ToolBox docs/gates/VIEWER_PACK_V1_GATE.md
 """
+
 from __future__ import annotations
 
 import json
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -58,6 +58,7 @@ REAL_SESSIONS = [
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def temp_output_dir() -> Generator[Path, None, None]:
     """Temporary directory for exported packs."""
@@ -69,12 +70,21 @@ def temp_output_dir() -> Generator[Path, None, None]:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
+def _get_subprocess_env() -> dict:
+    """Get environment with PYTHONPATH set to repo root."""
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(REPO_ROOT)
+    return env
+
+
 def run_validator(pack_path: Path) -> subprocess.CompletedProcess:
     """Run the validator CLI on a pack (dir or zip)."""
     return subprocess.run(
         [sys.executable, str(VALIDATOR_CLI), "--pack", str(pack_path)],
         capture_output=True,
         text=True,
+        env=_get_subprocess_env(),
     )
 
 
@@ -84,11 +94,14 @@ def run_exporter(session_dir: Path, output_dir: Path) -> subprocess.CompletedPro
         [
             sys.executable,
             str(EXPORTER_CLI),
-            "--session-dir", str(session_dir),
-            "--out", str(output_dir),
+            "--session-dir",
+            str(session_dir),
+            "--out",
+            str(output_dir),
         ],
         capture_output=True,
         text=True,
+        env=_get_subprocess_env(),
     )
 
 
@@ -135,21 +148,54 @@ def create_minimal_synthetic_session(base_dir: Path) -> Path:
         # For a real test, you'd want actual audio data
         wav_path = point_dir / "audio.wav"
         # Create a minimal valid WAV (44 bytes header, 0 data)
-        wav_header = bytes([
-            0x52, 0x49, 0x46, 0x46,  # "RIFF"
-            0x24, 0x00, 0x00, 0x00,  # file size - 8 (36 bytes)
-            0x57, 0x41, 0x56, 0x45,  # "WAVE"
-            0x66, 0x6D, 0x74, 0x20,  # "fmt "
-            0x10, 0x00, 0x00, 0x00,  # fmt chunk size (16)
-            0x01, 0x00,              # audio format (1 = PCM)
-            0x01, 0x00,              # num channels (1)
-            0x80, 0xBB, 0x00, 0x00,  # sample rate (48000)
-            0x00, 0x77, 0x01, 0x00,  # byte rate
-            0x02, 0x00,              # block align
-            0x10, 0x00,              # bits per sample (16)
-            0x64, 0x61, 0x74, 0x61,  # "data"
-            0x00, 0x00, 0x00, 0x00,  # data size (0)
-        ])
+        wav_header = bytes(
+            [
+                0x52,
+                0x49,
+                0x46,
+                0x46,  # "RIFF"
+                0x24,
+                0x00,
+                0x00,
+                0x00,  # file size - 8 (36 bytes)
+                0x57,
+                0x41,
+                0x56,
+                0x45,  # "WAVE"
+                0x66,
+                0x6D,
+                0x74,
+                0x20,  # "fmt "
+                0x10,
+                0x00,
+                0x00,
+                0x00,  # fmt chunk size (16)
+                0x01,
+                0x00,  # audio format (1 = PCM)
+                0x01,
+                0x00,  # num channels (1)
+                0x80,
+                0xBB,
+                0x00,
+                0x00,  # sample rate (48000)
+                0x00,
+                0x77,
+                0x01,
+                0x00,  # byte rate
+                0x02,
+                0x00,  # block align
+                0x10,
+                0x00,  # bits per sample (16)
+                0x64,
+                0x61,
+                0x74,
+                0x61,  # "data"
+                0x00,
+                0x00,
+                0x00,
+                0x00,  # data size (0)
+            ]
+        )
         wav_path.write_bytes(wav_header)
 
         # spectrum.csv (minimal)
@@ -190,6 +236,7 @@ def get_available_sessions() -> list[Path]:
 # Gate Tests
 # ---------------------------------------------------------------------------
 
+
 class TestViewerPackV1Gate:
     """
     VIEWER_PACK_V1_CONTRACT_GATE - Producer Export Tests.
@@ -210,14 +257,23 @@ class TestViewerPackV1Gate:
         """Schema must have expected structure."""
         schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
 
-        assert schema.get("additionalProperties") is False, \
+        assert schema.get("additionalProperties") is False, (
             "Schema must have additionalProperties: false"
+        )
 
         required = schema.get("required", [])
         expected_required = [
-            "schema_version", "schema_id", "created_at_utc", "source_capdir",
-            "detected_phase", "measurement_only", "interpretation", "points",
-            "contents", "files", "bundle_sha256"
+            "schema_version",
+            "schema_id",
+            "created_at_utc",
+            "source_capdir",
+            "detected_phase",
+            "measurement_only",
+            "interpretation",
+            "points",
+            "contents",
+            "files",
+            "bundle_sha256",
         ]
         for key in expected_required:
             assert key in required, f"Schema missing required key: {key}"
@@ -326,7 +382,10 @@ class TestViewerPackV1Gate:
             f"Validator should reject extra keys (exit 2), got {result.returncode}\n"
             f"stderr: {result.stderr}"
         )
-        assert "unexpected_extra_key" in result.stderr.lower() or "unexpected" in result.stderr.lower()
+        assert (
+            "unexpected_extra_key" in result.stderr.lower()
+            or "unexpected" in result.stderr.lower()
+        )
 
 
 class TestViewerPackSchemaFreeze:
@@ -348,7 +407,9 @@ class TestViewerPackSchemaFreeze:
         schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
         props = schema.get("properties", {})
         sid = props.get("schema_id", {})
-        assert sid.get("const") == "viewer_pack_v1", "schema_id const must be 'viewer_pack_v1'"
+        assert sid.get("const") == "viewer_pack_v1", (
+            "schema_id const must be 'viewer_pack_v1'"
+        )
 
     def test_kind_vocabulary_is_known(self):
         """All kind values in schema must be from known vocabulary."""
@@ -371,6 +432,7 @@ class TestViewerPackSchemaFreeze:
             "plot_png",
             "session_meta",
             "manifest",
+            "bending_moe",
             "unknown",
         }
 

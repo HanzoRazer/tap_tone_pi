@@ -35,7 +35,9 @@ class BoundarySpec:
         self.allowed_roots = allowed_roots
         self.forbidden_import_prefixes = forbidden_import_prefixes
 
-    def scan_path(self, root: Path, excludes: Optional[set[str]] = None) -> List[Violation]:
+    def scan_path(
+        self, root: Path, excludes: Optional[set[str]] = None
+    ) -> List[Violation]:
         excludes = excludes or set()
         violations: List[Violation] = []
 
@@ -44,7 +46,7 @@ class BoundarySpec:
                 continue
             try:
                 text = path.read_text(encoding="utf-8")
-            except Exception:
+            except (ImportError, OSError, ValueError, KeyError):
                 # If a file can't be read, treat as a violation so CI doesn't silently pass.
                 violations.append(
                     Violation(
@@ -88,6 +90,10 @@ class BoundarySpec:
                         out.append(v)
 
             elif isinstance(node, ast.ImportFrom):
+                # Skip relative imports (level > 0 means from . or from .. etc)
+                # Relative imports are internal to the package, not cross-repo
+                if node.level > 0:
+                    continue
                 if node.module:
                     mod = node.module
                     v = self._check_import(mod, path, node.lineno, node.col_offset)
@@ -135,7 +141,9 @@ class BoundarySpec:
 
         return out
 
-    def _check_import(self, module: str, path: Path, lineno: int, col: int) -> Optional[Violation]:
+    def _check_import(
+        self, module: str, path: Path, lineno: int, col: int
+    ) -> Optional[Violation]:
         module = module.strip()
         for forbidden in self.forbidden_import_prefixes:
             if module == forbidden or module.startswith(forbidden + "."):
@@ -165,4 +173,3 @@ def format_violations(violations: Iterable[Violation]) -> str:
     for v in violations:
         lines.append(f"{v.file}:{v.lineno}:{v.col}  import='{v.imported}'  {v.message}")
     return "\n".join(lines) + "\n"
-

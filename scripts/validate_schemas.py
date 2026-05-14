@@ -10,12 +10,15 @@ Options:
   --strict    Fail on artifacts missing schema_id/schema_version (default: skip them)
   --verbose   Show skipped files
 """
+
 from __future__ import annotations
-import argparse, json, sys
+import argparse
+import json
+import sys
 from pathlib import Path
 from typing import Dict, Tuple
 
-from jsonschema import Draft202012Validator, validate
+from jsonschema import Draft202012Validator
 
 # Fallback map for environments where registry is unavailable
 _FALLBACK_SCHEMA_MAP: Dict[Tuple[str, str], str] = {
@@ -32,15 +35,26 @@ def load_registry(schemas_root: Path) -> Dict[Tuple[str, str], dict]:
     if not registry_path.exists():
         # Fallback to hardcoded map if registry not present
         return _load_from_fallback(schemas_root)
-    
+
     reg = json.loads(registry_path.read_text(encoding="utf-8"))
     loaded = {}
-    for ent in reg["schemas"]:
-        sid, ver, f = ent["schema_id"], ent["version"], ent["file"]
+    schemas = reg["schemas"]
+    # Handle both list format and dict format
+    if isinstance(schemas, dict):
+        items = [(k, v) for k, v in schemas.items()]
+    else:
+        items = [(ent["schema_id"], ent) for ent in schemas]
+    for sid, ent in items:
+        ver, f = ent["version"], ent.get("path") or ent["file"]
         schema_path = Path(f)
         if not schema_path.exists():
             raise FileNotFoundError(f"Registry references missing schema: {f}")
-        loaded[(sid, ver)] = json.loads(schema_path.read_text(encoding="utf-8"))
+        schema_content = json.loads(schema_path.read_text(encoding="utf-8"))
+        # Key by (schema_id, version)
+        loaded[(sid, ver)] = schema_content
+        # Also key by schema_version_const if present (phase2 uses these)
+        if "schema_version_const" in ent:
+            loaded[(sid, ent["schema_version_const"])] = schema_content
     return loaded
 
 
@@ -59,9 +73,31 @@ def load_schema_index(schemas_root: Path) -> Dict[Tuple[str, str], dict]:
     """Load schemas - prefer registry, fallback to hardcoded map."""
     return load_registry(schemas_root)
 
+
 def discover_json_files(out_root: Path):
     for p in out_root.rglob("*.json"):
         yield p
+
+
+# Aliases: map output schema_id to registry key
+_SCHEMA_ALIASES = {
+    "measurement_manifest": "manifest",
+}
+
+
+def _normalize_version(v: str) -> str:
+    """Normalize version: 1.0 -> 1.0.0, but leave version consts unchanged."""
+    # If it looks like a version const (contains letters after numbers), don't normalize
+    if not v or not v[0].isdigit():
+        return v
+    parts = v.split(".")
+    # Only normalize if all parts are numeric
+    if not all(p.isdigit() for p in parts):
+        return v
+    while len(parts) < 3:
+        parts.append("0")
+    return ".".join(parts[:3])
+
 
 def identify(doc: dict) -> Tuple[str, str]:
     # Flexible: MOE uses artifact_type 'bending_moe' but schema_id 'moe_result'
@@ -80,16 +116,25 @@ def identify(doc: dict) -> Tuple[str, str]:
         elif at == "measurement_manifest":
             schema_id = "measurement_manifest"
 
+    # Apply aliases
+    schema_id = _SCHEMA_ALIASES.get(schema_id, schema_id)
+    # Normalize version
+    if version:
+        version = _normalize_version(version)
+
     return schema_id, version
+
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out-root", default="out")
     ap.add_argument("--schemas-root", default="contracts/schemas")
-    ap.add_argument("--strict", action="store_true",
-                    help="Fail on artifacts missing schema_id/schema_version")
-    ap.add_argument("--verbose", action="store_true",
-                    help="Show skipped files")
+    ap.add_argument(
+        "--strict",
+        action="store_true",
+        help="Fail on artifacts missing schema_id/schema_version",
+    )
+    ap.add_argument("--verbose", action="store_true", help="Show skipped files")
     args = ap.parse_args()
 
     out_root = Path(args.out_root)
@@ -114,7 +159,9 @@ def main():
         schema_id, version = identify(doc)
         if not schema_id or not version:
             if args.strict:
-                bad.append((jf, "Missing schema_id/schema_version (and could not infer)"))
+                bad.append(
+                    (jf, "Missing schema_id/schema_version (and could not infer)")
+                )
             else:
                 skipped.append(jf)
             continue
@@ -146,8 +193,11 @@ def main():
             print(f" - {path}: {msg}")
         sys.exit(1)
     else:
-        print(f"✅ Schema validation passed ({total} artifacts validated, {len(skipped)} skipped).")
+        print(
+            f"✅ Schema validation passed ({total} artifacts validated, {len(skipped)} skipped)."
+        )
         sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

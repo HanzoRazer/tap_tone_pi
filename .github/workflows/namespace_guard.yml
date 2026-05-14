@@ -1,0 +1,85 @@
+# Namespace Guard — blocks deprecated tap_tone imports inside tap_tone_pi/
+#
+# Policy: Immediate CI failure on `from tap_tone` or `import tap_tone`
+#         inside the tap_tone_pi package. External consumers get a
+#         runtime deprecation warning instead.
+#
+# See: Q&A #18 in implementation plan
+
+name: namespace_guard
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'tap_tone_pi/**/*.py'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'tap_tone_pi/**/*.py'
+
+jobs:
+  check-namespace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for deprecated tap_tone imports
+        run: |
+          echo "Checking for deprecated 'tap_tone' imports in tap_tone_pi/..."
+          
+          # Find imports of tap_tone (not tap_tone_pi) inside tap_tone_pi/
+          # Patterns:
+          #   from tap_tone import ...
+          #   from tap_tone.* import ...
+          #   import tap_tone
+          #   import tap_tone.*
+          
+          VIOLATIONS=$(grep -rn \
+            -e "from tap_tone import" \
+            -e "from tap_tone\." \
+            -e "^import tap_tone$" \
+            -e "^import tap_tone\." \
+            tap_tone_pi/ \
+            --include="*.py" \
+            | grep -v "tap_tone_pi" \
+            || true)
+          
+          if [ -n "$VIOLATIONS" ]; then
+            echo ""
+            echo "ERROR: Found deprecated 'tap_tone' imports inside tap_tone_pi/"
+            echo ""
+            echo "The 'tap_tone' namespace is deprecated. Use 'tap_tone_pi' instead."
+            echo ""
+            echo "Violations:"
+            echo "$VIOLATIONS"
+            echo ""
+            echo "Fix by changing:"
+            echo "  from tap_tone.foo import bar  →  from tap_tone_pi.foo import bar"
+            echo "  import tap_tone.foo           →  import tap_tone_pi.foo"
+            exit 1
+          fi
+          
+          echo "✓ No deprecated imports found"
+
+      - name: Check tap_tone shim has deprecation warning
+        run: |
+          # If tap_tone/__init__.py exists, it must contain a deprecation warning
+          if [ -f "tap_tone/__init__.py" ]; then
+            if ! grep -q "DeprecationWarning" tap_tone/__init__.py; then
+              echo "ERROR: tap_tone/__init__.py exists but lacks DeprecationWarning"
+              echo ""
+              echo "Add this to tap_tone/__init__.py:"
+              echo ""
+              echo '  import warnings'
+              echo '  warnings.warn('
+              echo '      "The tap_tone package is deprecated. Use tap_tone_pi instead.",'
+              echo '      DeprecationWarning,'
+              echo '      stacklevel=2'
+              echo '  )'
+              exit 1
+            fi
+            echo "✓ tap_tone shim has deprecation warning"
+          else
+            echo "✓ tap_tone/ directory not present (already cleaned up)"
+          fi

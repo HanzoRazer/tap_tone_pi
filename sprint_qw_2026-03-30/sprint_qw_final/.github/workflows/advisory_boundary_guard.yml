@@ -1,0 +1,21 @@
+name: advisory-boundary-guard
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  advisory-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check measurement vs decision-support boundary (ADR-0009)
+        run: |
+          python ci/check_advisory_boundary.py --strict

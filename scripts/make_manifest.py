@@ -23,7 +23,9 @@ def load_json(path: Path) -> Any:
 def main() -> None:
     ap = argparse.ArgumentParser(description="Create a manifest for a capture bundle.")
     ap.add_argument("--capture-dir", required=True)
-    ap.add_argument("--out", default=None, help="Output path (default: capture_dir/manifest.json)")
+    ap.add_argument(
+        "--out", default=None, help="Output path (default: capture_dir/manifest.json)"
+    )
     args = ap.parse_args()
 
     cap_dir = Path(args.capture_dir).expanduser().resolve()
@@ -39,11 +41,13 @@ def main() -> None:
     files = []
     for p in sorted(cap_dir.iterdir()):
         if p.is_file():
-            files.append({
-                "name": p.name,
-                "bytes": p.stat().st_size,
-                "sha256": sha256_file(p),
-            })
+            files.append(
+                {
+                    "name": p.name,
+                    "bytes": p.stat().st_size,
+                    "sha256": sha256_file(p),
+                }
+            )
 
     manifest = {
         "schema_version": "0.1.0",
@@ -57,8 +61,14 @@ def main() -> None:
         "files": files,
     }
 
-    out_path = Path(args.out).expanduser().resolve() if args.out else (cap_dir / "manifest.json")
-    out_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+    out_path = (
+        Path(args.out).expanduser().resolve()
+        if args.out
+        else (cap_dir / "manifest.json")
+    )
+    out_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
+    )
     print(f"[OK] Wrote {out_path}")
 
 

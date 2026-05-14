@@ -24,6 +24,7 @@ Exit codes:
     1 = Alignment failure or processing error
     2 = Usage/argument error
 """
+
 from __future__ import annotations
 
 import argparse
@@ -40,7 +41,7 @@ import numpy as np
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tap_tone.viewer_pack.manifest import (
+from tap_tone_pi.viewer_pack.manifest import (
     load_viewer_pack,
     find_files_by_kind,
     read_file_from_pack,
@@ -51,6 +52,7 @@ from tap_tone.viewer_pack.manifest import (
 # Plotting is optional
 try:
     import matplotlib.pyplot as plt
+
     HAS_MATPLOTLIB = True
 except ImportError:
     HAS_MATPLOTLIB = False
@@ -62,6 +64,7 @@ FREQ_TOLERANCE_HZ = 0.1  # Max allowed difference in frequency bins
 @dataclass(frozen=True)
 class SpectrumData:
     """Parsed spectrum data from a single point."""
+
     point_id: str
     freq_hz: np.ndarray
     H_mag: np.ndarray
@@ -72,6 +75,7 @@ class SpectrumData:
 @dataclass(frozen=True)
 class WSICurveData:
     """Parsed WSI curve data from session level."""
+
     freq_hz: np.ndarray
     wsi: np.ndarray
     coh_mean: np.ndarray
@@ -81,6 +85,7 @@ class WSICurveData:
 @dataclass
 class DiffResult:
     """Container for diff computation results."""
+
     success: bool
     error: Optional[str] = None
     warnings: List[str] = field(default_factory=list)
@@ -150,7 +155,9 @@ def parse_wsi_curve_csv(data: bytes) -> WSICurveData:
         adm_str = row.get("admissible", "false").lower()
         admissible[i] = adm_str in ("true", "1", "yes")
 
-    return WSICurveData(freq_hz=freq_hz, wsi=wsi, coh_mean=coh_mean, admissible=admissible)
+    return WSICurveData(
+        freq_hz=freq_hz, wsi=wsi, coh_mean=coh_mean, admissible=admissible
+    )
 
 
 def _safe_float(s: str) -> float:
@@ -304,7 +311,9 @@ def compute_diff(
         wsi_modified = load_wsi_curve(modified)
 
         if wsi_baseline is not None and wsi_modified is not None:
-            aligned, msg = check_freq_alignment(wsi_baseline.freq_hz, wsi_modified.freq_hz)
+            aligned, msg = check_freq_alignment(
+                wsi_baseline.freq_hz, wsi_modified.freq_hz
+            )
             if aligned:
                 result.wsi_delta = wsi_modified.wsi - wsi_baseline.wsi
                 result.coh_mean_delta = wsi_modified.coh_mean - wsi_baseline.coh_mean
@@ -317,9 +326,7 @@ def compute_diff(
             result.summary["mean_delta_H_mag"] = float(np.nanmean(stacked_H))
             result.summary["std_delta_H_mag"] = float(np.nanstd(stacked_H))
             result.summary["max_abs_delta_H_mag"] = float(np.nanmax(np.abs(stacked_H)))
-            result.summary["rms_delta_H_mag"] = float(
-                np.sqrt(np.nanmean(stacked_H ** 2))
-            )
+            result.summary["rms_delta_H_mag"] = float(np.sqrt(np.nanmean(stacked_H**2)))
 
         if all_coh_deltas:
             stacked_coh = np.vstack(all_coh_deltas)
@@ -445,7 +452,8 @@ Examples:
     parser.add_argument("baseline", type=Path, help="Baseline viewer pack ZIP")
     parser.add_argument("modified", type=Path, help="Modified viewer pack ZIP")
     parser.add_argument(
-        "--out", "-o",
+        "--out",
+        "-o",
         type=Path,
         default=Path("diff_out"),
         help="Output directory (default: diff_out/)",
@@ -484,21 +492,23 @@ Examples:
         }
         print(json.dumps(output, indent=2))
     else:
-        print(f"\nViewer Pack Diff Complete")
-        print(f"{'='*40}")
+        print("\nViewer Pack Diff Complete")
+        print(f"{'=' * 40}")
         print(f"Baseline: {args.baseline.name}")
         print(f"Modified: {args.modified.name}")
         print(f"Shared points: {len(result.shared_points)}")
-        print(f"Frequency bins: {len(result.freq_hz) if result.freq_hz is not None else 0}")
+        print(
+            f"Frequency bins: {len(result.freq_hz) if result.freq_hz is not None else 0}"
+        )
         print(f"\nOutputs written to: {args.out}/")
 
         if result.warnings:
-            print(f"\nWarnings:")
+            print("\nWarnings:")
             for w in result.warnings:
                 print(f"  ⚠ {w}")
 
         if result.summary:
-            print(f"\nSummary Statistics:")
+            print("\nSummary Statistics:")
             for k, v in sorted(result.summary.items()):
                 if isinstance(v, float):
                     print(f"  {k}: {v:.6f}")

@@ -1,8 +1,8 @@
 # ADR-0001: Measurement Scope, Protocol, and Integration Boundaries
 
-**Status:** Accepted  
-**Date:** 2025-12-25  
-**Context:** Tap-Tone Measurement Node / Workstation  
+**Status:** Accepted
+**Date:** 2025-12-25
+**Context:** Tap-Tone Measurement Node / Workstation
 **Decision Drivers:** Repeatability, scientific validity, future extensibility, avoidance of premature optimization
 
 ---

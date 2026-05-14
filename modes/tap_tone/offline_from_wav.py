@@ -46,13 +46,9 @@ def analyze(
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(
-        description="Offline tap-tone analysis from WAV file"
-    )
+    ap = argparse.ArgumentParser(description="Offline tap-tone analysis from WAV file")
     ap.add_argument("--wav", required=True, help="Path to WAV file")
-    ap.add_argument(
-        "--peaks", type=int, default=6, help="Number of peaks to extract"
-    )
+    ap.add_argument("--peaks", type=int, default=6, help="Number of peaks to extract")
     ap.add_argument(
         "--labels",
         nargs="*",
@@ -72,7 +68,7 @@ def main() -> None:
     # Build labels dict
     labels: Dict[str, Any] = {}
     for i, (f, amp) in enumerate(top):
-        name = a.labels[i] if i < len(a.labels) else f"p{i+1}"
+        name = a.labels[i] if i < len(a.labels) else f"p{i + 1}"
         labels[name] = {"freq_hz": round(f, 2), "amp": round(float(amp), 2)}
 
     # Write JSON

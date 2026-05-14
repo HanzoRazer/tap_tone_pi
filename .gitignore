@@ -42,3 +42,10 @@ runs_phase2/
 # OS
 .DS_Store
 Thumbs.db
+
+# Sprint staging directories (temporary)
+sprint_v*/
+sprint_*_bundle/
+sprint_complete_bundle/
+tap_tone_pi_sprint_*/
+files - */

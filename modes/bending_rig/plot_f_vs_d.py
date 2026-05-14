@@ -12,6 +12,7 @@ Usage:
         --pct-low 10 --pct-high 90 \
         --title "F–d — Run 20251231" --dpi 150
 """
+
 from __future__ import annotations
 
 import argparse
@@ -55,7 +56,9 @@ def linear_fit(F: List[float], d: List[float]) -> Tuple[float, float]:
     return slope, r2
 
 
-def percentile_bounds(vals: List[float], lo_pct: float, hi_pct: float) -> Tuple[float, float]:
+def percentile_bounds(
+    vals: List[float], lo_pct: float, hi_pct: float
+) -> Tuple[float, float]:
     """Get values at given percentiles."""
     vs = sorted(vals)
     n = len(vs) - 1

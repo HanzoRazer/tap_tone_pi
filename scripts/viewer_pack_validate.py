@@ -21,6 +21,7 @@ Exit codes:
     1 = Validation failed (errors in report)
     2 = Usage/argument error
 """
+
 from __future__ import annotations
 
 import argparse
@@ -28,11 +29,12 @@ import json
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 # Schema validation (optional dependency)
 try:
     import jsonschema
+
     HAS_JSONSCHEMA = True
 except ImportError:
     HAS_JSONSCHEMA = False
@@ -40,7 +42,7 @@ except ImportError:
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tap_tone.viewer_pack.manifest import (
+from tap_tone_pi.viewer_pack.manifest import (
     load_viewer_pack,
     compute_bundle_sha256,
     compute_file_sha256,
@@ -53,6 +55,7 @@ from tap_tone.viewer_pack.manifest import (
 @dataclass
 class ValidationResult:
     """Immutable validation result with categorized errors."""
+
     valid: bool
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
@@ -83,7 +86,11 @@ def load_schema(schema_path: Optional[Path]) -> Optional[dict]:
     """Load JSON schema from file."""
     if schema_path is None:
         # Default schema location
-        default_path = Path(__file__).resolve().parents[1] / "contracts" / "viewer_pack_v1.schema.json"
+        default_path = (
+            Path(__file__).resolve().parents[1]
+            / "contracts"
+            / "viewer_pack_v1.schema.json"
+        )
         if default_path.exists():
             schema_path = default_path
         else:
@@ -94,6 +101,43 @@ def load_schema(schema_path: Optional[Path]) -> Optional[dict]:
 
     with open(schema_path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def _verify_file_integrity(
+    handle: Any,
+    manifest: dict,
+    result: ValidationResult,
+) -> None:
+    """Verify each file in manifest exists in ZIP with correct size and SHA256."""
+    zip_names = set(handle.zip_handle.namelist())
+
+    for entry in iter_files(manifest):
+        if entry.relpath not in zip_names:
+            result.add_error(f"File missing from ZIP: {entry.relpath}")
+            continue
+
+        try:
+            data = read_file_from_pack(handle, entry.relpath)
+        except Exception as e:
+            result.add_error(f"Failed to read {entry.relpath}: {e}")
+            continue
+
+        if len(data) != entry.bytes:
+            result.add_error(
+                f"Size mismatch for {entry.relpath}: "
+                f"declared={entry.bytes} actual={len(data)}"
+            )
+        else:
+            result.add_pass()
+
+        actual_sha = compute_file_sha256(data)
+        if actual_sha != entry.sha256:
+            result.add_error(
+                f"SHA256 mismatch for {entry.relpath}: "
+                f"declared={entry.sha256[:16]}... actual={actual_sha[:16]}..."
+            )
+        else:
+            result.add_pass()
 
 
 def validate_viewer_pack(
@@ -156,41 +200,10 @@ def validate_viewer_pack(
             )
 
         # 4. Verify each file exists and matches
-        zip_names = set(handle.zip_handle.namelist())
-
-        for entry in iter_files(manifest):
-            # Check file exists in ZIP
-            if entry.relpath not in zip_names:
-                result.add_error(f"File missing from ZIP: {entry.relpath}")
-                continue
-
-            # Read file and verify
-            try:
-                data = read_file_from_pack(handle, entry.relpath)
-            except Exception as e:
-                result.add_error(f"Failed to read {entry.relpath}: {e}")
-                continue
-
-            # Verify size
-            if len(data) != entry.bytes:
-                result.add_error(
-                    f"Size mismatch for {entry.relpath}: "
-                    f"declared={entry.bytes} actual={len(data)}"
-                )
-            else:
-                result.add_pass()
-
-            # Verify SHA256
-            actual_sha = compute_file_sha256(data)
-            if actual_sha != entry.sha256:
-                result.add_error(
-                    f"SHA256 mismatch for {entry.relpath}: "
-                    f"declared={entry.sha256[:16]}... actual={actual_sha[:16]}..."
-                )
-            else:
-                result.add_pass()
+        _verify_file_integrity(handle, manifest, result)
 
         # 5. Check for orphan files (in ZIP but not in manifest)
+        zip_names = set(handle.zip_handle.namelist())
         manifest_paths = {f.relpath for f in iter_files(manifest)}
         manifest_paths.add(MANIFEST_FILENAME)
 
@@ -205,7 +218,9 @@ def validate_viewer_pack(
 
             for kind in required_kinds:
                 if not contents.get(kind, False):
-                    result.add_error(f"Strict mode: required content kind missing: {kind}")
+                    result.add_error(
+                        f"Strict mode: required content kind missing: {kind}"
+                    )
                 else:
                     result.add_pass()
 
@@ -224,14 +239,16 @@ def validate_viewer_pack(
 
 def print_report(result: ValidationResult, zip_path: Path) -> None:
     """Print validation report to stdout."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Viewer Pack Validation: {zip_path.name}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     if result.valid:
         print(f"\n✓ VALID ({result.checks_passed} checks passed)")
     else:
-        print(f"\n✗ INVALID ({result.checks_failed} errors, {result.checks_passed} passed)")
+        print(
+            f"\n✗ INVALID ({result.checks_failed} errors, {result.checks_passed} passed)"
+        )
 
     if result.errors:
         print(f"\nErrors ({len(result.errors)}):")

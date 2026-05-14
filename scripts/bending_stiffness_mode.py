@@ -5,7 +5,6 @@ import csv
 import datetime as dt
 import hashlib
 import json
-import math
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, Optional
@@ -19,7 +18,12 @@ TOOL_VERSION = os.getenv("TAP_TONE_PI_VERSION", "v1.0")
 # Helpers (time + hashing + IO)
 # ----------------------------
 def utc_now_iso() -> str:
-    return dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    return (
+        dt.datetime.now(dt.timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def sha256_bytes(b: bytes) -> str:
@@ -65,7 +69,9 @@ def _kinds_count(files: List[Dict[str, Any]]) -> Dict[str, int]:
     return kinds
 
 
-def ensure_session_dir(out_root: Path, session_id: str, session_root_override: Optional[str]) -> Path:
+def ensure_session_dir(
+    out_root: Path, session_id: str, session_root_override: Optional[str]
+) -> Path:
     if session_root_override:
         return Path(session_root_override).expanduser().resolve()
     return (out_root / f"session_{session_id}").resolve()
@@ -102,12 +108,16 @@ def read_csv_pairs(path: Path) -> List[Tuple[float, float]]:
     rows: List[Tuple[float, float]] = []
     with path.open("r", encoding="utf-8") as f:
         r = csv.DictReader(f)
-        if not r.fieldnames or "load" not in r.fieldnames or "deflection" not in r.fieldnames:
+        if (
+            not r.fieldnames
+            or "load" not in r.fieldnames
+            or "deflection" not in r.fieldnames
+        ):
             raise ValueError("CSV must contain headers: load,deflection")
         for row in r:
             if row.get("load") is None or row.get("deflection") is None:
                 continue
-            rows.append((float(row["load"]), float(row["deflection"])) )
+            rows.append((float(row["load"]), float(row["deflection"])))
     if not rows:
         raise ValueError("No valid rows found in CSV.")
     return rows
@@ -151,13 +161,13 @@ def compute_ei_three_point(k_force_per_deflection: float, span_mm: float) -> flo
       EI = (P/δ) L^3 / 48
     Returns EI in N*mm^2 when k is N/mm and L is mm.
     """
-    return (k_force_per_deflection * (span_mm ** 3)) / 48.0
+    return (k_force_per_deflection * (span_mm**3)) / 48.0
 
 
 # ----------------------------
 # Statistics / Uncertainty
 # ----------------------------
-import math as _math
+import math as _math  # noqa: E402
 
 
 def mean_std(vals: List[float]) -> Tuple[float, float]:
@@ -224,26 +234,53 @@ def strip_nulls(x: Any) -> Any:
 
 
 # ----------------------------
-# CLI
+# CLI helpers (extracted from main)
 # ----------------------------
-def main() -> None:
-    ap = argparse.ArgumentParser(description="Bending stiffness test (measurement-only) bundle logger + uncertainty micro")
+
+
+def _parse_args() -> argparse.Namespace:
+    ap = argparse.ArgumentParser(
+        description="Bending stiffness test (measurement-only) bundle logger + uncertainty micro"
+    )
 
     ap.add_argument("--out", required=True, help="Output directory (bundle root)")
-    ap.add_argument("--test-id", default=None, help="Optional test id; if omitted, timestamp-based id is used")
-    ap.add_argument("--method", choices=["three_point_bending", "cantilever"], default="three_point_bending")
+    ap.add_argument(
+        "--test-id",
+        default=None,
+        help="Optional test id; if omitted, timestamp-based id is used",
+    )
+    ap.add_argument(
+        "--method",
+        choices=["three_point_bending", "cantilever"],
+        default="three_point_bending",
+    )
     ap.add_argument("--units-length", choices=["mm", "in"], default="mm")
     ap.add_argument("--units-force", choices=["N", "lbf"], default="N")
 
     ap.add_argument("--specimen-id", required=True)
-    ap.add_argument("--material-role", choices=["top", "back", "brace_stock", "unknown"], default="unknown")
+    ap.add_argument(
+        "--material-role",
+        choices=["top", "back", "brace_stock", "unknown"],
+        default="unknown",
+    )
     ap.add_argument("--wood-species", default=None)
-    ap.add_argument("--grain-orientation", choices=["longitudinal", "cross", "unknown"], default="unknown")
+    ap.add_argument(
+        "--grain-orientation",
+        choices=["longitudinal", "cross", "unknown"],
+        default="unknown",
+    )
 
-    ap.add_argument("--span-mm", type=float, required=True, help="Support span in mm (or effective length).")
+    ap.add_argument(
+        "--span-mm",
+        type=float,
+        required=True,
+        help="Support span in mm (or effective length).",
+    )
 
     # Base readings (single replicate)
-    ap.add_argument("--readings-csv", default=None, help="CSV path with headers load,deflection")
+    ap.add_argument(
+        "--readings-csv", default=None, help="CSV path with headers load,deflection"
+    )
     ap.add_argument(
         "--pair",
         action="append",
@@ -260,96 +297,135 @@ def main() -> None:
     )
 
     # Uncertainty inputs
-    ap.add_argument("--dial-resolution-mm", type=float, default=None, help="Dial indicator resolution in mm (optional).")
-    ap.add_argument("--load-resolution-force", type=float, default=None, help="Load resolution in same force units (optional).")
+    ap.add_argument(
+        "--dial-resolution-mm",
+        type=float,
+        default=None,
+        help="Dial indicator resolution in mm (optional).",
+    )
+    ap.add_argument(
+        "--load-resolution-force",
+        type=float,
+        default=None,
+        help="Load resolution in same force units (optional).",
+    )
     ap.add_argument("--ci-level", type=float, choices=[0.90, 0.95, 0.99], default=0.95)
 
     # Calibration (optional)
-    ap.add_argument("--dial-zeroed", action="store_true", help="Mark dial indicator as zeroed for this session.")
-    ap.add_argument("--dial-zeroed-at-utc", default=None, help="UTC timestamp when dial was zeroed (ISO). If omitted and --dial-zeroed, uses now.")
-    ap.add_argument("--dial-zero-method", choices=["manual_zero", "tare_block", "other"], default=None)
+    ap.add_argument(
+        "--dial-zeroed",
+        action="store_true",
+        help="Mark dial indicator as zeroed for this session.",
+    )
+    ap.add_argument(
+        "--dial-zeroed-at-utc",
+        default=None,
+        help="UTC timestamp when dial was zeroed (ISO). If omitted and --dial-zeroed, uses now.",
+    )
+    ap.add_argument(
+        "--dial-zero-method",
+        choices=["manual_zero", "tare_block", "other"],
+        default=None,
+    )
     ap.add_argument("--dial-zero-notes", default=None)
 
-    ap.add_argument("--load-cell-present", action="store_true", help="Indicates a load cell was used for force measurement.")
-    ap.add_argument("--load-cell-calibration-date-utc", default=None, help="ISO date/datetime (UTC) for last load cell calibration.")
+    ap.add_argument(
+        "--load-cell-present",
+        action="store_true",
+        help="Indicates a load cell was used for force measurement.",
+    )
+    ap.add_argument(
+        "--load-cell-calibration-date-utc",
+        default=None,
+        help="ISO date/datetime (UTC) for last load cell calibration.",
+    )
     ap.add_argument("--load-cell-cal-provider", default=None)
     ap.add_argument("--load-cell-cert-id", default=None)
     ap.add_argument("--load-cell-cal-notes", default=None)
 
-    ap.add_argument("--standard-used", action="store_true", help="If you ran a known standard specimen check.")
+    ap.add_argument(
+        "--standard-used",
+        action="store_true",
+        help="If you ran a known standard specimen check.",
+    )
     ap.add_argument("--standard-specimen-id", default=None)
     ap.add_argument("--standard-expected-k", type=float, default=None)
     ap.add_argument("--standard-observed-k", type=float, default=None)
     ap.add_argument("--standard-tolerance", type=float, default=None)
 
     # Session calibration (shared capsule)
-    ap.add_argument("--session-id", default=None, help="Optional session id for shared calibration capsule.")
-    ap.add_argument("--session-root", default=None, help="Optional override for session folder root. Defaults to <out>/session_<session_id>/")
-    ap.add_argument("--session-calibration", default=None, help="Path to an existing session_calibration.json to use.")
-    ap.add_argument("--write-session-calibration", action="store_true", help="Write/overwrite session_calibration.json from CLI calibration flags.")
+    ap.add_argument(
+        "--session-id",
+        default=None,
+        help="Optional session id for shared calibration capsule.",
+    )
+    ap.add_argument(
+        "--session-root",
+        default=None,
+        help="Optional override for session folder root. Defaults to <out>/session_<session_id>/",
+    )
+    ap.add_argument(
+        "--session-calibration",
+        default=None,
+        help="Path to an existing session_calibration.json to use.",
+    )
+    ap.add_argument(
+        "--write-session-calibration",
+        action="store_true",
+        help="Write/overwrite session_calibration.json from CLI calibration flags.",
+    )
 
     ap.add_argument("--operator", default=None)
     ap.add_argument("--device-id", default=None)
     ap.add_argument("--notes", default=None)
 
-    ap.add_argument("--pack", action="store_true", help="Create bundle.zip next to the bundle directory")
+    ap.add_argument(
+        "--pack",
+        action="store_true",
+        help="Create bundle.zip next to the bundle directory",
+    )
 
-    args = ap.parse_args()
+    return ap.parse_args()
 
-    started = utc_now_iso()
-    bundle_id = args.test_id or f"bend_{dt.datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')}"
 
-    out_root = Path(args.out).expanduser().resolve()
-    bundle_dir = out_root / bundle_id
-    raw_dir = bundle_dir / "raw"
-    analysis_dir = bundle_dir / "analysis"
-    replicates_dir = raw_dir / "replicates"
-
-    bundle_dir.mkdir(parents=True, exist_ok=True)
-
-    # ----------------------------
-    # Session calibration setup
-    # ----------------------------
-    session_cal_obj: Optional[Dict[str, Any]] = None
-    session_cal_path: Optional[Path] = None
-
-    session_manifest_path: Optional[Path] = None
-    if args.session_id:
-        session_dir = ensure_session_dir(out_root, args.session_id, args.session_root)
-        session_dir.mkdir(parents=True, exist_ok=True)
-        session_cal_path = session_dir / "session_calibration.json"
-        session_manifest_path = session_dir / "session_manifest.jsonl"
-
-    # Priority: 1) explicit --session-calibration, 2) existing session_<id>/session_calibration.json
-    if args.session_calibration:
-        p = Path(args.session_calibration).expanduser().resolve()
-        session_cal_obj = read_json(p)
-    elif session_cal_path and session_cal_path.exists():
-        session_cal_obj = read_json(session_cal_path)
-
-    # Determine replicates
+def _collect_replicate_samples(
+    args: argparse.Namespace,
+) -> List[List[Tuple[float, float]]]:
+    """Parse and collect replicate samples from args."""
     replicate_samples: List[List[Tuple[float, float]]] = []
 
     if args.replicate:
-        for i, spec in enumerate(args.replicate, start=1):
+        for spec in args.replicate:
             if spec.startswith("csv:"):
-                p = Path(spec[len("csv:"):]).expanduser().resolve()
+                p = Path(spec[len("csv:") :]).expanduser().resolve()
                 replicate_samples.append(read_csv_pairs(p))
             elif spec.startswith("pairs:"):
-                s = spec[len("pairs:"):]
+                s = spec[len("pairs:") :]
                 replicate_samples.append(parse_semicolon_pairs(s))
             else:
                 raise SystemExit("Each --replicate must start with csv: or pairs:")
     else:
         # Use base readings as single replicate
         if args.readings_csv:
-            replicate_samples.append(read_csv_pairs(Path(args.readings_csv).expanduser().resolve()))
+            replicate_samples.append(
+                read_csv_pairs(Path(args.readings_csv).expanduser().resolve())
+            )
         else:
             if not args.pair:
-                raise SystemExit("Provide either --readings-csv or at least one --pair load,deflection")
+                raise SystemExit(
+                    "Provide either --readings-csv or at least one --pair load,deflection"
+                )
             replicate_samples.append(parse_pairs_list(args.pair))
 
-    # Write canonical readings.csv for overall (replicate 1) and each replicate
+    return replicate_samples
+
+
+def _write_csv_files(
+    raw_dir: Path,
+    replicates_dir: Path,
+    replicate_samples: List[List[Tuple[float, float]]],
+) -> List[str]:
+    """Write readings CSV files. Returns list of replicate relpaths."""
     raw_dir.mkdir(parents=True, exist_ok=True)
     replicates_dir.mkdir(parents=True, exist_ok=True)
 
@@ -372,7 +448,14 @@ def main() -> None:
                 w.writerow([f"{load:.10g}", f"{defl:.10g}"])
         rep_relpaths.append(f"raw/replicates/replicate_{idx:02d}.csv")
 
-    # Fit each replicate
+    return rep_relpaths
+
+
+def _fit_replicates(
+    replicate_samples: List[List[Tuple[float, float]]],
+    args: argparse.Namespace,
+) -> Tuple[List[float], List[float], List[float], List[str]]:
+    """Fit each replicate. Returns (ks, r2s, eis, warnings)."""
     ks: List[float] = []
     r2s: List[float] = []
     eis: List[float] = []
@@ -387,36 +470,153 @@ def main() -> None:
             warnings.append(f"low_linearity_r2:{fit['r2']:.4f}")
 
         # EI only when three-point AND SI/mm
-        if args.method == "three_point_bending" and args.units_length == "mm" and args.units_force == "N":
-            eis.append(compute_ei_three_point(k_force_per_deflection=fit["k"], span_mm=float(args.span_mm)))
+        if (
+            args.method == "three_point_bending"
+            and args.units_length == "mm"
+            and args.units_force == "N"
+        ):
+            eis.append(
+                compute_ei_three_point(
+                    k_force_per_deflection=fit["k"], span_mm=float(args.span_mm)
+                )
+            )
 
-    # Choose “primary” values as replicate 1 (keeps continuity)
-    k_primary = ks[0]
-    r2_primary = r2s[0]
-    ei_primary = eis[0] if eis else None
+    return ks, r2s, eis, warnings
 
-    # Build uncertainty (optional)
-    uncertainty_block: Optional[Dict[str, Any]] = None
-    if len(ks) > 1 or args.dial_resolution_mm is not None or args.load_resolution_force is not None:
-        # Method selection
-        method = "replicates_normal_approx" if len(ks) > 1 else "quantization_only"
 
-        uncertainty_block = {
-            "method": method,
-            "ci_level": float(args.ci_level),
-            "inputs": {
-                "dial_resolution_mm": float(args.dial_resolution_mm) if args.dial_resolution_mm is not None else 0.0,
-                "load_resolution_force": float(args.load_resolution_force) if args.load_resolution_force is not None else None,
-                "replicates": int(len(ks))
-            },
-            "k": uncertain_value(ks, args.ci_level),
-            "ei_n_mm2": uncertain_value(eis, args.ci_level) if eis and len(eis) > 0 else None
-        }
-        # Conservative note: quantization-only is not rigorously propagated; it’s logged for traceability.
-        if len(ks) == 1 and (args.dial_resolution_mm is not None or args.load_resolution_force is not None):
-            warnings.append("uncertainty_quantization_only_logged_no_propagation")
+def _build_uncertainty_block(
+    ks: List[float],
+    eis: List[float],
+    args: argparse.Namespace,
+    warnings: List[str],
+) -> Optional[Dict[str, Any]]:
+    """Build uncertainty block if applicable."""
+    if not (
+        len(ks) > 1
+        or args.dial_resolution_mm is not None
+        or args.load_resolution_force is not None
+    ):
+        return None
 
-    # EI assumptions
+    method = "replicates_normal_approx" if len(ks) > 1 else "quantization_only"
+
+    uncertainty_block = {
+        "method": method,
+        "ci_level": float(args.ci_level),
+        "inputs": {
+            "dial_resolution_mm": float(args.dial_resolution_mm)
+            if args.dial_resolution_mm is not None
+            else 0.0,
+            "load_resolution_force": float(args.load_resolution_force)
+            if args.load_resolution_force is not None
+            else None,
+            "replicates": int(len(ks)),
+        },
+        "k": uncertain_value(ks, args.ci_level),
+        "ei_n_mm2": uncertain_value(eis, args.ci_level)
+        if eis and len(eis) > 0
+        else None,
+    }
+
+    if len(ks) == 1 and (
+        args.dial_resolution_mm is not None or args.load_resolution_force is not None
+    ):
+        warnings.append("uncertainty_quantization_only_logged_no_propagation")
+
+    return uncertainty_block
+
+
+def _build_dial_block(
+    args: argparse.Namespace, dial_zeroed_at: Optional[str]
+) -> Optional[Dict[str, Any]]:
+    """Build dial indicator calibration sub-block."""
+    if not (args.dial_zeroed or args.dial_zero_method or args.dial_zero_notes):
+        return None
+    return {
+        "zeroed": bool(args.dial_zeroed),
+        "zeroed_at_utc": dial_zeroed_at or utc_now_iso(),
+        "method": args.dial_zero_method,
+        "notes": args.dial_zero_notes,
+    }
+
+
+def _build_load_cell_block(args: argparse.Namespace) -> Optional[Dict[str, Any]]:
+    """Build load cell calibration sub-block."""
+    if not (
+        args.load_cell_present
+        or args.load_cell_calibration_date_utc
+        or args.load_cell_cal_provider
+        or args.load_cell_cert_id
+    ):
+        return None
+    return {
+        "present": bool(args.load_cell_present),
+        "calibration_date_utc": args.load_cell_calibration_date_utc or "unknown",
+        "calibration_provider": args.load_cell_cal_provider,
+        "certificate_id": args.load_cell_cert_id,
+        "notes": args.load_cell_cal_notes,
+    }
+
+
+def _build_standard_block(args: argparse.Namespace) -> Optional[Dict[str, Any]]:
+    """Build standard specimen calibration sub-block."""
+    if not (args.standard_used or args.standard_specimen_id):
+        return None
+
+    pass_flag = None
+    if (
+        args.standard_expected_k is not None
+        and args.standard_observed_k is not None
+        and args.standard_tolerance is not None
+    ):
+        pass_flag = (
+            abs(args.standard_observed_k - args.standard_expected_k)
+            <= args.standard_tolerance
+        )
+
+    return {
+        "used": bool(args.standard_used),
+        "specimen_id": args.standard_specimen_id or "unknown",
+        "expected_k": args.standard_expected_k,
+        "observed_k": args.standard_observed_k,
+        "tolerance": args.standard_tolerance,
+        "pass": pass_flag,
+        "notes": None,
+    }
+
+
+def _build_calibration_block(args: argparse.Namespace) -> Optional[Dict[str, Any]]:
+    """Build calibration block from args."""
+    if not (args.dial_zeroed or args.load_cell_present or args.standard_used):
+        return None
+
+    dial_zeroed_at = args.dial_zeroed_at_utc
+    if args.dial_zeroed and not dial_zeroed_at:
+        dial_zeroed_at = utc_now_iso()
+
+    return {
+        "dial": _build_dial_block(args, dial_zeroed_at)
+        or {"zeroed": False, "zeroed_at_utc": utc_now_iso()},
+        "load_cell": _build_load_cell_block(args)
+        or {"present": False, "calibration_date_utc": "unknown"},
+        "standard_specimen": _build_standard_block(args)
+        or {"used": False, "specimen_id": "unknown"},
+    }
+
+
+def _build_analysis_obj(
+    args: argparse.Namespace,
+    bundle_id: str,
+    started: str,
+    replicate_samples: List[List[Tuple[float, float]]],
+    rep_relpaths: List[str],
+    k_primary: float,
+    r2_primary: float,
+    ei_primary: Optional[float],
+    uncertainty_block: Optional[Dict[str, Any]],
+    warnings: List[str],
+) -> Dict[str, Any]:
+    """Build the analysis output object."""
     ei_assumptions = None
     if args.method == "three_point_bending":
         if args.units_length == "mm" and args.units_force == "N":
@@ -424,8 +624,12 @@ def main() -> None:
         else:
             warnings.append("ei_not_computed_non_si_units")
 
-    analysis_obj: Dict[str, Any] = {
-        "schema": {"name": "bending_stiffness", "version": "1.1", "created_at_utc": utc_now_iso()},
+    return {
+        "schema": {
+            "name": "bending_stiffness",
+            "version": "1.1",
+            "created_at_utc": utc_now_iso(),
+        },
         "test": {
             "test_id": bundle_id,
             "method": args.method,
@@ -442,15 +646,25 @@ def main() -> None:
             "span_mm": float(args.span_mm),
             "support_type": "unknown",
             "load_nose_radius_mm": None,
-            "dial_indicator_resolution_mm": float(args.dial_resolution_mm) if args.dial_resolution_mm is not None else None,
+            "dial_indicator_resolution_mm": float(args.dial_resolution_mm)
+            if args.dial_resolution_mm is not None
+            else None,
         },
         "readings": {
             "csv_relpath": "raw/readings.csv",
-            "rows": [{"load": float(l), "deflection": float(d)} for l, d in replicate_samples[0]],
+            "rows": [
+                {"load": float(ld), "deflection": float(df)}
+                for ld, df in replicate_samples[0]
+            ],
             "replicates": [
-                {"csv_relpath": rp, "rows": [{"load": float(l), "deflection": float(d)} for l, d in rs]}
+                {
+                    "csv_relpath": rp,
+                    "rows": [
+                        {"load": float(ld), "deflection": float(df)} for ld, df in rs
+                    ],
+                }
                 for rp, rs in zip(rep_relpaths, replicate_samples)
-            ]
+            ],
         },
         "results": {
             "k_force_per_deflection": float(k_primary),
@@ -469,84 +683,41 @@ def main() -> None:
         },
     }
 
-    # ----------------------------
-    # Calibration block (optional)
-    # ----------------------------
-    calibration = None
-    if args.dial_zeroed or args.load_cell_present or args.standard_used:
-        dial_zeroed_at = args.dial_zeroed_at_utc
-        if args.dial_zeroed and not dial_zeroed_at:
-            dial_zeroed_at = utc_now_iso()
 
-        # Dial block only if dial-related flags used
-        dial_block = None
-        if args.dial_zeroed or args.dial_zero_method or args.dial_zero_notes:
-            dial_block = {
-                "zeroed": bool(args.dial_zeroed),
-                "zeroed_at_utc": dial_zeroed_at or utc_now_iso(),
-                "method": args.dial_zero_method,
-                "notes": args.dial_zero_notes,
-            }
-
-        # Load cell block only if load cell-related flags used
-        load_cell_block = None
-        if args.load_cell_present or args.load_cell_calibration_date_utc or args.load_cell_cal_provider or args.load_cell_cert_id:
-            load_cell_block = {
-                "present": bool(args.load_cell_present),
-                "calibration_date_utc": args.load_cell_calibration_date_utc or "unknown",
-                "calibration_provider": args.load_cell_cal_provider,
-                "certificate_id": args.load_cell_cert_id,
-                "notes": args.load_cell_cal_notes,
-            }
-
-        # Standard specimen block only if standard flags used
-        standard_block = None
-        if args.standard_used or args.standard_specimen_id:
-            pass_flag = None
-            if (args.standard_expected_k is not None and args.standard_observed_k is not None and args.standard_tolerance is not None):
-                pass_flag = abs(args.standard_observed_k - args.standard_expected_k) <= args.standard_tolerance
-
-            standard_block = {
-                "used": bool(args.standard_used),
-                "specimen_id": args.standard_specimen_id or "unknown",
-                "expected_k": args.standard_expected_k,
-                "observed_k": args.standard_observed_k,
-                "tolerance": args.standard_tolerance,
-                "pass": pass_flag,
-                "notes": None,
-            }
-
-        calibration = {
-            "dial": dial_block or {"zeroed": False, "zeroed_at_utc": utc_now_iso()},
-            "load_cell": load_cell_block or {"present": False, "calibration_date_utc": "unknown"},
-            "standard_specimen": standard_block or {"used": False, "specimen_id": "unknown"}
-        }
-
+def _apply_session_calibration(
+    args: argparse.Namespace,
+    analysis_obj: Dict[str, Any],
+    calibration: Optional[Dict[str, Any]],
+    session_cal_obj: Optional[Dict[str, Any]],
+    session_cal_path: Optional[Path],
+) -> None:
+    """Apply and write session calibration."""
     # Write session calibration when requested
     if args.session_id and args.write_session_calibration and calibration:
-        session_cal_obj = {
-            "schema": {"name": "session_calibration", "version": "1.0", "created_at_utc": utc_now_iso()},
+        new_session_cal = {
+            "schema": {
+                "name": "session_calibration",
+                "version": "1.0",
+                "created_at_utc": utc_now_iso(),
+            },
             "session": {
                 "session_id": args.session_id,
                 "operator": args.operator,
                 "device_id": args.device_id,
-                "notes": None
+                "notes": None,
             },
-            "calibration": calibration
+            "calibration": calibration,
         }
-        write_json(session_cal_path, strip_nulls(session_cal_obj))
+        write_json(session_cal_path, strip_nulls(new_session_cal))
+        # Update the session_cal_obj reference for downstream use
+        session_cal_obj = new_session_cal
 
     # Apply session calibration if present and no per-run calibration flags provided
-    run_has_cal_flags = any([
-        args.dial_zeroed, args.dial_zero_method, args.dial_zero_notes,
-        args.load_cell_present, args.load_cell_calibration_date_utc, args.load_cell_cal_provider, args.load_cell_cert_id,
-        args.standard_used, args.standard_specimen_id, args.standard_expected_k, args.standard_observed_k, args.standard_tolerance
-    ])
+    final_calibration = calibration
+    if session_cal_obj and not _has_calibration_flags(args):
+        final_calibration = session_cal_obj.get("calibration", calibration)
 
-    if session_cal_obj and not run_has_cal_flags:
-        calibration = session_cal_obj.get("calibration", calibration)
-
-    analysis_obj["calibration"] = calibration
+    analysis_obj["calibration"] = final_calibration
 
     # Add session reference pointer if session calibration is in use
     if args.session_id and session_cal_obj:
@@ -554,23 +725,36 @@ def main() -> None:
             analysis_obj["calibration"] = {}
         analysis_obj["calibration"]["session_ref"] = {
             "session_id": args.session_id,
-            "session_calibration_relpath": "calibration/session_calibration.json"
+            "session_calibration_relpath": "calibration/session_calibration.json",
         }
 
-    analysis_obj = strip_nulls(analysis_obj)
 
-    analysis_path = analysis_dir / "bending_stiffness.json"
-    write_json(analysis_path, analysis_obj)
+def _has_calibration_flags(args: argparse.Namespace) -> bool:
+    """Check if any per-run calibration flags were provided."""
+    return any(
+        [
+            args.dial_zeroed,
+            args.dial_zero_method,
+            args.dial_zero_notes,
+            args.load_cell_present,
+            args.load_cell_calibration_date_utc,
+            args.load_cell_cal_provider,
+            args.load_cell_cert_id,
+            args.standard_used,
+            args.standard_specimen_id,
+            args.standard_expected_k,
+            args.standard_observed_k,
+            args.standard_tolerance,
+        ]
+    )
 
-    # Copy session calibration into bundle (self-contained)
-    session_copy_rel: Optional[str] = None
-    if session_cal_obj:
-        session_copy_rel = "calibration/session_calibration.json"
-        write_json(bundle_dir / session_copy_rel, session_cal_obj)
 
-    finished = utc_now_iso()
-
-    # Build manifest
+def _build_manifest_files(
+    bundle_dir: Path,
+    rep_relpaths: List[str],
+    session_copy_rel: Optional[str],
+) -> List[Dict[str, Any]]:
+    """Build manifest files list."""
     files: List[Dict[str, Any]] = []
 
     def add_file(rel: str, kind: str, mime: str) -> None:
@@ -593,6 +777,142 @@ def main() -> None:
     if session_copy_rel:
         add_file(session_copy_rel, "session_calibration", "application/json")
 
+    return files
+
+
+def _append_session_ledger(
+    session_manifest_path: Path,
+    session_dir: Path,
+    bundle_dir: Path,
+    out_root: Path,
+    args: argparse.Namespace,
+    bundle_id: str,
+    bundle_sha: str,
+    analysis_obj: Dict[str, Any],
+    files: List[Dict[str, Any]],
+) -> None:
+    """Append entry to session manifest ledger."""
+    try:
+        bundle_relpath = str(bundle_dir.relative_to(session_dir)).replace("\\", "/")
+    except ValueError:
+        bundle_relpath = str(bundle_dir.relative_to(out_root)).replace("\\", "/")
+
+    warnings_list = analysis_obj.get("results", {}).get("warnings", [])
+    ledger_line = {
+        "ts_utc": utc_now_iso(),
+        "session_id": args.session_id,
+        "bundle_id": bundle_id,
+        "bundle_sha256": bundle_sha,
+        "relpath_bundle_dir": bundle_relpath,
+        "specimen_id": args.specimen_id,
+        "mode": "bending_stiffness",
+        "units": {"length": args.units_length, "force": args.units_force},
+        "ok": len(warnings_list) == 0,
+        "warnings": warnings_list,
+        "files": {"count": len(files), "kinds": _kinds_count(files)},
+    }
+    append_jsonl(session_manifest_path, strip_nulls(ledger_line))
+
+
+# ----------------------------
+# CLI
+# ----------------------------
+def main() -> None:
+    args = _parse_args()
+
+    started = utc_now_iso()
+    bundle_id = (
+        args.test_id
+        or f"bend_{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+    )
+
+    out_root = Path(args.out).expanduser().resolve()
+    bundle_dir = out_root / bundle_id
+    raw_dir = bundle_dir / "raw"
+    analysis_dir = bundle_dir / "analysis"
+    replicates_dir = raw_dir / "replicates"
+
+    bundle_dir.mkdir(parents=True, exist_ok=True)
+
+    # Session calibration setup
+    session_cal_obj: Optional[Dict[str, Any]] = None
+    session_cal_path: Optional[Path] = None
+    session_manifest_path: Optional[Path] = None
+    session_dir: Optional[Path] = None
+
+    if args.session_id:
+        session_dir = ensure_session_dir(out_root, args.session_id, args.session_root)
+        session_dir.mkdir(parents=True, exist_ok=True)
+        session_cal_path = session_dir / "session_calibration.json"
+        session_manifest_path = session_dir / "session_manifest.jsonl"
+
+    # Load session calibration
+    if args.session_calibration:
+        p = Path(args.session_calibration).expanduser().resolve()
+        session_cal_obj = read_json(p)
+    elif session_cal_path and session_cal_path.exists():
+        session_cal_obj = read_json(session_cal_path)
+
+    # Collect replicate samples
+    replicate_samples = _collect_replicate_samples(args)
+
+    # Write CSV files
+    rep_relpaths = _write_csv_files(raw_dir, replicates_dir, replicate_samples)
+
+    # Fit replicates
+    ks, r2s, eis, warnings = _fit_replicates(replicate_samples, args)
+
+    k_primary = ks[0]
+    r2_primary = r2s[0]
+    ei_primary = eis[0] if eis else None
+
+    # Build uncertainty
+    uncertainty_block = _build_uncertainty_block(ks, eis, args, warnings)
+
+    # Build analysis object
+    analysis_obj = _build_analysis_obj(
+        args,
+        bundle_id,
+        started,
+        replicate_samples,
+        rep_relpaths,
+        k_primary,
+        r2_primary,
+        ei_primary,
+        uncertainty_block,
+        warnings,
+    )
+
+    # Build and apply calibration
+    calibration = _build_calibration_block(args)
+    _apply_session_calibration(
+        args, analysis_obj, calibration, session_cal_obj, session_cal_path
+    )
+
+    # Update session_cal_obj if we wrote a new one
+    if args.session_id and args.write_session_calibration and calibration:
+        session_cal_obj = (
+            read_json(session_cal_path)
+            if session_cal_path and session_cal_path.exists()
+            else None
+        )
+
+    analysis_obj = strip_nulls(analysis_obj)
+
+    analysis_path = analysis_dir / "bending_stiffness.json"
+    write_json(analysis_path, analysis_obj)
+
+    # Copy session calibration into bundle (self-contained)
+    session_copy_rel: Optional[str] = None
+    if session_cal_obj:
+        session_copy_rel = "calibration/session_calibration.json"
+        write_json(bundle_dir / session_copy_rel, session_cal_obj)
+
+    finished = utc_now_iso()
+
+    # Build manifest files
+    files = _build_manifest_files(bundle_dir, rep_relpaths, session_copy_rel)
+
     meta = {
         "bundle_id": bundle_id,
         "capture_started_at_utc": started,
@@ -610,9 +930,9 @@ def main() -> None:
             "load_cell_present": bool(args.load_cell_present),
             "load_cell_calibration_date_utc": args.load_cell_calibration_date_utc,
             "standard_used": bool(args.standard_used),
-            "standard_specimen_id": args.standard_specimen_id
+            "standard_specimen_id": args.standard_specimen_id,
         },
-        "session_id": args.session_id
+        "session_id": args.session_id,
     }
 
     manifest = {
@@ -635,35 +955,19 @@ def main() -> None:
         zip_path = out_root / f"{bundle_id}.zip"
         pack_zip(bundle_dir, zip_path)
 
-    # ----------------------------
-    # Append to session manifest ledger (JSONL)
-    # ----------------------------
-    if session_manifest_path:
-        # Compute bundle_relpath relative to session_dir
-        try:
-            bundle_relpath = str(bundle_dir.relative_to(session_dir)).replace("\\", "/")
-        except ValueError:
-            # Bundle not under session_dir; use relative to out_root
-            bundle_relpath = str(bundle_dir.relative_to(out_root)).replace("\\", "/")
-
-        warnings_list = analysis_obj.get("results", {}).get("warnings", [])
-        ledger_line = {
-            "ts_utc": utc_now_iso(),
-            "session_id": args.session_id,
-            "bundle_id": bundle_id,
-            "bundle_sha256": bundle_sha,
-            "relpath_bundle_dir": bundle_relpath,
-            "specimen_id": args.specimen_id,
-            "mode": "bending_stiffness",
-            "units": {"length": args.units_length, "force": args.units_force},
-            "ok": len(warnings_list) == 0,
-            "warnings": warnings_list,
-            "files": {
-                "count": len(files),
-                "kinds": _kinds_count(files)
-            }
-        }
-        append_jsonl(session_manifest_path, strip_nulls(ledger_line))
+    # Append to session manifest ledger
+    if session_manifest_path and session_dir:
+        _append_session_ledger(
+            session_manifest_path,
+            session_dir,
+            bundle_dir,
+            out_root,
+            args,
+            bundle_id,
+            bundle_sha,
+            analysis_obj,
+            files,
+        )
 
     print(f"Wrote bundle: {bundle_dir}")
     print(f"bundle_sha256: {bundle_sha}")

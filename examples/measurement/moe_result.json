@@ -1,0 +1,25 @@
+{
+  "schema_id": "moe_result",
+  "schema_version": "1.0",
+  "artifact_type": "bending_moe",
+  "created_utc": "2026-03-29T12:00:00Z",
+  "specimen_id": "spruce-top-001",
+  "method": "3PT",
+  "span_mm": 400.0,
+  "width_mm": 50.0,
+  "thickness_mm": 3.5,
+  "E_GPa": 12.8,
+  "EI_Nmm2": 1456000.0,
+  "uncertainty": {
+    "E_GPa_pm": 0.5,
+    "EI_Nmm2_pm": 50000.0
+  },
+  "inputs": {
+    "load_series_path": "load_series.json",
+    "displacement_series_path": "displacement_series.json"
+  },
+  "environment": {
+    "temp_C": 22.5,
+    "rh_pct": 45.0
+  }
+}

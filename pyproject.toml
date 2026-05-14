@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tap-tone-pi"
-version = "0.1.0"
-description = "Offline tap tone analyzer for Raspberry Pi"
+version = "2.3.0-alpha.5"
+description = "Tap tone analysis toolkit for luthiers: capture, analyze, and visualize acoustic signatures"
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.24",
@@ -13,12 +13,30 @@ dependencies = [
   "sounddevice>=0.4.6",
   "pyserial>=3.5",
   "matplotlib>=3.7",
+  "jsonschema>=4.0,<5",
+  "PyQt6>=6.5,<7",
 ]
 
 [project.optional-dependencies]
 dev = [
   "pytest>=7.0",
+  "pytest-cov>=4.0",
+  "mypy>=1.10",
+  "ruff>=0.4.0",
+  "pre-commit>=3.7",
+  "build>=1.0",
+]
+server = [
+  "fastapi>=0.100",
+  "uvicorn>=0.23",
+  "httpx>=0.24",
 ]
 
 [project.scripts]
-tap-tone = "tap_tone.main:main"
+# Primary entry point (unified CLI)
+ttp = "tap_tone_pi.cli.main:main"
+# Legacy alias (backward compatibility - points to same unified CLI)
+tap-tone = "tap_tone_pi.cli.main:main"
+
+[tool.setuptools.packages.find]
+include = ["tap_tone_pi", "tap_tone_pi.*", "tap_tone", "tap_tone.*"]

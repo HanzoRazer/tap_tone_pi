@@ -165,7 +165,34 @@ Key Phase 2 schemas:
 
 ---
 
+## Failure playbook (Analyzer)
+
+1. **Schema validation fails**
+   - Run: `make validate-schemas` (or `python scripts/validate_schemas.py --out-root out`)
+   - Read the error paths/messages and fix the offending JSON producer.
+
+2. **Chladni tolerance exceeded**
+   - The run fails if worst `delta_hz` > `CHLADNI_FREQ_TOLERANCE_HZ` (default 5 Hz).
+   - Re-check your excitation, mounting, or set a stricter/looser env value explicitly.
+
+3. **WAV guard trips in CI**
+   - Direct `scipy.io.wavfile` usage is blocked outside `modes/_shared/wav_io.py`.
+   - Import `read_wav_mono/2ch` or `write_wav_mono/2ch` from that module instead.
+
+4. **Viewer pack export fails**
+   - Check `validation_report.json` for specific rule violations.
+   - Common issues: missing manifest, frequency grid mismatch, peak off-grid.
+
+---
+
+## Run IDs & retention
+
+- Use `from modes._shared.run_id import new_run_dir` to create timestamped run folders,
+  e.g., `out/2026-01-20T17-22-31Z_ab12cd/`.
+- Add a brief retention/backup policy as needed (e.g., sync `out/**` to S3 with SHA256).
+
+---
+
 ## Contributing
 
 See `CONTRIBUTING.md`.
-

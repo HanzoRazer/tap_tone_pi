@@ -1,0 +1,87 @@
+---
+title: "tap-tone-pi — Before & After Consolidation"
+---
+graph TB
+    subgraph BEFORE["❌ CURRENT STATE (Spaghetti)"]
+        direction TB
+
+        GUI_B["gui/app.py<br/><i>subprocess calls</i>"]
+
+        subgraph PKG1["tap_tone/ (root)<br/>v0.1.0 · 634 LOC"]
+            TT_main["main.py"]
+            TT_analysis["analysis.py"]
+            TT_storage["storage.py"]
+            TT_capture["capture.py"]
+        end
+
+        subgraph PKG2["tap-tone-lab/tap_tone/<br/>v0.3.2 · 982 LOC"]
+            LAB_cli["_cli_core.py"]
+            LAB_analysis["analysis.py ⚡"]
+            LAB_storage["storage.py ⚠️"]
+            LAB_exporter["exporter.py 🆕"]
+        end
+
+        subgraph MODES["modes/ · 1812 LOC"]
+            M_wav["_shared/wav_io.py<br/><b>canonical WAV I/O</b>"]
+            M_tap["tap_tone/tap_fft_logger.py"]
+            M_loadcell["acquisition/loadcell_serial.py"]
+            M_dial["acquisition/dial_indicator_serial.py"]
+            M_bend["bending_stiffness/"]
+            M_chladni["chladni/"]
+            M_manifest["_shared/manifest.py"]
+        end
+
+        subgraph P2["scripts/phase2/ · 1461 LOC"]
+            P2_dsp["dsp.py"]
+            P2_metrics["metrics.py"]
+            P2_viz["viz.py"]
+            P2_slice["phase2_slice.py"]
+        end
+
+        %% Dependency arrows
+        TT_storage -->|"imports"| M_wav
+        LAB_storage -.->|"❌ bypasses!<br/>uses scipy directly"| SCIPY["scipy.io.wavfile"]
+        M_tap -->|"imports"| M_wav
+        GUI_B -->|"subprocess"| M_tap
+        GUI_B -->|"subprocess"| M_bend
+        GUI_B -->|"subprocess"| M_chladni
+        P2_slice --> P2_dsp
+        P2_slice --> P2_metrics
+    end
+
+    subgraph AFTER["✅ TARGET STATE (Consolidated)"]
+        direction TB
+
+        GUI_A["gui/app.py<br/><i>direct imports</i>"]
+        CLI_A["cli/main.py<br/><code>ttp</code> command"]
+
+        subgraph CORE["tap_tone_pi/ · single package"]
+            direction TB
+            IO["io/<br/>wav.py · storage.py · manifest.py<br/><b>ONE WAV I/O path</b>"]
+            ANALYSIS["core/<br/>analysis.py · config.py · dsp.py"]
+            CAPTURE["capture/<br/>audio.py · loadcell.py · dial.py"]
+            PH1["phase1/<br/>tap_fft.py"]
+            PH2["phase2/<br/>pipeline.py · metrics.py · viz.py"]
+            BEND["bending/<br/>deflection_to_moe.py"]
+            CHLAD["chladni/<br/>peaks · index_patterns"]
+            EXPORT["export/<br/>viewer_pack.py · exporter.py"]
+        end
+
+        %% Clean dependency arrows
+        GUI_A --> CORE
+        CLI_A --> CORE
+        PH1 --> ANALYSIS
+        PH1 --> IO
+        PH2 --> ANALYSIS
+        PH2 --> IO
+        CAPTURE --> IO
+        BEND --> IO
+        EXPORT --> IO
+    end
+
+    BEFORE -.->|"6-hour migration"| AFTER
+
+    style LAB_storage fill:#ff6b6b,color:#fff
+    style SCIPY fill:#ff6b6b,color:#fff
+    style IO fill:#51cf66,color:#fff
+    style M_wav fill:#51cf66,color:#fff

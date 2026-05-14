@@ -11,6 +11,7 @@ Usage:
     --out out/RUN/chladni/peaks.json \
     --min-hz 50 --max-hz 2000 --prominence 0.02
 """
+
 from __future__ import annotations
 
 import argparse
@@ -49,8 +50,8 @@ def main() -> None:
     )
     args = ap.parse_args()
 
-    # Read WAV using canonical layer
-    meta, x = read_wav_mono(pathlib.Path(args.wav))
+    # Read WAV using canonical layer (returns x, meta)
+    x, meta = read_wav_mono(pathlib.Path(args.wav))
     fs = meta.sample_rate
 
     N = len(x)

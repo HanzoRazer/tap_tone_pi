@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -19,7 +18,9 @@ def heatmap_scatter(
 ) -> None:
     xs = np.array([p.x for p in grid.points], dtype=np.float32)
     ys = np.array([p.y for p in grid.points], dtype=np.float32)
-    vs = np.array([float(values_by_id.get(p.id, 0.0)) for p in grid.points], dtype=np.float32)
+    vs = np.array(
+        [float(values_by_id.get(p.id, 0.0)) for p in grid.points], dtype=np.float32
+    )
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
 

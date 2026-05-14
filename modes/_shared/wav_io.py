@@ -17,6 +17,7 @@ Notes
   - read_wav_mono(): if 2ch, uses channel 0 by default (policy can be changed later).
   - read_wav_2ch(): if mono, duplicates channel to (ref, roving).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -47,18 +48,18 @@ def _to_float32(x: np.ndarray) -> np.ndarray:
 
     # Integer PCM normalization
     if x.dtype == np.int16:
-        return (x.astype(np.float32) / 32768.0)
+        return x.astype(np.float32) / 32768.0
     if x.dtype == np.int32:
         # common 24-bit packed into 32-bit, or true 32-bit PCM
-        return (x.astype(np.float32) / 2147483648.0)
+        return x.astype(np.float32) / 2147483648.0
     if x.dtype == np.uint8:
         # 8-bit unsigned PCM (0..255) with 128 bias
-        return ((x.astype(np.float32) - 128.0) / 128.0)
+        return (x.astype(np.float32) - 128.0) / 128.0
 
     # Fallback for other integer widths
     info = np.iinfo(x.dtype)
     denom = float(max(abs(info.min), info.max))
-    return (x.astype(np.float32) / denom)
+    return x.astype(np.float32) / denom
 
 
 def read_wav_mono(path: str | Path) -> Tuple[np.ndarray, WavMeta]:
@@ -110,7 +111,9 @@ def read_wav_2ch(path: str | Path) -> Tuple[np.ndarray, np.ndarray, WavMeta]:
     return ref.astype(np.float32, copy=False), rov.astype(np.float32, copy=False), meta
 
 
-def write_wav_mono(path: str | Path, x: np.ndarray, fs: int, *, pcm_bits: int = 16) -> None:
+def write_wav_mono(
+    path: str | Path, x: np.ndarray, fs: int, *, pcm_bits: int = 16
+) -> None:
     """Write mono float signal to WAV."""
     _write_wav(path, x, fs, pcm_bits=pcm_bits)
 

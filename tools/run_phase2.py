@@ -10,6 +10,7 @@ Usage:
 This script sets up the import paths correctly and forwards all arguments
 to scripts/phase2_slice.py.
 """
+
 from __future__ import annotations
 
 import sys
@@ -21,7 +22,7 @@ sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(project_root / "scripts"))
 
 # Import and run
-from scripts.phase2_slice import main
+from scripts.phase2_slice import main  # noqa: E402
 
 if __name__ == "__main__":
     # Forward all CLI args (sys.argv[1:] goes to argparse)

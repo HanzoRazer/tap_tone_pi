@@ -185,14 +185,15 @@ def template_spec_json(
 
 
 def template_readme_snippet() -> str:
-    return dedent(
-        """
+    return (
+        dedent(
+            """
         <a id="boundary-rules"></a>
         ## 🔒 Boundary Rules (Enforced by CI)
 
         This repository enforces a hard architectural boundary.
 
-        ❌ Cross-repo imports are not allowed.  
+        ❌ Cross-repo imports are not allowed.
         ✅ Integration must happen via artifacts, schemas, or HTTP APIs.
 
         If CI fails with a boundary violation:
@@ -202,7 +203,9 @@ def template_readme_snippet() -> str:
 
         See `docs/architecture/BoundarySpec.md` for rationale.
         """
-    ).strip() + "\n"
+        ).strip()
+        + "\n"
+    )
 
 
 def template_boundaryspec_md(
@@ -213,15 +216,20 @@ def template_boundaryspec_md(
     integration_channels: List[str],
 ) -> str:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    allowed_list = "\n".join([f"- `{r}`" for r in allowed_roots]) if allowed_roots else "- (none specified)"
+    allowed_list = (
+        "\n".join([f"- `{r}`" for r in allowed_roots])
+        if allowed_roots
+        else "- (none specified)"
+    )
     forbidden_list = "\n".join([f"- `{p}`" for p in forbidden_prefixes])
     channel_list = "\n".join([f"- {c}" for c in integration_channels])
-    return dedent(
-        f"""
+    return (
+        dedent(
+            f"""
         # BoundarySpec — {repo_name} ↔ {counterpart_name}
 
-        Date: {now}  
-        Status: Active  
+        Date: {now}
+        Status: Active
         Enforced by: `ci/check_boundary_imports.py` + `boundary_spec.json`
 
         ## Purpose
@@ -266,4 +274,6 @@ def template_boundaryspec_md(
         - What alternative contract could have been used instead
         - Migration plan for existing code
         """
-    ).strip() + "\n"
+        ).strip()
+        + "\n"
+    )

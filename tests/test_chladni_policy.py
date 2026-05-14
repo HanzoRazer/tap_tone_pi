@@ -1,4 +1,5 @@
 """Tests for Chladni frequency mismatch policy (G.2)."""
+
 from __future__ import annotations
 import pytest
 
@@ -11,12 +12,12 @@ def test_chladni_tolerance_warn_and_pass(monkeypatch):
     peaks = [148.0, 226.0]
     rec = {"freq_hz": 148, "image_path": "F0148.png", "image_freq_tag_hz": 150.0}
     d = attach_pattern_record(rec, peaks)
-    
+
     # Delta should be 2.0 (150 - 148)
     assert 0 < d <= 5.0
     assert rec["nearest_detected_hz"] == 148.0
     assert rec["delta_hz"] == 2.0
-    
+
     run = {
         "schema_id": "chladni_run",
         "schema_version": "1.0",
@@ -27,7 +28,7 @@ def test_chladni_tolerance_warn_and_pass(monkeypatch):
         "excitation": {"mode": "sine"},
         "peaks_hz": peaks,
         "patterns": [rec],
-        "provenance": {"peaks_json_path": "p.json", "peaks_sha256": "a" * 64}
+        "provenance": {"peaks_json_path": "p.json", "peaks_sha256": "a" * 64},
     }
     # Should not raise
     finalize_run(run, tolerance_hz=5.0)
@@ -40,10 +41,10 @@ def test_chladni_tolerance_exceeds_and_fails(monkeypatch):
     peaks = [148.0]
     rec = {"freq_hz": 148, "image_path": "F0148.png", "image_freq_tag_hz": 154.0}
     attach_pattern_record(rec, peaks)
-    
+
     # Delta = 6.0 (154 - 148), exceeds tolerance of 3.0
     assert rec["delta_hz"] == 6.0
-    
+
     run = {
         "schema_id": "chladni_run",
         "schema_version": "1.0",
@@ -54,9 +55,9 @@ def test_chladni_tolerance_exceeds_and_fails(monkeypatch):
         "excitation": {"mode": "sine"},
         "peaks_hz": peaks,
         "patterns": [rec],
-        "provenance": {"peaks_json_path": "p.json", "peaks_sha256": "a" * 64}
+        "provenance": {"peaks_json_path": "p.json", "peaks_sha256": "a" * 64},
     }
-    
+
     with pytest.raises(SystemExit) as exc_info:
         finalize_run(run, tolerance_hz=3.0)
     assert exc_info.value.code == 2
@@ -66,7 +67,7 @@ def test_chladni_no_peaks_detected():
     """When no peaks detected, nearest is None, delta based on image tag only."""
     rec = {"freq_hz": 200, "image_path": "F0200.png", "image_freq_tag_hz": 200.0}
     d = attach_pattern_record(rec, [])
-    
+
     assert rec["nearest_detected_hz"] is None
     assert d == 0.0  # No reference to compare against
 
@@ -76,7 +77,7 @@ def test_chladni_exact_match():
     peaks = [148.0, 226.0, 300.0]
     rec = {"freq_hz": 226, "image_path": "F0226.png", "image_freq_tag_hz": 226.0}
     d = attach_pattern_record(rec, peaks)
-    
+
     assert d == 0.0
     assert rec["nearest_detected_hz"] == 226.0
     assert "_warnings" not in rec  # No warning for exact match

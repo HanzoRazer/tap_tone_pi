@@ -1,8 +1,8 @@
 # ADR-0005: Repeatability, Variance, and Confidence Metrics
 
-**Status:** Accepted  
-**Date:** 2025-12-25  
-**Context:** Tap-Tone Measurement Node (Phase 1+)  
+**Status:** Accepted
+**Date:** 2025-12-25
+**Context:** Tap-Tone Measurement Node (Phase 1+)
 **Decision Drivers:** Measurement reliability, comparability across time, scientific defensibility
 
 ---

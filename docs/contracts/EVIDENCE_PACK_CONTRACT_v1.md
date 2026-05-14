@@ -1,7 +1,7 @@
 # Evidence Pack Contract v1 — Reference Specification
 
-> **Status:** Normative reference for `viewer_pack_v1` schema.  
-> **Audience:** Engineers implementing exporters/validators.  
+> **Status:** Normative reference for `viewer_pack_v1` schema.
+> **Audience:** Engineers implementing exporters/validators.
 > **Normative summary:** See [TAP_TONE_PI_SANDBOX_HANDOFF.md](../TAP_TONE_PI_SANDBOX_HANDOFF.md)
 
 ---
