@@ -324,6 +324,30 @@ def cmd_live(args: argparse.Namespace) -> int:
         return 0
 
 
+def cmd_demo(args: argparse.Namespace) -> int:
+    """Run demo mode with synthetic audio (no hardware required)."""
+    from tap_tone_pi.phase1.demo import run_demo
+
+    result = run_demo(
+        fundamental_hz=args.fundamental,
+        save_artifacts=not args.no_save,
+        output_dir=args.out,
+        show_results=True,
+        seed=args.seed if args.seed != 0 else None,
+    )
+
+    # Validate expected frequency was detected
+    if result["analysis"]["dominant_hz"]:
+        detected = result["analysis"]["dominant_hz"]
+        expected = args.fundamental
+        error_pct = abs(detected - expected) / expected * 100
+        if error_pct > 5:
+            print(f"WARNING: Detected {detected:.1f} Hz differs from expected {expected:.1f} Hz by {error_pct:.1f}%")
+            return 1
+
+    return 0
+
+
 def cmd_quick(args: argparse.Namespace) -> int:
     """Zero-config quick capture: auto-detect device, capture, analyze, display."""
     from tap_tone_pi.capture import auto_detect_device, record_audio
@@ -1029,7 +1053,7 @@ def _bash_completion() -> str:
     """Generate bash completion script."""
     return """
 _ttp_completions() {
-    local commands="setup devices preflight measure record live quick gold-run gui phase2 chladni bending export-pack evidence-check last sessions completion server grid-template"
+    local commands="setup devices preflight measure record live quick demo gold-run gui phase2 chladni bending export-pack evidence-check last sessions completion server grid-template"
     COMPREPLY=($(compgen -W "$commands" -- "${COMP_WORDS[COMP_CWORD]}"))
 }
 complete -F _ttp_completions ttp
@@ -1051,6 +1075,7 @@ _ttp() {
         'record:Record one window and analyze'
         'live:Loop record+analyze'
         'quick:Zero-config quick capture'
+        'demo:Run demo with synthetic audio (no hardware)'
         'gold-run:One-command Gold Standard Run'
         'gui:Launch Tkinter GUI'
         'phase2:Phase 2 ODS workflow'
@@ -1081,6 +1106,7 @@ complete -c ttp -f -n "__fish_use_subcommand" -a measure -d "Quality-gated measu
 complete -c ttp -f -n "__fish_use_subcommand" -a record -d "Record one window and analyze"
 complete -c ttp -f -n "__fish_use_subcommand" -a live -d "Loop record+analyze"
 complete -c ttp -f -n "__fish_use_subcommand" -a quick -d "Zero-config quick capture"
+complete -c ttp -f -n "__fish_use_subcommand" -a demo -d "Run demo with synthetic audio (no hardware)"
 complete -c ttp -f -n "__fish_use_subcommand" -a gold-run -d "One-command Gold Standard Run"
 complete -c ttp -f -n "__fish_use_subcommand" -a gui -d "Launch Tkinter GUI"
 complete -c ttp -f -n "__fish_use_subcommand" -a phase2 -d "Phase 2 ODS workflow"
@@ -1103,6 +1129,7 @@ def build_parser() -> argparse.ArgumentParser:
     epilog = """Quick Start:
   ttp setup              # First time? Run hardware wizard
   ttp devices            # List audio devices
+  ttp demo               # Test without hardware (synthetic audio)
   ttp quick              # Zero-config capture (auto-detect)
   ttp measure --out ./s1 # Quality-gated measurement session
 
@@ -1222,6 +1249,49 @@ tap without requiring any configuration. Great for testing your setup.
     )
     p_quick.add_argument("--plot", action="store_true", help="Show spectrum plot")
     p_quick.set_defaults(fn=cmd_quick)
+
+    # demo (hardware-free testing)
+    p_demo = sub.add_parser(
+        "demo",
+        help="Run demo with synthetic audio (no hardware required)",
+        epilog="""Examples:
+  ttp demo                          # Run demo with default settings
+  ttp demo --fundamental 280        # Use different fundamental frequency
+  ttp demo --out ./my_demo          # Save artifacts to custom directory
+  ttp demo --no-save                # Don't save artifacts
+  ttp demo --seed 42                # Reproducible generation
+
+The demo command generates synthetic tap tone audio and runs the full
+analysis pipeline. Useful for testing without microphone hardware,
+CI/CD validation, and initial Raspberry Pi setup verification.
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p_demo.add_argument(
+        "--fundamental",
+        type=float,
+        default=245.0,
+        help="Fundamental frequency in Hz (default: 245, typical guitar plate)",
+    )
+    p_demo.add_argument(
+        "--out",
+        type=str,
+        default="demo_output",
+        help="Output directory for artifacts (default: demo_output)",
+    )
+    p_demo.add_argument(
+        "--no-save",
+        action="store_true",
+        dest="no_save",
+        help="Don't save audio/analysis artifacts",
+    )
+    p_demo.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for reproducibility (0 for random)",
+    )
+    p_demo.set_defaults(fn=cmd_demo)
 
     # measure (NEW! - quality-gated)
     p_meas = sub.add_parser(
