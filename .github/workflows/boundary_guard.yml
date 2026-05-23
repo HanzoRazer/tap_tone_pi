@@ -16,6 +16,10 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Enforce boundary rules
+      - name: Enforce boundary rules (analyzer vs ToolBox)
         run: |
-          python ci/check_boundary_imports.py
+          python ci/check_boundary_imports.py --preset analyzer
+
+      - name: Enforce analyzer isolation (no Pi-side imports)
+        run: |
+          python ci/check_boundary_imports.py --preset analyzer_isolation --root analyzer

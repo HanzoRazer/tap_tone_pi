@@ -54,13 +54,49 @@ def _toolbox_spec() -> BoundarySpec:
     )
 
 
+def _analyzer_isolation_spec() -> BoundarySpec:
+    """
+    Analyzer desktop app isolation spec.
+
+    The analyzer/ package MUST NOT import from:
+      - tap_tone_pi.capture   (live audio capture, Pi hardware)
+      - tap_tone_pi.calibration  (calibration session context)
+      - tap_tone_pi.phase2    (35-point grid capture workflow)
+      - tap_tone_pi.cli       (command-line interface)
+      - tap_tone_pi.server    (FastAPI server)
+
+    The correct interface is viewer_pack_v1.json / bundle files on disk.
+    The analyzer reads those. It does not invoke capture.
+
+    tap_tone_pi.core, tap_tone_pi.wolf, and tap_tone_pi.agentic
+    are deliberately NOT forbidden — the analyzer may use DSP
+    utilities from core and advisory modules from wolf.
+    """
+    return BoundarySpec(
+        name="analyzer_isolation",
+        allowed_roots=["analyzer", "tests"],
+        forbidden_import_prefixes=[
+            "tap_tone_pi.capture",
+            "tap_tone_pi.calibration",
+            "tap_tone_pi.phase2",
+            "tap_tone_pi.cli",
+            "tap_tone_pi.server",
+            # Also block legacy namespace
+            "tap_tone.capture",
+            "tap_tone.calibration",
+        ],
+    )
+
+
 def _select_spec(preset: str) -> BoundarySpec:
     preset = (preset or "").strip().lower()
     if preset == "analyzer":
         return _analyzer_spec()
     if preset == "toolbox":
         return _toolbox_spec()
-    raise ValueError(f"Unknown preset: {preset!r} (expected: analyzer|toolbox)")
+    if preset == "analyzer_isolation":
+        return _analyzer_isolation_spec()
+    raise ValueError(f"Unknown preset: {preset!r} (expected: analyzer|toolbox|analyzer_isolation)")
 
 
 def _parse_args(argv: List[str]) -> argparse.Namespace:
