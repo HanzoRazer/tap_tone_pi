@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# INSTRUMENT CLASS: MEASUREMENT
 """
 plot_f_vs_d.py — Plot force vs displacement with linear fit overlay.
 
