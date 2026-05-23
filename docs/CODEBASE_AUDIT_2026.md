@@ -12,61 +12,58 @@ This audit identified **4 CRITICAL**, **8 MODERATE**, and **7 MINOR** issues in 
 Critical issues cause measurable error in physics calculations (8-15% MOE overestimation) or compromise
 measurement integrity. All issues have specific file locations and remediation paths documented below.
 
+**Resolution Status (updated 2026-05-23):**
+- C1 (Timoshenko correction): ✅ RESOLVED
+- C2 (FFT confidence): ✅ RESOLVED
+- C3 (Uncertainty propagation): ❌ MISSING
+- C4 (Hardcoded epsilon): ❌ OPEN
+- M1 (Linear fit validation): ✅ RESOLVED
+- M2 (Percentile bounds): ✅ RESOLVED
+
 ---
 
 ## CRITICAL Issues (4)
 
 These issues cause measurable error in physics calculations or compromise measurement integrity.
 
-### C1. MOE Missing Timoshenko Shear Correction
+### C1. MOE Missing Timoshenko Shear Correction — **RESOLVED**
 
-**File:** `tap_tone_pi/bending/merge_and_moe.py` lines 104-117
+**File:** `tap_tone_pi/bending/merge_and_moe.py`
 
-**Problem:** The MOE calculation uses pure Euler-Bernoulli beam theory without Timoshenko shear correction. For typical soundboard specimens (L/h < 20), this causes **8-15% overestimation** of elastic modulus.
+**Status:** ✅ **RESOLVED** (2026-05-23)
 
-**Physics:**
-```
-Euler-Bernoulli (current):  E = (48 × f² × ρ × L⁴) / (π² × I)
-                            [Ignores shear deformation]
+**Evidence:**
+- `_timoshenko_correction_factor()` implemented at lines 210-240
+- Wired into `_calculate_moe()` with L/h threshold (default: apply when L/h < 25)
+- Correction factor uses physics formula: `1 + (π²/12) × (1 + E/(κG)) × (h/L)²`
+- Output includes `shear_correction_applied`, `shear_correction_factor`, `shear_correction_percent`
+- Verified by `tests/test_merge_and_moe_canonical.py::test_timoshenko_correction_physics`
 
-Timoshenko (correct):       E_corrected = E_apparent × (1 + β)
-                            where β = (12 × E × I) / (κ × G × A × L²)
-                            κ = shear correction factor (≈5/6 for rectangular)
-                            G = E / (2 × (1 + ν)), ν = Poisson's ratio
-```
-
-**Impact:** Incorrectly high MOE values lead to:
-- Overconfidence in material stiffness
-- Mismatched top/back pairings
-- Incorrect thickness calculations
-
-**Fix:** Add Timoshenko correction with configurable L/h threshold (default: apply when L/h < 25).
+**Original Problem:** MOE calculation used pure Euler-Bernoulli without shear correction,
+causing 8-15% overestimation for L/h < 20.
 
 **See:** [Theory: MOE Shear Correction](theory/moe_shear_correction.md)
 
 ---
 
-### C2. FFT Confidence Score Not Derived from Physics
+### C2. FFT Confidence Score Not Derived from Physics — **RESOLVED**
 
-**File:** `tap_tone_pi/core/analysis.py` lines 146-150
+**File:** `tap_tone_pi/core/analysis.py`
 
-**Problem:** The confidence score uses an arbitrary heuristic:
-```python
-confidence = 0.5 + 0.5 * normalized_magnitude  # WRONG: No physical basis
-```
+**Status:** ✅ **RESOLVED** (2026-05-23)
 
-**Correct Approach:**
-```
-confidence = f(SNR, coherence, spectral_flatness)
+**Evidence:**
+- `ConfidenceComponents` dataclass implemented (lines 61-86) with fields:
+  - `snr_db`, `snr_confidence` (sigmoid with configurable threshold/steepness)
+  - `flatness`, `flatness_confidence` (spectral flatness factor)
+  - `q_factor`, `q_confidence` (damping quality)
+  - `overall` (weighted combination)
+- `_compute_peak_confidence()` function (lines 259-330) derives confidence from physics
+- Formula: `overall = w_snr × conf_snr + w_flat × conf_flat + w_q × conf_q`
+- `AnalysisResult.confidence_components` carries full breakdown
+- Verified by existing test coverage in `tests/test_analysis.py`
 
-SNR contribution:    conf_snr = 1 / (1 + exp(-(SNR_dB - 20) / 5))
-Coherence:           conf_coh = γ²  (direct mapping)
-Spectral flatness:   conf_flat = 1 - SF  (lower flatness = more tonal = higher confidence)
-```
-
-**Impact:** Current heuristic provides false confidence for noisy measurements and underestimates confidence for clean, low-amplitude signals.
-
-**Fix:** Replace with SNR-based derivation with coherence weighting.
+**Original Problem:** Confidence used arbitrary heuristic `0.5 + 0.5 * normalized_magnitude`.
 
 **See:** [Theory: Confidence Score Derivation](theory/confidence_derivation.md)
 
@@ -122,26 +119,41 @@ eps = max(np.finfo(signal.dtype).eps, np.abs(denominator).max() * 1e-10)
 
 These issues affect edge cases, reduce accuracy, or create maintenance burden.
 
-### M1. Linear Fit Missing Edge Case Validation
+### M1. Linear Fit Missing Edge Case Validation — **RESOLVED**
 
-**File:** `tap_tone_pi/bending/merge_and_moe.py` lines 86-102
+**File:** `tap_tone_pi/bending/merge_and_moe.py`
 
-**Problem:** Linear regression proceeds without checking:
-- Minimum point count (n < 3)
-- Condition number (near-singular)
-- Residual patterns (non-linearity detection)
+**Status:** ✅ **RESOLVED** (2026-05-23)
 
-**Fix:** Add validation: min 3 points, condition number < 10⁴, residual normality test.
+**Evidence:**
+- `LinearFitResult` dataclass (lines 100-108) returns validation metadata
+- `_linear_fit()` (lines 112-207) validates:
+  - Minimum 3 points (returns `valid=False` with warning)
+  - Condition number > 10⁴ triggers warning
+  - R² < 0.5 triggers warning for poor linear fit
+- Includes `residual_std` for downstream non-linearity detection
+- Tests in `tests/test_whole_plate_bending.py` verify edge cases
+
+**Original Problem:** Linear regression proceeded without checking point count or condition number.
 
 ---
 
-### M2. Brittle Percentile Selection
+### M2. Brittle Percentile Selection — **RESOLVED**
 
-**File:** `tap_tone_pi/bending/plot_f_vs_d.py` lines 39-47
+**File:** `tap_tone_pi/bending/plot_f_vs_d.py`
 
-**Problem:** Hardcoded percentile (5th/95th) without bounds checking. Empty arrays or outlier-dominated data cause crashes or misleading limits.
+**Status:** ✅ **RESOLVED** (2026-05-23)
 
-**Fix:** Add bounds: percentile clamp to [0.1, 99.9], fallback to min/max with padding.
+**Evidence:**
+- `percentile_bounds()` (lines 62-116) now handles edge cases:
+  - Empty array: raises `ValueError` with clear message
+  - Single value: returns `(val, val)` without error
+  - Percentiles clamped to [0.1, 99.9]
+  - Swapped lo/hi percentiles auto-corrected
+  - Uses linear interpolation for small arrays
+- Tests in `tests/test_plot_f_vs_d_canonical.py` verify M2 fix behavior
+
+**Original Problem:** Hardcoded percentile without bounds checking caused crashes on edge cases.
 
 ---
 
