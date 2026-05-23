@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Operator Loop state machine for tap-tone-pi.
 
 Implements the deterministic measurement workflow:

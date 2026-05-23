@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Attempt tracking for tap-tone-pi measurements.
 
 Each capture attempt is tracked with its result and quality verdict.

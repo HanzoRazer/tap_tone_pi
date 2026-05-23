@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Workflow module for tap-tone-pi operator loop.
 
 Provides the deterministic operator loop:
