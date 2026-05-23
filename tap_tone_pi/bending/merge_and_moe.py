@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# INSTRUMENT CLASS: MEASUREMENT
 """
 merge_and_moe.py — Merge load/displacement streams → synchronized pairs → derived MOE.
 

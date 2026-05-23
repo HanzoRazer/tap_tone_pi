@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# INSTRUMENT CLASS: MEASUREMENT
 """
 merge_and_moe.py — DEPRECATED: Use tap_tone_pi.bending.merge_and_moe instead.
 
@@ -30,6 +31,8 @@ from tap_tone_pi.bending.merge_and_moe import (  # noqa: E402
     _resample,
     _linear_fit,
     _calculate_moe,
+    _timoshenko_correction_factor,
+    LinearFitResult,
 )
 
 __all__ = [
@@ -40,6 +43,8 @@ __all__ = [
     "_resample",
     "_linear_fit",
     "_calculate_moe",
+    "_timoshenko_correction_factor",
+    "LinearFitResult",
 ]
 
 if __name__ == "__main__":
