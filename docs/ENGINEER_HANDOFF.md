@@ -55,8 +55,8 @@ from modes._shared.wav_io import read_wav_mono, read_wav_2ch, write_wav_mono, wr
 # Phase 2 package
 from scripts.phase2 import io_wav, dsp, metrics, viz
 
-# Measurement modes
-from modes.bending_rig import merge_and_moe, plot_f_vs_d
+# Measurement modes (canonical paths)
+from tap_tone_pi.bending import merge_and_moe, plot_f_vs_d
 from modes.acquisition import loadcell_serial, dial_indicator_serial
 from modes.chladni import peaks_from_wav, index_patterns
 ```
