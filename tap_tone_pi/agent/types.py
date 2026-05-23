@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: DECISION SUPPORT
 """Agent types — dataclasses for agent responses.
 
 These are the structured outputs the agent produces;

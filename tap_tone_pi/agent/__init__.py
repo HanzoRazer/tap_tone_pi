@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: DECISION SUPPORT
 """Tap Tone Pi Agent Layer.
 
 The agentic layer orchestrates measurement workflows, enforces policy,

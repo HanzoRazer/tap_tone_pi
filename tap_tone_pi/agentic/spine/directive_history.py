@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: DECISION SUPPORT
 """Read-only directive event history from ``events.jsonl``.
 
 Provides a robust JSONL reader that filters to directive-related event

@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: DECISION SUPPORT
 """
 Agentic Layer Contracts — tap_tone_pi
 

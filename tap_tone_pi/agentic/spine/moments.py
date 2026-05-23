@@ -1,4 +1,5 @@
 # app/agentic/spine/moments.py
+# INSTRUMENT CLASS: DECISION SUPPORT
 """
 Moment Detection Engine — Reference Implementation
 

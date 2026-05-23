@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: DECISION SUPPORT
 """Render — CLI and GUI formatting for agent messages.
 
 The agent produces structured AgentMessage; this module formats for output.

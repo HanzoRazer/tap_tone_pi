@@ -1,4 +1,5 @@
 # app/agentic/spine/policy.py
+# INSTRUMENT CLASS: DECISION SUPPORT
 """
 Decision Policy Engine — Reference Implementation
 

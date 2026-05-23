@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: DECISION SUPPORT
 """Measurement Agent — the orchestration layer that coordinates without altering facts.
 
 The agent:

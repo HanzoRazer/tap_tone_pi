@@ -1,4 +1,5 @@
 # tap_tone_pi/agentic/spine/replay.py
+# INSTRUMENT CLASS: DECISION SUPPORT
 """
 Shadow Replay Harness — Reference Implementation
 

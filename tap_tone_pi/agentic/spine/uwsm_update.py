@@ -1,4 +1,5 @@
 # tap_tone_pi/agentic/spine/uwsm_update.py
+# INSTRUMENT CLASS: DECISION SUPPORT
 """
 UWSM Update Engine — Reference Implementation
 

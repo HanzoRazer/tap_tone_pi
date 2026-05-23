@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: DECISION SUPPORT
 """View Adapter Protocol — M2 Actuation Interface.
 
 Defines the ``ViewAdapter`` protocol that any visual surface must

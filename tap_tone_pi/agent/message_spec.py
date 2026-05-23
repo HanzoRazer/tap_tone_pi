@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: DECISION SUPPORT
 """Message specification — rule explanations, verdict templates, FTUE hints.
 
 This is the canonical mapping from rule IDs to operator-facing messages.

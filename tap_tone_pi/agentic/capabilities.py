@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: DECISION SUPPORT
 """
 Tap Tone Analyzer Capability Declarations
 

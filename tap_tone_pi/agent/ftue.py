@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: DECISION SUPPORT
 """First-Time User Experience (FTUE) — stage inference and progressive disclosure.
 
 Controls how much detail the agent shows based on user experience level.

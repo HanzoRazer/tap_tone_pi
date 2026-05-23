@@ -1,4 +1,5 @@
 # tap_tone_pi/agentic/spine/__init__.py
+# INSTRUMENT CLASS: DECISION SUPPORT
 """
 Agentic Spine — Reference Implementation (tap_tone_pi mirror)
 

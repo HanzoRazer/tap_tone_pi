@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: DECISION SUPPORT
 """Selector — rule ordering, action selection, and escalation logic.
 
 Determines what to show and in what order based on context and history.

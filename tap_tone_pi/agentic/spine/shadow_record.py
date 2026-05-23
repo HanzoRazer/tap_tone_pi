@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: DECISION SUPPORT
 """Spine Shadow Directive Record v1 — Writer + Loader + Validator.
 
 Implements the persisted shadow record format for M0 spine decisions.
