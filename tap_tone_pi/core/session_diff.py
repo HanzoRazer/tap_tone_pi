@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Session diff service for comparing acoustic measurements.
 

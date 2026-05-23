@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: DECISION SUPPORT
 """Read-only session directive timeline exporter.
 
 Consolidates directive events, moment snapshots, and UI state into a
