@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Golden regression test for Phase 2 viewer pack export.
 

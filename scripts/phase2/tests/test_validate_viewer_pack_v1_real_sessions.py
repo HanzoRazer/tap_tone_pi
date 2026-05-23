@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Pytest gate: validate viewer_pack_v1 exports for known-good Phase 2 sessions.
 

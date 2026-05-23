@@ -1,1 +1,2 @@
+# INSTRUMENT CLASS: MEASUREMENT
 # Phase 2 tests

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# INSTRUMENT CLASS: MEASUREMENT
 """
 validate_viewer_pack_v1.py
 

@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 # scripts/phase2/io_wav.py
 # Backward-compat wrapper — delegates to canonical modes._shared.wav_io
 from __future__ import annotations

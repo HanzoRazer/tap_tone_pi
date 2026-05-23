@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Phase 2 Viewer Pack Exporter (viewer_pack_v1)
 
