@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Evidence preflight validator for session directories.
 
 Answers four questions deterministically:

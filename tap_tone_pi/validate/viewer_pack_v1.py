@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# INSTRUMENT CLASS: MEASUREMENT
 """viewer_pack_v1.py — Pre-export validator for viewer_pack_v1 contract.
 
 Validates a staged pack directory before ZIP creation.

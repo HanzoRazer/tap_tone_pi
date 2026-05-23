@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Validation utilities for tap_tone_pi.
 
