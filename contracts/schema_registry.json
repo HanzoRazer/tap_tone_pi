@@ -13,6 +13,12 @@
         "phase2_wolf_candidates"
       ]
     },
+    "governance-team": {
+      "description": "Measurement workflow contracts, repeatability, environment records",
+      "schemas": [
+        "measurement_workflow_contract"
+      ]
+    },
     "agentic-team": {
       "description": "Agentic spine session artifacts and directive timelines",
       "schemas": [
@@ -45,6 +51,15 @@
   },
   "registry_version": "1.0.0",
   "schemas": {
+    "measurement_workflow_contract": {
+      "description": "Measurement workflow contract defining procedural requirements for legitimate measurements",
+      "file": "measurement_workflow_contract_v1.schema.json",
+      "owner": "governance-team",
+      "path": "contracts/schemas/measurement_workflow_contract_v1.schema.json",
+      "schema_version_const": "measurement_workflow_contract_v1",
+      "status": "stable",
+      "version": "1.0.0"
+    },
     "bending_stiffness": {
       "description": "Bending stiffness test result (measurement-only)",
       "path": "contracts/schemas/bending_stiffness.schema.json",

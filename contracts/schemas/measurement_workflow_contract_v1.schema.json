@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "measurement_workflow_contract_v1.schema.json",
+  "title": "Measurement Workflow Contract V1",
+  "description": "Defines procedural requirements for a legitimate measurement workflow. This is a governance artifact that specifies repeatability, quality, and calibration requirements.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "workflow_id",
+    "display_name",
+    "description",
+    "required_repetitions",
+    "max_frequency_variance_pct",
+    "sample_rate_hz",
+    "fft_window",
+    "min_snr_db",
+    "requires_calibration"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "measurement_workflow_contract_v1",
+      "description": "Schema version identifier"
+    },
+    "workflow_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*_v[0-9]+$",
+      "description": "Unique workflow identifier (e.g., free_plate_tap_v1)"
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "description": "Human-readable workflow name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed workflow description and purpose"
+    },
+    "required_repetitions": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100,
+      "description": "Number of repeated captures required for repeatability evidence"
+    },
+    "max_frequency_variance_pct": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Maximum allowed frequency variance across repetitions (%)"
+    },
+    "sample_rate_hz": {
+      "type": "integer",
+      "minimum": 8000,
+      "maximum": 192000,
+      "description": "Required sample rate in Hz"
+    },
+    "fft_window": {
+      "type": "string",
+      "enum": ["hann", "hamming", "blackman", "boxcar"],
+      "description": "FFT window function"
+    },
+    "fft_size": {
+      "type": "integer",
+      "minimum": 256,
+      "description": "FFT size (must be power of 2)",
+      "default": 4096
+    },
+    "min_snr_db": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Minimum signal-to-noise ratio in dB"
+    },
+    "min_peak_prominence_db": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Minimum peak prominence in dB",
+      "default": 6.0
+    },
+    "max_clipping_samples": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Maximum allowed clipped samples",
+      "default": 0
+    },
+    "requires_calibration": {
+      "type": "boolean",
+      "description": "Whether calibration is required before measurement"
+    },
+    "max_calibration_age_days": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum calibration age in days before considered stale",
+      "default": 30
+    },
+    "fixture_requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Physical fixture requirements",
+      "properties": {
+        "fixture_id": {
+          "type": "string",
+          "description": "Required fixture identifier"
+        },
+        "support_condition": {
+          "type": "string",
+          "enum": ["free", "clamped", "supported"],
+          "description": "Required support condition"
+        },
+        "mic_position": {
+          "type": "string",
+          "description": "Required microphone position"
+        },
+        "tap_position": {
+          "type": "string",
+          "description": "Required tap/excitation position"
+        },
+        "reference_mic_required": {
+          "type": "boolean",
+          "description": "Whether a reference microphone is required",
+          "default": false
+        }
+      }
+    },
+    "environment_requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Environmental requirements for valid measurement",
+      "properties": {
+        "min_temperature_c": {
+          "type": "number",
+          "description": "Minimum temperature in Celsius"
+        },
+        "max_temperature_c": {
+          "type": "number",
+          "description": "Maximum temperature in Celsius"
+        },
+        "min_humidity_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Minimum relative humidity (%)"
+        },
+        "max_humidity_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Maximum relative humidity (%)"
+        },
+        "max_ambient_noise_dbfs": {
+          "type": "number",
+          "description": "Maximum ambient noise level in dBFS"
+        }
+      }
+    }
+  }
+}
