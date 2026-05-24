@@ -205,8 +205,40 @@ outputs are clearly labelled as advisory, not diagnostic.
 
 ---
 
+## Epistemic Status Constraints (DO-81)
+
+AGE may consume the following epistemic statuses as input:
+
+| Status | May Consume | May Convert to Truth |
+|--------|-------------|---------------------|
+| Observed | Yes | No |
+| Derived | Yes | No |
+| Estimated | Yes | No |
+| Operator-Annotated | Yes | No |
+| Externally-Sourced | Yes | No |
+| Predicted | As context only | No |
+| Heuristic | N/A (this is AGE output) | No |
+
+AGE outputs are always classified as:
+- **Epistemic Status:** Heuristic
+- **Authority Class:** DECISION SUPPORT
+
+AGE may NOT:
+- Convert Observed data into acoustic truth claims
+- Convert Derived data into quality verdicts
+- Convert Predicted data into measurement facts
+- Claim any epistemic status other than Heuristic for its outputs
+
+See ADR-0011 (Measurement Authority) and ADR-0012 (Epistemic Status Taxonomy) for
+complete definitions.
+
+---
+
 ## References
 
 - ADR-0009: Advisory Boundary
 - ADR-0010: Guidance Authority Boundary
+- ADR-0011: Measurement Authority
+- ADR-0012: Epistemic Status Taxonomy
 - docs/MEASUREMENT_BOUNDARY.md
+- docs/EPISTEMIC_STATUS_MATRIX.md

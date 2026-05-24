@@ -134,8 +134,29 @@ results. Specifically:
 
 ---
 
+## Cross-References (DO-81)
+
+This ADR defines **what advisory modules may do**. Related ADRs define:
+
+- **ADR-0011: Measurement Authority** — Defines artifact authority levels (observational,
+  derived, interpretive, advisory). Establishes that capture integrity ≠ acoustic truth.
+
+- **ADR-0012: Epistemic Status Taxonomy** — Defines data provenance states (Observed,
+  Derived, Estimated, Predicted, Heuristic, Operator-Annotated, Externally-Sourced).
+  Establishes that no epistemic state may silently inherit another state's authority.
+
+Together these three ADRs form the constitutional foundation:
+- ADR-0010: What guidance may/may not claim
+- ADR-0011: What measurement artifacts may/may not claim
+- ADR-0012: How data states relate to authority
+
+---
+
 ## References
 
 - ADR-0009: Advisory Boundary — Measurement vs Decision Support Instrument Classes
+- ADR-0011: Measurement Authority — Artifact authority classification
+- ADR-0012: Epistemic Status Taxonomy — Data provenance and authority inheritance
 - docs/AGE_CONSTITUTIONAL_CONTRACT.md — Capability matrix for guidance systems
 - docs/MEASUREMENT_BOUNDARY.md — Canonical measurement scope statement
+- docs/EPISTEMIC_STATUS_MATRIX.md — Quick reference for developers
