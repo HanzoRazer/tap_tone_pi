@@ -16,7 +16,8 @@
     "governance-team": {
       "description": "Measurement workflow contracts, repeatability, environment records",
       "schemas": [
-        "measurement_workflow_contract"
+        "measurement_workflow_contract",
+        "repeatability_evidence"
       ]
     },
     "agentic-team": {
@@ -57,6 +58,15 @@
       "owner": "governance-team",
       "path": "contracts/schemas/measurement_workflow_contract_v1.schema.json",
       "schema_version_const": "measurement_workflow_contract_v1",
+      "status": "stable",
+      "version": "1.0.0"
+    },
+    "repeatability_evidence": {
+      "description": "Repeatability evidence recording consistency metrics across repeated captures",
+      "file": "repeatability_evidence_v1.schema.json",
+      "owner": "governance-team",
+      "path": "contracts/schemas/repeatability_evidence_v1.schema.json",
+      "schema_version_const": "repeatability_evidence_v1",
       "status": "stable",
       "version": "1.0.0"
     },

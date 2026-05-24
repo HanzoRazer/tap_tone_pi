@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "repeatability_evidence_v1.schema.json",
+  "title": "Repeatability Evidence V1",
+  "description": "Records consistency metrics across repeated captures to establish measurement legitimacy. This is first-class evidence, not convenience data.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "repetitions_required",
+    "repetitions_completed",
+    "passed_repeatability_gate"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "repeatability_evidence_v1",
+      "description": "Schema version identifier"
+    },
+    "repetitions_required": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of repetitions required by workflow contract"
+    },
+    "repetitions_completed": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of repetitions actually completed"
+    },
+    "repetitions_rejected": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of repetitions rejected by quality gate",
+      "default": 0
+    },
+    "dominant_frequency_mean_hz": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Mean of dominant frequencies across repetitions (Hz)"
+    },
+    "dominant_frequency_std_hz": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Standard deviation of dominant frequencies (Hz)"
+    },
+    "dominant_frequency_variance_pct": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Frequency variance as percentage of mean"
+    },
+    "rms_mean": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Mean RMS across repetitions"
+    },
+    "rms_std": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Standard deviation of RMS"
+    },
+    "rms_variance_pct": {
+      "type": "number",
+      "minimum": 0,
+      "description": "RMS variance as percentage of mean"
+    },
+    "snr_mean_db": {
+      "type": "number",
+      "description": "Mean signal-to-noise ratio (dB)"
+    },
+    "snr_std_db": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Standard deviation of SNR (dB)"
+    },
+    "snr_variance_db": {
+      "type": "number",
+      "minimum": 0,
+      "description": "SNR variance (dB)"
+    },
+    "confidence_mean": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Mean confidence across repetitions"
+    },
+    "confidence_std": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Standard deviation of confidence"
+    },
+    "confidence_stability": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Confidence stability metric: 1 - (std/mean), clamped to [0,1]"
+    },
+    "passed_repeatability_gate": {
+      "type": "boolean",
+      "description": "Whether the measurement passed the repeatability gate"
+    },
+    "gate_failure_reason": {
+      "type": "string",
+      "description": "Reason for repeatability gate failure (if failed)"
+    }
+  }
+}
