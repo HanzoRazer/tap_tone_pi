@@ -8,22 +8,30 @@
 
 ## Purpose
 
-This document defines the four authority classes used across the acoustic measurement and manufacturing ecosystem. Authority class determines what claims an artifact may make and how downstream systems may interpret it.
+This document defines the six authority classes used across the acoustic measurement and manufacturing ecosystem. Authority class determines what claims an artifact may make and how downstream systems may interpret it.
+
+---
+
+## Core Invariant
+
+```
+Decision-support authority may route attention but may not establish truth.
+```
 
 ---
 
 ## Authority Classes
 
-### MEASUREMENT
+### measurement
 
 Artifacts produced by calibrated sensor capture and deterministic signal processing.
 
 | Property | Value |
 |----------|-------|
 | Can establish truth | No (capture integrity, not acoustic truth) |
-| Can modify measurement | N/A (is measurement) |
+| Can authorize execution | No |
 | Can enter measurement export | Yes |
-| Epistemic status range | Observed, Derived, Estimated |
+| Epistemic status range | observed, derived, estimated |
 
 **Examples:**
 - Raw WAV capture
@@ -31,16 +39,16 @@ Artifacts produced by calibrated sensor capture and deterministic signal process
 - Transfer function computation
 - Coherence values
 
-### PROVENANCE
+### provenance
 
 Artifacts that record lineage, history, and chain-of-custody without making quality claims.
 
 | Property | Value |
 |----------|-------|
 | Can establish truth | No |
-| Can modify measurement | No |
+| Can authorize execution | No |
 | Can enter measurement export | Meta only |
-| Epistemic status range | Historical, Operator-Annotated |
+| Epistemic status range | historical, operator_annotated |
 
 **Examples:**
 - Session timeline
@@ -48,16 +56,16 @@ Artifacts that record lineage, history, and chain-of-custody without making qual
 - Operator notes
 - Git commit hashes
 
-### DECISION_SUPPORT
+### decision_support
 
 Artifacts produced by advisory systems that route attention but do not establish facts.
 
 | Property | Value |
 |----------|-------|
 | Can establish truth | No |
-| Can modify measurement | No |
+| Can authorize execution | No |
 | Can enter measurement export | No |
-| Epistemic status range | Heuristic |
+| Epistemic status range | heuristic |
 
 **Examples:**
 - AGE directives
@@ -65,22 +73,56 @@ Artifacts produced by advisory systems that route attention but do not establish
 - Review queue priority
 - Attention suggestions
 
-### INTERPRETIVE
+### interpretive
 
 Artifacts that contain external predictions, model outputs, or third-party assessments.
 
 | Property | Value |
 |----------|-------|
 | Can establish truth | No |
-| Can modify measurement | No |
+| Can authorize execution | No |
 | Can enter measurement export | Marked as prediction |
-| Epistemic status range | Predicted, Externally-Sourced |
+| Epistemic status range | predicted, externally_sourced |
 
 **Examples:**
 - Rayleigh-Ritz mode predictions
 - Toolbox target frequencies
 - Material database lookups
 - External calibration data
+
+### operator
+
+Artifacts produced by human operator input with sovereignty over their domain.
+
+| Property | Value |
+|----------|-------|
+| Can establish truth | No (records human judgment, not objective truth) |
+| Can authorize execution | No (records decision, not authorization) |
+| Can enter measurement export | As operator annotation only |
+| Epistemic status range | operator_annotated |
+
+**Examples:**
+- Build selection decisions
+- Quality override reasons
+- Session notes
+- Review decisions
+
+### external
+
+Artifacts imported from external systems with source binding.
+
+| Property | Value |
+|----------|-------|
+| Can establish truth | No |
+| Can authorize execution | No |
+| Can enter measurement export | With source citation |
+| Epistemic status range | externally_sourced |
+
+**Examples:**
+- Imported DXF geometry
+- Vectorizer output
+- Third-party calibration data
+- Material database values
 
 ---
 
@@ -90,30 +132,38 @@ Artifacts that contain external predictions, model outputs, or third-party asses
 
 2. **No silent inheritance.** Authority class must be explicit; it cannot be inferred from context.
 
-3. **Capture integrity ≠ acoustic truth.** MEASUREMENT class confirms valid capture, not instrument quality.
+3. **Capture integrity ≠ acoustic truth.** `measurement` class confirms valid capture, not instrument quality.
 
-4. **Advisory cannot become evidence.** DECISION_SUPPORT artifacts cannot enter MEASUREMENT exports.
+4. **Advisory cannot become evidence.** `decision_support` artifacts cannot enter `measurement` exports.
+
+5. **Operator sovereignty.** `operator` class records human decisions but does not grant execution authority.
+
+6. **External binding.** `external` class artifacts retain their source binding and cannot be laundered as local measurement.
 
 ---
 
 ## Cross-Repository Mapping
 
-| Repository | MEASUREMENT | PROVENANCE | DECISION_SUPPORT | INTERPRETIVE |
-|------------|-------------|------------|------------------|--------------|
-| tap_tone_pi | `AuthorityClass.MEASUREMENT` | `AuthorityClass.PROVENANCE` | `AuthorityClass.DECISION_SUPPORT` | `AuthorityClass.INTERPRETIVE` |
-| luthiers-toolbox | `AuthorityState.GOVERNED` | `AuthorityState.BLOCKED_PROVENANCE` | `AuthorityState.UNDER_REVIEW` | `AuthorityState.PREDICTION` |
-| CAM-Assist-Blueprint | `authority_block.measurement` | `authority_block.provenance` | `authority_block.advisory` | `authority_block.external` |
+| Canonical | tap_tone_pi | luthiers-toolbox | CAM-Assist |
+|-----------|-------------|------------------|------------|
+| measurement | AuthorityClass.MEASUREMENT | LIFECYCLE_GOVERNED / COMPAT_ONLY | N/A |
+| provenance | AuthorityClass.PROVENANCE | artifact.provenance | source_spec_id |
+| decision_support | AuthorityClass.DECISION_SUPPORT | Review UX / rank signals | Review packet prose |
+| interpretive | AuthorityClass.INTERPRETIVE | candidate.prediction | strategy intent |
+| operator | Operator sovereignty | ReviewDecisionRecord | A12 decision record |
+| external | Externally-Sourced | imported DXF / vectorizer | source_spec_id |
 
 ---
 
 ## Non-Goals
 
 This contract does NOT:
+- Authorize execution (review approval ≠ execution authorization)
+- Merge review systems across repositories
+- Replace local enums (use `local_authority_type` for mapping)
 - Define confidence scoring (see confidence-v1)
 - Define epistemic status taxonomy (see epistemic-status-v1)
 - Define review decision semantics (see review-decision-v1)
-- Prescribe implementation details
-- Require shared runtime packages
 
 ---
 
