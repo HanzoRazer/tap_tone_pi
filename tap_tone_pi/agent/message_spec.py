@@ -1,7 +1,7 @@
 # INSTRUMENT CLASS: DECISION SUPPORT
 """Message specification — rule explanations, verdict templates, FTUE hints.
 
-This is the canonical mapping from rule IDs to operator-facing messages.
+This is the authoritative mapping from rule IDs to operator-facing messages.
 The agent uses these tables; it never invents new explanations.
 """
 
@@ -130,9 +130,9 @@ RULE_Q005 = RuleSpec(
         SuggestedAction(
             ActionId.SET_SAMPLERATE_STANDARD,
             "Use 48k and retry",
-            "Policy-approved rate",
+            "Policy-accepted rate",
         ),
-        SuggestedAction(ActionId.RUN_SETUP, "Run setup wizard", "Persist correct rate"),
+        SuggestedAction(ActionId.RUN_SETUP, "Run setup wizard", "Persist selected rate"),
         SuggestedAction(
             ActionId.ABORT, "Abort", "Cannot proceed with non-standard rate"
         ),
@@ -185,7 +185,7 @@ RULE_Q011 = RuleSpec(
 RULE_Q012 = RuleSpec(
     rule_id="Q012",
     severity="SOFT",
-    operator_explanation="Confidence is marginal. The reading may be correct but less stable.",
+    operator_explanation="Confidence is marginal. The reading may be valid but less stable.",
     why_it_matters="Low stability increases the chance of drift between attempts.",
     first_fix="Retry once to see if confidence improves.",
     fallback_fix="Accept if dominant peak repeats across attempts.",
@@ -276,7 +276,7 @@ VERDICT_FAIL = VerdictTemplate(
     title="Measurement failed quality gate",
     summary="Capture is not acceptable under policy.",
     default_actions=[
-        SuggestedAction(ActionId.RETRY, "Retry", "Correct conditions and retake"),
+        SuggestedAction(ActionId.RETRY, "Retry", "Adjust conditions and retake"),
         SuggestedAction(ActionId.ABORT, "Abort", "Stop and troubleshoot"),
         SuggestedAction(
             ActionId.OVERRIDE,

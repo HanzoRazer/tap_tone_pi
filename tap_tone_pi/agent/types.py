@@ -22,7 +22,7 @@ class UserStage(str, Enum):
 
 
 class ActionId(str, Enum):
-    """Canonical action identifiers."""
+    """Standard action identifiers."""
 
     RETRY = "retry"
     ACCEPT = "accept"

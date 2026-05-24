@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://platform-contracts/authority-v1.schema.json",
+  "title": "Authority Class (v1)",
+  "description": "Cross-repository contract for authority classification. See authority-v1.md for prose definition.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "authority-v1"
+    },
+    "authority_class": {
+      "type": "string",
+      "enum": ["MEASUREMENT", "PROVENANCE", "DECISION_SUPPORT", "INTERPRETIVE"],
+      "description": "The authority class of the artifact"
+    },
+    "authority_scope": {
+      "type": "string",
+      "description": "Specific scope within the authority class (e.g., 'attention_guidance' for DECISION_SUPPORT)"
+    },
+    "can_establish_truth": {
+      "type": "boolean",
+      "const": false,
+      "description": "No artifact may establish acoustic truth"
+    },
+    "can_modify_measurement": {
+      "type": "boolean",
+      "description": "Whether this artifact may modify measurement data"
+    },
+    "can_enter_measurement_export": {
+      "type": "boolean",
+      "description": "Whether this artifact may enter measurement export packages"
+    }
+  },
+  "required": ["authority_class", "can_establish_truth", "can_modify_measurement", "can_enter_measurement_export"],
+  "additionalProperties": false,
+  "$defs": {
+    "AuthorityClass": {
+      "type": "string",
+      "enum": ["MEASUREMENT", "PROVENANCE", "DECISION_SUPPORT", "INTERPRETIVE"],
+      "description": "The four authority classes"
+    },
+    "MeasurementAuthority": {
+      "type": "object",
+      "properties": {
+        "authority_class": { "const": "MEASUREMENT" },
+        "can_establish_truth": { "const": false },
+        "can_modify_measurement": { "const": false },
+        "can_enter_measurement_export": { "const": true }
+      },
+      "required": ["authority_class"]
+    },
+    "ProvenanceAuthority": {
+      "type": "object",
+      "properties": {
+        "authority_class": { "const": "PROVENANCE" },
+        "can_establish_truth": { "const": false },
+        "can_modify_measurement": { "const": false },
+        "can_enter_measurement_export": { "const": false }
+      },
+      "required": ["authority_class"]
+    },
+    "DecisionSupportAuthority": {
+      "type": "object",
+      "properties": {
+        "authority_class": { "const": "DECISION_SUPPORT" },
+        "authority_scope": { "type": "string" },
+        "can_establish_truth": { "const": false },
+        "can_modify_measurement": { "const": false },
+        "can_enter_measurement_export": { "const": false }
+      },
+      "required": ["authority_class"]
+    },
+    "InterpretiveAuthority": {
+      "type": "object",
+      "properties": {
+        "authority_class": { "const": "INTERPRETIVE" },
+        "can_establish_truth": { "const": false },
+        "can_modify_measurement": { "const": false },
+        "can_enter_measurement_export": { "const": false }
+      },
+      "required": ["authority_class"]
+    }
+  }
+}

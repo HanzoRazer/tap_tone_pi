@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://platform-contracts/review-decision-v1.schema.json",
+  "title": "Review Decision (v1)",
+  "description": "Cross-repository contract for review decision states. See review-decision-v1.md for prose definition.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "review-decision-v1"
+    },
+    "review_decision": {
+      "$ref": "#/$defs/ReviewDecision"
+    }
+  },
+  "$defs": {
+    "ReviewState": {
+      "type": "string",
+      "enum": ["PENDING", "APPROVED", "REJECTED", "BLOCKED"],
+      "description": "The four review decision states"
+    },
+    "GateType": {
+      "type": "string",
+      "enum": [
+        "export_legitimacy",
+        "measurement_validity",
+        "production_release",
+        "archive_inclusion"
+      ],
+      "description": "Common gate types across repositories"
+    },
+    "ReviewDecision": {
+      "type": "object",
+      "description": "A review decision for a specific artifact at a specific gate",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/ReviewState",
+          "description": "The review decision state"
+        },
+        "reviewer": {
+          "type": "string",
+          "description": "Reviewer identifier (required for APPROVED/REJECTED)"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of the decision"
+        },
+        "gate": {
+          "type": "string",
+          "description": "Gate identifier"
+        },
+        "artifact_version": {
+          "type": "string",
+          "description": "Artifact hash or version identifier"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional reviewer notes"
+        },
+        "blocking_reason": {
+          "type": "string",
+          "description": "Reason for BLOCKED state"
+        }
+      },
+      "required": ["state", "timestamp", "gate", "artifact_version"],
+      "if": {
+        "properties": {
+          "state": { "enum": ["APPROVED", "REJECTED"] }
+        }
+      },
+      "then": {
+        "required": ["reviewer"]
+      },
+      "additionalProperties": false
+    },
+    "PendingDecision": {
+      "type": "object",
+      "description": "Artifact in review queue awaiting decision",
+      "properties": {
+        "state": { "const": "PENDING" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "gate": { "type": "string" },
+        "artifact_version": { "type": "string" }
+      },
+      "required": ["state", "timestamp", "gate", "artifact_version"]
+    },
+    "ApprovedDecision": {
+      "type": "object",
+      "description": "Artifact has received positive review decision",
+      "properties": {
+        "state": { "const": "APPROVED" },
+        "reviewer": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "gate": { "type": "string" },
+        "artifact_version": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["state", "reviewer", "timestamp", "gate", "artifact_version"]
+    },
+    "RejectedDecision": {
+      "type": "object",
+      "description": "Artifact has received negative review decision",
+      "properties": {
+        "state": { "const": "REJECTED" },
+        "reviewer": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "gate": { "type": "string" },
+        "artifact_version": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["state", "reviewer", "timestamp", "gate", "artifact_version"]
+    },
+    "BlockedDecision": {
+      "type": "object",
+      "description": "Artifact blocked from review for structural reasons",
+      "properties": {
+        "state": { "const": "BLOCKED" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "gate": { "type": "string" },
+        "artifact_version": { "type": "string" },
+        "blocking_reason": { "type": "string" }
+      },
+      "required": ["state", "timestamp", "gate", "artifact_version", "blocking_reason"]
+    },
+    "Invariants": {
+      "description": "Review decision invariants (for documentation)",
+      "type": "object",
+      "properties": {
+        "approval_not_authority": {
+          "const": true,
+          "description": "Approval does not grant measurement authority"
+        },
+        "approval_not_validation": {
+          "const": true,
+          "description": "Approval means 'may proceed', not 'is correct'"
+        },
+        "modification_invalidates": {
+          "const": true,
+          "description": "Modification to approved artifact requires re-review"
+        },
+        "blocked_not_rejection": {
+          "const": true,
+          "description": "BLOCKED indicates structural deficiency, not review decision"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

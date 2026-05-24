@@ -1,0 +1,218 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://platform-contracts/epistemic-status-v1.schema.json",
+  "title": "Epistemic Status (v1)",
+  "description": "Cross-repository contract for epistemic status classification. See epistemic-status-v1.md for prose definition.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "epistemic-status-v1"
+    },
+    "epistemic_status": {
+      "$ref": "#/$defs/EpistemicStatus"
+    },
+    "attribution": {
+      "$ref": "#/$defs/Attribution"
+    }
+  },
+  "$defs": {
+    "EpistemicStatus": {
+      "type": "string",
+      "enum": [
+        "OBSERVED",
+        "DERIVED",
+        "ESTIMATED",
+        "PREDICTED",
+        "HEURISTIC",
+        "OPERATOR_ANNOTATED",
+        "EXTERNALLY_SOURCED"
+      ],
+      "description": "The seven epistemic statuses"
+    },
+    "Attribution": {
+      "type": "object",
+      "description": "Attribution metadata required for epistemic status",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Source identifier (algorithm, operator, external system)"
+        },
+        "input_hash": {
+          "type": "string",
+          "description": "SHA-256 hash of inputs (for Derived status)"
+        },
+        "uncertainty": {
+          "type": "object",
+          "description": "Uncertainty bounds (for Estimated status)",
+          "properties": {
+            "lower": { "type": "number" },
+            "upper": { "type": "number" },
+            "unit": { "type": "string" }
+          }
+        },
+        "model": {
+          "type": "string",
+          "description": "Model identifier (for Predicted status)"
+        },
+        "operator": {
+          "type": "string",
+          "description": "Operator identifier (for Operator-Annotated status)"
+        },
+        "citation": {
+          "type": "string",
+          "description": "Source citation (for Externally-Sourced status)"
+        }
+      }
+    },
+    "ObservedArtifact": {
+      "type": "object",
+      "description": "Direct sensor capture",
+      "properties": {
+        "epistemic_status": { "const": "OBSERVED" },
+        "attribution": {
+          "type": "object",
+          "properties": {
+            "source": { "type": "string" }
+          },
+          "required": ["source"]
+        }
+      },
+      "required": ["epistemic_status", "attribution"]
+    },
+    "DerivedArtifact": {
+      "type": "object",
+      "description": "Computed from Observed data",
+      "properties": {
+        "epistemic_status": { "const": "DERIVED" },
+        "attribution": {
+          "type": "object",
+          "properties": {
+            "source": { "type": "string" },
+            "input_hash": { "type": "string" }
+          },
+          "required": ["source", "input_hash"]
+        }
+      },
+      "required": ["epistemic_status", "attribution"]
+    },
+    "EstimatedArtifact": {
+      "type": "object",
+      "description": "Approximation with uncertainty bounds",
+      "properties": {
+        "epistemic_status": { "const": "ESTIMATED" },
+        "attribution": {
+          "type": "object",
+          "properties": {
+            "source": { "type": "string" },
+            "uncertainty": {
+              "type": "object",
+              "properties": {
+                "lower": { "type": "number" },
+                "upper": { "type": "number" }
+              },
+              "required": ["lower", "upper"]
+            }
+          },
+          "required": ["source", "uncertainty"]
+        }
+      },
+      "required": ["epistemic_status", "attribution"]
+    },
+    "PredictedArtifact": {
+      "type": "object",
+      "description": "Model output",
+      "properties": {
+        "epistemic_status": { "const": "PREDICTED" },
+        "attribution": {
+          "type": "object",
+          "properties": {
+            "model": { "type": "string" }
+          },
+          "required": ["model"]
+        }
+      },
+      "required": ["epistemic_status", "attribution"]
+    },
+    "HeuristicArtifact": {
+      "type": "object",
+      "description": "Rule-based suggestion",
+      "properties": {
+        "epistemic_status": { "const": "HEURISTIC" },
+        "attribution": {
+          "type": "object",
+          "properties": {
+            "source": { "type": "string" }
+          },
+          "required": ["source"]
+        }
+      },
+      "required": ["epistemic_status", "attribution"]
+    },
+    "OperatorAnnotatedArtifact": {
+      "type": "object",
+      "description": "Human input",
+      "properties": {
+        "epistemic_status": { "const": "OPERATOR_ANNOTATED" },
+        "attribution": {
+          "type": "object",
+          "properties": {
+            "operator": { "type": "string" }
+          },
+          "required": ["operator"]
+        }
+      },
+      "required": ["epistemic_status", "attribution"]
+    },
+    "ExternallySourcedArtifact": {
+      "type": "object",
+      "description": "Imported data",
+      "properties": {
+        "epistemic_status": { "const": "EXTERNALLY_SOURCED" },
+        "attribution": {
+          "type": "object",
+          "properties": {
+            "citation": { "type": "string" }
+          },
+          "required": ["citation"]
+        }
+      },
+      "required": ["epistemic_status", "attribution"]
+    },
+    "AllowedTransitions": {
+      "description": "Allowed epistemic status transitions",
+      "type": "object",
+      "properties": {
+        "OBSERVED": {
+          "type": "array",
+          "items": { "enum": ["DERIVED", "HEURISTIC"] }
+        },
+        "DERIVED": {
+          "type": "array",
+          "items": { "enum": ["ESTIMATED", "HEURISTIC"] }
+        },
+        "ESTIMATED": {
+          "type": "array",
+          "items": { "enum": ["HEURISTIC"] }
+        },
+        "PREDICTED": {
+          "type": "array",
+          "items": { "enum": ["HEURISTIC"] }
+        },
+        "HEURISTIC": {
+          "type": "array",
+          "items": { "enum": [] },
+          "maxItems": 0
+        },
+        "OPERATOR_ANNOTATED": {
+          "type": "array",
+          "items": { "enum": ["HEURISTIC"] }
+        },
+        "EXTERNALLY_SOURCED": {
+          "type": "array",
+          "items": { "enum": ["HEURISTIC"] }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

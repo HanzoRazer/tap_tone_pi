@@ -321,7 +321,7 @@ VERDICT_TEMPLATES: Dict[Verdict, VerdictTemplate] = {
         title="Measurement failed quality gate",
         summary="Capture is not acceptable under policy.",
         default_actions=(
-            SuggestedAction("retry", "Retry", "Correct conditions and retake"),
+            SuggestedAction("retry", "Retry", "Adjust conditions and retake"),
             SuggestedAction("abort", "Abort", "Stop and troubleshoot"),
             SuggestedAction(
                 "override",
@@ -420,9 +420,9 @@ RULE_SPECS: Dict[str, RuleMessageSpec] = {
         advanced_note="If the device rejects rates, fall back to its supported default.",
         actions=(
             SuggestedAction(
-                "set_samplerate_standard", "Use 48k and retry", "Policy-approved rate"
+                "set_samplerate_standard", "Use 48k and retry", "Policy-accepted rate"
             ),
-            SuggestedAction("run_setup", "Run setup wizard", "Persist correct rate"),
+            SuggestedAction("run_setup", "Run setup wizard", "Persist selected rate"),
             SuggestedAction("abort", "Abort", "Cannot proceed with non-standard rate"),
         ),
     ),
@@ -464,7 +464,7 @@ RULE_SPECS: Dict[str, RuleMessageSpec] = {
     "Q012": RuleMessageSpec(
         rule_id="Q012",
         severity=Severity.SOFT,
-        operator_explanation="Confidence is marginal. The reading may be correct but less stable.",
+        operator_explanation="Confidence is marginal. The reading may be valid but less stable.",
         why_it_matters="Low stability increases the chance of drift between attempts.",
         first_fix="Retry once to see if confidence improves.",
         fallback_fix="Accept if the dominant peak repeats across attempts.",
@@ -650,7 +650,7 @@ def _apply_escalations(
         )
         add(
             SuggestedAction(
-                "run_setup", "Run setup wizard", "Persist correct device selection"
+                "run_setup", "Run setup wizard", "Persist selected device"
             )
         )
     if "Q010" in rule_ids and repeated("Q010", 3):

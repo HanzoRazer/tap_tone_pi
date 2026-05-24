@@ -1,0 +1,21 @@
+name: guidance-language-guard
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  guidance-language:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check guidance language (AGE Constitutional Contract)
+        run: |
+          python ci/check_guidance_language.py --strict
