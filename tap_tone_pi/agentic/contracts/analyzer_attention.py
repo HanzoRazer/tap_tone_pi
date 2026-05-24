@@ -6,6 +6,10 @@ Defines how analyzers direct user attention to analysis results.
 This is a presentation-layer contract, not computational.
 
 Mirrors: luthiers-toolbox/app/agentic/contracts/analyzer_attention.py
+
+Authority metadata (PR 78C):
+    Every directive must carry explicit authority metadata declaring
+    what authority it claims (and does not claim). See ADR-0010.
 """
 
 from __future__ import annotations
@@ -13,7 +17,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tap_tone_pi.agentic.contracts.advisory_authority import AdvisoryAuthorityV1
 
 
 class AttentionAction(str, Enum):
@@ -113,6 +120,10 @@ class AttentionDirectiveV1:
     created_at: str = field(default_factory=_utc_now)
     expires_at: Optional[str] = None
 
+    # Authority metadata (PR 78C / ADR-0010)
+    # Declares what authority this directive claims (and does not claim)
+    authority: Optional["AdvisoryAuthorityV1"] = None
+
     def to_dict(self) -> dict:
         """Convert to JSON-serializable dict."""
         return {
@@ -135,4 +146,5 @@ class AttentionDirectiveV1:
             "supersedes": list(self.supersedes),
             "created_at": self.created_at,
             "expires_at": self.expires_at,
+            "authority": self.authority.to_dict() if self.authority else None,
         }

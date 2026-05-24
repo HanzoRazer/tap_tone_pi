@@ -30,6 +30,10 @@ from __future__ import annotations
 import pytest
 
 from tap_tone_pi.agentic.contracts.analyzer_attention import AttentionDirectiveV1
+from tap_tone_pi.agentic.contracts.advisory_authority import (
+    AuthorityClass,
+    GuidanceScope,
+)
 
 POLICY_IMPORT_PATH = "tap_tone_pi.agentic.spine.policy"
 
@@ -277,3 +281,40 @@ def test_focus_target_is_frozen(uwsm_default, cap_view_allowed):
     assert directive.focus is not None
     with pytest.raises(AttributeError):
         directive.focus.target_id = "tampered"
+
+
+def test_directive_carries_authority_metadata(uwsm_default, cap_view_allowed):
+    """PR 78C: M1/M2 directives must carry advisory authority metadata."""
+    decide = _import_decider()
+    out = decide(
+        moment={"moment": "FINDING"},
+        uwsm=uwsm_default,
+        mode="M1",
+        capability=cap_view_allowed,
+    )
+    directive = out["directive"]
+    assert directive is not None
+    assert directive.authority is not None, "Directive must have authority metadata"
+    assert directive.authority.authority_class == AuthorityClass.DECISION_SUPPORT
+    assert directive.authority.authority_scope == GuidanceScope.ATTENTION_GUIDANCE
+    assert directive.authority.can_establish_truth is False
+    assert directive.authority.can_modify_measurement is False
+    assert directive.authority.can_enter_measurement_export is False
+
+
+def test_directive_authority_serializes_in_payload(uwsm_default, cap_view_allowed):
+    """PR 78C: Authority metadata must appear in serialized directive payload."""
+    decide = _import_decider()
+    out = decide(
+        moment={"moment": "FIRST_SIGNAL"},
+        uwsm=uwsm_default,
+        mode="M1",
+        capability=cap_view_allowed,
+    )
+    directive = out["directive"]
+    assert directive is not None
+    payload = directive.to_dict()
+    assert "authority" in payload
+    assert payload["authority"] is not None
+    assert payload["authority"]["authority_class"] == "decision_support"
+    assert payload["authority"]["can_establish_truth"] is False

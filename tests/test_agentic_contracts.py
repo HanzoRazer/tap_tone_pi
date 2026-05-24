@@ -34,6 +34,11 @@ from tap_tone_pi.agentic.events import (
     create_wolf_tone_directive,
     create_mode_identified_directive,
 )
+from tap_tone_pi.agentic.contracts.advisory_authority import (
+    AuthorityClass,
+    GuidanceScope,
+    AGE_ATTENTION_AUTHORITY,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -162,6 +167,49 @@ class TestAttentionDirectiveV1:
         assert isinstance(payload["summary"], str)
         assert payload["summary"].strip() != ""
         assert "title" not in payload
+
+    def test_directive_with_authority_metadata(self):
+        """Test that directive can carry authority metadata (PR 78C)."""
+        directive = AttentionDirectiveV1(
+            directive_id="attn_auth_001",
+            action=AttentionAction.REVIEW,
+            summary="Review this finding",
+            focus=FocusTarget(target_type="spectrum", target_id="peak_1"),
+            authority=AGE_ATTENTION_AUTHORITY,
+        )
+        assert directive.authority is not None
+        assert directive.authority.authority_class == AuthorityClass.DECISION_SUPPORT
+        assert directive.authority.can_establish_truth is False
+        assert directive.authority.can_enter_measurement_export is False
+
+    def test_directive_authority_serialization(self):
+        """Test that authority metadata serializes correctly (PR 78C)."""
+        directive = AttentionDirectiveV1(
+            directive_id="attn_auth_002",
+            action=AttentionAction.INSPECT,
+            summary="Inspect",
+            focus=FocusTarget(target_type="session", target_id="current"),
+            authority=AGE_ATTENTION_AUTHORITY,
+        )
+        d = directive.to_dict()
+        assert "authority" in d
+        assert d["authority"]["authority_class"] == "decision_support"
+        assert d["authority"]["authority_scope"] == "attention_guidance"
+        assert d["authority"]["can_establish_truth"] is False
+        assert d["authority"]["can_modify_measurement"] is False
+        assert d["authority"]["can_enter_measurement_export"] is False
+        json.dumps(d)
+
+    def test_directive_without_authority_serializes_null(self):
+        """Test backward compatibility - directive without authority serializes authority as None."""
+        directive = AttentionDirectiveV1(
+            directive_id="attn_no_auth",
+            action=AttentionAction.REVIEW,
+            summary="Test",
+            focus=FocusTarget(target_type="test", target_id="1"),
+        )
+        d = directive.to_dict()
+        assert d["authority"] is None
 
 
 # -----------------------------------------------------------------------------

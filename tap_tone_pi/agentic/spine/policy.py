@@ -23,6 +23,9 @@ from tap_tone_pi.agentic.contracts.analyzer_attention import (
     AttentionDirectiveV1,
     FocusTarget,
 )
+from tap_tone_pi.agentic.contracts.advisory_authority import (
+    AGE_ATTENTION_AUTHORITY,
+)
 
 
 def _coerce_directive(obj: Any) -> Optional[AttentionDirectiveV1]:
@@ -262,4 +265,5 @@ def _build_directive(
         summary=title,
         focus=FocusTarget(target_type="session", target_id="current"),
         detail=detail,
+        authority=AGE_ATTENTION_AUTHORITY,
     )
