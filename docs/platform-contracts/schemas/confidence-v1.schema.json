@@ -1,85 +1,49 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://platform-contracts/confidence-v1.schema.json",
-  "title": "Typed Confidence (v1)",
+  "$id": "confidence-v1.schema.json",
+  "title": "ConfidenceV1",
   "description": "Cross-repository contract for typed confidence values. See confidence-v1.md for prose definition.",
   "type": "object",
+  "additionalProperties": false,
+  "required": ["domain", "value", "source"],
   "properties": {
-    "schema_version": {
-      "const": "confidence-v1"
-    },
-    "typed_confidence": {
-      "$ref": "#/$defs/TypedConfidence"
-    }
-  },
-  "$defs": {
-    "ConfidenceDomain": {
+    "domain": {
       "type": "string",
-      "enum": ["SIGNAL", "MEASUREMENT", "INTERPRETIVE", "RECOMMENDATION"],
-      "description": "The four confidence domains"
+      "enum": [
+        "signal",
+        "measurement",
+        "interpretive",
+        "recommendation",
+        "historical",
+        "ranking"
+      ],
+      "description": "The confidence domain (determines authority ceiling)"
     },
-    "TypedConfidence": {
-      "type": "object",
-      "description": "A confidence value with explicit domain context",
-      "properties": {
-        "value": {
-          "type": "number",
-          "minimum": 0.0,
-          "maximum": 1.0,
-          "description": "Confidence value in [0.0, 1.0]"
-        },
-        "domain": {
-          "$ref": "#/$defs/ConfidenceDomain",
-          "description": "The confidence domain (determines authority ceiling)"
-        },
-        "source": {
-          "type": "string",
-          "description": "Algorithm or process that produced this confidence value"
-        }
-      },
-      "required": ["value", "domain"],
-      "additionalProperties": false
+    "value": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Confidence value in [0.0, 1.0]"
     },
-    "SignalConfidence": {
-      "type": "object",
-      "description": "Confidence derived from signal processing metrics",
-      "properties": {
-        "value": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
-        "domain": { "const": "SIGNAL" },
-        "source": { "type": "string" }
-      },
-      "required": ["value", "domain"]
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Algorithm or process that produced this confidence value"
     },
-    "MeasurementConfidence": {
-      "type": "object",
-      "description": "Confidence in a complete measurement result",
-      "properties": {
-        "value": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
-        "domain": { "const": "MEASUREMENT" },
-        "source": { "type": "string" }
+    "does_not_imply": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "correctness",
+          "approval",
+          "execution_authority",
+          "review_bypass",
+          "measurement_truth"
+        ]
       },
-      "required": ["value", "domain"]
-    },
-    "InterpretiveConfidence": {
-      "type": "object",
-      "description": "Confidence in an interpretation or classification",
-      "properties": {
-        "value": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
-        "domain": { "const": "INTERPRETIVE" },
-        "source": { "type": "string" }
-      },
-      "required": ["value", "domain"]
-    },
-    "RecommendationConfidence": {
-      "type": "object",
-      "description": "Confidence in an advisory recommendation",
-      "properties": {
-        "value": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
-        "domain": { "const": "RECOMMENDATION" },
-        "source": { "type": "string" }
-      },
-      "required": ["value", "domain"]
+      "uniqueItems": true,
+      "description": "Explicit list of things this confidence does not imply"
     }
-  },
-  "additionalProperties": false
+  }
 }
