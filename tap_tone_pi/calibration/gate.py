@@ -222,3 +222,31 @@ def print_gate_result(result: CalibrationGateResult) -> None:
             print(result.message)
     else:
         print(result.message)
+
+
+def get_calibration_attachment(device_index: int) -> dict:
+    """Get calibration info suitable for attaching to an Attempt.
+
+    Returns a dict with:
+        status: str  ("uncalibrated" | "valid" | "stale" | "failed")
+        calibration_id: str | None
+        age_days: float | None
+
+    This is a read-only query that does NOT enforce the gate.
+    Use enforce_calibration_gate() to block sessions.
+    """
+    status = get_calibration_status(device_index)
+    cal_data = load_calibration(device_index)
+
+    result = {
+        "status": status.value,
+        "calibration_id": None,
+        "age_days": None,
+    }
+
+    if cal_data is not None:
+        # Build calibration ID from device + timestamp
+        result["calibration_id"] = f"cal_{device_index}_{cal_data.calibrated_at}"
+        result["age_days"] = float(_cal_age_days(cal_data))
+
+    return result

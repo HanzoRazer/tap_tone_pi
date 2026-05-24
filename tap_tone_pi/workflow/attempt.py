@@ -80,6 +80,36 @@ class Attempt:
     analysis_path: str | None = None
     quality_check_path: str | None = None
 
+    # Calibration trust attachment (PR 2)
+    # These fields record calibration state at capture time.
+    # Values: "uncalibrated" | "valid" | "stale" | "failed"
+    calibration_status: str | None = None
+    calibration_id: str | None = None  # Reference to calibration record
+    calibration_checked_at: str | None = None
+    calibration_age_days: float | None = None
+
+    def attach_calibration(
+        self,
+        status: str,
+        calibration_id: str | None = None,
+        age_days: float | None = None,
+    ) -> None:
+        """Attach calibration trust information to this attempt.
+
+        This records the calibration state at capture time. The measurement
+        facts remain unchanged — calibration status is provenance, not
+        interpretation.
+
+        Args:
+            status: CalibrationStatus value ("uncalibrated", "valid", "stale", "failed")
+            calibration_id: Optional reference to calibration record
+            age_days: Optional calibration age in days
+        """
+        self.calibration_status = status
+        self.calibration_id = calibration_id
+        self.calibration_checked_at = _utc_now()
+        self.calibration_age_days = age_days
+
     def mark_captured(
         self,
         device_index: int,

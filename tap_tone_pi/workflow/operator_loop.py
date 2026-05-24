@@ -525,6 +525,19 @@ class OperatorLoop:
             duration_seconds=actual_duration,
         )
 
+        # Attach calibration trust info (PR 2)
+        try:
+            from tap_tone_pi.calibration.gate import get_calibration_attachment
+            cal_info = get_calibration_attachment(device or 0)
+            attempt.attach_calibration(
+                status=cal_info["status"],
+                calibration_id=cal_info.get("calibration_id"),
+                age_days=cal_info.get("age_days"),
+            )
+        except (ImportError, OSError, KeyError):
+            # Fail-closed: record as uncalibrated if calibration check fails
+            attempt.attach_calibration(status="uncalibrated")
+
         audio_path = attempt_dir / "audio.wav"
         write_wav_int16(audio_path, cap_result.audio, cap_result.sample_rate)
         attempt.audio_path = "audio.wav"
