@@ -8,133 +8,170 @@
 
 ## Purpose
 
-This document defines the review decision states and their semantics across the acoustic measurement and manufacturing ecosystem. Review decisions determine whether artifacts may proceed through governance gates.
+This document defines the review decision semantics used across the acoustic measurement and manufacturing ecosystem. Review decisions record human process — they do not automatically authorize implementation, execution, or machine output.
 
 ---
 
-## Problem Statement
+## Core Invariant
 
-Parallel review queue implementations across repositories use incompatible terminology:
-
-| Repository | Approved | Rejected | Pending |
-|------------|----------|----------|---------|
-| tap_tone_pi | N/A | N/A | N/A |
-| luthiers-toolbox | `APPROVED` | `REJECTED` | `UNDER_REVIEW` |
-| CAM-Assist | `accepted` | `denied` | `queued` |
-
-This creates integration risk when artifacts cross repository boundaries.
+```
+Review decisions record human process.
+They do not automatically authorize implementation, execution, or machine output.
+```
 
 ---
 
-## Review Decision States
+## Decision Types
 
-### PENDING
+Decision types represent the action a reviewer takes:
 
-Artifact has entered review queue but has not received a decision.
+### acknowledge
 
-| Property | Value |
-|----------|-------|
-| May proceed | No |
-| May be modified | Yes |
-| May be withdrawn | Yes |
-| Timeout behavior | Implementation-defined |
-
-### APPROVED
-
-Artifact has received positive review decision and may proceed.
+Reviewer has seen the artifact and recorded awareness.
 
 | Property | Value |
 |----------|-------|
-| May proceed | Yes |
-| May be modified | No (requires re-review) |
-| May be withdrawn | Yes |
-| Authority granted | None (approval ≠ authority) |
+| Records review | Yes |
+| Authorizes implementation | No |
+| Authorizes execution | No |
 
-### REJECTED
+### request_more_evidence
 
-Artifact has received negative review decision and may not proceed.
-
-| Property | Value |
-|----------|-------|
-| May proceed | No |
-| May be modified | Yes (for resubmission) |
-| May be withdrawn | Yes |
-| Feedback required | Implementation-defined |
-
-### BLOCKED
-
-Artifact is blocked from review for structural reasons (missing provenance, invalid authority).
+Reviewer requests additional information before proceeding.
 
 | Property | Value |
 |----------|-------|
-| May proceed | No |
-| May be modified | Yes |
-| May be withdrawn | Yes |
-| Unblock path | Resolve blocking condition |
+| Records review | Yes |
+| Authorizes implementation | No |
+| Authorizes execution | No |
+
+### defer
+
+Reviewer defers decision to another reviewer or future review.
+
+| Property | Value |
+|----------|-------|
+| Records review | Yes |
+| Authorizes implementation | No |
+| Authorizes execution | No |
+
+### reject
+
+Reviewer rejects the artifact for this review cycle.
+
+| Property | Value |
+|----------|-------|
+| Records review | Yes |
+| Authorizes implementation | No |
+| Authorizes execution | No |
+
+### mark_reviewed
+
+Reviewer marks artifact as having completed review.
+
+| Property | Value |
+|----------|-------|
+| Records review | Yes |
+| Authorizes implementation | No |
+| Authorizes execution | No |
+
+### approve_for_downstream_review
+
+Reviewer approves artifact to proceed to downstream review (not execution).
+
+| Property | Value |
+|----------|-------|
+| Records review | Yes |
+| Authorizes implementation | No |
+| Authorizes execution | No |
+
+---
+
+## Resulting Status
+
+After a decision, the artifact enters a pipeline status:
+
+| Status | Description |
+|--------|-------------|
+| pending | Awaiting review decision |
+| under_review | Currently being reviewed |
+| needs_evidence | Blocked pending additional evidence |
+| deferred | Deferred to another reviewer or time |
+| rejected | Rejected, may be resubmitted |
+| reviewed | Review complete, no further action in this gate |
+| approved_downstream | Approved to proceed to downstream review |
+
+---
+
+## Decision Effects Table
+
+| Decision Type | Records Review | Authorizes Implementation | Authorizes Execution | Resulting Status |
+|---------------|:--------------:|:-------------------------:|:--------------------:|------------------|
+| acknowledge | Yes | No | No | under_review |
+| request_more_evidence | Yes | No | No | needs_evidence |
+| defer | Yes | No | No | deferred |
+| reject | Yes | No | No | rejected |
+| mark_reviewed | Yes | No | No | reviewed |
+| approve_for_downstream_review | Yes | No | No | approved_downstream |
 
 ---
 
 ## Invariants
 
-1. **Approval ≠ authority.** Review approval does not grant measurement authority, establish truth, or upgrade epistemic status.
+1. **Review ≠ authorization.** Review approval does not grant measurement authority, establish truth, or upgrade epistemic status.
 
-2. **Approval ≠ validation.** Review approval means "may proceed through gate", not "is correct" or "is good".
+2. **Review ≠ validation.** Review approval means "may proceed through gate", not "is correct" or "is good".
 
-3. **Decision is binding for scope.** A decision applies to a specific artifact version at a specific gate.
+3. **No execution authority.** No review decision authorizes machine execution. Execution requires separate, explicit authorization.
 
-4. **Modification invalidates approval.** Any modification to an approved artifact requires re-review.
+4. **No implementation authority.** No review decision authorizes implementation. Implementation requires separate process.
 
-5. **Blocked is not rejection.** BLOCKED indicates structural deficiency; REJECTED indicates review decision.
+5. **Decision is scoped.** A decision applies to a specific artifact version at a specific gate.
+
+6. **Modification invalidates.** Any modification to an approved artifact requires re-review.
 
 ---
 
-## Decision Metadata
+## Typed Decision Structure
 
 ```json
 {
-  "review_decision": {
-    "state": "APPROVED",
-    "reviewer": "operator@example.com",
-    "timestamp": "2024-01-15T10:30:00Z",
-    "gate": "export_legitimacy",
-    "artifact_version": "abc123",
-    "notes": "Optional reviewer notes"
-  }
+  "decision_type": "mark_reviewed",
+  "resulting_status": "reviewed",
+  "human_review_recorded": true,
+  "implementation_authorized": false,
+  "execution_authorized": false,
+  "machine_output_allowed": false,
+  "reviewer_ref": "operator@example.com",
+  "source_repo": "luthiers-toolbox",
+  "local_decision_type": "ReviewDecisionRecord.REVIEWED"
 }
 ```
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| state | string | Yes | One of: PENDING, APPROVED, REJECTED, BLOCKED |
-| reviewer | string | Conditional | Required for APPROVED/REJECTED |
-| timestamp | ISO 8601 | Yes | Decision timestamp |
-| gate | string | Yes | Gate identifier |
-| artifact_version | string | Yes | Artifact hash or version |
-| notes | string | No | Reviewer notes |
-
----
-
-## Gate Types
-
-Review decisions are scoped to specific gates:
-
-| Gate | Description | Typical Scope |
-|------|-------------|---------------|
-| `export_legitimacy` | May artifact be exported | luthiers-toolbox |
-| `measurement_validity` | Is measurement acceptable | tap_tone_pi |
-| `production_release` | May artifact enter production | CAM-Assist |
-| `archive_inclusion` | May artifact be archived | All |
+| decision_type | string | Yes | The reviewer action taken |
+| resulting_status | string | No | The pipeline status after this decision |
+| human_review_recorded | boolean | Yes | Always true for valid decisions |
+| implementation_authorized | boolean | Yes | Always false |
+| execution_authorized | boolean | Yes | Always false |
+| machine_output_allowed | boolean | Yes | Always false |
+| reviewer_ref | string | No | Reviewer identifier |
+| source_repo | string | No | Repository that recorded this decision |
+| local_decision_type | string | No | Repository-local decision type for mapping |
 
 ---
 
 ## Cross-Repository Mapping
 
-| State | tap_tone_pi | luthiers-toolbox | CAM-Assist |
-|-------|-------------|------------------|------------|
-| PENDING | `QualityVerdict.PENDING` | `UNDER_REVIEW` | `queued` |
-| APPROVED | `QualityVerdict.PASS` | `APPROVED` | `accepted` |
-| REJECTED | `QualityVerdict.FAIL` | `REJECTED` | `denied` |
-| BLOCKED | N/A | `BLOCKED_PROVENANCE` | `blocked` |
+| Canonical Decision | tap_tone_pi | luthiers-toolbox | CAM-Assist |
+|--------------------|-------------|------------------|------------|
+| acknowledge | QualityVerdict.PENDING | UNDER_REVIEW | queued |
+| request_more_evidence | N/A | REQUEST_EVIDENCE | needs_info |
+| defer | N/A | DEFERRED | deferred |
+| reject | QualityVerdict.FAIL | REJECTED | denied |
+| mark_reviewed | QualityVerdict.PASS | REVIEWED | reviewed |
+| approve_for_downstream_review | N/A | APPROVED_DOWNSTREAM | accepted |
 
 ---
 
@@ -142,28 +179,32 @@ Review decisions are scoped to specific gates:
 
 When artifacts cross repository boundaries:
 
-1. **Map to common vocabulary.** Use this contract's state names in cross-repo APIs.
+1. **Map to common vocabulary.** Use this contract's decision types in cross-repo APIs.
 
 2. **Preserve decision metadata.** Include original repository's decision record.
 
 3. **Re-review at boundary.** Receiving repository may require its own review.
 
-4. **Respect blocked state.** BLOCKED artifacts should not be submitted to downstream review.
+4. **No execution leakage.** Even approved_downstream does not authorize execution in receiving repo.
 
 ---
 
 ## Non-Goals
 
 This contract does NOT:
+- Authorize execution (that requires explicit Dev Order)
+- Authorize implementation
+- Allow machine output based on review alone
 - Define specific review criteria
 - Prescribe reviewer assignment
-- Define review UI
-- Require review for all artifacts
+- Merge review systems automatically
 
 ---
 
 ## See Also
 
 - [authority-v1](authority-v1.md)
+- [confidence-v1](confidence-v1.md)
+- [epistemic-status-v1](epistemic-status-v1.md)
 - luthiers-toolbox: GOVERNANCE_RUNNER.md, 8E Queue
 - CAM-Assist: Review Queue
