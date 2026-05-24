@@ -40,6 +40,13 @@ from .advisory_authority import (
     AGE_WORKFLOW_AUTHORITY,
 )
 
+from .confidence_domain import (
+    ConfidenceDomain,
+    TypedConfidenceV1,
+    MEASUREMENT_DOMAINS,
+    ADVISORY_DOMAINS,
+)
+
 __all__ = [
     # Tool Capability
     "ToolCapabilityV1",
@@ -60,4 +67,9 @@ __all__ = [
     "AGE_ATTENTION_AUTHORITY",
     "AGE_EXPLANATION_AUTHORITY",
     "AGE_WORKFLOW_AUTHORITY",
+    # Confidence Domain
+    "ConfidenceDomain",
+    "TypedConfidenceV1",
+    "MEASUREMENT_DOMAINS",
+    "ADVISORY_DOMAINS",
 ]

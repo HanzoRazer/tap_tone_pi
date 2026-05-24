@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from tap_tone_pi.agentic.contracts.advisory_authority import AdvisoryAuthorityV1
+    from tap_tone_pi.agentic.contracts.confidence_domain import TypedConfidenceV1
 
 
 class AttentionAction(str, Enum):
@@ -124,6 +125,10 @@ class AttentionDirectiveV1:
     # Declares what authority this directive claims (and does not claim)
     authority: Optional["AdvisoryAuthorityV1"] = None
 
+    # Typed confidence (PR 78D / ADR-0010)
+    # Provides domain-aware confidence instead of bare float
+    typed_confidence: Optional["TypedConfidenceV1"] = None
+
     def to_dict(self) -> dict:
         """Convert to JSON-serializable dict."""
         return {
@@ -147,4 +152,5 @@ class AttentionDirectiveV1:
             "created_at": self.created_at,
             "expires_at": self.expires_at,
             "authority": self.authority.to_dict() if self.authority else None,
+            "typed_confidence": self.typed_confidence.to_dict() if self.typed_confidence else None,
         }

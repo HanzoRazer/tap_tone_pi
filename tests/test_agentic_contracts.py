@@ -39,6 +39,10 @@ from tap_tone_pi.agentic.contracts.advisory_authority import (
     GuidanceScope,
     AGE_ATTENTION_AUTHORITY,
 )
+from tap_tone_pi.agentic.contracts.confidence_domain import (
+    ConfidenceDomain,
+    TypedConfidenceV1,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -210,6 +214,58 @@ class TestAttentionDirectiveV1:
         )
         d = directive.to_dict()
         assert d["authority"] is None
+
+    def test_directive_with_typed_confidence(self):
+        """Test that directive can carry typed confidence (PR 78D)."""
+        typed_conf = TypedConfidenceV1(
+            value=0.85,
+            domain=ConfidenceDomain.INTERPRETIVE,
+            source="wolf_beat_model",
+        )
+        directive = AttentionDirectiveV1(
+            directive_id="attn_typed_001",
+            action=AttentionAction.REVIEW,
+            summary="Review potential wolf signature",
+            focus=FocusTarget(target_type="spectrum", target_id="peak_1"),
+            typed_confidence=typed_conf,
+        )
+        assert directive.typed_confidence is not None
+        assert directive.typed_confidence.value == 0.85
+        assert directive.typed_confidence.domain == ConfidenceDomain.INTERPRETIVE
+        assert directive.typed_confidence.is_advisory_domain() is True
+
+    def test_directive_typed_confidence_serialization(self):
+        """Test that typed confidence serializes correctly (PR 78D)."""
+        typed_conf = TypedConfidenceV1(
+            value=0.7,
+            domain=ConfidenceDomain.RECOMMENDATION,
+            source="attention_policy",
+        )
+        directive = AttentionDirectiveV1(
+            directive_id="attn_typed_002",
+            action=AttentionAction.INSPECT,
+            summary="Consider checking",
+            focus=FocusTarget(target_type="session", target_id="current"),
+            typed_confidence=typed_conf,
+        )
+        d = directive.to_dict()
+        assert "typed_confidence" in d
+        assert d["typed_confidence"]["value"] == 0.7
+        assert d["typed_confidence"]["domain"] == "recommendation"
+        assert d["typed_confidence"]["source"] == "attention_policy"
+
+    def test_directive_without_typed_confidence_serializes_null(self):
+        """Test backward compatibility - directive without typed_confidence is None."""
+        directive = AttentionDirectiveV1(
+            directive_id="attn_legacy",
+            action=AttentionAction.REVIEW,
+            summary="Test",
+            focus=FocusTarget(target_type="test", target_id="1"),
+            confidence=0.8,  # Legacy float confidence still works
+        )
+        d = directive.to_dict()
+        assert d["typed_confidence"] is None
+        assert d["confidence"] == 0.8  # Legacy field preserved
 
 
 # -----------------------------------------------------------------------------
