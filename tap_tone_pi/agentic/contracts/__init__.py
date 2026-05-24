@@ -31,6 +31,15 @@ from .event_emission import (
     EventSource,
 )
 
+from .advisory_authority import (
+    AuthorityClass,
+    GuidanceScope,
+    AdvisoryAuthorityV1,
+    AGE_ATTENTION_AUTHORITY,
+    AGE_EXPLANATION_AUTHORITY,
+    AGE_WORKFLOW_AUTHORITY,
+)
+
 __all__ = [
     # Tool Capability
     "ToolCapabilityV1",
@@ -44,4 +53,11 @@ __all__ = [
     "AgentEventV1",
     "EventType",
     "EventSource",
+    # Advisory Authority
+    "AuthorityClass",
+    "GuidanceScope",
+    "AdvisoryAuthorityV1",
+    "AGE_ATTENTION_AUTHORITY",
+    "AGE_EXPLANATION_AUTHORITY",
+    "AGE_WORKFLOW_AUTHORITY",
 ]
