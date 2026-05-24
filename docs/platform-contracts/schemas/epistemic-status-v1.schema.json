@@ -1,218 +1,108 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://platform-contracts/epistemic-status-v1.schema.json",
-  "title": "Epistemic Status (v1)",
+  "$id": "epistemic-status-v1.schema.json",
+  "title": "EpistemicStatusV1",
   "description": "Cross-repository contract for epistemic status classification. See epistemic-status-v1.md for prose definition.",
   "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "source", "may_enter_measurement_export"],
   "properties": {
-    "schema_version": {
-      "const": "epistemic-status-v1"
+    "status": {
+      "type": "string",
+      "enum": [
+        "observed",
+        "derived",
+        "estimated",
+        "predicted",
+        "heuristic",
+        "operator_annotated",
+        "externally_sourced"
+      ],
+      "description": "The epistemic status of the artifact"
     },
-    "epistemic_status": {
-      "$ref": "#/$defs/EpistemicStatus"
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Algorithm, operator, or system that produced this artifact"
     },
-    "attribution": {
-      "$ref": "#/$defs/Attribution"
+    "may_enter_measurement_export": {
+      "type": "boolean",
+      "description": "Whether this artifact may enter measurement export packages"
+    },
+    "authority_notes": {
+      "type": "string",
+      "description": "Additional context about authority classification"
+    },
+    "prohibited_transitions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "observed",
+          "derived",
+          "estimated",
+          "predicted",
+          "heuristic",
+          "operator_annotated",
+          "externally_sourced"
+        ]
+      },
+      "uniqueItems": true,
+      "description": "Statuses this artifact may not transition to"
     }
   },
   "$defs": {
-    "EpistemicStatus": {
-      "type": "string",
-      "enum": [
-        "OBSERVED",
-        "DERIVED",
-        "ESTIMATED",
-        "PREDICTED",
-        "HEURISTIC",
-        "OPERATOR_ANNOTATED",
-        "EXTERNALLY_SOURCED"
-      ],
-      "description": "The seven epistemic statuses"
-    },
-    "Attribution": {
-      "type": "object",
-      "description": "Attribution metadata required for epistemic status",
-      "properties": {
-        "source": {
-          "type": "string",
-          "description": "Source identifier (algorithm, operator, external system)"
-        },
-        "input_hash": {
-          "type": "string",
-          "description": "SHA-256 hash of inputs (for Derived status)"
-        },
-        "uncertainty": {
-          "type": "object",
-          "description": "Uncertainty bounds (for Estimated status)",
-          "properties": {
-            "lower": { "type": "number" },
-            "upper": { "type": "number" },
-            "unit": { "type": "string" }
-          }
-        },
-        "model": {
-          "type": "string",
-          "description": "Model identifier (for Predicted status)"
-        },
-        "operator": {
-          "type": "string",
-          "description": "Operator identifier (for Operator-Annotated status)"
-        },
-        "citation": {
-          "type": "string",
-          "description": "Source citation (for Externally-Sourced status)"
-        }
-      }
-    },
     "ObservedArtifact": {
       "type": "object",
       "description": "Direct sensor capture",
       "properties": {
-        "epistemic_status": { "const": "OBSERVED" },
-        "attribution": {
-          "type": "object",
-          "properties": {
-            "source": { "type": "string" }
-          },
-          "required": ["source"]
-        }
+        "status": { "const": "observed" },
+        "source": { "type": "string", "minLength": 1 },
+        "may_enter_measurement_export": { "const": true }
       },
-      "required": ["epistemic_status", "attribution"]
+      "required": ["status", "source", "may_enter_measurement_export"]
     },
     "DerivedArtifact": {
       "type": "object",
-      "description": "Computed from Observed data",
+      "description": "Computed from observed data",
       "properties": {
-        "epistemic_status": { "const": "DERIVED" },
-        "attribution": {
-          "type": "object",
-          "properties": {
-            "source": { "type": "string" },
-            "input_hash": { "type": "string" }
-          },
-          "required": ["source", "input_hash"]
+        "status": { "const": "derived" },
+        "source": { "type": "string", "minLength": 1 },
+        "may_enter_measurement_export": { "const": true },
+        "prohibited_transitions": {
+          "type": "array",
+          "items": { "const": "observed" }
         }
       },
-      "required": ["epistemic_status", "attribution"]
-    },
-    "EstimatedArtifact": {
-      "type": "object",
-      "description": "Approximation with uncertainty bounds",
-      "properties": {
-        "epistemic_status": { "const": "ESTIMATED" },
-        "attribution": {
-          "type": "object",
-          "properties": {
-            "source": { "type": "string" },
-            "uncertainty": {
-              "type": "object",
-              "properties": {
-                "lower": { "type": "number" },
-                "upper": { "type": "number" }
-              },
-              "required": ["lower", "upper"]
-            }
-          },
-          "required": ["source", "uncertainty"]
-        }
-      },
-      "required": ["epistemic_status", "attribution"]
+      "required": ["status", "source", "may_enter_measurement_export"]
     },
     "PredictedArtifact": {
       "type": "object",
-      "description": "Model output",
+      "description": "Model output - cannot become measurement",
       "properties": {
-        "epistemic_status": { "const": "PREDICTED" },
-        "attribution": {
-          "type": "object",
-          "properties": {
-            "model": { "type": "string" }
-          },
-          "required": ["model"]
+        "status": { "const": "predicted" },
+        "source": { "type": "string", "minLength": 1 },
+        "may_enter_measurement_export": { "const": false },
+        "prohibited_transitions": {
+          "type": "array",
+          "items": { "enum": ["observed", "derived", "estimated"] }
         }
       },
-      "required": ["epistemic_status", "attribution"]
+      "required": ["status", "source", "may_enter_measurement_export"]
     },
     "HeuristicArtifact": {
       "type": "object",
-      "description": "Rule-based suggestion",
+      "description": "Rule-based suggestion - cannot become measurement",
       "properties": {
-        "epistemic_status": { "const": "HEURISTIC" },
-        "attribution": {
-          "type": "object",
-          "properties": {
-            "source": { "type": "string" }
-          },
-          "required": ["source"]
+        "status": { "const": "heuristic" },
+        "source": { "type": "string", "minLength": 1 },
+        "may_enter_measurement_export": { "const": false },
+        "prohibited_transitions": {
+          "type": "array",
+          "items": { "enum": ["observed", "derived", "estimated"] }
         }
       },
-      "required": ["epistemic_status", "attribution"]
-    },
-    "OperatorAnnotatedArtifact": {
-      "type": "object",
-      "description": "Human input",
-      "properties": {
-        "epistemic_status": { "const": "OPERATOR_ANNOTATED" },
-        "attribution": {
-          "type": "object",
-          "properties": {
-            "operator": { "type": "string" }
-          },
-          "required": ["operator"]
-        }
-      },
-      "required": ["epistemic_status", "attribution"]
-    },
-    "ExternallySourcedArtifact": {
-      "type": "object",
-      "description": "Imported data",
-      "properties": {
-        "epistemic_status": { "const": "EXTERNALLY_SOURCED" },
-        "attribution": {
-          "type": "object",
-          "properties": {
-            "citation": { "type": "string" }
-          },
-          "required": ["citation"]
-        }
-      },
-      "required": ["epistemic_status", "attribution"]
-    },
-    "AllowedTransitions": {
-      "description": "Allowed epistemic status transitions",
-      "type": "object",
-      "properties": {
-        "OBSERVED": {
-          "type": "array",
-          "items": { "enum": ["DERIVED", "HEURISTIC"] }
-        },
-        "DERIVED": {
-          "type": "array",
-          "items": { "enum": ["ESTIMATED", "HEURISTIC"] }
-        },
-        "ESTIMATED": {
-          "type": "array",
-          "items": { "enum": ["HEURISTIC"] }
-        },
-        "PREDICTED": {
-          "type": "array",
-          "items": { "enum": ["HEURISTIC"] }
-        },
-        "HEURISTIC": {
-          "type": "array",
-          "items": { "enum": [] },
-          "maxItems": 0
-        },
-        "OPERATOR_ANNOTATED": {
-          "type": "array",
-          "items": { "enum": ["HEURISTIC"] }
-        },
-        "EXTERNALLY_SOURCED": {
-          "type": "array",
-          "items": { "enum": ["HEURISTIC"] }
-        }
-      }
+      "required": ["status", "source", "may_enter_measurement_export"]
     }
-  },
-  "additionalProperties": false
+  }
 }

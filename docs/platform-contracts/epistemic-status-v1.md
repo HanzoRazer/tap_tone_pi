@@ -12,16 +12,27 @@ This document defines the seven epistemic statuses used to classify data artifac
 
 ---
 
+## Core Rules
+
+```
+Predicted cannot become observed.
+Heuristic cannot become measurement.
+Derived cannot upgrade to observed.
+Any downgrade to heuristic must be explicit.
+```
+
+---
+
 ## Epistemic Statuses
 
-### Observed
+### observed
 
 Direct sensor capture with no transformation beyond digitization.
 
 | Property | Value |
 |----------|-------|
-| Authority class | MEASUREMENT |
-| Can become measurement | Already is |
+| Authority class | measurement |
+| May enter measurement export | Yes |
 | Requires attribution | Capture metadata |
 
 **Examples:**
@@ -29,14 +40,14 @@ Direct sensor capture with no transformation beyond digitization.
 - Accelerometer time series
 - Temperature sensor reading
 
-### Derived
+### derived
 
-Computed deterministically from Observed data using documented algorithms.
+Computed deterministically from observed data using documented algorithms.
 
 | Property | Value |
 |----------|-------|
-| Authority class | MEASUREMENT |
-| Can become measurement | Yes |
+| Authority class | measurement |
+| May enter measurement export | Yes |
 | Requires attribution | Algorithm + input hash |
 
 **Examples:**
@@ -45,14 +56,14 @@ Computed deterministically from Observed data using documented algorithms.
 - Coherence calculation
 - Peak extraction
 
-### Estimated
+### estimated
 
-Approximation computed from Observed or Derived data with explicit uncertainty bounds.
+Approximation computed from observed or derived data with explicit uncertainty bounds.
 
 | Property | Value |
 |----------|-------|
-| Authority class | MEASUREMENT |
-| Can become measurement | Yes, with bounds |
+| Authority class | measurement |
+| May enter measurement export | Yes, with bounds |
 | Requires attribution | Method + uncertainty |
 
 **Examples:**
@@ -60,14 +71,14 @@ Approximation computed from Observed or Derived data with explicit uncertainty b
 - Q-factor approximation
 - Interpolated values
 
-### Predicted
+### predicted
 
 Model output based on physical theory or statistical inference.
 
 | Property | Value |
 |----------|-------|
-| Authority class | INTERPRETIVE |
-| Can become measurement | No |
+| Authority class | interpretive |
+| May enter measurement export | No |
 | Requires attribution | Model + parameters |
 
 **Examples:**
@@ -75,14 +86,14 @@ Model output based on physical theory or statistical inference.
 - FEA simulation output
 - Statistical forecast
 
-### Heuristic
+### heuristic
 
 Rule-based suggestion without measurement authority.
 
 | Property | Value |
 |----------|-------|
-| Authority class | DECISION_SUPPORT |
-| Can become measurement | No |
+| Authority class | decision_support |
+| May enter measurement export | No |
 | Requires attribution | Rule source |
 
 **Examples:**
@@ -90,14 +101,14 @@ Rule-based suggestion without measurement authority.
 - Wolf candidate highlight
 - Quality warning
 
-### Operator-Annotated
+### operator_annotated
 
 Human input recorded as metadata.
 
 | Property | Value |
 |----------|-------|
-| Authority class | PROVENANCE |
-| Can become measurement | No |
+| Authority class | operator |
+| May enter measurement export | As annotation only |
 | Requires attribution | Operator identity |
 
 **Examples:**
@@ -105,14 +116,14 @@ Human input recorded as metadata.
 - Build selection
 - Quality override reason
 
-### Externally-Sourced
+### externally_sourced
 
 Data imported from external systems with source binding.
 
 | Property | Value |
 |----------|-------|
-| Authority class | INTERPRETIVE |
-| Can become measurement | No |
+| Authority class | external |
+| May enter measurement export | With source citation |
 | Requires attribution | Source citation |
 
 **Examples:**
@@ -127,18 +138,20 @@ Data imported from external systems with source binding.
 ### Allowed Transitions
 
 ```
-Observed → Derived      (algorithm transforms observation)
-Derived → Estimated     (uncertainty acknowledged)
-Any → Heuristic         (explicit downgrade for advisory)
+observed → derived      (algorithm transforms observation)
+derived → estimated     (uncertainty acknowledged)
+Any → heuristic         (explicit downgrade for advisory)
 ```
 
 ### Forbidden Transitions
 
 ```
-Predicted → Derived     (model cannot become measurement)
-Heuristic → Derived     (advisory cannot become measurement)
-Derived → Observed      (cannot upgrade authority)
-Externally-Sourced → Observed  (cannot launder external data)
+predicted → derived     (model cannot become measurement)
+predicted → observed    (model cannot become observation)
+heuristic → derived     (advisory cannot become measurement)
+heuristic → observed    (advisory cannot become observation)
+derived → observed      (cannot upgrade authority)
+externally_sourced → observed  (cannot launder external data)
 ```
 
 ---
@@ -147,25 +160,49 @@ Externally-Sourced → Observed  (cannot launder external data)
 
 1. **No silent inheritance.** Epistemic status must be explicit; downstream artifacts cannot silently inherit input status.
 
-2. **Status determines export eligibility.** Only Observed, Derived, and Estimated (with bounds) may enter measurement exports.
+2. **Status determines export eligibility.** Only `observed`, `derived`, and `estimated` (with bounds) may enter measurement exports.
 
-3. **Downgrade is always allowed.** Any status may be explicitly downgraded to Heuristic for advisory use.
+3. **Downgrade is always allowed.** Any status may be explicitly downgraded to `heuristic` for advisory use.
 
 4. **Upgrade is never allowed.** Lower-authority status cannot become higher-authority status.
+
+5. **Prediction laundering forbidden.** `predicted` data cannot be converted to `observed` or `derived` through any path.
+
+---
+
+## Typed Status Structure
+
+```json
+{
+  "status": "derived",
+  "source": "fft_peak_extractor",
+  "may_enter_measurement_export": true,
+  "authority_notes": "Computed from observed WAV capture",
+  "prohibited_transitions": ["observed"]
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| status | string | Yes | One of the seven epistemic statuses |
+| source | string | Yes | Algorithm, operator, or system that produced the artifact |
+| may_enter_measurement_export | boolean | Yes | Whether this artifact may enter measurement exports |
+| authority_notes | string | No | Additional context about authority |
+| prohibited_transitions | array | No | Statuses this artifact may not transition to |
 
 ---
 
 ## Cross-Repository Mapping
 
-| Status | tap_tone_pi | luthiers-toolbox | CAM-Assist |
-|--------|-------------|------------------|------------|
-| Observed | `EpistemicStatus.OBSERVED` | `artifact.observed` | `source: sensor` |
-| Derived | `EpistemicStatus.DERIVED` | `artifact.derived` | `source: computed` |
-| Estimated | `EpistemicStatus.ESTIMATED` | `artifact.estimated` | `source: approximation` |
-| Predicted | `EpistemicStatus.PREDICTED` | `candidate.prediction` | `source: model` |
-| Heuristic | `EpistemicStatus.HEURISTIC` | `advisory.suggestion` | `source: heuristic` |
-| Operator-Annotated | `EpistemicStatus.OPERATOR_ANNOTATED` | `note.operator` | `source: human` |
-| Externally-Sourced | `EpistemicStatus.EXTERNALLY_SOURCED` | `import.external` | `source: external` |
+| Canonical | tap_tone_pi | luthiers-toolbox | CAM-Assist |
+|-----------|-------------|------------------|------------|
+| observed | EpistemicStatus.OBSERVED | governed capture / lifecycle-complete artifact | external source only |
+| derived | EpistemicStatus.DERIVED | guarded DXF / computed geometry | derived strategy geometry |
+| estimated | EpistemicStatus.ESTIMATED | approximation with bounds | N/A |
+| predicted | EpistemicStatus.PREDICTED | IBG/vectorizer candidates | strategy intent |
+| heuristic | EpistemicStatus.HEURISTIC | rank_score / review routing | advisory package text |
+| operator_annotated | EpistemicStatus.OPERATOR_ANNOTATED | ReviewDecisionRecord | A12 decision record |
+| externally_sourced | EpistemicStatus.EXTERNALLY_SOURCED | imported DXF | source_spec_id |
 
 ---
 
@@ -176,6 +213,7 @@ This contract does NOT:
 - Prescribe storage format
 - Define UI presentation
 - Require status on all fields
+- Allow status upgrades
 
 ---
 
@@ -183,5 +221,6 @@ This contract does NOT:
 
 - [authority-v1](authority-v1.md)
 - [confidence-v1](confidence-v1.md)
+- [review-decision-v1](review-decision-v1.md)
 - tap_tone_pi: ADR-0011, ADR-0012
 - EPISTEMIC_STATUS_MATRIX.md
