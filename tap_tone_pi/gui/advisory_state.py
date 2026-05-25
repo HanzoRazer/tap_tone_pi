@@ -1,4 +1,6 @@
-# INSTRUMENT CLASS: MEASUREMENT
+# INSTRUMENT CLASS: DECISION SUPPORT
+# Part of the advisory subsystem infrastructure.
+# See docs/ADR-0009-advisory-boundary.md
 """Per-session advisory response persistence.
 
 Tracks whether the operator has already ACK'd or DISMISS'd the

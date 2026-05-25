@@ -1,4 +1,7 @@
-# INSTRUMENT CLASS: MEASUREMENT
+# INSTRUMENT CLASS: DECISION SUPPORT
+# Outputs from this module include actionable recommendations.
+# They MUST NOT appear in viewer_pack_v1 or the provenance chain.
+# See docs/ADR-0009-advisory-boundary.md
 """
 Phase 2 Coherence Gate — Per-point quality checking.
 
