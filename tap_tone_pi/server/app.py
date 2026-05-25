@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 FastAPI server for tap_tone_pi.
 

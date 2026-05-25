@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Per-session advisory response persistence.
 
 Tracks whether the operator has already ACK'd or DISMISS'd the

@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Hardware Setup Wizard for tap_tone_pi.
 
 Interactive CLI wizard that:

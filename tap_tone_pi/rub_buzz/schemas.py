@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Data schemas for Rub & Buzz detection.
 """

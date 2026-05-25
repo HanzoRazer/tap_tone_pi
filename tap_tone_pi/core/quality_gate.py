@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Quality Gate for tap-tone-pi measurements.
 
 Applies quality policy rules to analysis results and returns a verdict.

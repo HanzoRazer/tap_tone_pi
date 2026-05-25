@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 PDF Grid Template Generator.
 

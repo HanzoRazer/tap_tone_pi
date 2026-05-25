@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# INSTRUMENT CLASS: MEASUREMENT
 """
 coupled_2osc.py - 2-Oscillator Coupled Model (Top + Air, Rigid Back).
 

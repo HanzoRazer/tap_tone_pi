@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Manifest generation utilities.
 
 Provides functions to create measurement manifests with SHA-256 hashes

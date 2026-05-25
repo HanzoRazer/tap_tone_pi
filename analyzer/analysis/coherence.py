@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Coherence analysis for measurement quality assessment.
 """

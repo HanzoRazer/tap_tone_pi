@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Quality-gated measurement flow for tap_tone_pi GUI.
 

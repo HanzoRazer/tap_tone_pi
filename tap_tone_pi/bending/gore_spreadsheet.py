@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# INSTRUMENT CLASS: MEASUREMENT
 """
 gore_spreadsheet.py — Unified Gore-style build spreadsheet generator.
 

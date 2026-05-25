@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Phase 1/2 Cross-Validation Module.
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# INSTRUMENT CLASS: MEASUREMENT
 """
 rayleigh_ritz.py - Rayleigh-Ritz method for orthotropic plate modal analysis.
 

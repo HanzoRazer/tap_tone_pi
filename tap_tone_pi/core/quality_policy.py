@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Quality Policy for tap-tone-pi measurements.
 
 Defines hard rules (MUST FAIL) and soft rules (WARN) for quality gating.

@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Uncertainty propagation methods following GUM and GUM Supplement 1.
 

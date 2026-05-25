@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Input validation utilities for CLI with clear error messages."""
 
 from __future__ import annotations

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# INSTRUMENT CLASS: MEASUREMENT
 """Viewer pack export for GUI sessions.
 
 Exports a GUI measurement session to viewer_pack_v1 format.

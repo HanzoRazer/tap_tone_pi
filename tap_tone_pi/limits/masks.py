@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Frequency masks for excluding regions from limit testing.
 """

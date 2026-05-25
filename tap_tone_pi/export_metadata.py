@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """tap-tone-pi: metadata writer stub (Release A.1)
 
 Dependency-free helper to write `meta/session_meta.json`.

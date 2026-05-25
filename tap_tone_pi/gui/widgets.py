@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 UI widgets for tap_tone_pi GUI.
 

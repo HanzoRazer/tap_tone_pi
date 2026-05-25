@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Phase 2 CLI command — Grid capture workflow with progress display and resume.
 

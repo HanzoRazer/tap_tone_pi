@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Amplitude measurement uncertainty calculations.
 """

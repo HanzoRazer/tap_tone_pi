@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Welch method spectral estimation with configurable parameters.
 

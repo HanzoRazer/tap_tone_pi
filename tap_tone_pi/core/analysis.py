@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Core FFT-based tap tone analysis.
 
 This module provides the primary analyze_tap() function for extracting

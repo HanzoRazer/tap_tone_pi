@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 gamma_calibration.py — Derive γ transfer coefficients from measurement data.
 

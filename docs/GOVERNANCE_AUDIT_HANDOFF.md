@@ -510,8 +510,8 @@ Per [`docs/CODEBASE_AUDIT_2026.md`](CODEBASE_AUDIT_2026.md):
 
 | Issue | Impact | File | Status |
 |-------|--------|------|--------|
-| C1: MOE Timoshenko shear correction missing | 8-15% overestimation | `bending/merge_and_moe.py` | Fix in progress |
-| C2: FFT confidence score not physics-based | Arbitrary heuristic | `core/analysis.py` | Fix in progress |
+| C1: MOE Timoshenko shear correction missing | 8-15% overestimation | `bending/merge_and_moe.py` | **RESOLVED** — `_timoshenko_correction_factor()` at L211, wired at L315 |
+| C2: FFT confidence score not physics-based | Arbitrary heuristic | `core/analysis.py` | **RESOLVED** — `ConfidenceComponents` at L61, physics-based at L264-327 |
 | C3: No uncertainty propagation in TF/coherence | Point estimates only | `core/dsp.py` | Missing |
 
 **Justification for documenting:** Transparency about measurement limitations is part of forensic defensibility.

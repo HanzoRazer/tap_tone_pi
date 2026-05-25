@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Persistent artifact storage for tap tone sessions.
 

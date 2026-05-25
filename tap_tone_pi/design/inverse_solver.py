@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 inverse_solver.py — Inverse solver for plate thickness design.
 

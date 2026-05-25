@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Minimal Tkinter tooltip — no dependencies, no platform hacks.
 
 Usage::

@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Quality verdict viewer and spectrum viewer for tap_tone_pi GUI.
 

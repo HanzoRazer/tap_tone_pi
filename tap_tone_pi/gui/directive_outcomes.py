@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """GUI directive outcome recording — ACK / DISMISS persistence.
 
 Reads the latest advisory from ``spine_shadow_latest.json`` and appends

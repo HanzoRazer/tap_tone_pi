@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 mode_shape_render.py — Render Rayleigh-Ritz mode shapes onto Phase 2 measurement grids.
 

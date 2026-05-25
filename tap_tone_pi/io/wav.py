@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Canonical WAV I/O utilities (single source of truth).
 
 Why this exists

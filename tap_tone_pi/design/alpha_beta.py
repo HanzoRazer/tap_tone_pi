@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# INSTRUMENT CLASS: MEASUREMENT
 """
 alpha_beta.py - Physical α/β formulation for Chladni-to-box frequency mapping.
 

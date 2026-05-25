@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Core Rub & Buzz detection algorithms.
 """

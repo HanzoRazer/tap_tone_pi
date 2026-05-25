@@ -1,4 +1,5 @@
 # tap_tone/util/open_url.py
+# INSTRUMENT CLASS: MEASUREMENT
 """Best-effort URL opening in default browser.
 
 Usage:

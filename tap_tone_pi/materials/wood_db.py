@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 wood_db.py — Per-flitch wood property database.
 

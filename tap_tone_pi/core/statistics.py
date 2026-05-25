@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Statistical functions for measurement uncertainty quantification.
 

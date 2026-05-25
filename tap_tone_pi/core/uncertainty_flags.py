@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Uncertainty flags for measurement quality assessment.
 

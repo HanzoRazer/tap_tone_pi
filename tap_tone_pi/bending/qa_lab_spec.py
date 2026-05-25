@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# INSTRUMENT CLASS: MEASUREMENT
 """
 qa_lab_spec.py — Complete QA/QC Lab Specification Sheet for Tonewood Analysis.
 

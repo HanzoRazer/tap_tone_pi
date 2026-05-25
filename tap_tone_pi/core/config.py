@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Configuration dataclasses for capture and analysis.
 
 from tap_tone_pi.core.config import CaptureConfig, AnalysisConfig

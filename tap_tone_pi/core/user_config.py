@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Persistent user configuration for tap_tone_pi.
 
 Stores user preferences (audio device, sample rate, etc.) in a JSON file

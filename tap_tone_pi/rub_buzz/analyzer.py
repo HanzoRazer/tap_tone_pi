@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 High-level Rub & Buzz analysis workflow.
 """

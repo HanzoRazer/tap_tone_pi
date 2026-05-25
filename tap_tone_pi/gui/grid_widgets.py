@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Grid UI widgets for tap_tone_pi GUI (Phase 9).
 

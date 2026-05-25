@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Viewer Pack manifest utilities — shared helpers for ZIP export/validate/diff.
 
 This module keeps ZIP handling consistent across:

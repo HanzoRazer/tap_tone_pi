@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Multi-point measurement grid (Phase 9).
 
 Provides:

@@ -1,4 +1,5 @@
 # tap_tone/ingest/toolbox.py
+# INSTRUMENT CLASS: MEASUREMENT
 """ToolBox ZIP ingest - POST viewer_pack to RMOS acoustics import endpoint.
 
 Usage:

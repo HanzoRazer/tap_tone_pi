@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Session information dataclass for measurement session metadata."""
 
 from __future__ import annotations

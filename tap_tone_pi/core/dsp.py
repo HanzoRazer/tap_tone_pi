@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Phase 2 DSP: Transfer function and coherence computation.
 
 This module provides the core DSP functions for two-channel ODS

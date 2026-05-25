@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Phase 2 Coherence Gate — Per-point quality checking.
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# INSTRUMENT CLASS: MEASUREMENT
 """
 thickness_calculator.py — Orthotropic plate thickness and coupled-system analysis.
 

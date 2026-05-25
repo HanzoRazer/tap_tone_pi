@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# INSTRUMENT CLASS: MEASUREMENT
 """
 gore_stiffness.py — Gore-style stiffness index calculations for tonewood analysis.
 

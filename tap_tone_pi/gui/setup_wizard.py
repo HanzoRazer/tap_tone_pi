@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Hardware setup wizard dialog for tap_tone_pi GUI."""
 
 from __future__ import annotations

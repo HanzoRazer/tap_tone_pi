@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Chladni frequency mismatch policy — tolerance checks and enrichment.
 
 Canonical location: tap_tone_pi.chladni.policy

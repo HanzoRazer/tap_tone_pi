@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Dial indicator serial capture → displacement_series.json (displacement vs time)
 

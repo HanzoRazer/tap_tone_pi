@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Tap quality assessment for multi-tap analysis.
 

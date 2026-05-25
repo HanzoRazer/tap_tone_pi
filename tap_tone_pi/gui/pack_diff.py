@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Pack diff dialog for comparing two measurement sessions."""
 
 from __future__ import annotations

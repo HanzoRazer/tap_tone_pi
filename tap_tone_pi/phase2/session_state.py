@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Phase 2 Session State — Persistent state for resumable grid capture.
 

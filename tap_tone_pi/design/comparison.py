@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 comparison.py — Predicted-vs-measured mode shape comparison.
 

@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Chladni pattern analysis wizard for tap_tone_pi GUI.
 

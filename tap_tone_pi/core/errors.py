@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Centralized error handling for tap_tone_pi.
 
 Provides:

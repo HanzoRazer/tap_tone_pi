@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Formatting helper for directive history display.
 
 Pure function — no Tk dependency, no I/O.  Returns tuple of

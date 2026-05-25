@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Phase 2 Grid Progress Display — ASCII terminal visualization.
 

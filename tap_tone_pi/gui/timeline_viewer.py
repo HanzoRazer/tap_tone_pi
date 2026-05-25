@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Session Timeline Viewer — read-only Toplevel dialog.
 
 Displays the contents of ``session_timeline_v1.json`` from a viewer pack

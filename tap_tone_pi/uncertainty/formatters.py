@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Formatting utilities for uncertainty reporting.
 """

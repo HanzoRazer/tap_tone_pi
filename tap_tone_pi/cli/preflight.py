@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Pre-flight hardware checks for audio capture.
 
 Validates hardware is ready before capturing:

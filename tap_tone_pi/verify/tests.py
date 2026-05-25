@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Individual verification tests for the analysis pipeline.
 """

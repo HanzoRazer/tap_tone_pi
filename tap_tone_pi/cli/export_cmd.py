@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 CLI export-pack command — extracted from cli/main.py (Phase 4 maintainability restructuring).
 """

@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Stiffness (MOE) measurement uncertainty calculations.
 

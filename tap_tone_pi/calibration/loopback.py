@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Loopback calibration test for measuring system frequency response.
 

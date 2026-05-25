@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Phase 1 demo mode — synthetic tap tone for hardware-free testing.
 
 Generates realistic multi-harmonic tap impulses for testing the analysis

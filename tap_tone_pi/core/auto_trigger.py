@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Auto-trigger detector for tap-tone-pi (Phase 10).
 
 Detects tap onset automatically using energy threshold monitoring.

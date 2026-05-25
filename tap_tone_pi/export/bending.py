@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Bending Data Export — Integrates bending MOE data into viewer_pack_v1.
 

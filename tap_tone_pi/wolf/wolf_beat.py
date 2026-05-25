@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
 Wolf Beat Analysis - Physics-based coupled oscillator detection.
 

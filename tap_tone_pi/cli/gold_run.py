@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """tap_tone gold-run -- One-command Gold Standard Run.
 
 Automates: capture N points -> export viewer pack -> validate -> ingest to ToolBox.

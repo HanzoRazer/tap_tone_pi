@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Session browser dialog for viewing past measurement sessions."""
 
 from __future__ import annotations

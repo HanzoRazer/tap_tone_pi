@@ -1,3 +1,4 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """Subtle informational banner — GUI-only, additive, fail-closed.
 
 Usage::
