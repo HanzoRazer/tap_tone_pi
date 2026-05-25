@@ -8,7 +8,14 @@
 
 ## Purpose
 
-This directory contains shared vocabulary contracts for the acoustic measurement and manufacturing ecosystem. These contracts define common terminology, semantics, and schemas for concepts that span multiple repositories.
+This directory contains shared vocabulary contracts for the acoustic measurement and manufacturing ecosystem.
+
+**Important:**
+
+```
+These contracts define vocabulary convergence only.
+Runtime integration requires explicit Dev Orders.
+```
 
 The contracts are **docs-first** — they establish shared vocabulary without requiring shared runtime packages. Repositories may implement these contracts using their own code, as long as they conform to the defined semantics.
 
@@ -16,12 +23,32 @@ The contracts are **docs-first** — they establish shared vocabulary without re
 
 ## Contracts
 
-| Contract | Description | Schema |
-|----------|-------------|--------|
-| [authority-v1](authority-v1.md) | Four authority classes (MEASUREMENT, PROVENANCE, DECISION_SUPPORT, INTERPRETIVE) | [authority-v1.schema.json](schemas/authority-v1.schema.json) |
-| [confidence-v1](confidence-v1.md) | Four confidence domains (SIGNAL, MEASUREMENT, INTERPRETIVE, RECOMMENDATION) | [confidence-v1.schema.json](schemas/confidence-v1.schema.json) |
-| [epistemic-status-v1](epistemic-status-v1.md) | Seven epistemic statuses (Observed, Derived, Estimated, Predicted, Heuristic, Operator-Annotated, Externally-Sourced) | [epistemic-status-v1.schema.json](schemas/epistemic-status-v1.schema.json) |
-| [review-decision-v1](review-decision-v1.md) | Four review states (PENDING, APPROVED, REJECTED, BLOCKED) | [review-decision-v1.schema.json](schemas/review-decision-v1.schema.json) |
+| Contract | Purpose | Schema |
+|----------|---------|--------|
+| [authority-v1](authority-v1.md) | Authority classes and non-authority flags | [authority-v1.schema.json](schemas/authority-v1.schema.json) |
+| [confidence-v1](confidence-v1.md) | Domain-typed confidence | [confidence-v1.schema.json](schemas/confidence-v1.schema.json) |
+| [epistemic-status-v1](epistemic-status-v1.md) | Observed/Derived/etc. data states | [epistemic-status-v1.schema.json](schemas/epistemic-status-v1.schema.json) |
+| [review-decision-v1](review-decision-v1.md) | Human review decision semantics | [review-decision-v1.schema.json](schemas/review-decision-v1.schema.json) |
+
+---
+
+## Key Invariants
+
+### Authority
+
+Decision-support authority may route attention but may not establish truth.
+
+### Confidence
+
+No bare confidence in shared contracts — requires domain + value + source.
+
+### Epistemic Status
+
+Predicted cannot become observed. Heuristic cannot become measurement.
+
+### Review Decision
+
+Review decisions record human process. They do not automatically authorize implementation, execution, or machine output.
 
 ---
 
@@ -39,11 +66,24 @@ The contracts are **docs-first** — they establish shared vocabulary without re
 
 Schemas use JSON Schema draft 2020-12. Each schema includes:
 
+- Lowercase enum values for cross-repo compatibility
+- Required fields for core invariants
+- Optional mapping fields (`source_repo`, `local_*_type`)
 - `$defs` for reusable type definitions
-- Concrete artifact type definitions
-- Invariant documentation
 
 Schemas are normative — implementations must conform to schema validation.
+
+---
+
+## Non-Goals
+
+These contracts do NOT:
+
+- Create runtime adapters
+- Merge review systems across repos
+- Replace local enums automatically
+- Authorize execution based on review
+- Define specific thresholds or criteria
 
 ---
 
@@ -63,8 +103,8 @@ Current version: **v1.0.0** (Draft)
 
 1. **Phase 1 (Current):** Docs-only vocabulary definition
 2. **Phase 2:** Cross-repo schema validation in CI
-3. **Phase 3:** Shared adapter libraries (optional)
-4. **Phase 4:** Runtime integration APIs
+3. **Phase 3:** Shared adapter libraries (optional, requires Dev Order)
+4. **Phase 4:** Runtime integration APIs (requires Dev Order)
 
 ---
 
