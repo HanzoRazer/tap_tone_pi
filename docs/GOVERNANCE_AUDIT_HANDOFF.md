@@ -512,12 +512,185 @@ Per [`docs/CODEBASE_AUDIT_2026.md`](CODEBASE_AUDIT_2026.md):
 |-------|--------|------|--------|
 | C1: MOE Timoshenko shear correction missing | 8-15% overestimation | `bending/merge_and_moe.py` | **RESOLVED** — `_timoshenko_correction_factor()` at L211, wired at L315 |
 | C2: FFT confidence score not physics-based | Arbitrary heuristic | `core/analysis.py` | **RESOLVED** — `ConfidenceComponents` at L61, physics-based at L264-327 |
-| C3: No uncertainty propagation in TF/coherence | Point estimates only | `core/dsp.py` | Missing |
+| C3: No uncertainty propagation in TF/coherence | Point estimates only | `core/dsp.py` | **RESOLVED** — `transfer_magnitude_uncertainty_from_coherence()` at L94, `transfer_phase_uncertainty_from_coherence()` at L134, TFResult carries uncertainty fields |
 
 **Justification for documenting:** Transparency about measurement limitations is part of forensic defensibility.
 
 ---
 
-*Audit completed: 2026-05-22*  
+## 11. Repeatability Evidence Layer (Dev Order 85)
+
+**Status:** ✅ **IMPLEMENTED** (2026-05-25)
+
+The platform now includes a formal repeatability evidence layer for expressing measurement consistency across repeated captures.
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `RepeatabilityEvidenceV1` | `core/repeatability.py` | Captures variance metrics across repeated measurements |
+| `MeasurementValidityEnvelopeV1` | `core/repeatability.py` | Bounded repeatability score with threshold comparisons |
+| `compute_repeatability_score()` | `core/repeatability.py` | CV-based score formula: `1 / (1 + weighted_cv)` |
+| `compute_validity_envelope()` | `core/repeatability.py` | Envelope computation from evidence |
+| Schema additions | `contracts/phase2_ods_snapshot.schema.json` | Optional repeatability/envelope blocks |
+| Export integration | `scripts/phase2/export_viewer_pack_v1.py` | Includes repeatability in manifest when present |
+
+**Classification:** INSTRUMENT CLASS: MEASUREMENT
+
+This layer quantifies capture consistency — it does NOT interpret instrument quality, operator performance, or build merit. Boolean fields store explicit threshold comparisons (value + threshold stored), not advisory judgments.
+
+**Verified by:** `tests/test_repeatability.py` (24 tests)
+
+---
+
+## 12. Workflow Provenance Layer (Dev Order 86)
+
+**Status:** ✅ **IMPLEMENTED** (2026-05-29)
+
+The platform now includes formal workflow provenance tracking for procedural measurement legitimacy.
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `WorkflowExecutionState` | `workflow/contracts.py` | Enum: not_started, partial, complete, incomplete, aborted |
+| `CalibrationState` | `workflow/contracts.py` | Enum: valid, stale, missing, failed, not_required |
+| `WorkflowExecutionEvidenceV1` | `workflow/contracts.py` | Records actual procedure state during measurement |
+| `evaluate_workflow_execution()` | `workflow/validation.py` | Derives execution evidence from contract + captured state |
+| `derive_calibration_state()` | `workflow/validation.py` | Derives calibration state from observed conditions |
+| `minimum_coherence` | `workflow/contracts.py` | Optional field added to MeasurementWorkflowContractV1 |
+| Schema additions | `contracts/phase2_ods_snapshot.schema.json` | Optional workflow_contract/workflow_execution blocks |
+| Export integration | `scripts/phase2/export_viewer_pack_v1.py` | Includes workflow provenance in manifest when present |
+
+**Classification:** INSTRUMENT CLASS: MEASUREMENT
+
+This layer captures procedural provenance — what actually happened during a measurement session. It does NOT issue quality judgments, operator recommendations, or pass/fail verdicts. States are observational only (e.g., "stale" means calibration age exceeded threshold, not "bad calibration").
+
+**Verified by:**
+- `tests/test_workflow_contracts.py` (28 tests)
+- `tests/test_export_workflow_anchor.py` (7 tests)
+
+---
+
+---
+
+## 13. Experimental Provenance Layer (Dev Order 87)
+
+**Status:** ✅ **IMPLEMENTED** (2026-05-29)
+
+The platform now includes formal experimental provenance tracking for measurement campaign lineage.
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `ExperimentCampaignV1` | `provenance/experiment_contracts.py` | Groups workflows, measurements, and revisions |
+| `ExperimentRevisionV1` | `provenance/experiment_contracts.py` | Tracks lineage between experimental iterations |
+| `MeasurementLineageV1` | `provenance/measurement_links.py` | Links measurements to experimental context |
+| `create_campaign()` | `provenance/lineage.py` | Campaign creation helper |
+| `create_revision()` | `provenance/lineage.py` | Revision creation helper |
+| `get_revision_chain()` | `provenance/lineage.py` | Traverses revision lineage |
+| `link_measurement_to_context()` | `provenance/lineage.py` | Convenience linkage helper |
+| Schema additions | `contracts/phase2_ods_snapshot.schema.json` | Optional experiment_campaign/revision/lineage blocks |
+| Export integration | `scripts/phase2/export_viewer_pack_v1.py` | Includes experiment provenance in manifest when present |
+
+**Classification:** INSTRUMENT CLASS: MEASUREMENT
+
+This layer captures experimental lineage — what was tested, which measurements belong together, and how revisions relate. It does NOT evaluate success, rank outcomes, or recommend actions. Revisions are lineage markers only (parent/child), not quality judgments (better/worse).
+
+**Verified by:**
+- `tests/test_experiment_contracts.py` (18 tests)
+- `tests/test_experiment_lineage.py` (23 tests)
+- `tests/test_experiment_export_anchor.py` (9 tests)
+
+---
+
+---
+
+## 14. Build Session & Environmental Provenance Layer (Dev Order 88)
+
+**Status:** ✅ **IMPLEMENTED** (2026-06-05)
+
+The platform now includes build context provenance for complete specimen lifecycle tracking.
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `BuildSessionV1` | `provenance/build_session.py` | Container for all measurements during specimen construction |
+| `EnvironmentRecordV1` | `provenance/environment.py` | Records temperature, humidity, room, ambient noise |
+| `FixtureRecordV1` | `provenance/fixture.py` | Records support condition, fixture type, positioning |
+| `fixture_id` / `environment_id` | `provenance/measurement_links.py` | Extended MeasurementLineageV1 fields |
+| `build_session_id` | `provenance/experiment_contracts.py` | Extended ExperimentCampaignV1 field |
+| `create_build_session()` | `provenance/lineage.py` | Build session creation helper |
+| `create_environment_record()` | `provenance/lineage.py` | Environment record creation helper |
+| `create_fixture_record()` | `provenance/lineage.py` | Fixture record creation helper |
+| Schema additions | `contracts/phase2_ods_snapshot.schema.json` | Optional build_session/environment_record/fixture_record blocks |
+| Export integration | `scripts/phase2/export_viewer_pack_v1.py` | Includes build context in manifest when present |
+
+**Classification:** INSTRUMENT CLASS: MEASUREMENT
+
+This layer captures build context provenance — what specimen was built, under what environmental conditions, and with what fixture configuration. It does NOT evaluate build quality, environmental suitability, or fixture adequacy. All states are observational facts.
+
+**Verified by:** `tests/test_build_session.py` (25 tests)
+
+**Full lineage chain now complete:**
+```
+Build Session
+    ↓
+Experiment Campaign
+    ↓
+Experiment Revision
+    ↓
+Workflow Contract
+    ↓
+Measurement
+    ↓
+Repeatability
+    ↓
+Validity Envelope
+```
+
+---
+
+---
+
+## 15. Campaign Lifecycle & Measurement Set Aggregation (Dev Order 89)
+
+**Status:** ✅ **IMPLEMENTED** (2026-06-12)
+
+The platform now includes campaign lifecycle state tracking and measurement set aggregation.
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `CampaignLifecycleState` | `provenance/experiment_contracts.py` | Enum: planned, active, paused, completed, archived, aborted |
+| `lifecycle_state` | `provenance/experiment_contracts.py` | Extended ExperimentCampaignV1 field |
+| `transition_campaign_state()` | `provenance/campaign_lifecycle.py` | Validates and transitions campaign state |
+| `start_campaign()` | `provenance/campaign_lifecycle.py` | Convenience: planned → active |
+| `complete_campaign()` | `provenance/campaign_lifecycle.py` | Convenience: active → completed |
+| `archive_campaign()` | `provenance/campaign_lifecycle.py` | Convenience: * → archived |
+| `MeasurementSetV1` | `provenance/measurement_set.py` | Groups measurements by campaign/revision/workflow |
+| `MeasurementSetSummaryV1` | `provenance/measurement_set.py` | Aggregate statistics (count, mean, std, min, max) |
+| `CampaignLifecycleExportV1` | `provenance/measurement_set.py` | Lifecycle-only export block |
+| `collect_measurements_for_campaign()` | `provenance/aggregation.py` | Filter lineages by campaign |
+| `collect_measurements_for_revision()` | `provenance/aggregation.py` | Filter lineages by revision |
+| `collect_measurements_for_workflow()` | `provenance/aggregation.py` | Filter lineages by workflow |
+| `summarize_measurement_set()` | `provenance/aggregation.py` | Compute aggregate statistics |
+| Schema additions | `contracts/phase2_ods_snapshot.schema.json` | Optional campaign_lifecycle/measurement_set/summary blocks |
+| Export integration | `scripts/phase2/export_viewer_pack_v1.py` | Includes DO-89 provenance in manifest when present |
+
+**Classification:** INSTRUMENT CLASS: MEASUREMENT
+
+This layer captures campaign operational state and measurement aggregation — procedural facts only. A completed campaign means procedurally completed, not successful. Aggregation computes counts, means, and standard deviations. It does NOT evaluate quality, rank revisions, or recommend actions.
+
+**State transition rules:**
+- planned → active, aborted, archived
+- active → paused, completed, aborted
+- paused → active, aborted, archived
+- completed → archived
+- aborted → archived
+- archived → (no transitions)
+
+Invalid transitions raise `ValueError`.
+
+**Verified by:**
+- `tests/test_campaign_lifecycle.py` (21 tests)
+- `tests/test_measurement_set_aggregation.py` (21 tests)
+
+---
+
+*Audit completed: 2026-06-12 (DO-89 campaign lifecycle and aggregation added)*  
 *Document owner: Governance audit process*  
 *Next review: Upon schema version bump or ADR update*

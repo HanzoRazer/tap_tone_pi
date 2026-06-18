@@ -1,12 +1,12 @@
 # Active Dev Order
 
 **Current:** None — sprint complete
-**Previous:** DO-008 — Build record auto-discovery + cleanup
-**Completed:** 2026-05-03
+**Previous:** DO-089 — Campaign lifecycle state and measurement set aggregation
+**Completed:** 2026-06-12
 
 ## Sprint Summary
 
-DO-001 through DO-008 completed. The tap_tone_pi modal mapping toolchain now has:
+DO-001 through DO-008, and DO-084 through DO-089 completed. The tap_tone_pi modal mapping toolchain now has:
 
 | Dev Order | Description | Status |
 |---|---|---|
@@ -17,6 +17,12 @@ DO-001 through DO-008 completed. The tap_tone_pi modal mapping toolchain now has
 | DO-005 | Analyzer GUI: Phase 2 results widget | COMPLETED |
 | DO-006 | Predicted-vs-measured comparison overlay | COMPLETED |
 | DO-008 | Build record auto-discovery + cleanup | COMPLETED |
+| DO-084 | Transfer function uncertainty propagation | COMPLETED |
+| DO-085 | Repeatability evidence and measurement validity envelope | COMPLETED |
+| DO-086 | Workflow measurement contracts and procedural provenance | COMPLETED |
+| DO-087 | Experimental provenance and measurement campaign lineage | COMPLETED |
+| DO-088 | Build session and environmental provenance | COMPLETED |
+| DO-089 | Campaign lifecycle state and measurement set aggregation | COMPLETED |
 
 ## Pre-existing test failures (baseline)
 
@@ -28,6 +34,17 @@ DO-001 through DO-008 completed. The tap_tone_pi modal mapping toolchain now has
 These are documented baseline failures, not introduced by this sprint.
 
 ## Daily log
+
+### 2026-06-12
+- DO-089 Stage A: CampaignLifecycleState enum and campaign lifecycle fields (7 tests)
+- DO-089 Stage B: State transition helpers with validation (14 tests)
+- DO-089 Stage C: MeasurementSetV1 and MeasurementSetSummaryV1 dataclasses (10 tests)
+- DO-089 Stage D: Collection and aggregation helpers (7 tests)
+- DO-089 Stage E: CampaignLifecycleExportV1 export block (4 tests)
+- DO-089 Stage F: Schema additions to phase2_ods_snapshot.schema.json
+- DO-089 Stage G: Export integration in export_viewer_pack_v1.py
+- DO-089 Stage H: Audit reconciliation (GOVERNANCE_AUDIT_HANDOFF.md, CURRENT.md)
+- DO-089 complete — 42 tests
 
 ### 2026-05-03
 - DO-008 Stage A: Doc reconciliation — no-op (no prediction.py refs found)
