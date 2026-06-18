@@ -1,5 +1,5 @@
 # INSTRUMENT CLASS: MEASUREMENT
-"""Measurement workflow contracts.
+"""Measurement workflow contracts and execution evidence (Dev Order 86).
 
 A workflow contract defines the procedural requirements for a legitimate
 measurement session. It specifies:
@@ -9,13 +9,43 @@ measurement session. It specifies:
   - calibration requirements
   - fixture and environment requirements
 
+Workflow execution evidence records what actually happened during a
+measurement session, enabling procedural provenance and auditability.
+
 Workflow contracts are measurement governance, not UI presets.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
+from enum import Enum
 from typing import Any
+
+
+class WorkflowExecutionState(str, Enum):
+    """Procedural execution state for a workflow.
+
+    These are observational states only — no quality judgment.
+    """
+
+    NOT_STARTED = "not_started"
+    PARTIAL = "partial"
+    COMPLETE = "complete"
+    INCOMPLETE = "incomplete"  # Started but cannot complete (e.g., missing data)
+    ABORTED = "aborted"
+
+
+class CalibrationState(str, Enum):
+    """Calibration validity state.
+
+    Observational only — describes calibration presence and validity.
+    """
+
+    VALID = "valid"  # Calibration exists and within age limit
+    STALE = "stale"  # Calibration exists but expired
+    MISSING = "missing"  # No calibration found
+    FAILED = "failed"  # Calibration attempted but failed
+    NOT_REQUIRED = "not_required"  # Workflow doesn't require calibration
 
 
 @dataclass(frozen=True)
@@ -73,6 +103,9 @@ class MeasurementWorkflowContractV1:
     min_peak_prominence_db: float = 6.0
     max_clipping_samples: int = 0
 
+    # Transfer function requirements (optional)
+    minimum_coherence: float | None = None  # For transfer function workflows
+
     # Calibration
     requires_calibration: bool = True
     max_calibration_age_days: int = 30
@@ -90,7 +123,7 @@ class MeasurementWorkflowContractV1:
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dict for JSON export."""
-        return {
+        result = {
             "schema_version": self.schema_version,
             "workflow_id": self.workflow_id,
             "display_name": self.display_name,
@@ -108,6 +141,9 @@ class MeasurementWorkflowContractV1:
             "fixture_requirements": self.fixture_requirements.to_dict(),
             "environment_requirements": self.environment_requirements.to_dict(),
         }
+        if self.minimum_coherence is not None:
+            result["minimum_coherence"] = self.minimum_coherence
+        return result
 
     def validate(self) -> list[str]:
         """Validate contract invariants. Returns list of error messages."""
@@ -126,4 +162,56 @@ class MeasurementWorkflowContractV1:
             errors.append("max_frequency_variance_pct must be >= 0")
         if self.max_calibration_age_days < 1:
             errors.append("max_calibration_age_days must be >= 1")
+        if self.minimum_coherence is not None and not (0.0 <= self.minimum_coherence <= 1.0):
+            errors.append("minimum_coherence must be in [0.0, 1.0]")
         return errors
+
+
+@dataclass(frozen=True)
+class WorkflowExecutionEvidenceV1:
+    """Records what actually happened during a measurement workflow.
+
+    This is a governance artifact for procedural provenance. It captures
+    execution state without quality judgment — only observational facts.
+
+    Classification: INSTRUMENT CLASS: MEASUREMENT
+    """
+
+    # Required fields (no defaults)
+    workflow_id: str
+    repetitions_completed: int
+    execution_state: str  # WorkflowExecutionState value
+    calibration_state: str  # CalibrationState value
+
+    # Optional fields (with defaults)
+    repetitions_rejected: int = 0
+    capture_geometry_present: bool = False
+    workflow_complete: bool = False
+    required_repetitions_completed: bool = False
+    started_at_utc: str | None = None
+    completed_at_utc: str | None = None
+    duration_seconds: float | None = None
+    epistemic_status: str = "derived"
+    schema_version: str = "workflow_execution_evidence_v1"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to dict for JSON export."""
+        result = {
+            "schema_version": self.schema_version,
+            "workflow_id": self.workflow_id,
+            "repetitions_completed": self.repetitions_completed,
+            "repetitions_rejected": self.repetitions_rejected,
+            "execution_state": self.execution_state,
+            "calibration_state": self.calibration_state,
+            "capture_geometry_present": self.capture_geometry_present,
+            "workflow_complete": self.workflow_complete,
+            "required_repetitions_completed": self.required_repetitions_completed,
+            "epistemic_status": self.epistemic_status,
+        }
+        if self.started_at_utc is not None:
+            result["started_at_utc"] = self.started_at_utc
+        if self.completed_at_utc is not None:
+            result["completed_at_utc"] = self.completed_at_utc
+        if self.duration_seconds is not None:
+            result["duration_seconds"] = self.duration_seconds
+        return result
