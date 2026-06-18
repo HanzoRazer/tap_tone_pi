@@ -12,10 +12,10 @@ This audit identified **4 CRITICAL**, **8 MODERATE**, and **7 MINOR** issues in 
 Critical issues cause measurable error in physics calculations (8-15% MOE overestimation) or compromise
 measurement integrity. All issues have specific file locations and remediation paths documented below.
 
-**Resolution Status (updated 2026-05-23):**
+**Resolution Status (updated 2026-05-25):**
 - C1 (Timoshenko correction): ✅ RESOLVED
 - C2 (FFT confidence): ✅ RESOLVED
-- C3 (Uncertainty propagation): ❌ MISSING
+- C3 (Uncertainty propagation): ✅ RESOLVED
 - C4 (Hardcoded epsilon): ❌ OPEN
 - M1 (Linear fit validation): ✅ RESOLVED
 - M2 (Percentile bounds): ✅ RESOLVED
@@ -69,28 +69,26 @@ causing 8-15% overestimation for L/h < 20.
 
 ---
 
-### C3. No Uncertainty Propagation in Transfer Function/Coherence
+### C3. No Uncertainty Propagation in Transfer Function/Coherence — **RESOLVED**
 
-**File:** `tap_tone_pi/core/dsp.py` lines 78-127
+**File:** `tap_tone_pi/core/dsp.py`
 
-**Problem:** Transfer function and coherence calculations return point estimates without uncertainty bounds.
+**Status:** ✅ **RESOLVED** (2026-05-25, Dev Order 84)
 
-**Missing:**
-```python
-# Uncertainty in H based on coherence and averaging
-σ_H / |H| = √[(1 - γ²) / (2 × n × γ²)]
+**Evidence:**
+- `transfer_magnitude_uncertainty_from_coherence()` implemented (lines 94-131)
+- `transfer_phase_uncertainty_from_coherence()` implemented (lines 134-181)
+- Separate functions per Bendat & Piersol (not merged despite numerical similarity)
+- Coherence clamped to `[floor, 1.0]` to handle γ² > 1.0 finite-sample artifacts
+- `TFResult` dataclass includes `H_mag_uncertainty`, `H_phase_uncertainty_deg`, `n_averages`
+- Schema updated: `contracts/phase2_ods_snapshot.schema.json` includes optional uncertainty fields
+- Verified by `tests/test_dsp_parametric.py::TestTransferMagnitudeUncertainty`
+- Verified by `tests/test_dsp_parametric.py::TestTransferPhaseUncertainty`
 
-# Should return:
-# - H_magnitude
-# - H_phase
-# - coherence
-# - magnitude_uncertainty  ← MISSING
-# - phase_uncertainty      ← MISSING
-```
+**Formula:** σ_H / |H| = √[(1 - γ²) / (2 × n × γ²)]
 
-**Impact:** Users cannot assess measurement quality or set valid tolerance bands.
-
-**Fix:** Add uncertainty output based on coherence and averaging count.
+**Note:** `n_averages` is raw Welch segment count, not effective DOF. With 50% overlap,
+actual uncertainty is ~30% higher than reported (see docstring for correction guidance).
 
 ---
 
