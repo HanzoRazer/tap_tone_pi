@@ -1,8 +1,9 @@
 # Build Checkpoint — tap_tone_pi
 
-**Timestamp:** 2026-06-13 @ 12:13 UTC  
+**Timestamp:** 2026-06-13 @ 12:13 UTC (updated post-commit)  
 **Branch:** main  
-**Last Commit:** `c46da30` — fix: reclassify 4 modules from MEASUREMENT to DECISION SUPPORT
+**Last Commit:** `4ebce14` — docs: update codebase audit and remove obsolete SPRINTS.md  
+**Provenance Stack Status:** COMMITTED AND PUSHED
 
 ---
 
@@ -194,20 +195,20 @@ No advisory semantics in provenance layer. All states are observational.
 
 ---
 
-## Uncommitted Changes
+## Commit History (This Sprint)
 
-26 files with uncommitted changes:
+8 commits pushed to `origin/main`:
 
-| Category | Files |
-|----------|-------|
-| DO-89 implementation | `provenance/campaign_lifecycle.py`, `provenance/measurement_set.py`, `provenance/aggregation.py` |
-| DO-89 tests | `tests/test_campaign_lifecycle.py`, `tests/test_measurement_set_aggregation.py` |
-| Extended contracts | `provenance/experiment_contracts.py`, `workflow/contracts.py` |
-| Schema updates | `contracts/phase2_ods_snapshot.schema.json` |
-| Export integration | `scripts/phase2/export_viewer_pack_v1.py` |
-| Audit docs | `docs/GOVERNANCE_AUDIT_HANDOFF.md`, `docs/dev_orders/CURRENT.md` |
-| Roadmap | `docs/ROADMAP_ACOUSTIC_EXCITATION.md` |
-| Previous DO tests | `tests/test_repeatability.py`, `tests/test_workflow_contracts.py`, etc. |
+| Commit | Description |
+|--------|-------------|
+| `4ebce14` | docs: update codebase audit and remove obsolete SPRINTS.md |
+| `8ce759c` | docs: update governance audit and sprint documentation |
+| `2a9e30f` | feat: integrate provenance stack into schema and export pipeline |
+| `21bc45c` | feat: add campaign lifecycle state and measurement set aggregation (DO-89) |
+| `e06cdb8` | feat: add build session and environmental provenance (DO-88) |
+| `57fbce7` | feat: add experimental provenance and measurement campaign lineage (DO-87) |
+| `2e724e2` | feat: add workflow measurement contracts and procedural provenance (DO-86) |
+| `f8456ef` | feat: add transfer function uncertainty and repeatability evidence (DO-84, DO-85) |
 
 ---
 
