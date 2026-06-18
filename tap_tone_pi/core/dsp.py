@@ -91,38 +91,131 @@ def _adaptive_epsilon(data: np.ndarray, min_eps: float | None = None) -> float:
     return float(max(min_eps, data_scale))
 
 
+def transfer_magnitude_uncertainty_from_coherence(
+    coherence: np.ndarray,
+    n_averages: int,
+    *,
+    coherence_floor: float = 1e-12,
+) -> np.ndarray:
+    """
+    Compute relative magnitude uncertainty from coherence (Bendat & Piersol).
+
+    Formula: σ_H / |H| = sqrt((1 - γ²) / (2 · n_avg · γ²))
+
+    This is the standard result for the normalized random error of the
+    transfer function magnitude estimate.
+
+    Args:
+        coherence: Coherence values (γ²). Will be clamped to [floor, 1.0].
+        n_averages: Effective number of independent averages. Must be >= 1.
+            NOTE: For overlapping Welch segments, this should be the effective
+            DOF, not the raw segment count. If raw segment count is used with
+            overlap, the uncertainty is underestimated (optimistic bias).
+        coherence_floor: Minimum coherence to prevent divide-by-zero.
+
+    Returns:
+        Relative uncertainty array (σ_H / |H|), same shape as coherence.
+    """
+    if n_averages < 1:
+        raise ValueError(f"n_averages must be >= 1, got {n_averages}")
+
+    # Clamp coherence to [floor, 1.0] on BOTH ends
+    # - Below floor: prevents divide-by-zero
+    # - Above 1.0: finite-sample/floating-point effects can produce γ² > 1.0,
+    #   which would cause (1 - γ²) < 0 and sqrt to produce nan
+    coh_safe = np.clip(coherence, coherence_floor, 1.0)
+
+    # Bendat & Piersol formula for relative magnitude uncertainty
+    rel_uncertainty = np.sqrt((1.0 - coh_safe) / (2.0 * n_averages * coh_safe))
+
+    return rel_uncertainty.astype(np.float32)
+
+
+def transfer_phase_uncertainty_from_coherence(
+    coherence: np.ndarray,
+    n_averages: int,
+    *,
+    coherence_floor: float = 1e-12,
+) -> np.ndarray:
+    """
+    Compute phase uncertainty from coherence in radians (Bendat & Piersol).
+
+    Formula: σ_φ ≈ sqrt((1 - γ²) / (2 · n_avg · γ²))  [radians]
+
+    IMPORTANT: This is a SEPARATE Bendat & Piersol derivation from the magnitude
+    formula. The numerical equivalence to the relative magnitude error is a
+    coincidence of the small-error regime, NOT a shared derivation.
+
+    DO NOT refactor to share implementation with transfer_magnitude_uncertainty_from_coherence.
+    A future refinement to one formula (bias correction, higher-order term, windowing
+    factor) must NOT propagate to the other.
+
+    Validity: This is a small-error approximation, meaningful for moderate-to-high
+    coherence (roughly σ_φ < 0.5 rad). At very low coherence, the linear approximation
+    breaks down - interpret as "phase is unreliable" rather than a precise uncertainty.
+
+    Args:
+        coherence: Coherence values (γ²). Will be clamped to [floor, 1.0].
+        n_averages: Effective number of independent averages. Must be >= 1.
+            NOTE: For overlapping Welch segments, this should be the effective
+            DOF, not the raw segment count. If raw segment count is used with
+            overlap, the uncertainty is underestimated (optimistic bias).
+        coherence_floor: Minimum coherence to prevent divide-by-zero.
+
+    Returns:
+        Phase uncertainty in radians, same shape as coherence.
+    """
+    if n_averages < 1:
+        raise ValueError(f"n_averages must be >= 1, got {n_averages}")
+
+    # Clamp coherence to [floor, 1.0] on BOTH ends
+    # - Below floor: prevents divide-by-zero
+    # - Above 1.0: finite-sample/floating-point effects can produce γ² > 1.0,
+    #   which would cause (1 - γ²) < 0 and sqrt to produce nan
+    coh_safe = np.clip(coherence, coherence_floor, 1.0)
+
+    # Bendat & Piersol formula for phase standard deviation (radians)
+    # This is a SEPARATE derivation - do not merge with magnitude function
+    phase_uncertainty_rad = np.sqrt((1.0 - coh_safe) / (2.0 * n_averages * coh_safe))
+
+    return phase_uncertainty_rad.astype(np.float32)
+
+
 def _compute_tf_uncertainty(
     coherence: np.ndarray, n_averages: int, H_mag: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    Compute transfer function uncertainty from coherence (C3 fix).
+    Compute transfer function uncertainty (internal helper, backward compatibility).
 
-    Based on: σ_H / |H| = √[(1 - γ²) / (2 × n × γ²)]
-
-    This gives the relative standard error of the magnitude estimate.
-    Phase uncertainty (degrees): σ_φ ≈ (σ_H / |H|) × (180/π) for small errors.
+    Uses the separate magnitude and phase uncertainty functions per Dev Order 84.
 
     Args:
         coherence: Coherence (gamma^2) array
-        n_averages: Number of spectral averages
+        n_averages: Number of spectral averages (see note on effective DOF)
         H_mag: Transfer function magnitude |H|
 
     Returns:
         (magnitude_uncertainty, phase_uncertainty_deg) arrays
-    """
-    # Clamp coherence to avoid division by zero and sqrt of negative
-    coh_safe = np.clip(coherence, 1e-6, 1.0 - 1e-6)
 
-    # Relative uncertainty from coherence
-    # σ_|H| / |H| = √[(1 - γ²) / (2 × n × γ²)]
-    rel_uncertainty = np.sqrt((1 - coh_safe) / (2 * n_averages * coh_safe))
+    Note:
+        n_averages here is the raw segment count from Welch averaging with 50% overlap.
+        For Hann window with 50% overlap, this produces an OPTIMISTIC uncertainty
+        estimate because overlapping segments are correlated. The effective number
+        of independent averages is lower than the segment count.
+        See: Welch (1967), Bendat & Piersol Ch. 8, Harris window survey.
+    """
+    # Relative magnitude uncertainty
+    rel_uncertainty = transfer_magnitude_uncertainty_from_coherence(
+        coherence, n_averages
+    )
 
     # Absolute magnitude uncertainty
     mag_uncertainty = rel_uncertainty * H_mag
 
-    # Phase uncertainty (radians to degrees)
-    # For coherence-based measurements: σ_φ ≈ σ_|H| / |H| radians
-    phase_uncertainty_rad = rel_uncertainty
+    # Phase uncertainty (radians, then convert to degrees for backward compat)
+    phase_uncertainty_rad = transfer_phase_uncertainty_from_coherence(
+        coherence, n_averages
+    )
     phase_uncertainty_deg = phase_uncertainty_rad * (180.0 / np.pi)
 
     return mag_uncertainty.astype(np.float32), phase_uncertainty_deg.astype(np.float32)
