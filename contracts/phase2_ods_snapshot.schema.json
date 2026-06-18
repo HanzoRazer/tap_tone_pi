@@ -42,6 +42,24 @@
             "type": "array",
             "minItems": 1,
             "items": { "type": "number", "minimum": 0, "maximum": 1 }
+          },
+
+          "H_mag_uncertainty": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "number", "minimum": 0 },
+            "description": "Standard error of H magnitude (Bendat & Piersol)"
+          },
+          "H_phase_uncertainty_deg": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "number", "minimum": 0 },
+            "description": "Standard error of H phase in degrees (Bendat & Piersol)"
+          },
+          "n_averages": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Number of spectral averages (raw segment count, not effective DOF)"
           }
         }
       }
@@ -74,6 +92,290 @@
           "minLength": 10,
           "description": "ISO 8601 UTC timestamp of computation"
         }
+      }
+    },
+
+    "repeatability": {
+      "type": "object",
+      "description": "Optional repeatability evidence (Dev Order 85)",
+      "properties": {
+        "schema_version": { "type": "string", "const": "repeatability_evidence_v1" },
+        "repetitions_required": { "type": "integer", "minimum": 1 },
+        "repetitions_completed": { "type": "integer", "minimum": 0 },
+        "repetitions_rejected": { "type": "integer", "minimum": 0 },
+        "dominant_frequency_mean_hz": { "type": "number" },
+        "dominant_frequency_std_hz": { "type": "number", "minimum": 0 },
+        "dominant_frequency_variance_pct": { "type": "number", "minimum": 0 },
+        "peak_magnitude_mean_db": { "type": "number" },
+        "peak_magnitude_std_db": { "type": "number", "minimum": 0 },
+        "snr_mean_db": { "type": "number" },
+        "snr_std_db": { "type": "number", "minimum": 0 },
+        "coherence_mean": { "type": "number", "minimum": 0, "maximum": 1 },
+        "coherence_std": { "type": "number", "minimum": 0 },
+        "transfer_uncertainty_mean": { "type": "number", "minimum": 0 },
+        "observation_window_seconds": { "type": "number", "minimum": 0 },
+        "passed_repeatability_gate": { "type": "boolean" },
+        "gate_failure_reason": { "type": ["string", "null"] }
+      }
+    },
+
+    "measurement_validity_envelope": {
+      "type": "object",
+      "description": "Optional measurement validity envelope (Dev Order 85)",
+      "properties": {
+        "schema_version": { "type": "string", "const": "measurement_validity_envelope_v1" },
+        "repeatability_score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "epistemic_status": { "type": "string", "enum": ["derived", "measured", "computed"] },
+        "frequency_std_below_threshold": {
+          "type": "object",
+          "properties": {
+            "below_threshold": { "type": "boolean" },
+            "value": { "type": "number" },
+            "threshold": { "type": "number" }
+          }
+        },
+        "magnitude_std_below_threshold": {
+          "type": "object",
+          "properties": {
+            "below_threshold": { "type": "boolean" },
+            "value": { "type": "number" },
+            "threshold": { "type": "number" }
+          }
+        },
+        "uncertainty_below_threshold": {
+          "type": "object",
+          "properties": {
+            "below_threshold": { "type": "boolean" },
+            "value": { "type": "number" },
+            "threshold": { "type": "number" }
+          }
+        },
+        "repeatability": { "$ref": "#/properties/repeatability" }
+      }
+    },
+
+    "workflow_contract": {
+      "type": "object",
+      "description": "Optional workflow contract defining procedural requirements (Dev Order 86)",
+      "properties": {
+        "schema_version": { "type": "string", "const": "measurement_workflow_contract_v1" },
+        "workflow_id": { "type": "string" },
+        "display_name": { "type": "string" },
+        "description": { "type": "string" },
+        "required_repetitions": { "type": "integer", "minimum": 1 },
+        "max_frequency_variance_pct": { "type": "number", "minimum": 0 },
+        "sample_rate_hz": { "type": "integer", "minimum": 8000 },
+        "fft_window": { "type": "string", "enum": ["hann", "hamming", "blackman", "boxcar"] },
+        "fft_size": { "type": "integer", "minimum": 256 },
+        "min_snr_db": { "type": "number", "minimum": 0 },
+        "minimum_coherence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "requires_calibration": { "type": "boolean" },
+        "max_calibration_age_days": { "type": "integer", "minimum": 1 }
+      }
+    },
+
+    "workflow_execution": {
+      "type": "object",
+      "description": "Optional workflow execution evidence (Dev Order 86)",
+      "properties": {
+        "schema_version": { "type": "string", "const": "workflow_execution_evidence_v1" },
+        "workflow_id": { "type": "string" },
+        "repetitions_completed": { "type": "integer", "minimum": 0 },
+        "repetitions_rejected": { "type": "integer", "minimum": 0 },
+        "execution_state": {
+          "type": "string",
+          "enum": ["not_started", "partial", "complete", "incomplete", "aborted"]
+        },
+        "calibration_state": {
+          "type": "string",
+          "enum": ["valid", "stale", "missing", "failed", "not_required"]
+        },
+        "capture_geometry_present": { "type": "boolean" },
+        "workflow_complete": { "type": "boolean" },
+        "required_repetitions_completed": { "type": "boolean" },
+        "started_at_utc": { "type": "string" },
+        "completed_at_utc": { "type": "string" },
+        "duration_seconds": { "type": "number", "minimum": 0 },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
+    },
+
+    "experiment_campaign": {
+      "type": "object",
+      "description": "Optional experiment campaign provenance (Dev Order 87)",
+      "properties": {
+        "schema_version": { "type": "string", "const": "experiment_campaign_v1" },
+        "campaign_id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "created_at_utc": { "type": "string" },
+        "workflow_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "revision_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "measurement_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
+    },
+
+    "experiment_revision": {
+      "type": "object",
+      "description": "Optional experiment revision provenance (Dev Order 87)",
+      "properties": {
+        "schema_version": { "type": "string", "const": "experiment_revision_v1" },
+        "revision_id": { "type": "string" },
+        "parent_revision_id": { "type": "string" },
+        "campaign_id": { "type": "string" },
+        "notes": { "type": "string" },
+        "workflow_id": { "type": "string" },
+        "created_at_utc": { "type": "string" },
+        "measurement_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
+    },
+
+    "measurement_lineage": {
+      "type": "object",
+      "description": "Optional measurement lineage provenance (Dev Order 87, extended DO-88)",
+      "properties": {
+        "schema_version": { "type": "string", "const": "measurement_lineage_v1" },
+        "measurement_id": { "type": "string" },
+        "workflow_id": { "type": "string" },
+        "revision_id": { "type": "string" },
+        "campaign_id": { "type": "string" },
+        "fixture_id": { "type": "string" },
+        "environment_id": { "type": "string" },
+        "notes": { "type": "string" },
+        "created_at_utc": { "type": "string" },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
+    },
+
+    "build_session": {
+      "type": "object",
+      "description": "Optional build session provenance (Dev Order 88)",
+      "properties": {
+        "schema_version": { "type": "string", "const": "build_session_v1" },
+        "build_session_id": { "type": "string" },
+        "specimen_id": { "type": "string" },
+        "specimen_type": { "type": "string" },
+        "description": { "type": "string" },
+        "created_at_utc": { "type": "string" },
+        "completed_at_utc": { "type": "string" },
+        "campaign_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "notes": { "type": "string" },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
+    },
+
+    "environment_record": {
+      "type": "object",
+      "description": "Optional environment record provenance (Dev Order 88)",
+      "properties": {
+        "schema_version": { "type": "string", "const": "environment_record_v1" },
+        "environment_id": { "type": "string" },
+        "recorded_at_utc": { "type": "string" },
+        "temperature_c": { "type": "number" },
+        "humidity_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "room_id": { "type": "string" },
+        "ambient_noise_dbfs": { "type": "number" },
+        "notes": { "type": "string" },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
+    },
+
+    "fixture_record": {
+      "type": "object",
+      "description": "Optional fixture record provenance (Dev Order 88)",
+      "properties": {
+        "schema_version": { "type": "string", "const": "fixture_record_v1" },
+        "fixture_id": { "type": "string" },
+        "support_condition": { "type": "string", "enum": ["free", "clamped", "supported", "suspended"] },
+        "fixture_type": { "type": "string" },
+        "description": { "type": "string" },
+        "mic_position": { "type": "string" },
+        "tap_position": { "type": "string" },
+        "excitation_method": { "type": "string" },
+        "notes": { "type": "string" },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
+    },
+
+    "campaign_lifecycle": {
+      "type": "object",
+      "description": "Optional campaign lifecycle state (Dev Order 89)",
+      "properties": {
+        "schema_version": { "type": "string", "const": "campaign_lifecycle_v1" },
+        "campaign_id": { "type": "string" },
+        "lifecycle_state": {
+          "type": "string",
+          "enum": ["planned", "active", "paused", "completed", "archived", "aborted"]
+        },
+        "started_at_utc": { "type": "string" },
+        "completed_at_utc": { "type": "string" },
+        "archived_at_utc": { "type": "string" },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
+    },
+
+    "measurement_set": {
+      "type": "object",
+      "description": "Optional measurement set grouping (Dev Order 89)",
+      "properties": {
+        "schema_version": { "type": "string", "const": "measurement_set_v1" },
+        "measurement_set_id": { "type": "string" },
+        "campaign_id": { "type": "string" },
+        "revision_id": { "type": "string" },
+        "workflow_id": { "type": "string" },
+        "measurement_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "notes": { "type": "string" },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
+    },
+
+    "measurement_set_summary": {
+      "type": "object",
+      "description": "Optional measurement set summary statistics (Dev Order 89)",
+      "properties": {
+        "schema_version": { "type": "string", "const": "measurement_set_summary_v1" },
+        "measurement_count": { "type": "integer", "minimum": 0 },
+        "campaign_id": { "type": "string" },
+        "revision_id": { "type": "string" },
+        "workflow_id": { "type": "string" },
+        "dominant_frequency_mean_hz": { "type": "number" },
+        "dominant_frequency_std_hz": { "type": "number", "minimum": 0 },
+        "dominant_frequency_min_hz": { "type": "number" },
+        "dominant_frequency_max_hz": { "type": "number" },
+        "repeatability_score_mean": { "type": "number", "minimum": 0, "maximum": 1 },
+        "repeatability_score_std": { "type": "number", "minimum": 0 },
+        "repeatability_score_min": { "type": "number", "minimum": 0, "maximum": 1 },
+        "repeatability_score_max": { "type": "number", "minimum": 0, "maximum": 1 },
+        "notes": { "type": "string" },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
       }
     }
   }

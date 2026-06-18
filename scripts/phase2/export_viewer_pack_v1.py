@@ -46,6 +46,25 @@ from tap_tone_pi.validate.viewer_pack_v1 import validate_pack, write_validation_
 # Session metadata export
 from tap_tone_pi.export_metadata import SessionMetaV1, write_session_meta
 
+# Repeatability evidence (Dev Order 85)
+from tap_tone_pi.core.repeatability import RepeatabilityEvidenceV1, MeasurementValidityEnvelopeV1
+
+# Workflow provenance (Dev Order 86)
+from tap_tone_pi.workflow.contracts import MeasurementWorkflowContractV1, WorkflowExecutionEvidenceV1
+
+# Experiment provenance (Dev Order 87)
+from tap_tone_pi.provenance import ExperimentCampaignV1, ExperimentRevisionV1, MeasurementLineageV1
+
+# Build/environment/fixture provenance (Dev Order 88)
+from tap_tone_pi.provenance import BuildSessionV1, EnvironmentRecordV1, FixtureRecordV1
+
+# Campaign lifecycle and measurement sets (Dev Order 89)
+from tap_tone_pi.provenance import (
+    CampaignLifecycleExportV1,
+    MeasurementSetV1,
+    MeasurementSetSummaryV1,
+)
+
 
 def extract_session_metadata(session_dir: Path) -> Dict[str, Any]:
     """
@@ -467,11 +486,281 @@ def _add_timeline(session_dir: Path, add_file_fn) -> None:
         pass  # Non-fatal: pack is valid without timeline
 
 
+def _read_repeatability(session_dir: Path, add_file_fn) -> Optional[Dict[str, Any]]:
+    """
+    Read repeatability evidence from session (Dev Order 85).
+
+    Searches for repeatability_evidence.json or measurement_validity_envelope.json
+    in the session directory or derived folder.
+
+    Returns dict for manifest embedding, or None if not present.
+    """
+    candidates = [
+        session_dir / "derived" / "repeatability_evidence.json",
+        session_dir / "repeatability_evidence.json",
+        session_dir / "derived" / "measurement_validity_envelope.json",
+        session_dir / "measurement_validity_envelope.json",
+    ]
+
+    for path in candidates:
+        if path.exists():
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+                # Add to pack
+                if "repeatability" in path.name:
+                    add_file_fn(path, "meta/repeatability_evidence.json")
+                else:
+                    add_file_fn(path, "meta/measurement_validity_envelope.json")
+                return data
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    return None
+
+
+def _read_workflow_provenance(
+    session_dir: Path, add_file_fn
+) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    """
+    Read workflow contract and execution evidence from session (Dev Order 86).
+
+    Searches for workflow_contract.json and workflow_execution.json
+    in the session directory or meta folder.
+
+    Returns (contract_dict, execution_dict) tuple, either may be None.
+    """
+    contract_data = None
+    execution_data = None
+
+    # Look for workflow contract
+    contract_candidates = [
+        session_dir / "meta" / "workflow_contract.json",
+        session_dir / "workflow_contract.json",
+    ]
+    for path in contract_candidates:
+        if path.exists():
+            try:
+                contract_data = json.loads(path.read_text(encoding="utf-8"))
+                add_file_fn(path, "meta/workflow_contract.json")
+                break
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    # Look for workflow execution evidence
+    execution_candidates = [
+        session_dir / "meta" / "workflow_execution.json",
+        session_dir / "workflow_execution.json",
+        session_dir / "derived" / "workflow_execution.json",
+    ]
+    for path in execution_candidates:
+        if path.exists():
+            try:
+                execution_data = json.loads(path.read_text(encoding="utf-8"))
+                add_file_fn(path, "meta/workflow_execution.json")
+                break
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    return contract_data, execution_data
+
+
+def _read_experiment_provenance(
+    session_dir: Path, add_file_fn
+) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    """
+    Read experiment provenance from session (Dev Order 87).
+
+    Searches for experiment_campaign.json, experiment_revision.json, and
+    measurement_lineage.json in the session directory or meta folder.
+
+    Returns (campaign_dict, revision_dict, lineage_dict) tuple, any may be None.
+    """
+    campaign_data = None
+    revision_data = None
+    lineage_data = None
+
+    # Look for experiment campaign
+    campaign_candidates = [
+        session_dir / "meta" / "experiment_campaign.json",
+        session_dir / "experiment_campaign.json",
+    ]
+    for path in campaign_candidates:
+        if path.exists():
+            try:
+                campaign_data = json.loads(path.read_text(encoding="utf-8"))
+                add_file_fn(path, "meta/experiment_campaign.json")
+                break
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    # Look for experiment revision
+    revision_candidates = [
+        session_dir / "meta" / "experiment_revision.json",
+        session_dir / "experiment_revision.json",
+    ]
+    for path in revision_candidates:
+        if path.exists():
+            try:
+                revision_data = json.loads(path.read_text(encoding="utf-8"))
+                add_file_fn(path, "meta/experiment_revision.json")
+                break
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    # Look for measurement lineage
+    lineage_candidates = [
+        session_dir / "meta" / "measurement_lineage.json",
+        session_dir / "measurement_lineage.json",
+    ]
+    for path in lineage_candidates:
+        if path.exists():
+            try:
+                lineage_data = json.loads(path.read_text(encoding="utf-8"))
+                add_file_fn(path, "meta/measurement_lineage.json")
+                break
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    return campaign_data, revision_data, lineage_data
+
+
+def _read_build_context_provenance(
+    session_dir: Path, add_file_fn
+) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    """
+    Read build context provenance from session (Dev Order 88).
+
+    Searches for build_session.json, environment_record.json, and
+    fixture_record.json in the session directory or meta folder.
+
+    Returns (build_session_dict, environment_dict, fixture_dict) tuple, any may be None.
+    """
+    build_session_data = None
+    environment_data = None
+    fixture_data = None
+
+    # Look for build session
+    build_candidates = [
+        session_dir / "meta" / "build_session.json",
+        session_dir / "build_session.json",
+    ]
+    for path in build_candidates:
+        if path.exists():
+            try:
+                build_session_data = json.loads(path.read_text(encoding="utf-8"))
+                add_file_fn(path, "meta/build_session.json")
+                break
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    # Look for environment record
+    environment_candidates = [
+        session_dir / "meta" / "environment_record.json",
+        session_dir / "environment_record.json",
+    ]
+    for path in environment_candidates:
+        if path.exists():
+            try:
+                environment_data = json.loads(path.read_text(encoding="utf-8"))
+                add_file_fn(path, "meta/environment_record.json")
+                break
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    # Look for fixture record
+    fixture_candidates = [
+        session_dir / "meta" / "fixture_record.json",
+        session_dir / "fixture_record.json",
+    ]
+    for path in fixture_candidates:
+        if path.exists():
+            try:
+                fixture_data = json.loads(path.read_text(encoding="utf-8"))
+                add_file_fn(path, "meta/fixture_record.json")
+                break
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    return build_session_data, environment_data, fixture_data
+
+
+def _read_campaign_lifecycle_provenance(
+    session_dir: Path, add_file_fn
+) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    """
+    Read campaign lifecycle and measurement set provenance from session (Dev Order 89).
+
+    Searches for campaign_lifecycle.json, measurement_set.json, and
+    measurement_set_summary.json in the session directory or meta folder.
+
+    Returns (lifecycle_dict, set_dict, summary_dict) tuple, any may be None.
+    """
+    lifecycle_data = None
+    measurement_set_data = None
+    measurement_set_summary_data = None
+
+    # Look for campaign lifecycle
+    lifecycle_candidates = [
+        session_dir / "meta" / "campaign_lifecycle.json",
+        session_dir / "campaign_lifecycle.json",
+    ]
+    for path in lifecycle_candidates:
+        if path.exists():
+            try:
+                lifecycle_data = json.loads(path.read_text(encoding="utf-8"))
+                add_file_fn(path, "meta/campaign_lifecycle.json")
+                break
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    # Look for measurement set
+    measurement_set_candidates = [
+        session_dir / "meta" / "measurement_set.json",
+        session_dir / "measurement_set.json",
+    ]
+    for path in measurement_set_candidates:
+        if path.exists():
+            try:
+                measurement_set_data = json.loads(path.read_text(encoding="utf-8"))
+                add_file_fn(path, "meta/measurement_set.json")
+                break
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    # Look for measurement set summary
+    summary_candidates = [
+        session_dir / "meta" / "measurement_set_summary.json",
+        session_dir / "measurement_set_summary.json",
+    ]
+    for path in summary_candidates:
+        if path.exists():
+            try:
+                measurement_set_summary_data = json.loads(path.read_text(encoding="utf-8"))
+                add_file_fn(path, "meta/measurement_set_summary.json")
+                break
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    return lifecycle_data, measurement_set_data, measurement_set_summary_data
+
+
 def _build_manifest(
     files: List[FileEntry],
     session_dir: Path,
     point_ids: List[str],
     bending_data: Optional[Dict[str, Any]] = None,
+    repeatability_data: Optional[Dict[str, Any]] = None,
+    workflow_contract: Optional[Dict[str, Any]] = None,
+    workflow_execution: Optional[Dict[str, Any]] = None,
+    experiment_campaign: Optional[Dict[str, Any]] = None,
+    experiment_revision: Optional[Dict[str, Any]] = None,
+    measurement_lineage: Optional[Dict[str, Any]] = None,
+    build_session: Optional[Dict[str, Any]] = None,
+    environment_record: Optional[Dict[str, Any]] = None,
+    fixture_record: Optional[Dict[str, Any]] = None,
+    campaign_lifecycle: Optional[Dict[str, Any]] = None,
+    measurement_set: Optional[Dict[str, Any]] = None,
+    measurement_set_summary: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Build manifest dict and compute bundle_sha256."""
     manifest: Dict[str, Any] = {
@@ -508,6 +797,40 @@ def _build_manifest(
     # Embed bending data when present — critical input for inverse brace engine
     if bending_data:
         manifest["bending"] = bending_data
+
+    # Embed repeatability evidence when present (Dev Order 85)
+    if repeatability_data:
+        manifest["repeatability"] = repeatability_data
+
+    # Embed workflow provenance when present (Dev Order 86)
+    if workflow_contract:
+        manifest["workflow_contract"] = workflow_contract
+    if workflow_execution:
+        manifest["workflow_execution"] = workflow_execution
+
+    # Embed experiment provenance when present (Dev Order 87)
+    if experiment_campaign:
+        manifest["experiment_campaign"] = experiment_campaign
+    if experiment_revision:
+        manifest["experiment_revision"] = experiment_revision
+    if measurement_lineage:
+        manifest["measurement_lineage"] = measurement_lineage
+
+    # Embed build context provenance when present (Dev Order 88)
+    if build_session:
+        manifest["build_session"] = build_session
+    if environment_record:
+        manifest["environment_record"] = environment_record
+    if fixture_record:
+        manifest["fixture_record"] = fixture_record
+
+    # Embed campaign lifecycle and measurement sets when present (Dev Order 89)
+    if campaign_lifecycle:
+        manifest["campaign_lifecycle"] = campaign_lifecycle
+    if measurement_set:
+        manifest["measurement_set"] = measurement_set
+    if measurement_set_summary:
+        manifest["measurement_set_summary"] = measurement_set_summary
 
     # bundle sha = sha256 of manifest JSON bytes (before adding bundle_sha256)
     manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8")
@@ -660,11 +983,22 @@ def export_viewer_pack(
     _add_derived(session_dir, add_file)
     _add_coherence(session_dir, add_file)
     bending_data = _add_bending(session_dir, add_file)
+    repeatability_data = _read_repeatability(session_dir, add_file)
+    workflow_contract, workflow_execution = _read_workflow_provenance(session_dir, add_file)
+    experiment_campaign, experiment_revision, measurement_lineage = _read_experiment_provenance(session_dir, add_file)
+    build_session, environment_record, fixture_record = _read_build_context_provenance(session_dir, add_file)
+    campaign_lifecycle, measurement_set, measurement_set_summary = _read_campaign_lifecycle_provenance(session_dir, add_file)
     _add_plots(session_dir, add_file)
     _add_timeline(session_dir, add_file)
 
     # Build and write manifest
-    manifest = _build_manifest(files, session_dir, point_ids, bending_data)
+    manifest = _build_manifest(
+        files, session_dir, point_ids, bending_data, repeatability_data,
+        workflow_contract, workflow_execution,
+        experiment_campaign, experiment_revision, measurement_lineage,
+        build_session, environment_record, fixture_record,
+        campaign_lifecycle, measurement_set, measurement_set_summary
+    )
     manifest_path = pack_root / "manifest.json"
     manifest_path.write_text(
         json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
