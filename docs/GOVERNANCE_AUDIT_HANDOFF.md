@@ -691,6 +691,57 @@ Invalid transitions raise `ValueError`.
 
 ---
 
-*Audit completed: 2026-06-12 (DO-89 campaign lifecycle and aggregation added)*  
+## 16. Experiment Design Contract & Cohort Planning Framework (Dev Order 89A)
+
+**Status:** ✅ **IMPLEMENTED** (2026-06-18)
+
+The platform now includes first-class experiment design capabilities for cohort planning.
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `ExperimentDesignV1` | `experiment/experiment_design.py` | Governing object for cohort studies |
+| `DeclaredResponseVariableV1` | `experiment/response_variables.py` | Declared outcome variables |
+| `MinimumInterestingEffectV1` | `experiment/response_variables.py` | Minimum effect size declaration |
+| `CovariateDefinitionV1` | `experiment/covariates.py` | Tracked covariates |
+| `RandomizationPlanV1` | `experiment/randomization.py` | Randomization methodology |
+| `BaselineRebuildPlanV1` | `experiment/baseline_plan.py` | Baseline rebuild schedule |
+| `DesignValidationEvidenceV1` | `experiment/validation.py` | Completeness validation |
+| `validate_experiment_design()` | `experiment/validation.py` | Procedural readiness check |
+| `experiment_design_id` | `provenance/experiment_contracts.py` | Campaign linkage to design |
+| Schema additions | `contracts/phase2_ods_snapshot.schema.json` | Optional experiment_design/design_validation blocks |
+| Export integration | `scripts/phase2/export_viewer_pack_v1.py` | Includes DO-89A provenance in manifest when present |
+
+**Classification:** INSTRUMENT CLASS: MEASUREMENT
+
+This layer enables describing experiments before they occur:
+- Cohort planning with target sizes
+- Response variable declaration (A0, MOE, etc.)
+- Covariate declaration (density, stiffness, etc.)
+- Baseline rebuild schedules (builds 1, 8, 15, 20)
+- Randomization methodology
+
+The platform records planned methodology. It does NOT evaluate methodology, recommend designs, or determine statistical adequacy.
+
+**Architectural position:**
+```
+Experiment Design (DO-89A)   ← NEW governing layer
+    ↓
+Build Session (DO-88)
+    ↓
+Campaign (DO-87)
+    ↓
+Revision (DO-87)
+    ↓
+Workflow (DO-86)
+    ↓
+Measurement
+```
+
+**Verified by:**
+- `tests/test_experiment_design.py` (37 tests)
+
+---
+
+*Audit completed: 2026-06-18 (DO-89A experiment design framework added)*  
 *Document owner: Governance audit process*  
 *Next review: Upon schema version bump or ADR update*

@@ -1,8 +1,8 @@
 # Active Dev Order
 
 **Current:** None — sprint complete
-**Previous:** DO-089 — Campaign lifecycle state and measurement set aggregation
-**Completed:** 2026-06-12
+**Previous:** DO-089A — Experiment design contract and cohort planning framework
+**Completed:** 2026-06-18
 
 ## Sprint Summary
 
@@ -23,6 +23,7 @@ DO-001 through DO-008, and DO-084 through DO-089 completed. The tap_tone_pi moda
 | DO-087 | Experimental provenance and measurement campaign lineage | COMPLETED |
 | DO-088 | Build session and environmental provenance | COMPLETED |
 | DO-089 | Campaign lifecycle state and measurement set aggregation | COMPLETED |
+| DO-089A | Experiment design contract and cohort planning framework | COMPLETED |
 
 ## Pre-existing test failures (baseline)
 
@@ -34,6 +35,19 @@ DO-001 through DO-008, and DO-084 through DO-089 completed. The tap_tone_pi moda
 These are documented baseline failures, not introduced by this sprint.
 
 ## Daily log
+
+### 2026-06-18
+- DO-89A Stage A: Response variable and MIE contracts
+- DO-89A Stage B: Covariate definition contract
+- DO-89A Stage C: Randomization plan contract
+- DO-89A Stage D: Baseline rebuild plan contract
+- DO-89A Stage E: ExperimentDesignV1 governing object
+- DO-89A Stage F: Design validation evidence
+- DO-89A Stage G: Campaign linkage (experiment_design_id)
+- DO-89A Stage H: Schema additions to phase2_ods_snapshot.schema.json
+- DO-89A Stage I: Export integration in export_viewer_pack_v1.py
+- DO-89A Stage J: Audit reconciliation
+- DO-89A complete — 37 tests
 
 ### 2026-06-12
 - DO-089 Stage A: CampaignLifecycleState enum and campaign lifecycle fields (7 tests)

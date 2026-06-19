@@ -744,6 +744,51 @@ def _read_campaign_lifecycle_provenance(
     return lifecycle_data, measurement_set_data, measurement_set_summary_data
 
 
+def _read_experiment_design_provenance(
+    session_dir: Path, add_file_fn
+) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    """
+    Read experiment design provenance from session (Dev Order 89A).
+
+    Searches for experiment_design.json and design_validation.json
+    in the session directory or meta folder.
+
+    Returns (design_dict, validation_dict) tuple, either may be None.
+    """
+    design_data = None
+    validation_data = None
+
+    # Look for experiment design
+    design_candidates = [
+        session_dir / "meta" / "experiment_design.json",
+        session_dir / "experiment_design.json",
+    ]
+    for path in design_candidates:
+        if path.exists():
+            try:
+                design_data = json.loads(path.read_text(encoding="utf-8"))
+                add_file_fn(path, "meta/experiment_design.json")
+                break
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    # Look for design validation evidence
+    validation_candidates = [
+        session_dir / "meta" / "design_validation.json",
+        session_dir / "design_validation.json",
+    ]
+    for path in validation_candidates:
+        if path.exists():
+            try:
+                validation_data = json.loads(path.read_text(encoding="utf-8"))
+                add_file_fn(path, "meta/design_validation.json")
+                break
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    return design_data, validation_data
+
+
 def _build_manifest(
     files: List[FileEntry],
     session_dir: Path,
@@ -761,6 +806,8 @@ def _build_manifest(
     campaign_lifecycle: Optional[Dict[str, Any]] = None,
     measurement_set: Optional[Dict[str, Any]] = None,
     measurement_set_summary: Optional[Dict[str, Any]] = None,
+    experiment_design: Optional[Dict[str, Any]] = None,
+    design_validation_evidence: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Build manifest dict and compute bundle_sha256."""
     manifest: Dict[str, Any] = {
@@ -831,6 +878,12 @@ def _build_manifest(
         manifest["measurement_set"] = measurement_set
     if measurement_set_summary:
         manifest["measurement_set_summary"] = measurement_set_summary
+
+    # Experiment design provenance (DO-89A)
+    if experiment_design:
+        manifest["experiment_design"] = experiment_design
+    if design_validation_evidence:
+        manifest["design_validation_evidence"] = design_validation_evidence
 
     # bundle sha = sha256 of manifest JSON bytes (before adding bundle_sha256)
     manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8")
@@ -988,6 +1041,7 @@ def export_viewer_pack(
     experiment_campaign, experiment_revision, measurement_lineage = _read_experiment_provenance(session_dir, add_file)
     build_session, environment_record, fixture_record = _read_build_context_provenance(session_dir, add_file)
     campaign_lifecycle, measurement_set, measurement_set_summary = _read_campaign_lifecycle_provenance(session_dir, add_file)
+    experiment_design, design_validation_evidence = _read_experiment_design_provenance(session_dir, add_file)
     _add_plots(session_dir, add_file)
     _add_timeline(session_dir, add_file)
 
@@ -997,7 +1051,8 @@ def export_viewer_pack(
         workflow_contract, workflow_execution,
         experiment_campaign, experiment_revision, measurement_lineage,
         build_session, environment_record, fixture_record,
-        campaign_lifecycle, measurement_set, measurement_set_summary
+        campaign_lifecycle, measurement_set, measurement_set_summary,
+        experiment_design, design_validation_evidence
     )
     manifest_path = pack_root / "manifest.json"
     manifest_path.write_text(

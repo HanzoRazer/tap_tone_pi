@@ -377,6 +377,109 @@
         "notes": { "type": "string" },
         "epistemic_status": { "type": "string", "enum": ["derived"] }
       }
+    },
+
+    "experiment_design": {
+      "type": "object",
+      "description": "Optional experiment design provenance (Dev Order 89A)",
+      "properties": {
+        "schema_version": { "type": "string", "const": "experiment_design_v1" },
+        "design_id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "target_cohort_size": { "type": "integer", "minimum": 0 },
+        "response_variables": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "schema_version": { "type": "string", "const": "declared_response_variable_v1" },
+              "variable_id": { "type": "string" },
+              "name": { "type": "string" },
+              "unit": { "type": "string" },
+              "measurement_workflow_id": { "type": "string" },
+              "minimum_interesting_effect": {
+                "type": "object",
+                "properties": {
+                  "schema_version": { "type": "string", "const": "minimum_interesting_effect_v1" },
+                  "value": { "type": "number" },
+                  "unit": { "type": "string" },
+                  "description": { "type": "string" }
+                }
+              },
+              "description": { "type": "string" },
+              "epistemic_status": { "type": "string", "enum": ["derived"] }
+            }
+          }
+        },
+        "covariates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "schema_version": { "type": "string", "const": "covariate_definition_v1" },
+              "covariate_id": { "type": "string" },
+              "name": { "type": "string" },
+              "unit": { "type": "string" },
+              "source": { "type": "string" },
+              "description": { "type": "string" },
+              "epistemic_status": { "type": "string", "enum": ["derived"] }
+            }
+          }
+        },
+        "randomization_plan": {
+          "type": "object",
+          "properties": {
+            "schema_version": { "type": "string", "const": "randomization_plan_v1" },
+            "plan_id": { "type": "string" },
+            "randomization_method": { "type": "string" },
+            "seed": { "type": "integer" },
+            "description": { "type": "string" },
+            "epistemic_status": { "type": "string", "enum": ["derived"] }
+          }
+        },
+        "baseline_rebuild_plan": {
+          "type": "object",
+          "properties": {
+            "schema_version": { "type": "string", "const": "baseline_rebuild_plan_v1" },
+            "plan_id": { "type": "string" },
+            "rebuild_at_build_numbers": {
+              "type": "array",
+              "items": { "type": "integer" }
+            },
+            "baseline_recipe_id": { "type": "string" },
+            "description": { "type": "string" },
+            "epistemic_status": { "type": "string", "enum": ["derived"] }
+          }
+        },
+        "created_at_utc": { "type": "string" },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
+    },
+
+    "design_validation_evidence": {
+      "type": "object",
+      "description": "Optional design validation evidence (Dev Order 89A)",
+      "properties": {
+        "schema_version": { "type": "string", "const": "design_validation_evidence_v1" },
+        "design_id": { "type": "string" },
+        "has_response_variables": { "type": "boolean" },
+        "has_covariates": { "type": "boolean" },
+        "has_baseline_rebuild_plan": { "type": "boolean" },
+        "has_randomization_plan": { "type": "boolean" },
+        "has_cohort_size": { "type": "boolean" },
+        "is_complete": { "type": "boolean" },
+        "validation_notes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "validated_at_utc": { "type": "string" },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
     }
   }
 }

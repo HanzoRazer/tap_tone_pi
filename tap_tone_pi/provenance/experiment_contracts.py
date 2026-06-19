@@ -1,5 +1,5 @@
 # INSTRUMENT CLASS: MEASUREMENT
-"""Experiment campaign and revision contracts (Dev Order 87, extended DO-88, DO-89).
+"""Experiment campaign and revision contracts (Dev Order 87, extended DO-88, DO-89, DO-89A).
 
 Experiment campaigns group workflows, measurements, and revisions into
 intentional experimental structures. This enables:
@@ -8,6 +8,7 @@ intentional experimental structures. This enables:
 - Maintaining provenance without advisory semantics
 - Linking campaigns to build sessions (DO-88)
 - Tracking campaign lifecycle state (DO-89)
+- Linking campaigns to experiment designs (DO-89A)
 
 Campaigns and revisions are containers for lineage, not evaluators of outcomes.
 They record what was tested, not what should be done.
@@ -54,6 +55,9 @@ class ExperimentCampaignV1:
     # Build session linkage (DO-88)
     build_session_id: str | None = None
 
+    # Experiment design linkage (DO-89A)
+    experiment_design_id: str | None = None
+
     # Campaign lifecycle (DO-89)
     lifecycle_state: str = CampaignLifecycleState.PLANNED.value
     started_at_utc: str | None = None
@@ -82,6 +86,8 @@ class ExperimentCampaignV1:
             result["created_at_utc"] = self.created_at_utc
         if self.build_session_id is not None:
             result["build_session_id"] = self.build_session_id
+        if self.experiment_design_id is not None:
+            result["experiment_design_id"] = self.experiment_design_id
         # Lifecycle state (DO-89)
         result["lifecycle_state"] = self.lifecycle_state
         if self.started_at_utc is not None:
@@ -110,6 +116,7 @@ class ExperimentCampaignV1:
             description=self.description,
             created_at_utc=self.created_at_utc,
             build_session_id=self.build_session_id,
+            experiment_design_id=self.experiment_design_id,
             lifecycle_state=self.lifecycle_state,
             started_at_utc=self.started_at_utc,
             completed_at_utc=self.completed_at_utc,
@@ -132,6 +139,7 @@ class ExperimentCampaignV1:
             description=self.description,
             created_at_utc=self.created_at_utc,
             build_session_id=self.build_session_id,
+            experiment_design_id=self.experiment_design_id,
             lifecycle_state=self.lifecycle_state,
             started_at_utc=self.started_at_utc,
             completed_at_utc=self.completed_at_utc,
@@ -154,6 +162,7 @@ class ExperimentCampaignV1:
             description=self.description,
             created_at_utc=self.created_at_utc,
             build_session_id=self.build_session_id,
+            experiment_design_id=self.experiment_design_id,
             lifecycle_state=self.lifecycle_state,
             started_at_utc=self.started_at_utc,
             completed_at_utc=self.completed_at_utc,
@@ -174,6 +183,7 @@ class ExperimentCampaignV1:
             description=self.description,
             created_at_utc=self.created_at_utc,
             build_session_id=build_session_id,
+            experiment_design_id=self.experiment_design_id,
             lifecycle_state=self.lifecycle_state,
             started_at_utc=self.started_at_utc,
             completed_at_utc=self.completed_at_utc,
@@ -201,10 +211,32 @@ class ExperimentCampaignV1:
             description=self.description,
             created_at_utc=self.created_at_utc,
             build_session_id=self.build_session_id,
+            experiment_design_id=self.experiment_design_id,
             lifecycle_state=state,
             started_at_utc=started_at_utc if started_at_utc is not None else self.started_at_utc,
             completed_at_utc=completed_at_utc if completed_at_utc is not None else self.completed_at_utc,
             archived_at_utc=archived_at_utc if archived_at_utc is not None else self.archived_at_utc,
+            workflow_ids=self.workflow_ids,
+            revision_ids=self.revision_ids,
+            measurement_ids=self.measurement_ids,
+            tags=self.tags,
+            epistemic_status=self.epistemic_status,
+            schema_version=self.schema_version,
+        )
+
+    def with_experiment_design(self, experiment_design_id: str) -> ExperimentCampaignV1:
+        """Return a new campaign linked to an experiment design (DO-89A)."""
+        return ExperimentCampaignV1(
+            campaign_id=self.campaign_id,
+            title=self.title,
+            description=self.description,
+            created_at_utc=self.created_at_utc,
+            build_session_id=self.build_session_id,
+            experiment_design_id=experiment_design_id,
+            lifecycle_state=self.lifecycle_state,
+            started_at_utc=self.started_at_utc,
+            completed_at_utc=self.completed_at_utc,
+            archived_at_utc=self.archived_at_utc,
             workflow_ids=self.workflow_ids,
             revision_ids=self.revision_ids,
             measurement_ids=self.measurement_ids,
