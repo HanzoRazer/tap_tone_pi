@@ -1097,6 +1097,74 @@ compdef _ttp ttp tap-tone
 """
 
 
+def cmd_emit_tone(args: argparse.Namespace) -> int:
+    """Emit a fixed-frequency tone (controlled excitation)."""
+    import json
+    from tap_tone_pi.excitation import (
+        emit_tone,
+        create_known_tone_record,
+        validate_amplitude,
+        AmplitudeGuardrail,
+        DEFAULT_AMPLITUDE,
+    )
+
+    frequency_hz = args.frequency_hz
+    duration_s = args.duration_s
+    amplitude = args.amplitude
+    sample_rate = args.sample_rate
+    out_path = args.out
+    dry_run = args.dry_run
+
+    # Validate amplitude
+    validation = validate_amplitude(amplitude)
+    if validation.guardrail == AmplitudeGuardrail.REJECTED:
+        print(f"ERROR: {validation.message}")
+        return 1
+
+    if validation.guardrail == AmplitudeGuardrail.WARNING:
+        print(f"WARNING: {validation.message}")
+
+    print(f"Emitting tone: {frequency_hz} Hz, {duration_s}s, amplitude={amplitude}")
+
+    if dry_run:
+        # Create record without emitting
+        record = create_known_tone_record(
+            record_id=f"tone_dryrun",
+            frequency_hz=frequency_hz,
+            duration_s=duration_s,
+            amplitude=amplitude,
+            sample_rate_hz=sample_rate,
+            output_device_id="dry_run",
+        )
+        print("(dry run - no audio emitted)")
+    else:
+        # Emit and get provenance
+        try:
+            record = emit_tone(
+                frequency_hz=frequency_hz,
+                duration_s=duration_s,
+                amplitude=amplitude,
+                sample_rate_hz=sample_rate,
+            )
+        except Exception as e:
+            print(f"ERROR: Failed to emit tone: {e}")
+            return 1
+
+    print(f"Record ID: {record.record_id}")
+    print(f"Emitted at: {record.emitted_at_utc}")
+    print(f"Device: {record.output_device_id}")
+
+    # Write provenance if output path specified
+    if out_path:
+        out_file = Path(out_path)
+        out_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_file, "w") as f:
+            json.dump(record.to_dict(), f, indent=2)
+        print(f"Wrote: {out_file}")
+
+    return 0
+
+
 def _fish_completion() -> str:
     """Generate fish completion script."""
     return """
@@ -1516,6 +1584,62 @@ uploads to ToolBox for analysis.
     p_sess = sub.add_parser("sessions", help="List all sessions")
     p_sess.add_argument("--limit", type=int, default=20, help="Max sessions to show")
     p_sess.set_defaults(fn=cmd_sessions)
+
+    # emit-tone (DO-90)
+    p_emit = sub.add_parser(
+        "emit-tone",
+        help="Emit a fixed-frequency tone (controlled excitation)",
+        epilog="""Examples:
+  ttp emit-tone --frequency-hz 440 --duration-s 5
+  ttp emit-tone --frequency-hz 100 --duration-s 3 --amplitude 0.15
+  ttp emit-tone --frequency-hz 82 --out ./excitation.json
+
+Amplitude guardrails:
+  0.0 - 0.25: Normal range
+  0.25 - 0.5: Warning (allowed)
+  > 0.5: Warning (allowed with caution)
+  > 1.0: Rejected
+
+Default amplitude is 0.2 (safe for most transducers).
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p_emit.add_argument(
+        "--frequency-hz",
+        type=float,
+        required=True,
+        help="Tone frequency in Hz",
+    )
+    p_emit.add_argument(
+        "--duration-s",
+        type=float,
+        default=1.0,
+        help="Duration in seconds (default: 1.0)",
+    )
+    p_emit.add_argument(
+        "--amplitude",
+        type=float,
+        default=0.2,
+        help="Peak amplitude 0.0-1.0 (default: 0.2)",
+    )
+    p_emit.add_argument(
+        "--sample-rate",
+        type=int,
+        default=48000,
+        help="Sample rate in Hz (default: 48000)",
+    )
+    p_emit.add_argument(
+        "--out",
+        type=str,
+        default=None,
+        help="Output path for provenance JSON (optional)",
+    )
+    p_emit.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Generate provenance without emitting tone",
+    )
+    p_emit.set_defaults(fn=cmd_emit_tone)
 
     # completion (NEW!)
     p_comp = sub.add_parser("completion", help="Generate shell completion script")
