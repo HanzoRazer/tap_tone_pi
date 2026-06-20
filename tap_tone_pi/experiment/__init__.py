@@ -1,5 +1,5 @@
 # INSTRUMENT CLASS: MEASUREMENT
-"""Experiment design, process variance, and regression contracts (DO-89A, 89B, 89C).
+"""Experiment design, variance, regression, and execution plan contracts (DO-89A–D).
 
 This package provides first-class experiment design capabilities:
 - ExperimentDesignV1: governing object for cohort studies
@@ -19,6 +19,11 @@ Cohort regression evidence (DO-89C):
 - CohortRegressionEvidenceV1: coefficients, R², residuals from OLS
 - FormulaCandidateEvidenceV1: descriptive formula with limitations
 - RegressionCoefficientV1: individual coefficient with standard error
+
+Cohort execution plan (DO-89D):
+- CohortExecutionPlanV1: structured 9-section lab execution packet
+- create_cohort_execution_plan(): aggregates from input contracts
+- render_cohort_execution_plan_markdown(): renders to lab-usable Markdown
 
 No advisory behavior. No formula recommendations. No optimization.
 """
@@ -73,6 +78,18 @@ from tap_tone_pi.experiment.cohort_regression import (
     fit_linear_cohort_regression,
     create_formula_candidate_evidence,
 )
+from tap_tone_pi.experiment.execution_plan import (
+    CohortExecutionPlanV1,
+    ResponseVariableSummaryV1,
+    CovariateSummaryV1,
+    BaselineScheduleSummaryV1,
+    ReferenceBodySummaryV1,
+    MeasurementWorkflowSummaryV1,
+    ExecutionChecklistItemV1,
+    ProvenanceRequirementV1,
+    create_cohort_execution_plan,
+    render_cohort_execution_plan_markdown,
+)
 
 __all__ = [
     # Response variables (DO-89A)
@@ -115,4 +132,15 @@ __all__ = [
     "FormulaCandidateEvidenceV1",
     "fit_linear_cohort_regression",
     "create_formula_candidate_evidence",
+    # Execution plan (DO-89D)
+    "CohortExecutionPlanV1",
+    "ResponseVariableSummaryV1",
+    "CovariateSummaryV1",
+    "BaselineScheduleSummaryV1",
+    "ReferenceBodySummaryV1",
+    "MeasurementWorkflowSummaryV1",
+    "ExecutionChecklistItemV1",
+    "ProvenanceRequirementV1",
+    "create_cohort_execution_plan",
+    "render_cohort_execution_plan_markdown",
 ]
