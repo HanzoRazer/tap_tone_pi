@@ -1,8 +1,8 @@
 # Active Dev Order
 
 **Current:** None — sprint complete
-**Previous:** DO-089A — Experiment design contract and cohort planning framework
-**Completed:** 2026-06-18
+**Previous:** DO-089C — Covariate-aware cohort regression
+**Completed:** 2026-06-19
 
 ## Sprint Summary
 
@@ -24,6 +24,8 @@ DO-001 through DO-008, and DO-084 through DO-089 completed. The tap_tone_pi moda
 | DO-088 | Build session and environmental provenance | COMPLETED |
 | DO-089 | Campaign lifecycle state and measurement set aggregation | COMPLETED |
 | DO-089A | Experiment design contract and cohort planning framework | COMPLETED |
+| DO-089B | Process variance evidence and feasibility summary | COMPLETED |
+| DO-089C | Covariate-aware cohort regression | COMPLETED |
 
 ## Pre-existing test failures (baseline)
 
@@ -35,6 +37,25 @@ DO-001 through DO-008, and DO-084 through DO-089 completed. The tap_tone_pi moda
 These are documented baseline failures, not introduced by this sprint.
 
 ## Daily log
+
+### 2026-06-19
+- DO-89C Stage A: RegressionInputV1, RegressionCoefficientV1 contracts
+- DO-89C Stage B: CohortRegressionEvidenceV1 contract
+- DO-89C Stage C: FormulaCandidateEvidenceV1 contract
+- DO-89C Stage D: fit_linear_cohort_regression() OLS helper
+- DO-89C Stage E: create_formula_candidate_evidence() helper
+- DO-89C Stage F: Schema additions to phase2_ods_snapshot.schema.json
+- DO-89C Stage G: Audit reconciliation
+- DO-89C complete — 23 tests
+
+- DO-89B Stage A: ReferenceBodyRecordV1 contract
+- DO-89B Stage B: VarianceDecompositionV1 and decompose_variance()
+- DO-89B Stage C: ProcessVarianceEvidenceV1 and compute_process_variance_evidence()
+- DO-89B Stage D: VarianceBandThresholdsV1 and classify_variance_band()
+- DO-89B Stage E: FeasibilitySummaryV1 and create_feasibility_summary()
+- DO-89B Stage F: Schema additions to phase2_ods_snapshot.schema.json
+- DO-89B Stage G: Audit reconciliation
+- DO-89B complete — 35 tests
 
 ### 2026-06-18
 - DO-89A Stage A: Response variable and MIE contracts

@@ -742,6 +742,87 @@ Measurement
 
 ---
 
-*Audit completed: 2026-06-18 (DO-89A experiment design framework added)*  
+---
+
+## 17. Process Variance Evidence & Feasibility Summary (Dev Order 89B)
+
+**Status:** ✅ **IMPLEMENTED** (2026-06-19)
+
+The platform now includes process variance decomposition for cohort studies.
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `ReferenceBodyRecordV1` | `experiment/reference_body.py` | Kept metrology standard for σ_measurement isolation |
+| `VarianceDecompositionV1` | `experiment/process_variance.py` | σ²_total → σ²_measurement + σ²_build |
+| `ProcessVarianceEvidenceV1` | `experiment/process_variance.py` | Full evidence with raw values + decomposition |
+| `decompose_variance()` | `experiment/process_variance.py` | Compute σ_build with clamping |
+| `compute_process_variance_evidence()` | `experiment/process_variance.py` | Create evidence from raw values |
+| `VarianceBandThresholdsV1` | `experiment/feasibility_summary.py` | Band thresholds (low/medium/high) |
+| `FeasibilitySummaryV1` | `experiment/feasibility_summary.py` | Cohort-level variance summary |
+| `classify_variance_band()` | `experiment/feasibility_summary.py` | CV% → band classification |
+| `create_feasibility_summary()` | `experiment/feasibility_summary.py` | Create summary from decomposition |
+| Schema additions | `contracts/phase2_ods_snapshot.schema.json` | Optional reference_body/process_variance/feasibility blocks |
+
+**Classification:** INSTRUMENT CLASS: MEASUREMENT
+
+This layer quantifies process variance without making advisory judgments:
+- σ_measurement from reference body repeats
+- σ_total from cohort measurements
+- σ_build = sqrt(max(σ²_total - σ²_measurement, 0))
+
+Variance bands use neutral language ("low", "medium", "high"), not pass/fail or color codes.
+
+**Formula:**
+```
+σ²_total = σ²_measurement + σ²_build
+```
+
+**Verified by:**
+- `tests/test_process_variance.py` (35 tests)
+
+---
+
+---
+
+## 18. Covariate-Aware Cohort Regression (Dev Order 89C)
+
+**Status:** ✅ **IMPLEMENTED** (2026-06-19)
+
+The platform now includes covariate-aware linear regression for formula candidate derivation.
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `RegressionInputV1` | `experiment/cohort_regression.py` | Input specification record |
+| `RegressionCoefficientV1` | `experiment/cohort_regression.py` | Coefficient with standard error |
+| `CohortRegressionEvidenceV1` | `experiment/cohort_regression.py` | Coefficients, R², adjusted R², residual std |
+| `FormulaCandidateEvidenceV1` | `experiment/cohort_regression.py` | Descriptive formula with limitations |
+| `fit_linear_cohort_regression()` | `experiment/cohort_regression.py` | OLS regression helper |
+| `create_formula_candidate_evidence()` | `experiment/cohort_regression.py` | Generate formula text |
+| Schema additions | `contracts/phase2_ods_snapshot.schema.json` | Optional cohort_regression/formula_candidate blocks |
+
+**Classification:** INSTRUMENT CLASS: MEASUREMENT
+
+This layer derives formula candidates from cohort data:
+- Coefficients with standard errors
+- R² and adjusted R²
+- Residual standard deviation
+- Descriptive formula text (math notation)
+
+Formula output is **evidence**, not **recommendation**:
+```
+A0_Hz = 98.2 + (-3.2 × thickness_mm) + (18.1 × density)
+```
+
+Auto-added limitations:
+- "linear model only"
+- "N=X samples"
+- "R² undefined: zero response variance" (when applicable)
+
+**Verified by:**
+- `tests/test_cohort_regression.py` (23 tests)
+
+---
+
+*Audit completed: 2026-06-19 (DO-89C cohort regression evidence added)*  
 *Document owner: Governance audit process*  
 *Next review: Upon schema version bump or ADR update*

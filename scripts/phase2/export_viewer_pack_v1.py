@@ -789,6 +789,51 @@ def _read_experiment_design_provenance(
     return design_data, validation_data
 
 
+def _read_cohort_regression_provenance(
+    session_dir: Path, add_file_fn
+) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    """
+    Read cohort regression provenance from session (Dev Order 89C).
+
+    Searches for cohort_regression_evidence.json and formula_candidate_evidence.json
+    in the session directory or meta folder.
+
+    Returns (regression_dict, formula_dict) tuple, either may be None.
+    """
+    regression_data = None
+    formula_data = None
+
+    # Look for cohort regression evidence
+    regression_candidates = [
+        session_dir / "meta" / "cohort_regression_evidence.json",
+        session_dir / "cohort_regression_evidence.json",
+    ]
+    for path in regression_candidates:
+        if path.exists():
+            try:
+                regression_data = json.loads(path.read_text(encoding="utf-8"))
+                add_file_fn(path, "meta/cohort_regression_evidence.json")
+                break
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    # Look for formula candidate evidence
+    formula_candidates = [
+        session_dir / "meta" / "formula_candidate_evidence.json",
+        session_dir / "formula_candidate_evidence.json",
+    ]
+    for path in formula_candidates:
+        if path.exists():
+            try:
+                formula_data = json.loads(path.read_text(encoding="utf-8"))
+                add_file_fn(path, "meta/formula_candidate_evidence.json")
+                break
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    return regression_data, formula_data
+
+
 def _build_manifest(
     files: List[FileEntry],
     session_dir: Path,
@@ -808,6 +853,8 @@ def _build_manifest(
     measurement_set_summary: Optional[Dict[str, Any]] = None,
     experiment_design: Optional[Dict[str, Any]] = None,
     design_validation_evidence: Optional[Dict[str, Any]] = None,
+    cohort_regression_evidence: Optional[Dict[str, Any]] = None,
+    formula_candidate_evidence: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Build manifest dict and compute bundle_sha256."""
     manifest: Dict[str, Any] = {
@@ -884,6 +931,12 @@ def _build_manifest(
         manifest["experiment_design"] = experiment_design
     if design_validation_evidence:
         manifest["design_validation_evidence"] = design_validation_evidence
+
+    # Cohort regression provenance (DO-89C)
+    if cohort_regression_evidence:
+        manifest["cohort_regression_evidence"] = cohort_regression_evidence
+    if formula_candidate_evidence:
+        manifest["formula_candidate_evidence"] = formula_candidate_evidence
 
     # bundle sha = sha256 of manifest JSON bytes (before adding bundle_sha256)
     manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8")
@@ -1042,6 +1095,7 @@ def export_viewer_pack(
     build_session, environment_record, fixture_record = _read_build_context_provenance(session_dir, add_file)
     campaign_lifecycle, measurement_set, measurement_set_summary = _read_campaign_lifecycle_provenance(session_dir, add_file)
     experiment_design, design_validation_evidence = _read_experiment_design_provenance(session_dir, add_file)
+    cohort_regression_evidence, formula_candidate_evidence = _read_cohort_regression_provenance(session_dir, add_file)
     _add_plots(session_dir, add_file)
     _add_timeline(session_dir, add_file)
 
@@ -1052,7 +1106,8 @@ def export_viewer_pack(
         experiment_campaign, experiment_revision, measurement_lineage,
         build_session, environment_record, fixture_record,
         campaign_lifecycle, measurement_set, measurement_set_summary,
-        experiment_design, design_validation_evidence
+        experiment_design, design_validation_evidence,
+        cohort_regression_evidence, formula_candidate_evidence
     )
     manifest_path = pack_root / "manifest.json"
     manifest_path.write_text(

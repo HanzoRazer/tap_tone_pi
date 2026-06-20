@@ -1,5 +1,5 @@
 # INSTRUMENT CLASS: MEASUREMENT
-"""Experiment design and process variance contracts (DO-89A, 89B).
+"""Experiment design, process variance, and regression contracts (DO-89A, 89B, 89C).
 
 This package provides first-class experiment design capabilities:
 - ExperimentDesignV1: governing object for cohort studies
@@ -14,6 +14,11 @@ Process variance evidence (DO-89B):
 - ProcessVarianceEvidenceV1: variance decomposition with raw values
 - VarianceDecompositionV1: σ_total → σ_measurement + σ_build
 - FeasibilitySummaryV1: cohort-level variance summary with bands
+
+Cohort regression evidence (DO-89C):
+- CohortRegressionEvidenceV1: coefficients, R², residuals from OLS
+- FormulaCandidateEvidenceV1: descriptive formula with limitations
+- RegressionCoefficientV1: individual coefficient with standard error
 
 No advisory behavior. No formula recommendations. No optimization.
 """
@@ -60,6 +65,14 @@ from tap_tone_pi.experiment.feasibility_summary import (
     classify_variance_band,
     create_feasibility_summary,
 )
+from tap_tone_pi.experiment.cohort_regression import (
+    RegressionInputV1,
+    RegressionCoefficientV1,
+    CohortRegressionEvidenceV1,
+    FormulaCandidateEvidenceV1,
+    fit_linear_cohort_regression,
+    create_formula_candidate_evidence,
+)
 
 __all__ = [
     # Response variables (DO-89A)
@@ -95,4 +108,11 @@ __all__ = [
     "FeasibilitySummaryV1",
     "classify_variance_band",
     "create_feasibility_summary",
+    # Cohort regression (DO-89C)
+    "RegressionInputV1",
+    "RegressionCoefficientV1",
+    "CohortRegressionEvidenceV1",
+    "FormulaCandidateEvidenceV1",
+    "fit_linear_cohort_regression",
+    "create_formula_candidate_evidence",
 ]

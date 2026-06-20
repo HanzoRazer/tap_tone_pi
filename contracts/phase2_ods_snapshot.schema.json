@@ -480,6 +480,165 @@
         "validated_at_utc": { "type": "string" },
         "epistemic_status": { "type": "string", "enum": ["derived"] }
       }
+    },
+
+    "reference_body": {
+      "type": "object",
+      "description": "Optional reference body record (Dev Order 89B)",
+      "properties": {
+        "schema_version": { "type": "string", "const": "reference_body_record_v1" },
+        "reference_body_id": { "type": "string" },
+        "specimen_id": { "type": "string" },
+        "body_style": { "type": "string" },
+        "description": { "type": "string" },
+        "state": { "type": "string" },
+        "created_at_utc": { "type": "string" },
+        "measurement_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "wood_species_top": { "type": "string" },
+        "wood_species_back_sides": { "type": "string" },
+        "notes": { "type": "string" },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
+    },
+
+    "process_variance_evidence": {
+      "type": "object",
+      "description": "Optional process variance evidence (Dev Order 89B)",
+      "properties": {
+        "schema_version": { "type": "string", "const": "process_variance_evidence_v1" },
+        "evidence_id": { "type": "string" },
+        "experiment_design_id": { "type": "string" },
+        "campaign_id": { "type": "string" },
+        "reference_body_id": { "type": "string" },
+        "response_variable": { "type": "string" },
+        "unit": { "type": "string" },
+        "cohort_values": {
+          "type": "array",
+          "items": { "type": "number" }
+        },
+        "reference_values": {
+          "type": "array",
+          "items": { "type": "number" }
+        },
+        "cohort_mean": { "type": "number" },
+        "cohort_std": { "type": "number" },
+        "reference_mean": { "type": "number" },
+        "reference_std": { "type": "number" },
+        "decomposition": {
+          "type": "object",
+          "properties": {
+            "schema_version": { "type": "string", "const": "variance_decomposition_v1" },
+            "sigma_total": { "type": "number" },
+            "sigma_measurement": { "type": "number" },
+            "sigma_build": { "type": "number" },
+            "sigma_total_squared": { "type": "number" },
+            "sigma_measurement_squared": { "type": "number" },
+            "sigma_build_squared": { "type": "number" },
+            "clamped_to_zero": { "type": "boolean" },
+            "response_variable": { "type": "string" },
+            "unit": { "type": "string" }
+          }
+        },
+        "measurement_count_cohort": { "type": "integer" },
+        "measurement_count_reference": { "type": "integer" },
+        "computed_at_utc": { "type": "string" },
+        "notes": { "type": "string" },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
+    },
+
+    "feasibility_summary": {
+      "type": "object",
+      "description": "Optional feasibility summary (Dev Order 89B)",
+      "properties": {
+        "schema_version": { "type": "string", "const": "feasibility_summary_v1" },
+        "summary_id": { "type": "string" },
+        "experiment_design_id": { "type": "string" },
+        "campaign_id": { "type": "string" },
+        "response_variable": { "type": "string" },
+        "unit": { "type": "string" },
+        "cohort_size": { "type": "integer" },
+        "reference_measurement_count": { "type": "integer" },
+        "cohort_mean": { "type": "number" },
+        "sigma_total": { "type": "number" },
+        "sigma_measurement": { "type": "number" },
+        "sigma_build": { "type": "number" },
+        "cv_build_pct": { "type": "number" },
+        "variance_band": { "type": "string", "enum": ["low", "medium", "high"] },
+        "thresholds": {
+          "type": "object",
+          "properties": {
+            "schema_version": { "type": "string", "const": "variance_band_thresholds_v1" },
+            "low_threshold_pct": { "type": "number" },
+            "high_threshold_pct": { "type": "number" },
+            "response_variable": { "type": "string" }
+          }
+        },
+        "computed_at_utc": { "type": "string" },
+        "notes": { "type": "string" },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
+    },
+
+    "cohort_regression_evidence": {
+      "type": "object",
+      "description": "Optional cohort regression evidence (Dev Order 89C)",
+      "properties": {
+        "schema_version": { "type": "string", "const": "cohort_regression_evidence_v1" },
+        "evidence_id": { "type": "string" },
+        "experiment_design_id": { "type": "string" },
+        "campaign_id": { "type": "string" },
+        "response_variable_name": { "type": "string" },
+        "primary_variable_name": { "type": "string" },
+        "coefficients": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "schema_version": { "type": "string", "const": "regression_coefficient_v1" },
+              "term_name": { "type": "string" },
+              "coefficient": { "type": "number" },
+              "standard_error": { "type": "number" },
+              "t_statistic": { "type": "number" },
+              "p_value": { "type": "number" },
+              "epistemic_status": { "type": "string", "enum": ["derived"] }
+            }
+          }
+        },
+        "intercept": { "type": "number" },
+        "r_squared": { "type": "number" },
+        "adjusted_r_squared": { "type": "number" },
+        "residual_std": { "type": "number" },
+        "sample_count": { "type": "integer" },
+        "covariate_names": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "computed_at_utc": { "type": "string" },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
+    },
+
+    "formula_candidate_evidence": {
+      "type": "object",
+      "description": "Optional formula candidate evidence (Dev Order 89C)",
+      "properties": {
+        "schema_version": { "type": "string", "const": "formula_candidate_evidence_v1" },
+        "formula_id": { "type": "string" },
+        "experiment_design_id": { "type": "string" },
+        "campaign_id": { "type": "string" },
+        "response_variable_name": { "type": "string" },
+        "formula_text": { "type": "string" },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "regression_evidence": { "$ref": "#/properties/cohort_regression_evidence" },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
     }
   }
 }
