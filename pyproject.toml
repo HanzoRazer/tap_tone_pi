@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tap-tone-pi"
-version = "2.3.0-alpha.5"
+version = "2.3.0-alpha.6"
 description = "Tap tone analysis toolkit for luthiers: capture, analyze, and visualize acoustic signatures"
 requires-python = ">=3.10"
 dependencies = [

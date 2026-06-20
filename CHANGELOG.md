@@ -2,6 +2,48 @@
 
 All notable changes to this project are documented here. This file follows [Keep a Changelog](https://keepachangelog.com/) style and [Semantic Versioning](https://semver.org/).
 
+## [2.3.0-alpha.6] — 2026-06-20
+
+### Added
+- **Measurement Legitimacy Stack (DO-89A/B/C)** — experimental knowledge infrastructure
+  - **DO-89A: Experiment Design Contract**
+    - `ExperimentDesignV1` — governing object for cohort studies
+    - `DeclaredResponseVariableV1` — what outcomes are being measured
+    - `MinimumInterestingEffectV1` — effect size thresholds
+    - `CovariateDefinitionV1` — tracked variables (fixed/random)
+    - `RandomizationPlanV1` — randomization strategy
+    - `BaselineRebuildPlanV1` — baseline rebuild triggers
+    - `DesignValidationEvidenceV1` — completeness validation
+    - 37 tests
+  - **DO-89B: Process Variance Evidence**
+    - `ReferenceBodyRecordV1` — metrology standard for σ_measurement isolation
+    - `VarianceDecompositionV1` — σ²_total = σ²_measurement + σ²_build
+    - `ProcessVarianceEvidenceV1` — variance decomposition with raw values
+    - `FeasibilitySummaryV1` — cohort-level variance with neutral bands
+    - `VarianceBandThresholdsV1` — low/medium/high classification
+    - 35 tests
+  - **DO-89C: Cohort Regression Evidence**
+    - `CohortRegressionEvidenceV1` — OLS coefficients, R², residuals
+    - `FormulaCandidateEvidenceV1` — descriptive formula with limitations
+    - `RegressionCoefficientV1` — coefficient with standard error
+    - Auto-limitations: "linear model only", "N=X samples"
+    - 31 tests (23 + 8 export anchor)
+- **Handoffs directory** — `docs/handoffs/` for implementation handoff documents
+  - `TTP_ACOUSTIC_EXCITATION_HANDOFF_2026-06-18.md` — DO-90→95 excitation framework
+  - `no_soundhole_lab_protocol.md` — closed-body calibration specimens
+
+### Architecture
+The stack supports the full experimental knowledge flow:
+```
+Declare experiment → run cohort → separate σ_measurement from σ_build
+→ control covariates → derive formula-candidate evidence
+```
+
+All contracts follow frozen dataclass pattern with `to_dict()` and
+`epistemic_status="derived"`. No advisory semantics.
+
+---
+
 ## [2.2.5] — 2026-02-09
 
 ### Added
