@@ -1,5 +1,5 @@
 # INSTRUMENT CLASS: MEASUREMENT
-"""Experiment design contracts for cohort planning (Dev Order 89A).
+"""Experiment design and process variance contracts (DO-89A, 89B).
 
 This package provides first-class experiment design capabilities:
 - ExperimentDesignV1: governing object for cohort studies
@@ -9,7 +9,13 @@ This package provides first-class experiment design capabilities:
 - BaselineRebuildPlanV1: when baseline rebuilds occur
 - DesignValidationEvidenceV1: completeness validation
 
-No advisory behavior. No formula generation. No statistical recommendations.
+Process variance evidence (DO-89B):
+- ReferenceBodyRecordV1: metrology standard for σ_measurement isolation
+- ProcessVarianceEvidenceV1: variance decomposition with raw values
+- VarianceDecompositionV1: σ_total → σ_measurement + σ_build
+- FeasibilitySummaryV1: cohort-level variance summary with bands
+
+No advisory behavior. No formula recommendations. No optimization.
 """
 
 from tap_tone_pi.experiment.response_variables import (
@@ -38,26 +44,55 @@ from tap_tone_pi.experiment.validation import (
     DesignValidationEvidenceV1,
     validate_experiment_design,
 )
+from tap_tone_pi.experiment.reference_body import (
+    ReferenceBodyRecordV1,
+    create_reference_body,
+)
+from tap_tone_pi.experiment.process_variance import (
+    VarianceDecompositionV1,
+    ProcessVarianceEvidenceV1,
+    decompose_variance,
+    compute_process_variance_evidence,
+)
+from tap_tone_pi.experiment.feasibility_summary import (
+    VarianceBandThresholdsV1,
+    FeasibilitySummaryV1,
+    classify_variance_band,
+    create_feasibility_summary,
+)
 
 __all__ = [
-    # Response variables
+    # Response variables (DO-89A)
     "MinimumInterestingEffectV1",
     "DeclaredResponseVariableV1",
     "create_response_variable",
     "create_minimum_interesting_effect",
-    # Covariates
+    # Covariates (DO-89A)
     "CovariateDefinitionV1",
     "create_covariate",
-    # Randomization
+    # Randomization (DO-89A)
     "RandomizationPlanV1",
     "create_randomization_plan",
-    # Baseline plan
+    # Baseline plan (DO-89A)
     "BaselineRebuildPlanV1",
     "create_baseline_rebuild_plan",
-    # Experiment design
+    # Experiment design (DO-89A)
     "ExperimentDesignV1",
     "create_experiment_design",
-    # Validation
+    # Validation (DO-89A)
     "DesignValidationEvidenceV1",
     "validate_experiment_design",
+    # Reference body (DO-89B)
+    "ReferenceBodyRecordV1",
+    "create_reference_body",
+    # Process variance (DO-89B)
+    "VarianceDecompositionV1",
+    "ProcessVarianceEvidenceV1",
+    "decompose_variance",
+    "compute_process_variance_evidence",
+    # Feasibility summary (DO-89B)
+    "VarianceBandThresholdsV1",
+    "FeasibilitySummaryV1",
+    "classify_variance_band",
+    "create_feasibility_summary",
 ]
