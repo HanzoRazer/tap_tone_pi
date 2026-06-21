@@ -1,5 +1,6 @@
+# INSTRUMENT CLASS: MEASUREMENT
 """
-Transfer function estimation module.
+Transfer function estimation module (DO-91 provenance integration).
 
 This module provides production-grade transfer function (frequency response)
 estimation with multiple estimators and quality metrics.
@@ -13,6 +14,11 @@ Quality Metrics:
 - Coherence γ²: measure of linear relationship between input and output
 - SNR estimation from coherence: SNR = γ²/(1-γ²)
 - Uncertainty bounds from coherence and averaging
+
+Provenance Contracts (DO-91):
+- TransferFunctionResultV1: provenance-aware TF result
+- CoherenceSummaryV1: serializable coherence summary
+- UncertaintySummaryV1: serializable uncertainty summary
 
 Mathematical Background:
 ------------------------
@@ -61,6 +67,14 @@ from .quality import (
     validate_measurement_quality,
 )
 
+from .result_contract import (
+    CoherenceSummaryV1,
+    UncertaintySummaryV1,
+    TransferFunctionResultV1,
+    create_transfer_function_result,
+    create_transfer_function_result_from_estimator,
+)
+
 __all__ = [
     # Core classes
     "TransferFunctionResult",
@@ -83,4 +97,10 @@ __all__ = [
     "uncertainty_from_coherence",
     "required_averages_for_error",
     "validate_measurement_quality",
+    # Provenance contracts (DO-91)
+    "CoherenceSummaryV1",
+    "UncertaintySummaryV1",
+    "TransferFunctionResultV1",
+    "create_transfer_function_result",
+    "create_transfer_function_result_from_estimator",
 ]
