@@ -1,9 +1,11 @@
 # INSTRUMENT CLASS: MEASUREMENT
-"""Controlled excitation contracts and provenance (DO-90, DO-91).
+"""Controlled excitation contracts and provenance (DO-90, DO-91, DO-93).
 
 This package provides measurement/provenance contracts for controlled excitation:
 - ExcitationContractV1: declarative excitation specification
 - KnownToneRecordV1: provenance for single emitted tone event
+- SteppedExcitationRecordV1: provenance for stepped frequency excitation
+- SweepExcitationRecordV1: provenance for frequency sweep excitation
 - SourceCharacterizationRecordV1: output-side calibration record
 
 Excitation-measurement linkage (DO-91):
@@ -20,8 +22,13 @@ No advisory semantics. No tone quality judgments.
 from tap_tone_pi.excitation.contracts import (
     ExcitationType,
     WaveformType,
+    SweepType,
     ExcitationContractV1,
     create_excitation_contract,
+    SteppedExcitationRecordV1,
+    create_stepped_excitation_record,
+    SweepExcitationRecordV1,
+    create_sweep_excitation_record,
 )
 from tap_tone_pi.excitation.known_tone import (
     KnownToneRecordV1,
@@ -47,6 +54,11 @@ from tap_tone_pi.excitation.response_pair import (
     ExcitationResponsePairV1,
     create_excitation_response_pair,
 )
+from tap_tone_pi.excitation.stepped_sweep import (
+    emit_stepped,
+    emit_sweep,
+    generate_stepped_signal,
+)
 
 __all__ = [
     # Contracts (DO-90)
@@ -58,6 +70,16 @@ __all__ = [
     "KnownToneRecordV1",
     "create_known_tone_record",
     "emit_tone",
+    # Stepped excitation (DO-93)
+    "SweepType",
+    "SteppedExcitationRecordV1",
+    "create_stepped_excitation_record",
+    "emit_stepped",
+    "generate_stepped_signal",
+    # Sweep excitation (DO-93)
+    "SweepExcitationRecordV1",
+    "create_sweep_excitation_record",
+    "emit_sweep",
     # Source characterization (DO-90)
     "SourceCharacterizationRecordV1",
     "create_source_characterization",
