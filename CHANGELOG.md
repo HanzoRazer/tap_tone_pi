@@ -2,6 +2,65 @@
 
 All notable changes to this project are documented here. This file follows [Keep a Changelog](https://keepachangelog.com/) style and [Semantic Versioning](https://semver.org/).
 
+## [2.3.0-alpha.7] — 2026-06-21
+
+### Added
+- **DO-89D: Cohort Execution Plan Export**
+  - `CohortExecutionPlanV1` — 9-section execution protocol
+  - Sections: preamble, specimen prep, measurement, data capture, reference body,
+    baseline checks, covariate tracking, session housekeeping, provenance
+  - Markdown renderer for human-readable execution protocol
+  - 33 tests
+
+- **DO-90: Controlled Excitation Contracts**
+  - `ExcitationContractV1` — declarative excitation specification (tone/stepped/sweep)
+  - `KnownToneRecordV1` — provenance for single emitted tone event
+  - `SourceCharacterizationRecordV1` — output-side calibration record
+  - `AmplitudeGuardrail` — amplitude validation (default=0.2, warning>0.5, reject>1.0)
+  - `emit_tone()` CLI command and programmatic API
+  - 36 tests
+
+- **DO-91: Excitation Provenance + TF Workflow**
+  - `ExcitationMeasurementLinkV1` — links excitation to measurement
+  - `ExcitationResponsePairV1` — bundles excitation+response for TF computation
+  - `TransferFunctionResultV1` — provenance-aware TF result
+  - `CoherenceSummaryV1`, `UncertaintySummaryV1` — serializable summaries
+  - 28 tests
+
+- **DO-92: A0 Main Body Air Resonance Workflow**
+  - `A0PeakCandidateV1` — candidate peak in A0 range (70-130 Hz)
+  - `A0MeasurementEvidenceV1` — all candidates with selection method
+  - `A0MeasurementRecordV1` — provenance-aware A0 measurement record
+  - `MainBodyAirResonanceWorkflowV1` — workflow configuration
+  - Peak detection wraps existing damping/modes.py
+  - Selection method recorded, not hidden
+  - 38 tests
+
+- **DO-93: Stepped & Sweep Excitation Records**
+  - `SteppedExcitationRecordV1` — sequential frequency steps with dwell/transition
+  - `SweepExcitationRecordV1` — linear or logarithmic sweep with waveform hash
+  - `SweepType` enum (LINEAR | LOGARITHMIC)
+  - `emit_stepped()`, `emit_sweep()` — thin wrappers producing provenance records
+  - `generate_stepped_signal()` — composes from generate_sine
+  - ExcitationMeasurementLinkV1 integration complete
+  - 25 tests
+
+### Architecture
+Complete excitation provenance chain:
+```
+ExcitationContractV1
+    ├── KnownToneRecordV1     (emit_tone)
+    ├── SteppedExcitationRecordV1  (emit_stepped)
+    └── SweepExcitationRecordV1    (emit_sweep)
+         ↓
+ExcitationMeasurementLinkV1 → ExcitationResponsePairV1 → TransferFunctionResultV1
+```
+
+A0 workflow validates the stack end-to-end. All contracts use frozen dataclass
+pattern with `to_dict()` and appropriate `epistemic_status`. No advisory semantics.
+
+---
+
 ## [2.3.0-alpha.6] — 2026-06-20
 
 ### Added
