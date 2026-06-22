@@ -639,6 +639,108 @@
         "regression_evidence": { "$ref": "#/properties/cohort_regression_evidence" },
         "epistemic_status": { "type": "string", "enum": ["derived"] }
       }
+    },
+
+    "pressure_grid": {
+      "type": "object",
+      "description": "Optional pressure measurement grid (Dev Order 94). Records grid point locations.",
+      "properties": {
+        "schema_version": { "type": "string", "const": "pressure_grid_v1" },
+        "grid_id": { "type": "string" },
+        "coordinate_system": {
+          "type": "string",
+          "enum": ["body_local_mm", "plate_local_mm", "fixture_local_mm", "microphone_grid_mm"]
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "schema_version": { "type": "string", "const": "pressure_grid_point_v1" },
+              "point_id": { "type": "string" },
+              "x_mm": { "type": "number" },
+              "y_mm": { "type": "number" },
+              "z_mm": { "type": "number" },
+              "label": { "type": "string" },
+              "epistemic_status": { "type": "string", "enum": ["observed"] }
+            },
+            "required": ["point_id", "x_mm", "y_mm"]
+          }
+        },
+        "surface_reference": { "type": "string" },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
+    },
+
+    "pressure_response_samples": {
+      "type": "array",
+      "description": "Optional pressure response samples (Dev Order 94). Individual measurements at grid points.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "schema_version": { "type": "string", "const": "pressure_response_sample_v1" },
+          "sample_id": { "type": "string" },
+          "point_id": { "type": "string" },
+          "frequency_hz": { "type": "number" },
+          "response_amplitude_db": { "type": "number" },
+          "response_phase_deg": { "type": "number" },
+          "noise_floor_db": { "type": "number" },
+          "snr_db": { "type": "number" },
+          "coherence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "excitation_id": { "type": "string" },
+          "transfer_function_result_id": { "type": "string" },
+          "environment_id": { "type": "string" },
+          "fixture_id": { "type": "string" },
+          "epistemic_status": { "type": "string", "enum": ["observed"] }
+        },
+        "required": ["sample_id", "point_id", "frequency_hz", "response_amplitude_db", "excitation_id"]
+      }
+    },
+
+    "pressure_response_map": {
+      "type": "object",
+      "description": "Optional pressure response map (Dev Order 94). NOT a mode shape - records radiated pressure.",
+      "properties": {
+        "schema_version": { "type": "string", "const": "pressure_response_map_v1" },
+        "map_id": { "type": "string" },
+        "workflow_id": { "type": "string" },
+        "grid_id": { "type": "string" },
+        "excitation_id": { "type": "string" },
+        "frequency_hz": { "type": "number" },
+        "frequency_band_hz": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "samples": { "$ref": "#/properties/pressure_response_samples" },
+        "environment_id": { "type": "string" },
+        "fixture_id": { "type": "string" },
+        "repeatability_evidence_id": { "type": "string" },
+        "notes": { "type": "string" },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
+    },
+
+    "pressure_response_mapping_workflow": {
+      "type": "object",
+      "description": "Optional pressure response mapping workflow (Dev Order 94). Does not identify mode shapes.",
+      "properties": {
+        "schema_version": { "type": "string", "const": "pressure_response_mapping_workflow_v1" },
+        "workflow_id": { "type": "string" },
+        "grid_id": { "type": "string" },
+        "excitation_id": { "type": "string" },
+        "target_frequencies_hz": {
+          "type": "array",
+          "items": { "type": "number" }
+        },
+        "requires_fixed_geometry": { "type": "boolean" },
+        "requires_environment_record": { "type": "boolean" },
+        "requires_fixture_record": { "type": "boolean" },
+        "minimum_repetitions": { "type": "integer", "minimum": 1 },
+        "created_at_utc": { "type": "string" },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
     }
   }
 }
