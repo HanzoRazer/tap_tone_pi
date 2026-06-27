@@ -1,8 +1,14 @@
 # Active Dev Order
 
-**Current:** None — sprint complete
+**Current:** DO-94 — Luthiery Formula Target Mapping
 **Previous:** DO-089C — Covariate-aware cohort regression
-**Completed:** 2026-06-19
+**Completed:** 2026-06-27 (DO-94)
+
+> **Note on DO-94 numbering:** the commits `6b74304` / `8255c8e` are tagged
+> "(DO-94)" but implement *pressure response mapping* — a non-goal of this
+> dev order. This DO-94 (Luthiery Formula Target Mapping) is a distinct work
+> item that reuses the same number. Its commits are labeled
+> "luthiery formula target" for disambiguation.
 
 ## Sprint Summary
 
@@ -37,6 +43,15 @@ DO-001 through DO-008, and DO-084 through DO-089 completed. The tap_tone_pi moda
 These are documented baseline failures, not introduced by this sprint.
 
 ## Daily log
+
+### 2026-06-27
+- DO-94 PR 94A: LuthieryFormulaDomain, LuthieryFormulaTargetV1, LuthieryFormulaEvidenceLinkV1 contracts (`tap_tone_pi/luthiery/formula_targets.py`)
+- DO-94 PR 94B: create_luthiery_formula_target(), link_formula_candidate_to_target() helpers
+- DO-94 PR 94C: optional luthiery_formula_target / luthiery_formula_evidence_link schema blocks
+- DO-94 PR 94D: additive export integration in export_viewer_pack_v1.py
+- DO-94 PR 94E: tests/test_luthiery_formula_targets.py (13 tests)
+- DO-94 PR 94F: docs reconciliation (CURRENT.md, GOVERNANCE_AUDIT_HANDOFF.md)
+- DO-94 complete — declarative luthiery formula target layer; no advisory logic
 
 ### 2026-06-19
 - DO-89C Stage A: RegressionInputV1, RegressionCoefficientV1 contracts

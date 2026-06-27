@@ -823,6 +823,39 @@ Auto-added limitations:
 
 ---
 
+## 19. Luthiery Formula Target Layer (Dev Order 94)
+
+**Status:** ✅ **IMPLEMENTED** (2026-06-27)
+
+DO-94 introduces `LuthieryFormulaTargetV1`, linking formula-candidate evidence
+to luthiery-specific domains such as top graduation, bracing, soundhole, and
+bridge mechanics. It is the declarative bridge between generic cohort
+regression evidence (DO-89C) and the specific luthiery relationships under
+study.
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `LuthieryFormulaDomain` | `luthiery/formula_targets.py` | Enum of studied domains (top_graduation, bracing, soundhole, bridge, body_air, plate_stiffness) |
+| `LuthieryFormulaTargetV1` | `luthiery/formula_targets.py` | Declares studied/response variables and controlled covariates |
+| `LuthieryFormulaEvidenceLinkV1` | `luthiery/formula_targets.py` | Links a formula candidate to a target by id |
+| `create_luthiery_formula_target()` | `luthiery/target_helpers.py` | Checked, deterministic target construction |
+| `link_formula_candidate_to_target()` | `luthiery/target_helpers.py` | Build an evidence link, inheriting target lineage |
+| Schema additions | `contracts/phase2_ods_snapshot.schema.json` | Optional `luthiery_formula_target` / `luthiery_formula_evidence_link` blocks |
+| Export integration | `scripts/phase2/export_viewer_pack_v1.py` | Embeds DO-94 blocks in manifest when present (additive) |
+
+**Classification:** INSTRUMENT CLASS: MEASUREMENT
+
+A formula target is **declarative** — it describes what physical relationship
+is being studied, not what a builder should do. No optimization, no design
+selection, no build prescriptions. Export blocks are additive; historical
+exports remain valid.
+
+**Verified by:**
+- `tests/test_luthiery_formula_targets.py` (13 tests)
+
+---
+
 *Audit completed: 2026-06-19 (DO-89C cohort regression evidence added)*  
+*Updated: 2026-06-27 (DO-94 luthiery formula target layer added)*  
 *Document owner: Governance audit process*  
 *Next review: Upon schema version bump or ADR update*
