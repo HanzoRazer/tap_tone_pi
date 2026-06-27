@@ -741,6 +741,44 @@
         "created_at_utc": { "type": "string" },
         "epistemic_status": { "type": "string", "enum": ["derived"] }
       }
+    },
+
+    "luthiery_formula_target": {
+      "type": "object",
+      "description": "Optional luthiery formula target (Dev Order 94). Declares the luthiery mechanism a formula models; not advisory.",
+      "properties": {
+        "schema_version": { "type": "string", "const": "luthiery_formula_target_v1" },
+        "target_id": { "type": "string" },
+        "domain": {
+          "type": "string",
+          "enum": ["top_graduation", "bracing", "soundhole", "bridge", "body_air", "plate_stiffness"]
+        },
+        "studied_variable_name": { "type": "string" },
+        "response_variable_name": { "type": "string" },
+        "covariate_names": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "experiment_design_id": { "type": "string" },
+        "campaign_id": { "type": "string" },
+        "notes": { "type": "string" },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
+    },
+
+    "luthiery_formula_evidence_link": {
+      "type": "object",
+      "description": "Optional luthiery formula evidence link (Dev Order 94). Links a formula candidate to a luthiery formula target by id.",
+      "properties": {
+        "schema_version": { "type": "string", "const": "luthiery_formula_evidence_link_v1" },
+        "link_id": { "type": "string" },
+        "target_id": { "type": "string" },
+        "formula_id": { "type": "string" },
+        "regression_evidence_id": { "type": "string" },
+        "experiment_design_id": { "type": "string" },
+        "campaign_id": { "type": "string" },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
     }
   }
 }
