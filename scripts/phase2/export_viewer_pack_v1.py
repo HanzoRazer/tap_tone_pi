@@ -834,6 +834,53 @@ def _read_cohort_regression_provenance(
     return regression_data, formula_data
 
 
+def _read_luthiery_formula_provenance(
+    session_dir: Path, add_file_fn
+) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    """
+    Read luthiery formula target provenance from session (Dev Order 94).
+
+    Searches for luthiery_formula_target.json and
+    luthiery_formula_evidence_link.json in the session directory or meta folder.
+
+    These blocks are additive and optional — historical exports without them
+    remain valid. They carry declarative luthiery domain meaning, never
+    advisory or prescriptive content.
+
+    Returns (target_dict, link_dict) tuple, either may be None.
+    """
+    target_data = None
+    link_data = None
+
+    target_candidates = [
+        session_dir / "meta" / "luthiery_formula_target.json",
+        session_dir / "luthiery_formula_target.json",
+    ]
+    for path in target_candidates:
+        if path.exists():
+            try:
+                target_data = json.loads(path.read_text(encoding="utf-8"))
+                add_file_fn(path, "meta/luthiery_formula_target.json")
+                break
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    link_candidates = [
+        session_dir / "meta" / "luthiery_formula_evidence_link.json",
+        session_dir / "luthiery_formula_evidence_link.json",
+    ]
+    for path in link_candidates:
+        if path.exists():
+            try:
+                link_data = json.loads(path.read_text(encoding="utf-8"))
+                add_file_fn(path, "meta/luthiery_formula_evidence_link.json")
+                break
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    return target_data, link_data
+
+
 def _build_manifest(
     files: List[FileEntry],
     session_dir: Path,
@@ -855,6 +902,8 @@ def _build_manifest(
     design_validation_evidence: Optional[Dict[str, Any]] = None,
     cohort_regression_evidence: Optional[Dict[str, Any]] = None,
     formula_candidate_evidence: Optional[Dict[str, Any]] = None,
+    luthiery_formula_target: Optional[Dict[str, Any]] = None,
+    luthiery_formula_evidence_link: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Build manifest dict and compute bundle_sha256."""
     manifest: Dict[str, Any] = {
@@ -937,6 +986,12 @@ def _build_manifest(
         manifest["cohort_regression_evidence"] = cohort_regression_evidence
     if formula_candidate_evidence:
         manifest["formula_candidate_evidence"] = formula_candidate_evidence
+
+    # Luthiery formula target provenance (DO-94) — additive, declarative only
+    if luthiery_formula_target:
+        manifest["luthiery_formula_target"] = luthiery_formula_target
+    if luthiery_formula_evidence_link:
+        manifest["luthiery_formula_evidence_link"] = luthiery_formula_evidence_link
 
     # bundle sha = sha256 of manifest JSON bytes (before adding bundle_sha256)
     manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8")
@@ -1096,6 +1151,7 @@ def export_viewer_pack(
     campaign_lifecycle, measurement_set, measurement_set_summary = _read_campaign_lifecycle_provenance(session_dir, add_file)
     experiment_design, design_validation_evidence = _read_experiment_design_provenance(session_dir, add_file)
     cohort_regression_evidence, formula_candidate_evidence = _read_cohort_regression_provenance(session_dir, add_file)
+    luthiery_formula_target, luthiery_formula_evidence_link = _read_luthiery_formula_provenance(session_dir, add_file)
     _add_plots(session_dir, add_file)
     _add_timeline(session_dir, add_file)
 
@@ -1107,7 +1163,8 @@ def export_viewer_pack(
         build_session, environment_record, fixture_record,
         campaign_lifecycle, measurement_set, measurement_set_summary,
         experiment_design, design_validation_evidence,
-        cohort_regression_evidence, formula_candidate_evidence
+        cohort_regression_evidence, formula_candidate_evidence,
+        luthiery_formula_target, luthiery_formula_evidence_link
     )
     manifest_path = pack_root / "manifest.json"
     manifest_path.write_text(
