@@ -1,8 +1,8 @@
 # Active Dev Order
 
-**Current:** DO-94 — Luthiery Formula Target Mapping
-**Previous:** DO-089C — Covariate-aware cohort regression
-**Completed:** 2026-06-27 (DO-94)
+**Current:** DO-95 — Formula Validation & Error Detection Envelope
+**Previous:** DO-94 — Luthiery Formula Target Mapping
+**Completed:** 2026-06-27 (DO-95)
 
 > **Note on DO-94 numbering:** the commits `6b74304` / `8255c8e` are tagged
 > "(DO-94)" but implement *pressure response mapping* — a non-goal of this
@@ -44,7 +44,16 @@ These are documented baseline failures, not introduced by this sprint.
 
 ## Daily log
 
-### 2026-06-27
+### 2026-06-27 (DO-95)
+- DO-95 PR 95A: FormulaValidationEnvelopeV1 contract (`tap_tone_pi/luthiery/formula_validation.py`)
+- DO-95 PR 95B: validate_formula_candidate() scalar helper + validate_formula_candidate_from_evidence() overload
+- DO-95 PR 95C: optional formula_validation_envelope schema block
+- DO-95 PR 95D: additive export integration in export_viewer_pack_v1.py
+- DO-95 PR 95E: tests/test_luthiery_formula_validation.py (13 tests)
+- DO-95 PR 95F: docs reconciliation + package exports
+- DO-95 complete — error-detection evidence around formula candidates; no pass/fail or advisory language
+
+### 2026-06-27 (DO-94)
 - DO-94 PR 94A: LuthieryFormulaDomain, LuthieryFormulaTargetV1, LuthieryFormulaEvidenceLinkV1 contracts (`tap_tone_pi/luthiery/formula_targets.py`)
 - DO-94 PR 94B: create_luthiery_formula_target(), link_formula_candidate_to_target() helpers
 - DO-94 PR 94C: optional luthiery_formula_target / luthiery_formula_evidence_link schema blocks

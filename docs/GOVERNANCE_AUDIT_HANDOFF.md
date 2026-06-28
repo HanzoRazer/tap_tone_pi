@@ -855,7 +855,38 @@ exports remain valid.
 
 ---
 
+## 20. Formula Validation & Error Detection Envelope (Dev Order 95)
+
+**Status:** ✅ **IMPLEMENTED** (2026-06-27)
+
+DO-95 adds an error-detection layer around luthiery formula-candidate evidence.
+It records whether the supporting evidence is structurally sufficient,
+reproducible, and bounded. It is not an authority over formulas: no pass/fail,
+approval, recommendation, optimization, significance claims, or p-values.
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `FormulaValidationEnvelopeV1` | `luthiery/formula_validation.py` | Evidence-sufficiency flags + factual notes |
+| `validate_formula_candidate()` | `luthiery/formula_validation.py` | Build envelope from scalar evidence descriptors |
+| `validate_formula_candidate_from_evidence()` | `luthiery/formula_validation.py` | Derive descriptors from DO-89C/89B/85 evidence objects |
+| Schema additions | `contracts/phase2_ods_snapshot.schema.json` | Optional `formula_validation_envelope` block |
+| Export integration | `scripts/phase2/export_viewer_pack_v1.py` | Embeds DO-95 block in manifest when present (additive) |
+
+**Classification:** INSTRUMENT CLASS: MEASUREMENT
+
+Detectable conditions (recorded factually, never as a verdict):
+- sample count below a declared minimum
+- absence of process variance / repeatability / covariate evidence
+- absence of residual standard deviation / R-squared statistics
+- extrapolation: a declared variable range extending beyond the observed range
+
+**Verified by:**
+- `tests/test_luthiery_formula_validation.py` (13 tests)
+
+---
+
 *Audit completed: 2026-06-19 (DO-89C cohort regression evidence added)*  
 *Updated: 2026-06-27 (DO-94 luthiery formula target layer added)*  
+*Updated: 2026-06-27 (DO-95 formula validation envelope added)*  
 *Document owner: Governance audit process*  
 *Next review: Upon schema version bump or ADR update*
