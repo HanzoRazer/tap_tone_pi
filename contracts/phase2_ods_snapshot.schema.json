@@ -779,6 +779,46 @@
         "campaign_id": { "type": "string" },
         "epistemic_status": { "type": "string", "enum": ["derived"] }
       }
+    },
+
+    "formula_validation_envelope": {
+      "type": "object",
+      "description": "Optional formula validation envelope (Dev Order 95). Records evidence sufficiency and detectable failure modes; not advisory, no pass/fail.",
+      "properties": {
+        "schema_version": { "type": "string", "const": "formula_validation_envelope_v1" },
+        "validation_id": { "type": "string" },
+        "formula_id": { "type": "string" },
+        "target_id": { "type": "string" },
+        "regression_evidence_id": { "type": "string" },
+        "experiment_design_id": { "type": "string" },
+        "campaign_id": { "type": "string" },
+        "sample_count": { "type": "integer" },
+        "minimum_sample_count": { "type": "integer" },
+        "sample_count_sufficient": { "type": "boolean" },
+        "process_variance_available": { "type": "boolean" },
+        "repeatability_available": { "type": "boolean" },
+        "covariates_present": { "type": "boolean" },
+        "residual_std_available": { "type": "boolean" },
+        "r_squared_available": { "type": "boolean" },
+        "observed_primary_variable_range": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "declared_primary_variable_range": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "extrapolation_detected": { "type": "boolean" },
+        "validation_notes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "epistemic_status": { "type": "string", "enum": ["derived"] }
+      }
     }
   }
 }
