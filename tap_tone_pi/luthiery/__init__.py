@@ -22,6 +22,8 @@ from tap_tone_pi.luthiery.target_helpers import (
 )
 from tap_tone_pi.luthiery.formula_validation import (
     FormulaValidationEnvelopeV1,
+    validate_formula_candidate,
+    validate_formula_candidate_from_evidence,
 )
 
 __all__ = [
@@ -33,4 +35,6 @@ __all__ = [
     "link_formula_candidate_to_target",
     # Formula validation (DO-95)
     "FormulaValidationEnvelopeV1",
+    "validate_formula_candidate",
+    "validate_formula_candidate_from_evidence",
 ]
