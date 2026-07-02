@@ -1,0 +1,353 @@
+{
+  "experiment_design": {
+    "schema_version": "experiment_design_v1",
+    "design_id": "flat_plate_resonance_pilot_v1",
+    "title": "Flat Plate Resonance Pilot V1",
+    "target_cohort_size": 12,
+    "response_variables": [
+      {
+        "schema_version": "declared_response_variable_v1",
+        "variable_id": "rv_t1_freq",
+        "name": "T1 frequency",
+        "unit": "Hz",
+        "epistemic_status": "derived",
+        "measurement_workflow_id": "tap_modal_capture_v1",
+        "minimum_interesting_effect": {
+          "schema_version": "minimum_interesting_effect_v1",
+          "value": 3.0,
+          "unit": "percent",
+          "epistemic_status": "derived",
+          "description": "Smallest T1 shift treated as worth recording."
+        },
+        "description": "First cross-dipole (T1) modal frequency of the free-free plate."
+      },
+      {
+        "schema_version": "declared_response_variable_v1",
+        "variable_id": "rv_q",
+        "name": "Q",
+        "unit": "ratio",
+        "epistemic_status": "derived",
+        "measurement_workflow_id": "tap_modal_capture_v1",
+        "minimum_interesting_effect": {
+          "schema_version": "minimum_interesting_effect_v1",
+          "value": 10.0,
+          "unit": "percent",
+          "epistemic_status": "derived",
+          "description": "Smallest Q change treated as worth recording."
+        },
+        "description": "Quality factor (f0 / bandwidth) of the T1 resonance."
+      },
+      {
+        "schema_version": "declared_response_variable_v1",
+        "variable_id": "rv_decay_time",
+        "name": "decay time",
+        "unit": "s",
+        "epistemic_status": "derived",
+        "measurement_workflow_id": "tap_modal_capture_v1",
+        "minimum_interesting_effect": {
+          "schema_version": "minimum_interesting_effect_v1",
+          "value": 10.0,
+          "unit": "percent",
+          "epistemic_status": "derived",
+          "description": "Smallest T60-style decay change worth recording."
+        },
+        "description": "Free decay time of the tapped plate (envelope -60 dB style)."
+      }
+    ],
+    "covariates": [
+      {
+        "schema_version": "covariate_definition_v1",
+        "covariate_id": "cov_density",
+        "name": "density",
+        "unit": "kg/m3",
+        "epistemic_status": "derived",
+        "source": "wood_database"
+      },
+      {
+        "schema_version": "covariate_definition_v1",
+        "covariate_id": "cov_moisture",
+        "name": "moisture content",
+        "unit": "percent",
+        "epistemic_status": "derived",
+        "source": "measured"
+      },
+      {
+        "schema_version": "covariate_definition_v1",
+        "covariate_id": "cov_species",
+        "name": "species",
+        "unit": "category",
+        "epistemic_status": "derived",
+        "source": "wood_database"
+      },
+      {
+        "schema_version": "covariate_definition_v1",
+        "covariate_id": "cov_support",
+        "name": "support method",
+        "unit": "category",
+        "epistemic_status": "derived",
+        "source": "fixture_log"
+      },
+      {
+        "schema_version": "covariate_definition_v1",
+        "covariate_id": "cov_humidity",
+        "name": "humidity",
+        "unit": "percent_rh",
+        "epistemic_status": "derived",
+        "source": "environment_log"
+      },
+      {
+        "schema_version": "covariate_definition_v1",
+        "covariate_id": "cov_temperature",
+        "name": "temperature",
+        "unit": "deg_C",
+        "epistemic_status": "derived",
+        "source": "environment_log"
+      }
+    ],
+    "epistemic_status": "derived",
+    "description": "Synthetic pilot cohort of ~12 cypress/spruce free-free flat plates, tap-excited, to exercise the cohort execution-plan renderer end to end. Measurement-only: no acoustic quality is asserted.",
+    "randomization_plan": {
+      "schema_version": "randomization_plan_v1",
+      "plan_id": "flat_plate_rand_v1",
+      "randomization_method": "blocked",
+      "epistemic_status": "derived",
+      "seed": 20260629,
+      "description": "Blocked by species; measurement order randomized within block."
+    },
+    "created_at_utc": "2026-06-29T00:00:00+00:00",
+    "tags": [
+      "acoustic_lab",
+      "flat_plate",
+      "pilot",
+      "synthetic"
+    ]
+  },
+  "execution_plan": {
+    "schema_version": "cohort_execution_plan_v1",
+    "epistemic_status": "derived",
+    "plan_id": "flat_plate_resonance_pilot_v1_plan",
+    "experiment_design_id": "flat_plate_resonance_pilot_v1",
+    "experiment_name": "Flat Plate Resonance Pilot V1",
+    "created_utc": "2026-06-29T07:43:35.028142+00:00",
+    "plan_version": "1",
+    "response_variables": [
+      {
+        "variable_id": "rv_t1_freq",
+        "name": "T1 frequency",
+        "unit": "Hz",
+        "measurement_workflow_id": "tap_modal_capture_v1",
+        "minimum_interesting_effect_value": 3.0,
+        "minimum_interesting_effect_unit": "percent"
+      },
+      {
+        "variable_id": "rv_q",
+        "name": "Q",
+        "unit": "ratio",
+        "measurement_workflow_id": "tap_modal_capture_v1",
+        "minimum_interesting_effect_value": 10.0,
+        "minimum_interesting_effect_unit": "percent"
+      },
+      {
+        "variable_id": "rv_decay_time",
+        "name": "decay time",
+        "unit": "s",
+        "measurement_workflow_id": "tap_modal_capture_v1",
+        "minimum_interesting_effect_value": 10.0,
+        "minimum_interesting_effect_unit": "percent"
+      }
+    ],
+    "covariates": [
+      {
+        "covariate_id": "cov_density",
+        "name": "density",
+        "unit": "kg/m3",
+        "source": "wood_database"
+      },
+      {
+        "covariate_id": "cov_moisture",
+        "name": "moisture content",
+        "unit": "percent",
+        "source": "measured"
+      },
+      {
+        "covariate_id": "cov_species",
+        "name": "species",
+        "unit": "category",
+        "source": "wood_database"
+      },
+      {
+        "covariate_id": "cov_support",
+        "name": "support method",
+        "unit": "category",
+        "source": "fixture_log"
+      },
+      {
+        "covariate_id": "cov_humidity",
+        "name": "humidity",
+        "unit": "percent_rh",
+        "source": "environment_log"
+      },
+      {
+        "covariate_id": "cov_temperature",
+        "name": "temperature",
+        "unit": "deg_C",
+        "source": "environment_log"
+      }
+    ],
+    "cohort_size": 12,
+    "randomization_strategy": "blocked",
+    "blocking_variables": [],
+    "baseline_schedule": null,
+    "reference_body": {
+      "reference_body_id": "flat_plate_ref_001",
+      "body_style": "flat_plate_reference",
+      "description": "Kept reference flat plate, re-measured each session for repeatability.",
+      "state": "free_free_unclamped"
+    },
+    "measurement_workflows": [
+      {
+        "workflow_id": "tap_modal_capture_v1",
+        "required_for": [
+          "Q",
+          "T1 frequency",
+          "decay time"
+        ]
+      }
+    ],
+    "execution_checklist": [
+      {
+        "step_number": 1,
+        "action": "Record covariates: density, moisture content, species, support method, humidity, temperature",
+        "timing": "per_specimen"
+      },
+      {
+        "step_number": 2,
+        "action": "Measure T1 frequency using tap_modal_capture_v1",
+        "timing": "per_specimen"
+      },
+      {
+        "step_number": 3,
+        "action": "Measure Q using tap_modal_capture_v1",
+        "timing": "per_specimen"
+      },
+      {
+        "step_number": 4,
+        "action": "Measure decay time using tap_modal_capture_v1",
+        "timing": "per_specimen"
+      },
+      {
+        "step_number": 5,
+        "action": "Perform repeatability check on reference body",
+        "timing": "per_baseline_interval"
+      },
+      {
+        "step_number": 6,
+        "action": "Export measurement provenance and artifacts",
+        "timing": "per_specimen"
+      }
+    ],
+    "provenance_requirements": [
+      {
+        "artifact_type": "measurement_session",
+        "format": "JSON",
+        "required_fields": [
+          "session_id",
+          "timestamp_utc",
+          "specimen_id",
+          "environment_temp_c",
+          "environment_rh_pct"
+        ]
+      },
+      {
+        "artifact_type": "response_T1 frequency",
+        "format": "JSON",
+        "required_fields": [
+          "value",
+          "unit",
+          "workflow_id",
+          "timestamp_utc"
+        ]
+      },
+      {
+        "artifact_type": "response_Q",
+        "format": "JSON",
+        "required_fields": [
+          "value",
+          "unit",
+          "workflow_id",
+          "timestamp_utc"
+        ]
+      },
+      {
+        "artifact_type": "response_decay time",
+        "format": "JSON",
+        "required_fields": [
+          "value",
+          "unit",
+          "workflow_id",
+          "timestamp_utc"
+        ]
+      },
+      {
+        "artifact_type": "covariate_density",
+        "format": "JSON",
+        "required_fields": [
+          "value",
+          "unit",
+          "source",
+          "timestamp_utc"
+        ]
+      },
+      {
+        "artifact_type": "covariate_moisture content",
+        "format": "JSON",
+        "required_fields": [
+          "value",
+          "unit",
+          "source",
+          "timestamp_utc"
+        ]
+      },
+      {
+        "artifact_type": "covariate_species",
+        "format": "JSON",
+        "required_fields": [
+          "value",
+          "unit",
+          "source",
+          "timestamp_utc"
+        ]
+      },
+      {
+        "artifact_type": "covariate_support method",
+        "format": "JSON",
+        "required_fields": [
+          "value",
+          "unit",
+          "source",
+          "timestamp_utc"
+        ]
+      },
+      {
+        "artifact_type": "covariate_humidity",
+        "format": "JSON",
+        "required_fields": [
+          "value",
+          "unit",
+          "source",
+          "timestamp_utc"
+        ]
+      },
+      {
+        "artifact_type": "covariate_temperature",
+        "format": "JSON",
+        "required_fields": [
+          "value",
+          "unit",
+          "source",
+          "timestamp_utc"
+        ]
+      }
+    ]
+  }
+}
