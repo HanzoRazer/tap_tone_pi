@@ -51,3 +51,15 @@ These are UX improvements, not blocking core functionality.
 **Priority:** P3 (Enhancement)
 
 ---
+
+## Deferred Research Concept — Acoustic Balance Residual Coupling (Noted 2026-07-08)
+
+**See:** [research/ACOUSTIC_BALANCE_RESIDUAL_COUPLING.md](research/ACOUSTIC_BALANCE_RESIDUAL_COUPLING.md)
+
+**Summary:** A luthiery formula may reveal hidden acoustic couplings through structured residuals and interaction terms, similar to how chemical side reactions are inferred from mass/energy balance non-closure. Structured residuals beyond σ_measurement, and reproducible interaction terms, are treated as *signals to investigate* — not as established acoustic claims.
+
+**Layer:** lab/research — **deferred**, not a TTP production feature. TTP's role is governed data generation; the lab layer interprets residual structure. Only a matured, non-speculative measurement workflow returns to TTP. See the note for required data and promotion criteria.
+
+**Priority:** P4 (Deferred research)
+
+---
