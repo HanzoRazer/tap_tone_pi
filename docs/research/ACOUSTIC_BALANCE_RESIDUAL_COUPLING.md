@@ -90,6 +90,22 @@ residual structure to an established acoustic claim.
 
 ---
 
+## Promotion criteria
+
+This concept may move toward TTP only when **all** of the following hold:
+
+1. A lab protocol defines the acoustic balance quantities.
+2. Input excitation energy / accounting is measured.
+3. Output response channels are defined.
+4. Residual structure is shown across repeated experiments.
+5. Residuals exceed σ_measurement.
+6. Interaction terms are reproducible across a cohort.
+7. A measurement workflow can be specified without speculative interpretation.
+
+Until every criterion is met, this remains a research note.
+
+---
+
 ## Non-goals
 
 This artifact is a research-methodology note only. It does **not** introduce, and
