@@ -2,8 +2,10 @@
 
 **Document status:** Authoritative design reference  
 **Scope:** TTP Analyzer physical instrument (standalone acoustic measurement device)  
-**Revision:** 1.2 — Gain staging corrected for self-excitation architecture;
-calibration loop documented; speaker excitation path added
+**Revision:** 1.3 — Consolidated per-unit calibration coverage and scope-boundary
+section from the superseded root-level copy (`HARDWARE_STACK_SPEC.md`, now
+removed); earlier (1.2): gain staging corrected for self-excitation
+architecture, calibration loop documented, speaker excitation path added
 
 ---
 
@@ -205,6 +207,20 @@ The Phase 2 capture CLI refuses to start a session without a valid calibration
 record (≤ 30 days old). Use `--force` for stale, `--force-uncalibrated` for
 development/synthetic testing only.
 
+### Per-Unit Calibration Requirement
+
+Because mic, preamp, and ADC each have tolerance-level differences, **every unit
+requires individual calibration** before shipping. The cal record is signed to
+the Pi 5 serial number and stored in `session_meta.json`. See
+`tap_tone_pi/calibration/` for the calibration workflow.
+
+The calibration procedure covers:
+
+- Amplitude offset (dBFS vs. acoustic reference)
+- Frequency response (flat within ±0.5 dB, 80 Hz – 8 kHz)
+- Latency (loopback measurement)
+- Noise floor verification (> −80 dBFS required)
+
 ---
 
 ## Prototype vs. Production Hardware
@@ -254,6 +270,17 @@ Nonlinear distortion in the speaker is rejected by the coherence function
 
 ---
 
+## What This Document Is Not
+
+This document specifies the signal chain for **acoustic measurement** (tap tone,
+ODS grid, frequency response). It does not cover:
+
+- Smart Guitar signal chain (see Smart Guitar spec)
+- Production Shop integration architecture (see `viewer_pack_v1.schema.json`)
+- Software API (see tap_tone_pi FastAPI server docs)
+
+---
+
 ## Change History
 
 | Rev | Date | Change |
@@ -261,3 +288,4 @@ Nonlinear distortion in the speaker is rejected by the coherence function
 | 1.0 | 2026-03-30 | Initial document — 4-stage signal chain, OPA1612 preamp |
 | 1.1 | 2026-03-30 | Tube preamp removed; OPA1612 declared canonical |
 | 1.2 | 2026-03-30 | Gain staging corrected (+39/+52/+61 dB 3-position switch); self-excitation architecture documented; calibration loop section added; speaker driver section added |
+| 1.3 | 2026-07-08 | Merged unique sections from the superseded `HARDWARE_STACK_SPEC.md` (per-unit calibration coverage, "What This Document Is Not" scope boundary); removed the duplicate |
