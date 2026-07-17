@@ -185,6 +185,18 @@ Key Phase 2 schemas:
 
 ---
 
+## Laboratory Manual (desktop)
+
+The TTP Analyzer includes an offline Laboratory Manual containing versioned
+measurement procedures and laboratory protocols. Open it from the desktop app
+via **Help → Laboratory Manual**. It is read-only, ships with the package (no
+network access required), and labels each procedure's maturity
+(`approved` / `provisional` / `deferred` / `superseded`) so validated methods
+are never confused with exploratory ones. It documents procedures; it does not
+execute or interpret measurements.
+
+---
+
 ## Run IDs & retention
 
 - Use `from modes._shared.run_id import new_run_dir` to create timestamped run folders,
