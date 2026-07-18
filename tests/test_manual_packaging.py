@@ -104,15 +104,23 @@ def installed_target(built_wheel, tmp_path_factory) -> Path:
 def _run_isolated(target: Path, code: str, cwd: Path) -> subprocess.CompletedProcess:
     """Run Python with import resolution confined to ``target``.
 
-    ``PYTHONSAFEPATH`` keeps cwd/script-dir off ``sys.path`` and ``PYTHONPATH``
-    is set to only the isolated target, so the repository checkout cannot be
-    imported by accident. cwd is outside the repository.
+    ``PYTHONPATH`` is set to only the isolated target and cwd is outside the
+    repository, so the repository checkout cannot be imported by accident.
+    On Python 3.11+ ``-P`` / ``PYTHONSAFEPATH`` additionally keep cwd and the
+    script dir off ``sys.path``; both are 3.11+ features (the ``-P`` flag errors
+    on 3.10 and the env var is ignored there), so ``-P`` is only passed when
+    supported. On 3.10 the PYTHONPATH + external-cwd setup remains sufficient.
     """
     env = dict(os.environ)
     env["PYTHONPATH"] = str(target)
     env["PYTHONSAFEPATH"] = "1"
     env.pop("PYTHONHOME", None)
-    return _run([sys.executable, "-P", "-c", code], cwd=str(cwd), env=env)
+
+    cmd = [sys.executable]
+    if sys.version_info >= (3, 11):
+        cmd.append("-P")
+    cmd.extend(["-c", code])
+    return _run(cmd, cwd=str(cwd), env=env)
 
 
 class TestIsolatedWheelPackaging:
