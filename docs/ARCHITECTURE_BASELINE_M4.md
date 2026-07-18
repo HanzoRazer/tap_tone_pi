@@ -282,6 +282,23 @@ The canonical manifest currently registers **no entries**: a consolidated
 Laboratory Manual does not yet exist as a document, and DO-97 prohibited
 fabricating one. The viewer shows a controlled empty state.
 
+**DO-97G corrective status (verification pending).** An independent review of
+DO-97 found contract, resource, GUI, and packaging-verification gaps. DO-97G
+hardens them: `applies_to` rejects scalar strings/bytes; supersession is enforced
+complete and acyclic; the private `_coerce_status` coupling is replaced by the
+public `parse_manual_status`; packaged-resource access is `Traversable`-native
+(`resolve_manual_entry_resource`) so zip-backed installs do not depend on a
+synthesized filesystem path, while `resolve_manual_entry_path` survives only as a
+truthful filesystem-only compatibility shim; and the desktop viewer distinguishes
+empty / unavailable / invalid-manifest / missing-document states. A genuine
+wheel-build-and-isolated-install test proves the manual resources ship. The two
+milestone rows above are marked **⚠ verification pending** until CI and final
+adjudication confirm the correction commit.
+
+Scope note: this packages the Laboratory Manual **resources** inside the
+`tap_tone_pi` distribution. Full `analyzer/` desktop-installer packaging remains
+a separate task, out of DO-97/DO-97G scope.
+
 ---
 
 ## 11. Contracts (`contracts/`)
@@ -320,7 +337,7 @@ export_viewer_pack_v1.py` → `viewer_pack_v1`.
 | DO-93 | Stepped & sweep excitation | ✅ |
 | DO-94 | Luthiery formula target mapping | ✅ |
 | DO-95 | Formula validation & error-detection envelope | ✅ |
-| DO-97 | Laboratory Manual packaging & desktop access | ✅ |
+| DO-97 | Laboratory Manual packaging & desktop access | ⚠ verification pending |
 | — | Acoustic balance residual coupling (research, deferred) | ✅ note only |
 
 ---

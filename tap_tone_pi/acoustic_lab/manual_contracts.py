@@ -56,8 +56,13 @@ def _require_text(value: Any, field_name: str) -> str:
     return text
 
 
-def _coerce_status(value: Any) -> ManualStatus:
-    """Return value as a ManualStatus or raise with the permitted vocabulary."""
+def parse_manual_status(value: object) -> ManualStatus:
+    """Normalize a public manual status value or raise ManualContractError.
+
+    Accepts an existing ``ManualStatus`` or one of the serialized status
+    strings. This is the public, contract-owned normalization interface: the
+    registry and other callers use it instead of reaching for a private helper.
+    """
     if isinstance(value, ManualStatus):
         return value
     try:
@@ -116,12 +121,36 @@ class LaboratoryManualEntryV1:
         object.__setattr__(self, "title", _require_text(self.title, "title"))
         object.__setattr__(self, "path", _validate_relative_path(self.path))
         object.__setattr__(self, "section", _require_text(self.section, "section"))
-        object.__setattr__(self, "status", _coerce_status(self.status))
+        object.__setattr__(self, "status", parse_manual_status(self.status))
         object.__setattr__(self, "revision", _require_text(self.revision, "revision"))
-        object.__setattr__(self, "applies_to", tuple(self.applies_to))
 
-        for item in self.applies_to:
+        # applies_to is a *sequence* of tags, not scalar text. A bare string or
+        # bytes is iterable, so tuple() would silently shatter it into single
+        # characters ("workflow" -> ('w','o',...)). Reject scalar text loudly.
+        if isinstance(self.applies_to, (str, bytes, bytearray)):
+            raise ManualContractError(
+                "applies_to must be a sequence of tags, not scalar "
+                f"{type(self.applies_to).__name__}"
+            )
+        try:
+            applies_to = tuple(self.applies_to)
+        except TypeError as exc:
+            raise ManualContractError("applies_to must be an iterable of tags") from exc
+        for item in applies_to:
             _require_text(item, "applies_to entry")
+        object.__setattr__(self, "applies_to", applies_to)
+
+        # Supersession consistency (DO-97G §6.1): the two facts must agree.
+        if self.status is ManualStatus.SUPERSEDED:
+            if self.superseded_by is None:
+                raise ManualContractError(
+                    f"{self.doc_id!r} is superseded but names no replacement (superseded_by)"
+                )
+        elif self.superseded_by is not None:
+            raise ManualContractError(
+                f"{self.doc_id!r} declares superseded_by but its status is "
+                f"{self.status.value!r}, not 'superseded'"
+            )
 
         if self.superseded_by is not None:
             superseded_by = _require_text(self.superseded_by, "superseded_by")
@@ -221,6 +250,29 @@ class LaboratoryManualManifestV1:
                 raise ManualContractError(
                     f"{entry.doc_id!r} is superseded by unknown doc_id {entry.superseded_by!r}"
                 )
+
+        # Invariant 5: supersession must be acyclic. Walk each chain tracking the
+        # active path so a loop is caught the moment a node reappears on its own
+        # walk — a single global visited set would miss the active recursion.
+        replacement_by_id = {
+            entry.doc_id: entry.superseded_by
+            for entry in self.entries
+            if entry.superseded_by is not None
+        }
+        for start in replacement_by_id:
+            path: list[str] = [start]
+            on_path = {start}
+            node = replacement_by_id[start]
+            while node is not None:
+                if node in on_path:
+                    path.append(node)
+                    cycle = path[path.index(node):]
+                    raise ManualContractError(
+                        "supersession cycle detected: " + " -> ".join(cycle)
+                    )
+                path.append(node)
+                on_path.add(node)
+                node = replacement_by_id.get(node)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dict. Entry order is preserved."""

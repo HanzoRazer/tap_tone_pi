@@ -27,11 +27,13 @@ from tap_tone_pi.acoustic_lab import (
     get_manual_entry,
     list_manual_entries,
     load_laboratory_manual_manifest,
+    parse_manual_status,
     read_manual_entry_text,
     resolve_manual_entry_path,
+    resolve_manual_entry_resource,
     validate_manual_manifest,
 )
-from tap_tone_pi.acoustic_lab import manual_registry
+from tap_tone_pi.acoustic_lab import manual_contracts, manual_registry
 
 
 def _entry(doc_id: str = "d1", **kw) -> LaboratoryManualEntryV1:
@@ -74,8 +76,10 @@ class TestEntryConstruction:
             _entry(status="best")
 
     def test_self_supersession_rejected(self):
+        # Self-reference is only reachable once status is 'superseded'; a
+        # non-superseded entry declaring superseded_by is rejected earlier.
         with pytest.raises(ManualContractError, match="cannot supersede itself"):
-            _entry(superseded_by="d1")
+            _entry(status="superseded", superseded_by="d1")
 
 
 class TestPathSafety:
@@ -312,3 +316,204 @@ class TestBoundary:
                 if stem in core_files:
                     src = Path(mod.__file__).read_text(encoding="utf-8")
                     assert "PyQt" not in src, f"{name} references PyQt"
+
+
+# --- DO-97G corrective regressions -----------------------------------------
+
+
+class TestAppliesToRejectsScalarText:
+    """applies_to is a sequence of tags, never scalar text (DO-97G §6.2)."""
+
+    def test_string_applies_to_rejected(self):  # C-01
+        with pytest.raises(ManualContractError, match="applies_to must be a sequence"):
+            _entry(applies_to="workflow")
+
+    def test_bytes_applies_to_rejected(self):  # C-02
+        with pytest.raises(ManualContractError, match="applies_to must be a sequence"):
+            _entry(applies_to=b"workflow")
+
+    def test_bytearray_applies_to_rejected(self):
+        with pytest.raises(ManualContractError, match="applies_to must be a sequence"):
+            _entry(applies_to=bytearray(b"workflow"))
+
+    @pytest.mark.parametrize("value", [("a", "b"), ["a", "b"]])
+    def test_tuple_and_list_normalize(self, value):  # C-03
+        assert _entry(applies_to=value).applies_to == ("a", "b")
+
+    def test_empty_tag_rejected(self):  # C-04
+        with pytest.raises(ManualContractError):
+            _entry(applies_to=["ok", "  "])
+
+    def test_non_string_tag_rejected(self):
+        with pytest.raises(ManualContractError):
+            _entry(applies_to=["ok", 3])
+
+
+class TestSupersessionConsistency:
+    """Entry- and manifest-level supersession invariants (DO-97G §6.1)."""
+
+    def test_superseded_without_replacement_rejected(self):  # C-05
+        with pytest.raises(ManualContractError, match="names no replacement"):
+            _entry(status="superseded")
+
+    @pytest.mark.parametrize("status", ["approved", "provisional", "deferred"])
+    def test_non_superseded_with_replacement_rejected(self, status):  # C-06
+        with pytest.raises(ManualContractError, match="not 'superseded'"):
+            _entry(status=status, superseded_by="other")
+
+    def test_self_supersession_rejected(self):  # C-07
+        with pytest.raises(ManualContractError, match="cannot supersede itself"):
+            _entry("a", status="superseded", superseded_by="a")
+
+    def test_unknown_replacement_rejected(self):  # C-08
+        with pytest.raises(ManualContractError, match="superseded by unknown"):
+            LaboratoryManualManifestV1(
+                manual_revision="1.0",
+                entries=(_entry("a", status="superseded", superseded_by="ghost"),),
+            )
+
+    def test_two_entry_cycle_rejected(self):  # C-09
+        with pytest.raises(ManualContractError, match="supersession cycle detected"):
+            LaboratoryManualManifestV1(
+                manual_revision="1.0",
+                entries=(
+                    _entry("a", status="superseded", superseded_by="b", path="a.md"),
+                    _entry("b", status="superseded", superseded_by="a", path="b.md"),
+                ),
+            )
+
+    def test_three_entry_cycle_rejected(self):  # C-10
+        with pytest.raises(ManualContractError, match="supersession cycle detected"):
+            LaboratoryManualManifestV1(
+                manual_revision="1.0",
+                entries=(
+                    _entry("a", status="superseded", superseded_by="b", path="a.md"),
+                    _entry("b", status="superseded", superseded_by="c", path="b.md"),
+                    _entry("c", status="superseded", superseded_by="a", path="c.md"),
+                ),
+            )
+
+    def test_valid_acyclic_chain_accepted(self):  # C-11
+        m = LaboratoryManualManifestV1(
+            manual_revision="1.0",
+            entries=(
+                _entry("a", status="superseded", superseded_by="b", path="a.md"),
+                _entry("b", status="superseded", superseded_by="c", path="b.md"),
+                _entry("c", status="approved", path="c.md"),
+            ),
+        )
+        assert [e.doc_id for e in m.entries] == ["a", "b", "c"]
+
+
+class TestPublicStatusParser:
+    """parse_manual_status is the public, contract-owned normalization API."""
+
+    def test_accepts_enum_and_valid_string(self):
+        assert parse_manual_status(ManualStatus.APPROVED) is ManualStatus.APPROVED
+        assert parse_manual_status("provisional") is ManualStatus.PROVISIONAL
+
+    def test_rejects_invalid_vocabulary(self):
+        with pytest.raises(ManualContractError, match="status must be one of"):
+            parse_manual_status("optimal")
+
+
+class _FakeFile:
+    """A non-filesystem Traversable file (no native pathlib.Path)."""
+
+    def __init__(self, text: str) -> None:
+        self._text = text
+
+    def is_dir(self) -> bool:
+        return False
+
+    def is_file(self) -> bool:
+        return True
+
+    def read_text(self, encoding: str = "utf-8") -> str:
+        return self._text
+
+
+class _FakeMissing:
+    def is_dir(self) -> bool:
+        return False
+
+    def is_file(self) -> bool:
+        return False
+
+    def __truediv__(self, name: str) -> "_FakeMissing":
+        return self
+
+
+class _FakeDir:
+    """A non-filesystem Traversable directory backed by a name->child map."""
+
+    def __init__(self, children: dict) -> None:
+        self._children = children
+
+    def is_dir(self) -> bool:
+        return True
+
+    def is_file(self) -> bool:
+        return False
+
+    def __truediv__(self, name):
+        return self._children.get(name, _FakeMissing())
+
+
+class TestTraversableResourceAccess:
+    """Resource access must be truthful for non-filesystem Traversables."""
+
+    def _manifest(self, doc_id="a", path="a.md"):
+        return LaboratoryManualManifestV1(
+            manual_revision="1.0", entries=(_entry(doc_id, path=path),)
+        )
+
+    def test_registry_does_not_depend_on_private_coerce_status(self):
+        # The private helper must not exist as a cross-module interface.
+        assert not hasattr(manual_contracts, "_coerce_status")
+        src = Path(manual_registry.__file__).read_text(encoding="utf-8")
+        assert "_coerce_status" not in src
+
+    def test_nested_valid_resource_readable(self):  # R-01
+        root = _FakeDir({"setup": _FakeDir({"tap.md": _FakeFile("# nested")})})
+        manifest = self._manifest("n", "setup/tap.md")
+        with mock.patch.object(manual_registry, "_manual_root", return_value=root):
+            assert read_manual_entry_text("n", manifest) == "# nested"
+
+    def test_fake_traversable_text_readable(self):  # R-04
+        root = _FakeDir({"a.md": _FakeFile("# hi")})
+        with mock.patch.object(manual_registry, "_manual_root", return_value=root):
+            assert read_manual_entry_text("a", self._manifest()) == "# hi"
+            resource = resolve_manual_entry_resource("a", self._manifest())
+            assert resource.read_text() == "# hi"
+
+    def test_missing_resource_raises(self):  # R-02
+        root = _FakeDir({})
+        with mock.patch.object(manual_registry, "_manual_root", return_value=root):
+            with pytest.raises(ManualDocumentMissingError):
+                read_manual_entry_text("a", self._manifest())
+
+    def test_directory_resource_rejected(self):  # R-03
+        root = _FakeDir({"a.md": _FakeDir({})})
+        with mock.patch.object(manual_registry, "_manual_root", return_value=root):
+            with pytest.raises(ManualRegistryError, match="is a directory"):
+                resolve_manual_entry_resource("a", self._manifest())
+
+    def test_native_path_api_rejects_non_filesystem_resource(self):  # R-05
+        root = _FakeDir({"a.md": _FakeFile("# hi")})
+        with mock.patch.object(manual_registry, "_manual_root", return_value=root):
+            with pytest.raises(ManualRegistryError, match="not backed by a filesystem path"):
+                resolve_manual_entry_path("a", self._manifest())
+
+    def test_unsafe_path_declarations_still_rejected(self):
+        # Contract rejects traversal before the registry ever resolves it.
+        for bad in ["../escape.md", "/abs.md", "C:/x.md"]:
+            with pytest.raises(ManualContractError):
+                _entry(path=bad)
+
+    def test_filesystem_backed_path_api_returns_real_path(self, tmp_path):
+        (tmp_path / "a.md").write_text("# real", encoding="utf-8")
+        with mock.patch.object(manual_registry, "_manual_root", return_value=tmp_path):
+            got = resolve_manual_entry_path("a", self._manifest())
+            assert got == (tmp_path / "a.md")
+            assert got.read_text(encoding="utf-8") == "# real"

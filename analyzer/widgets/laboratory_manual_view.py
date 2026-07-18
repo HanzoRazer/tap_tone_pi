@@ -12,9 +12,17 @@ procedure for an approved measurement method.
 
 The view depends only on the read-only Laboratory registry API. It does not
 import any measurement-execution module.
+
+Manifest loading is a controlled operation. A malformed packaged manifest
+(``ManualContractError``) and an unavailable manifest (``ManualRegistryError``)
+are distinct, visibly different states — neither may crash view construction or
+the Help action. A missing selected document is an entry-display failure, not a
+manifest-load state, and is reported separately.
 """
 
 from __future__ import annotations
+
+from enum import Enum
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
@@ -31,6 +39,7 @@ from PyQt6.QtWidgets import (
 
 from tap_tone_pi.acoustic_lab import (
     LaboratoryManualEntryV1,
+    ManualContractError,
     ManualRegistryError,
     ManualStatus,
     list_manual_entries,
@@ -38,9 +47,35 @@ from tap_tone_pi.acoustic_lab import (
     read_manual_entry_text,
 )
 
-_EMPTY_STATE_TEXT = "No laboratory procedures are currently registered."
+# Both failure families can surface while loading a packaged manifest: the
+# registry raises ManualRegistryError when resources are absent/unreadable, and
+# the contract raises ManualContractError when the manifest parses but violates
+# an identity/status rule. The desktop boundary must catch both.
+_MANUAL_LOAD_ERRORS = (ManualRegistryError, ManualContractError)
 
-# Visual distinction by maturity (DO-97 §4.6, invariant: status must be visible).
+
+class ManualViewState(Enum):
+    """Load state of the manual, driving which controlled copy is shown."""
+
+    READY = "ready"          # valid manifest with at least one entry
+    EMPTY = "empty"          # valid manifest, zero entries
+    UNAVAILABLE = "unavailable"  # manifest resources absent/unreadable
+    INVALID = "invalid"      # manifest present but contract-invalid/malformed
+
+
+# Primary user-facing copy per non-ready state (DO-97G §6.7).
+_EMPTY_STATE_TEXT = "No laboratory procedures are currently registered."
+_UNAVAILABLE_STATE_TEXT = "The Laboratory Manual is unavailable in this installation."
+_INVALID_STATE_TEXT = "The Laboratory Manual manifest is invalid and cannot be displayed."
+_MISSING_DOCUMENT_TEXT = "This registered procedure is unavailable."
+
+_STATE_MESSAGES: dict[ManualViewState, str] = {
+    ManualViewState.EMPTY: _EMPTY_STATE_TEXT,
+    ManualViewState.UNAVAILABLE: _UNAVAILABLE_STATE_TEXT,
+    ManualViewState.INVALID: _INVALID_STATE_TEXT,
+}
+
+# Visual distinction by maturity (status must be visible).
 _STATUS_COLORS: dict[ManualStatus, str] = {
     ManualStatus.APPROVED: "#1b7f37",
     ManualStatus.PROVISIONAL: "#b8860b",
@@ -58,6 +93,44 @@ _STATUS_LABELS: dict[ManualStatus, str] = {
 _ROLE_ENTRY = Qt.ItemDataRole.UserRole
 
 
+class ManualLoadResult:
+    """Outcome of classifying a manifest load — GUI-free and unit-testable."""
+
+    __slots__ = ("state", "entries", "detail")
+
+    def __init__(
+        self,
+        state: ManualViewState,
+        entries: tuple[LaboratoryManualEntryV1, ...],
+        detail: str | None,
+    ) -> None:
+        self.state = state
+        self.entries = entries
+        self.detail = detail
+
+
+def classify_manifest_load() -> ManualLoadResult:
+    """Load the packaged manifest and classify the outcome.
+
+    Distinguishes the four operational states without touching Qt, so the
+    state-classification logic can be tested without a display. A contract
+    failure (malformed/invalid manifest) is reported as INVALID; a registry
+    failure (resources absent/unreadable) as UNAVAILABLE. These are never
+    conflated — telling an operator "no procedures are registered" when the
+    manifest actually failed to load would be a lie.
+    """
+    try:
+        manifest = load_laboratory_manual_manifest()
+    except ManualContractError as exc:
+        return ManualLoadResult(ManualViewState.INVALID, (), str(exc))
+    except ManualRegistryError as exc:
+        return ManualLoadResult(ManualViewState.UNAVAILABLE, (), str(exc))
+
+    entries = list_manual_entries(manifest)
+    state = ManualViewState.READY if entries else ManualViewState.EMPTY
+    return ManualLoadResult(state, entries, None)
+
+
 class LaboratoryManualView(QWidget):
     """Read-only navigator and reader for the packaged Laboratory Manual."""
 
@@ -68,7 +141,8 @@ class LaboratoryManualView(QWidget):
         self.resize(900, 640)
 
         self._entries: tuple[LaboratoryManualEntryV1, ...] = ()
-        self._load_error: str | None = None
+        self._state: ManualViewState = ManualViewState.EMPTY
+        self._load_detail: str | None = None
 
         self._build_ui()
         self._load_manifest()
@@ -122,21 +196,22 @@ class LaboratoryManualView(QWidget):
     # -- data ----------------------------------------------------------------
 
     def _load_manifest(self) -> None:
-        """Load registered entries, capturing any load failure for display."""
-        try:
-            manifest = load_laboratory_manual_manifest()
-            self._entries = list_manual_entries(manifest)
-            self._load_error = None
-        except ManualRegistryError as exc:
-            self._entries = ()
-            self._load_error = str(exc)
+        """Classify the manifest load, capturing state and any detail.
+
+        Both registry and contract failures are absorbed here so that neither a
+        missing package nor a malformed manifest can crash view construction.
+        """
+        result = classify_manifest_load()
+        self._state = result.state
+        self._entries = result.entries
+        self._load_detail = result.detail
 
     def _populate_navigation(self) -> None:
         """Fill the tree, grouping by section in authored order."""
         self._nav.clear()
 
-        if self._load_error is not None or not self._entries:
-            self._show_empty_state()
+        if self._state is not ManualViewState.READY or not self._entries:
+            self._show_state_message()
             return
 
         section_items: dict[str, QTreeWidgetItem] = {}
@@ -157,18 +232,23 @@ class LaboratoryManualView(QWidget):
 
         self._nav.expandAll()
 
-    def _show_empty_state(self) -> None:
-        """Render the controlled empty state (or a load error)."""
+    def _show_state_message(self) -> None:
+        """Render the controlled copy for a non-ready (or empty) state.
+
+        Empty, unavailable, and invalid states use distinct primary messages, so
+        an operator is never told procedures are unregistered when the manifest
+        actually failed to load. Technical detail, when present, is shown below.
+        """
         self._title_label.setText("")
         self._status_label.setText("")
+        self._status_label.setStyleSheet("")
         self._revision_label.setText("")
-        if self._load_error is not None:
-            self._document.setPlainText(
-                f"{_EMPTY_STATE_TEXT}\n\n"
-                f"The manual could not be loaded:\n{self._load_error}"
-            )
+
+        primary = _STATE_MESSAGES.get(self._state, _EMPTY_STATE_TEXT)
+        if self._load_detail:
+            self._document.setPlainText(f"{primary}\n\nDetails:\n{self._load_detail}")
         else:
-            self._document.setPlainText(_EMPTY_STATE_TEXT)
+            self._document.setPlainText(primary)
 
     # -- interaction ---------------------------------------------------------
 
@@ -199,10 +279,12 @@ class LaboratoryManualView(QWidget):
 
         try:
             text = read_manual_entry_text(entry)
-        except ManualRegistryError as exc:
-            # Controlled missing-document state — never a crash.
+        except _MANUAL_LOAD_ERRORS as exc:
+            # Missing/unreadable registered document — an entry-display failure,
+            # not a manifest-load state. Never a crash.
             self._document.setPlainText(
-                f"This procedure could not be displayed.\n\n{exc}"
+                f"{_MISSING_DOCUMENT_TEXT}\n\n"
+                f"Document ID: {entry.doc_id}\n\nDetails:\n{exc}"
             )
             return
 

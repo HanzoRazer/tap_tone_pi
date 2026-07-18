@@ -16,7 +16,6 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QMessageBox,
     QTabWidget,
-    QDockWidget,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QKeySequence
@@ -913,13 +912,29 @@ class MainWindow(QMainWindow):
         Reference material, deliberately separate from measurement execution.
         The view is kept alive as an attribute so it is not garbage-collected
         the moment this method returns.
-        """
-        from analyzer.widgets.laboratory_manual_view import LaboratoryManualView
 
+        The view itself absorbs manifest load failures into controlled empty /
+        unavailable / invalid states, so opening it does not crash on bad data.
+        Importing the optional GUI module can still fail on a partial install;
+        that is surfaced as a controlled dialog rather than terminating the app.
+        Broad exceptions are deliberately not swallowed — a programmer defect in
+        view construction must still surface loudly.
+        """
         existing = getattr(self, "_laboratory_manual_view", None)
         if existing is not None:
             existing.raise_()
             existing.activateWindow()
+            return
+
+        try:
+            from analyzer.widgets.laboratory_manual_view import LaboratoryManualView
+        except ImportError as exc:
+            QMessageBox.critical(
+                self,
+                "Laboratory Manual",
+                "The Laboratory Manual viewer could not be loaded in this "
+                f"installation.\n\nDetails:\n{exc}",
+            )
             return
 
         view = LaboratoryManualView()

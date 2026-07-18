@@ -36,7 +36,7 @@ from tap_tone_pi.acoustic_lab.manual_contracts import (
     LaboratoryManualEntryV1,
     LaboratoryManualManifestV1,
     ManualStatus,
-    _coerce_status,
+    parse_manual_status,
 )
 
 MANUAL_PACKAGE = "tap_tone_pi.acoustic_lab"
@@ -54,6 +54,7 @@ __all__ = [
     "list_manual_entries",
     "get_manual_entry",
     "filter_manual_entries",
+    "resolve_manual_entry_resource",
     "resolve_manual_entry_path",
     "read_manual_entry_text",
     "validate_manual_manifest",
@@ -176,35 +177,76 @@ def filter_manual_entries(
         entries = [e for e in entries if e.section == section]
 
     if status is not None:
-        # Coerce via the shared validator so an unknown status is a loud error
-        # rather than a silently empty result set.
-        wanted = _coerce_status(status)
+        # Normalize via the public contract parser so an unknown status is a
+        # loud error rather than a silently empty result set.
+        wanted = parse_manual_status(status)
         entries = [e for e in entries if e.status is wanted]
 
     return tuple(entries)
 
 
-def _resolve_traversable(entry: LaboratoryManualEntryV1) -> Traversable:
-    """Return the packaged resource for an entry, verifying containment."""
-    root = _manual_root()
+def _verify_containment(
+    root: Traversable, resource: Traversable, entry: LaboratoryManualEntryV1
+) -> None:
+    """Raise if a filesystem-backed resource escapes the manual root.
 
+    entry.path is already syntactically validated (relative, no '..'), and the
+    resource is built by joining only those validated components. On a real
+    filesystem a symlink could still redirect outside the root, so re-check the
+    resolved real paths. Non-filesystem loaders (zipimport, custom Traversables)
+    have no native path to resolve; there the syntactic validation stands and no
+    string-prefix comparison is attempted.
+    """
+    if not isinstance(root, Path) or not isinstance(resource, Path):
+        return
+    try:
+        root_real = root.resolve(strict=True)
+        resource_real = resource.resolve()
+    except (OSError, RuntimeError, ValueError):
+        return
+    if not resource_real.is_relative_to(root_real):
+        raise ManualRegistryError(
+            f"Registered path for {entry.doc_id!r} resolves outside the manual root: {entry.path!r}"
+        )
+
+
+def resolve_manual_entry_resource(
+    entry: LaboratoryManualEntryV1 | str,
+    manifest: LaboratoryManualManifestV1 | None = None,
+) -> Traversable:
+    """Return the validated packaged resource for an entry.
+
+    This is the canonical resolver. It returns an ``importlib.resources``
+    ``Traversable`` — which may be zip-backed or otherwise non-filesystem — so
+    callers read through the resource API (``read_text``) rather than assuming a
+    native ``pathlib.Path``. The returned resource is guaranteed to be an
+    existing file beneath the manual root.
+
+    Accepts an entry or a doc_id.
+
+    Raises:
+        ManualEntryNotFoundError: doc_id is not registered.
+        ManualDocumentMissingError: the registered file is not in the package.
+        ManualRegistryError: the target is a directory or escapes the manual root.
+    """
+    if isinstance(entry, str):
+        entry = get_manual_entry(entry, manifest)
+
+    root = _manual_root()
     resource: Traversable = root
     for part in entry.path.split("/"):
         resource = resource / part
 
-    # entry.path is already syntactically validated (relative, no '..'), but a
-    # concrete filesystem root can still escape via symlink. Re-check against
-    # the resolved real path when the resource is a real file on disk.
-    try:
-        root_real = Path(str(root)).resolve(strict=True)
-        resource_real = Path(str(resource)).resolve()
-    except (OSError, RuntimeError, TypeError, ValueError):
-        # Non-filesystem loader (zipimport, etc.): syntactic validation stands.
-        return resource
+    _verify_containment(root, resource, entry)
 
-    if not resource_real.is_relative_to(root_real):
+    if resource.is_dir():
         raise ManualRegistryError(
-            f"Registered path for {entry.doc_id!r} resolves outside the manual root: {entry.path!r}"
+            f"Registered path for {entry.doc_id!r} is a directory, not a document: {entry.path!r}"
+        )
+    if not resource.is_file():
+        raise ManualDocumentMissingError(
+            f"Registered document for {entry.doc_id!r} is missing from the packaged "
+            f"manual: {entry.path!r}"
         )
     return resource
 
@@ -213,28 +255,36 @@ def resolve_manual_entry_path(
     entry: LaboratoryManualEntryV1 | str,
     manifest: LaboratoryManualManifestV1 | None = None,
 ) -> Path:
-    """Return the on-disk path of a registered document.
+    """Return the on-disk path of a registered document — filesystem installs only.
 
-    Accepts an entry or a doc_id. The returned path is guaranteed to exist and
-    to lie beneath the packaged manual root.
+    This is an explicit compatibility shim for callers that need a real
+    ``pathlib.Path``. It succeeds only when the packaged resource is genuinely
+    filesystem-backed; ``importlib.resources.files()`` yields a ``Path`` subclass
+    in that case and some other ``Traversable`` (e.g. ``zipfile.Path``) for
+    zip-backed or custom-loader installs. A native path is never fabricated with
+    ``Path(str(resource))``, so a zip-backed install raises rather than handing
+    back a path that does not exist. Prefer ``resolve_manual_entry_resource`` /
+    ``read_manual_entry_text`` for install-agnostic access.
 
     Raises:
         ManualEntryNotFoundError: doc_id is not registered.
         ManualDocumentMissingError: the registered file is not in the package.
-        ManualRegistryError: the path escapes the manual root.
+        ManualRegistryError: the resource is not backed by a real filesystem path,
+            or the path escapes the manual root.
     """
     if isinstance(entry, str):
         entry = get_manual_entry(entry, manifest)
 
-    resource = _resolve_traversable(entry)
+    resource = resolve_manual_entry_resource(entry, manifest)
 
-    if not resource.is_file():
-        raise ManualDocumentMissingError(
-            f"Registered document for {entry.doc_id!r} is missing from the packaged "
-            f"manual: {entry.path!r}"
+    if not isinstance(resource, Path):
+        raise ManualRegistryError(
+            f"Registered document for {entry.doc_id!r} is not backed by a filesystem "
+            f"path (resource type {type(resource).__name__}); this install packages the "
+            f"manual as non-filesystem data. Use read_manual_entry_text or "
+            f"resolve_manual_entry_resource instead."
         )
-
-    return Path(str(resource))
+    return resource
 
 
 def read_manual_entry_text(
@@ -243,16 +293,19 @@ def read_manual_entry_text(
 ) -> str:
     """Return the Markdown source of a registered document, unmodified.
 
-    The source is returned verbatim. Nothing here transforms or rewrites it.
+    Reads directly from the packaged ``Traversable`` so zip-backed installs work
+    without synthesizing a native path. The source is returned verbatim; nothing
+    here transforms or rewrites it.
 
     Raises:
         ManualEntryNotFoundError: doc_id is not registered.
         ManualDocumentMissingError: the registered file is not in the package.
+        ManualRegistryError: the target is a directory or the resource is unreadable.
     """
     if isinstance(entry, str):
         entry = get_manual_entry(entry, manifest)
 
-    resource = _resolve_traversable(entry)
+    resource = resolve_manual_entry_resource(entry, manifest)
 
     try:
         return resource.read_text(encoding="utf-8")
@@ -295,7 +348,9 @@ def validate_manual_manifest(
 
     for entry in manifest.entries:
         try:
-            resolve_manual_entry_path(entry, manifest)
+            # Resource-native so the check is truthful for zip-backed installs
+            # too; ManualDocumentMissingError is a ManualRegistryError subclass.
+            resolve_manual_entry_resource(entry, manifest)
         except ManualRegistryError as exc:
             problems.append(f"{entry.doc_id}: {exc}")
 

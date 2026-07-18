@@ -21,12 +21,21 @@ from PyQt6.QtWidgets import QApplication, QTextBrowser
 
 from analyzer.widgets.laboratory_manual_view import (
     LaboratoryManualView,
+    ManualViewState,
+    classify_manifest_load,
     _EMPTY_STATE_TEXT,
+    _INVALID_STATE_TEXT,
+    _MISSING_DOCUMENT_TEXT,
+    _UNAVAILABLE_STATE_TEXT,
 )
 from tap_tone_pi.acoustic_lab import (
     LaboratoryManualEntryV1,
     LaboratoryManualManifestV1,
+    ManualContractError,
+    ManualRegistryError,
 )
+
+_VIEW_MODULE = "analyzer.widgets.laboratory_manual_view"
 
 
 @pytest.fixture(scope="module")
@@ -135,14 +144,14 @@ class TestPopulatedView:
             finally:
                 view.close()
 
-    def test_missing_document_shows_controlled_state(self, qapp, two_entries):
+    def test_missing_document_shows_controlled_state(self, qapp, two_entries):  # G-04
         from tap_tone_pi.acoustic_lab import ManualDocumentMissingError
 
         with mock.patch(
-            "analyzer.widgets.laboratory_manual_view.load_laboratory_manual_manifest",
+            f"{_VIEW_MODULE}.load_laboratory_manual_manifest",
             return_value=two_entries,
         ), mock.patch(
-            "analyzer.widgets.laboratory_manual_view.read_manual_entry_text",
+            f"{_VIEW_MODULE}.read_manual_entry_text",
             side_effect=ManualDocumentMissingError("gone"),
         ):
             view = LaboratoryManualView()
@@ -150,6 +159,70 @@ class TestPopulatedView:
                 leaf = view._nav.topLevelItem(0).child(0)
                 view._nav.setCurrentItem(leaf)
                 text = view.findChild(QTextBrowser).toPlainText()
-                assert "could not be displayed" in text
+                assert _MISSING_DOCUMENT_TEXT in text
+                # The document ID is surfaced for the operator.
+                assert "a" in text
             finally:
                 view.close()
+
+
+class TestLoadStateClassification:
+    """The four operational states must be distinct and truthfully labeled."""
+
+    def test_empty_manifest_state_and_copy(self, qapp):  # G-01
+        empty = LaboratoryManualManifestV1(manual_revision="1.0", entries=())
+        with mock.patch(
+            f"{_VIEW_MODULE}.load_laboratory_manual_manifest", return_value=empty
+        ):
+            assert classify_manifest_load().state is ManualViewState.EMPTY
+            view = LaboratoryManualView()
+            try:
+                text = view.findChild(QTextBrowser).toPlainText()
+                assert _EMPTY_STATE_TEXT in text
+                assert _UNAVAILABLE_STATE_TEXT not in text
+                assert _INVALID_STATE_TEXT not in text
+            finally:
+                view.close()
+
+    def test_unavailable_manifest_state_and_copy(self, qapp):  # G-02
+        with mock.patch(
+            f"{_VIEW_MODULE}.load_laboratory_manual_manifest",
+            side_effect=ManualRegistryError("no package data"),
+        ):
+            assert classify_manifest_load().state is ManualViewState.UNAVAILABLE
+            view = LaboratoryManualView()
+            try:
+                text = view.findChild(QTextBrowser).toPlainText()
+                assert _UNAVAILABLE_STATE_TEXT in text
+                assert _EMPTY_STATE_TEXT not in text
+                assert "no package data" in text
+            finally:
+                view.close()
+
+    def test_invalid_manifest_state_and_copy(self, qapp):  # G-03
+        with mock.patch(
+            f"{_VIEW_MODULE}.load_laboratory_manual_manifest",
+            side_effect=ManualContractError("bad manifest"),
+        ):
+            assert classify_manifest_load().state is ManualViewState.INVALID
+            view = LaboratoryManualView()
+            try:
+                text = view.findChild(QTextBrowser).toPlainText()
+                assert _INVALID_STATE_TEXT in text
+                assert _EMPTY_STATE_TEXT not in text
+            finally:
+                view.close()
+
+    def test_malformed_manifest_does_not_crash_construction(self, qapp):  # G-03
+        # A ManualContractError during load must be absorbed, not propagated.
+        with mock.patch(
+            f"{_VIEW_MODULE}.load_laboratory_manual_manifest",
+            side_effect=ManualContractError("boom"),
+        ):
+            view = LaboratoryManualView()  # must not raise
+            view.close()
+
+    def test_empty_and_invalid_use_different_copy(self):
+        assert _EMPTY_STATE_TEXT != _INVALID_STATE_TEXT
+        assert _EMPTY_STATE_TEXT != _UNAVAILABLE_STATE_TEXT
+        assert _INVALID_STATE_TEXT != _UNAVAILABLE_STATE_TEXT

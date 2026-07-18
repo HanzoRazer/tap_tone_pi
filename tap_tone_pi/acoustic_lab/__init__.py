@@ -19,6 +19,7 @@ from tap_tone_pi.acoustic_lab.manual_contracts import (
     LaboratoryManualManifestV1,
     ManualContractError,
     ManualStatus,
+    parse_manual_status,
 )
 from tap_tone_pi.acoustic_lab.manual_registry import (
     ManualDocumentMissingError,
@@ -31,6 +32,7 @@ from tap_tone_pi.acoustic_lab.manual_registry import (
     load_laboratory_manual_manifest,
     read_manual_entry_text,
     resolve_manual_entry_path,
+    resolve_manual_entry_resource,
     validate_manual_manifest,
 )
 
@@ -40,6 +42,7 @@ __all__ = [
     "LaboratoryManualManifestV1",
     "ManualContractError",
     "ManualStatus",
+    "parse_manual_status",
     "ManualDocumentMissingError",
     "ManualEntryNotFoundError",
     "ManualRegistryError",
@@ -50,5 +53,6 @@ __all__ = [
     "load_laboratory_manual_manifest",
     "read_manual_entry_text",
     "resolve_manual_entry_path",
+    "resolve_manual_entry_resource",
     "validate_manual_manifest",
 ]
