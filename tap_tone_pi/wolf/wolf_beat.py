@@ -36,7 +36,6 @@ Usage:
 # They may appear in viewer_pack_v1 and are subject to provenance tracking.
 # See docs/ADR-0009-advisory-boundary.md
 
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field

@@ -26,7 +26,6 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict
 
-import pytest
 
 from scripts.phase2.export_viewer_pack_v1 import (
     _read_bending_moe,
@@ -36,6 +35,7 @@ from scripts.phase2.export_viewer_pack_v1 import (
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_bending_moe(
     e_gpa: float = 11.2,
@@ -55,13 +55,19 @@ def _make_bending_moe(
             "specimen_type": "strip",
             "grain_orientation": orientation,
         },
-        "plate_width_correction": {"applied": False, "factor": 1.0, "poisson_ratio": None},
+        "plate_width_correction": {
+            "applied": False,
+            "factor": 1.0,
+            "poisson_ratio": None,
+        },
         "shear_correction": {"applied": False, "factor": 1.0, "reduction_percent": 0.0},
         "fit": {"r2": 0.9982, "slope_N_per_mm": 23.5, "n_points": 6, "valid": True},
     }
 
 
-def _write_bending_moe(dir_path: Path, data: Dict, filename: str = "bending_moe.json") -> Path:
+def _write_bending_moe(
+    dir_path: Path, data: Dict, filename: str = "bending_moe.json"
+) -> Path:
     path = dir_path / filename
     path.write_text(json.dumps(data, indent=2))
     return path
@@ -71,8 +77,8 @@ def _write_bending_moe(dir_path: Path, data: Dict, filename: str = "bending_moe.
 # _read_bending_moe
 # ═════════════════════════════════════════════════════════════════════════════
 
-class TestReadBendingMoe:
 
+class TestReadBendingMoe:
     def test_returns_none_when_no_file(self):
         with tempfile.TemporaryDirectory() as td:
             assert _read_bending_moe(Path(td)) is None
@@ -101,7 +107,9 @@ class TestReadBendingMoe:
 
     def test_longitudinal_maps_to_E_L(self):
         with tempfile.TemporaryDirectory() as td:
-            _write_bending_moe(Path(td), _make_bending_moe(e_gpa=11.2, orientation="longitudinal"))
+            _write_bending_moe(
+                Path(td), _make_bending_moe(e_gpa=11.2, orientation="longitudinal")
+            )
             result = _read_bending_moe(Path(td))
             assert "E_L_GPa" in result
             assert "E_C_GPa" not in result
@@ -109,7 +117,9 @@ class TestReadBendingMoe:
 
     def test_cross_maps_to_E_C(self):
         with tempfile.TemporaryDirectory() as td:
-            _write_bending_moe(Path(td), _make_bending_moe(e_gpa=0.75, orientation="cross"))
+            _write_bending_moe(
+                Path(td), _make_bending_moe(e_gpa=0.75, orientation="cross")
+            )
             result = _read_bending_moe(Path(td))
             assert "E_C_GPa" in result
             assert "E_L_GPa" not in result
@@ -117,7 +127,9 @@ class TestReadBendingMoe:
 
     def test_unknown_orientation_maps_to_E_L(self):
         with tempfile.TemporaryDirectory() as td:
-            _write_bending_moe(Path(td), _make_bending_moe(e_gpa=10.5, orientation="unknown"))
+            _write_bending_moe(
+                Path(td), _make_bending_moe(e_gpa=10.5, orientation="unknown")
+            )
             result = _read_bending_moe(Path(td))
             assert "E_L_GPa" in result
 
@@ -129,7 +141,9 @@ class TestReadBendingMoe:
 
     def test_method_normalised_3point(self):
         with tempfile.TemporaryDirectory() as td:
-            _write_bending_moe(Path(td), _make_bending_moe(method="three_point_bending"))
+            _write_bending_moe(
+                Path(td), _make_bending_moe(method="three_point_bending")
+            )
             result = _read_bending_moe(Path(td))
             assert result["method"] == "3point"
 
@@ -173,8 +187,8 @@ class TestReadBendingMoe:
 # _add_bending
 # ═════════════════════════════════════════════════════════════════════════════
 
-class TestAddBending:
 
+class TestAddBending:
     def test_returns_none_when_no_file(self):
         with tempfile.TemporaryDirectory() as td:
             added = []
@@ -191,7 +205,9 @@ class TestAddBending:
 
     def test_returns_bending_dict(self):
         with tempfile.TemporaryDirectory() as td:
-            _write_bending_moe(Path(td), _make_bending_moe(e_gpa=11.2, orientation="longitudinal"))
+            _write_bending_moe(
+                Path(td), _make_bending_moe(e_gpa=11.2, orientation="longitudinal")
+            )
             result = _add_bending(Path(td), lambda src, dst: None)
             assert result is not None
             assert "E_L_GPa" in result
@@ -201,8 +217,8 @@ class TestAddBending:
 # _build_manifest
 # ═════════════════════════════════════════════════════════════════════════════
 
-class TestBuildManifest:
 
+class TestBuildManifest:
     def _minimal_manifest(self, bending_data=None):
         with tempfile.TemporaryDirectory() as td:
             session_dir = Path(td)

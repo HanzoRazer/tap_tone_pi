@@ -1,7 +1,7 @@
 # Cross-Channel Sprint Coordination
 
-**Date:** 2026-05-24  
-**Purpose:** Prevent duplicate work across sprint channels  
+**Date:** 2026-05-24
+**Purpose:** Prevent duplicate work across sprint channels
 **Scope:** tap_tone_pi, luthiers-toolbox, CAM-Assist-Blueprint
 
 ---
@@ -237,5 +237,5 @@ IBG provenance remains BLOCKED until R1 ratification.
 
 ---
 
-*Generated: 2026-05-24*  
+*Generated: 2026-05-24*
 *Purpose: Cross-channel sprint coordination*

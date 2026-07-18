@@ -153,7 +153,9 @@ class MeasurementWorkflowContractV1:
         if self.sample_rate_hz < 8000:
             errors.append("sample_rate_hz must be >= 8000")
         if self.fft_window not in ("hann", "hamming", "blackman", "boxcar"):
-            errors.append(f"fft_window must be hann|hamming|blackman|boxcar, got {self.fft_window}")
+            errors.append(
+                f"fft_window must be hann|hamming|blackman|boxcar, got {self.fft_window}"
+            )
         if self.fft_size < 256 or (self.fft_size & (self.fft_size - 1)) != 0:
             errors.append("fft_size must be a power of 2 >= 256")
         if self.min_snr_db < 0:
@@ -162,7 +164,9 @@ class MeasurementWorkflowContractV1:
             errors.append("max_frequency_variance_pct must be >= 0")
         if self.max_calibration_age_days < 1:
             errors.append("max_calibration_age_days must be >= 1")
-        if self.minimum_coherence is not None and not (0.0 <= self.minimum_coherence <= 1.0):
+        if self.minimum_coherence is not None and not (
+            0.0 <= self.minimum_coherence <= 1.0
+        ):
             errors.append("minimum_coherence must be in [0.0, 1.0]")
         return errors
 

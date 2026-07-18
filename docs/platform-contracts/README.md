@@ -1,7 +1,7 @@
 # Platform Contracts
 
-**Version:** 1.0.0  
-**Status:** Draft  
+**Version:** 1.0.0
+**Status:** Draft
 **Scope:** Cross-repository vocabulary normalization
 
 ---

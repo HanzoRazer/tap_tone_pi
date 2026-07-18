@@ -40,3 +40,14 @@ tap-tone = "tap_tone_pi.cli.main:main"
 
 [tool.setuptools.packages.find]
 include = ["tap_tone_pi", "tap_tone_pi.*", "tap_tone", "tap_tone.*"]
+
+# Laboratory Manual resources (DO-97). The manual is the canonical authored
+# copy AND the packaged resource — it must ship with installed builds so the
+# desktop Help -> Laboratory Manual view works offline. Resolved at runtime via
+# importlib.resources; see tap_tone_pi/acoustic_lab/manual_registry.py.
+[tool.setuptools.package-data]
+"tap_tone_pi.acoustic_lab" = [
+    "manual/manual_manifest.json",
+    "manual/*.md",
+    "manual/**/*.md",
+]

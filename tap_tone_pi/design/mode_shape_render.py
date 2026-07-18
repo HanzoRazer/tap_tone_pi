@@ -43,7 +43,6 @@ from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
-from numpy.typing import NDArray
 
 from tap_tone_pi.design.rayleigh_ritz import RayleighRitzResult
 
@@ -145,9 +144,7 @@ def render_mode_shape_on_grid(
         )
 
     if x_axis == y_axis:
-        raise ValueError(
-            f"x_axis and y_axis must differ; got both = {x_axis!r}."
-        )
+        raise ValueError(f"x_axis and y_axis must differ; got both = {x_axis!r}.")
 
     valid_axes = {"grain", "cross_grain"}
     if x_axis not in valid_axes or y_axis not in valid_axes:
@@ -224,9 +221,7 @@ def render_mode_shape_on_grid(
         peak_raw = 0.0
 
     if normalize and peak_raw > 0.0:
-        amplitudes_by_id = {
-            pid: v / peak_raw for pid, v in amplitudes_by_id.items()
-        }
+        amplitudes_by_id = {pid: v / peak_raw for pid, v in amplitudes_by_id.items()}
 
     return RenderedModeShape(
         mode_index=mode_index,

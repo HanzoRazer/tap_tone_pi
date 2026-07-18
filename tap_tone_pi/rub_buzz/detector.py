@@ -184,7 +184,7 @@ def compute_thd_plus_noise(
     bin_width = 5
     fund_start = max(0, fund_idx - bin_width)
     fund_end = min(len(power), fund_idx + bin_width)
-    fundamental_power = np.sum(power[fund_start:fund_end])
+    fundamental_power = np.sum(power[fund_start:fund_end])  # type: ignore[misc]
 
     # Total power within bandwidth
     bandwidth_mask = freqs <= bandwidth_hz

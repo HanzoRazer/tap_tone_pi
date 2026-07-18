@@ -15,10 +15,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-# Skip all tests if PyQt6 is not available (CI environment)
-pytest.importorskip("PyQt6")
-
-from PyQt6.QtWidgets import QApplication
+# Skip all tests if PyQt6 or its Qt runtime (libEGL) is not available (CI environment)
+try:
+    from PyQt6.QtWidgets import QApplication
+except ImportError as _e:
+    pytest.skip(f"PyQt6 or Qt runtime unavailable: {_e}", allow_module_level=True)
 
 from analyzer.widgets._heatmap import HeatmapWidget
 

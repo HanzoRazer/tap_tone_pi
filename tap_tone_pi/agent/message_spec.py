@@ -132,7 +132,9 @@ RULE_Q005 = RuleSpec(
             "Use 48k and retry",
             "Policy-accepted rate",
         ),
-        SuggestedAction(ActionId.RUN_SETUP, "Run setup wizard", "Persist selected rate"),
+        SuggestedAction(
+            ActionId.RUN_SETUP, "Run setup wizard", "Persist selected rate"
+        ),
         SuggestedAction(
             ActionId.ABORT, "Abort", "Cannot proceed with non-standard rate"
         ),

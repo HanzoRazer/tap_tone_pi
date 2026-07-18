@@ -501,8 +501,8 @@ def render_cohort_execution_plan_markdown(plan: CohortExecutionPlanV1) -> str:
     # Section 1: Plan Identity / Traceability
     lines.append("## 1. Plan Identity")
     lines.append("")
-    lines.append(f"| Field | Value |")
-    lines.append(f"|-------|-------|")
+    lines.append("| Field | Value |")
+    lines.append("|-------|-------|")
     lines.append(f"| Plan ID | `{plan.plan_id}` |")
     lines.append(f"| Experiment Design ID | `{plan.experiment_design_id}` |")
     lines.append(f"| Plan Version | {plan.plan_version} |")
@@ -523,9 +523,7 @@ def render_cohort_execution_plan_markdown(plan: CohortExecutionPlanV1) -> str:
                 if rv.minimum_interesting_effect_value is not None
                 else "—"
             )
-            lines.append(
-                f"| {rv.name} | {rv.unit} | {workflow} | {mie_str} |"
-            )
+            lines.append(f"| {rv.name} | {rv.unit} | {workflow} | {mie_str} |")
         lines.append("")
     else:
         lines.append("No response variables declared.")
@@ -539,9 +537,7 @@ def render_cohort_execution_plan_markdown(plan: CohortExecutionPlanV1) -> str:
         lines.append("|-----------|------|--------|")
         for cov in plan.covariates:
             source = cov.source or "—"
-            lines.append(
-                f"| {cov.name} | {cov.unit} | {source} |"
-            )
+            lines.append(f"| {cov.name} | {cov.unit} | {source} |")
         lines.append("")
     else:
         lines.append("No covariates declared.")
@@ -553,9 +549,7 @@ def render_cohort_execution_plan_markdown(plan: CohortExecutionPlanV1) -> str:
     lines.append(f"- **Cohort size:** {plan.cohort_size}")
     lines.append(f"- **Randomization strategy:** {plan.randomization_strategy}")
     if plan.blocking_variables:
-        lines.append(
-            f"- **Blocking variables:** {', '.join(plan.blocking_variables)}"
-        )
+        lines.append(f"- **Blocking variables:** {', '.join(plan.blocking_variables)}")
     lines.append("")
 
     # Section 5: Baseline Rebuild Schedule
@@ -576,7 +570,9 @@ def render_cohort_execution_plan_markdown(plan: CohortExecutionPlanV1) -> str:
     lines.append("## 6. Reference Body / Repeatability Check")
     lines.append("")
     if plan.reference_body:
-        lines.append(f"- **Reference body ID:** `{plan.reference_body.reference_body_id}`")
+        lines.append(
+            f"- **Reference body ID:** `{plan.reference_body.reference_body_id}`"
+        )
         lines.append(f"- **Body style:** {plan.reference_body.body_style}")
         lines.append(f"- **State:** {plan.reference_body.state}")
         if plan.reference_body.description:
@@ -605,9 +601,7 @@ def render_cohort_execution_plan_markdown(plan: CohortExecutionPlanV1) -> str:
         lines.append("| Step | Action | Timing |")
         lines.append("|------|--------|--------|")
         for item in plan.execution_checklist:
-            lines.append(
-                f"| {item.step_number} | {item.action} | {item.timing} |"
-            )
+            lines.append(f"| {item.step_number} | {item.action} | {item.timing} |")
         lines.append("")
     else:
         lines.append("No checklist items.")

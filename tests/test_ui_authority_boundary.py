@@ -87,7 +87,13 @@ class TestDirectiveOutputContract:
             action_value = payload["action"]
             assert action_value.lower() not in FORBIDDEN_VERDICT_HEADINGS
             assert action_value.lower() in {
-                "inspect", "review", "compare", "decide", "confirm", "intervene", "abort"
+                "inspect",
+                "review",
+                "compare",
+                "decide",
+                "confirm",
+                "intervene",
+                "abort",
             }
 
     def test_directive_action_enum_has_no_verdict_values(self):
@@ -205,7 +211,15 @@ class TestUiAuthorityBoundaryIntegration:
 
     def test_all_attention_actions_are_advisory(self):
         """All AttentionAction values should be advisory, not verdict-like."""
-        advisory_actions = {"inspect", "review", "compare", "decide", "confirm", "intervene", "abort"}
+        advisory_actions = {
+            "inspect",
+            "review",
+            "compare",
+            "decide",
+            "confirm",
+            "intervene",
+            "abort",
+        }
         for action in AttentionAction:
             assert action.value in advisory_actions, (
                 f"AttentionAction.{action.name} has non-advisory value '{action.value}'"

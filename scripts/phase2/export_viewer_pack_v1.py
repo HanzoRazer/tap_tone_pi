@@ -47,23 +47,14 @@ from tap_tone_pi.validate.viewer_pack_v1 import validate_pack, write_validation_
 from tap_tone_pi.export_metadata import SessionMetaV1, write_session_meta
 
 # Repeatability evidence (Dev Order 85)
-from tap_tone_pi.core.repeatability import RepeatabilityEvidenceV1, MeasurementValidityEnvelopeV1
 
 # Workflow provenance (Dev Order 86)
-from tap_tone_pi.workflow.contracts import MeasurementWorkflowContractV1, WorkflowExecutionEvidenceV1
 
 # Experiment provenance (Dev Order 87)
-from tap_tone_pi.provenance import ExperimentCampaignV1, ExperimentRevisionV1, MeasurementLineageV1
 
 # Build/environment/fixture provenance (Dev Order 88)
-from tap_tone_pi.provenance import BuildSessionV1, EnvironmentRecordV1, FixtureRecordV1
 
 # Campaign lifecycle and measurement sets (Dev Order 89)
-from tap_tone_pi.provenance import (
-    CampaignLifecycleExportV1,
-    MeasurementSetV1,
-    MeasurementSetSummaryV1,
-)
 
 
 def extract_session_metadata(session_dir: Path) -> Dict[str, Any]:
@@ -566,7 +557,9 @@ def _read_workflow_provenance(
 
 def _read_experiment_provenance(
     session_dir: Path, add_file_fn
-) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+) -> Tuple[
+    Optional[Dict[str, Any]], Optional[Dict[str, Any]], Optional[Dict[str, Any]]
+]:
     """
     Read experiment provenance from session (Dev Order 87).
 
@@ -626,7 +619,9 @@ def _read_experiment_provenance(
 
 def _read_build_context_provenance(
     session_dir: Path, add_file_fn
-) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+) -> Tuple[
+    Optional[Dict[str, Any]], Optional[Dict[str, Any]], Optional[Dict[str, Any]]
+]:
     """
     Read build context provenance from session (Dev Order 88).
 
@@ -686,7 +681,9 @@ def _read_build_context_provenance(
 
 def _read_campaign_lifecycle_provenance(
     session_dir: Path, add_file_fn
-) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+) -> Tuple[
+    Optional[Dict[str, Any]], Optional[Dict[str, Any]], Optional[Dict[str, Any]]
+]:
     """
     Read campaign lifecycle and measurement set provenance from session (Dev Order 89).
 
@@ -735,7 +732,9 @@ def _read_campaign_lifecycle_provenance(
     for path in summary_candidates:
         if path.exists():
             try:
-                measurement_set_summary_data = json.loads(path.read_text(encoding="utf-8"))
+                measurement_set_summary_data = json.loads(
+                    path.read_text(encoding="utf-8")
+                )
                 add_file_fn(path, "meta/measurement_set_summary.json")
                 break
             except (json.JSONDecodeError, OSError):
@@ -947,22 +946,22 @@ def _build_manifest(
         "interpretation": "deferred",
         "points": point_ids,
         "contents": {
-            "audio":      any(e.relpath.startswith("audio/")      for e in files),
-            "spectra":    any(e.relpath.startswith("spectra/")    for e in files),
-            "coherence":  any(e.relpath.startswith("coherence/")  for e in files),
-            "ods":        any(e.relpath.startswith("ods/")        for e in files),
-            "wolf":       any(e.relpath.startswith("wolf/")       for e in files),
-            "plots":      any(e.relpath.startswith("plots/")      for e in files),
+            "audio": any(e.relpath.startswith("audio/") for e in files),
+            "spectra": any(e.relpath.startswith("spectra/") for e in files),
+            "coherence": any(e.relpath.startswith("coherence/") for e in files),
+            "ods": any(e.relpath.startswith("ods/") for e in files),
+            "wolf": any(e.relpath.startswith("wolf/") for e in files),
+            "plots": any(e.relpath.startswith("plots/") for e in files),
             "provenance": any(e.relpath.startswith("provenance/") for e in files),
-            "bending":    any(e.relpath.startswith("bending/")    for e in files),
+            "bending": any(e.relpath.startswith("bending/") for e in files),
         },
         "files": [
             {
                 "relpath": e.relpath,
-                "sha256":  e.sha256,
-                "bytes":   e.bytes,
-                "mime":    e.mime,
-                "kind":    e.kind,
+                "sha256": e.sha256,
+                "bytes": e.bytes,
+                "mime": e.mime,
+                "kind": e.kind,
             }
             for e in sorted(files, key=lambda x: x.relpath)
         ],
@@ -1089,17 +1088,19 @@ def _zip_pack(pack_root: Path, out_dir: Path, session_dir: Path) -> Path:
 
 #: Fields that indicate WolfAdvisor output has leaked into wolf_candidates.json.
 #: These are decision-support fields and must never appear in viewer_pack_v1.
-_PROHIBITED_WOLF_ADVISORY_FIELDS = frozenset({
-    "mitigation_suggestions",
-    "recommendations",
-    "advisor_output",
-    "mitigations",
-    "recommended_action",
-    "confidence_level",   # WolfAdvisor.ConfidenceLevel
-    "mitigation_type",    # WolfAdvisor.MitigationType
-    "wolf_directive",
-    "directive_id",
-})
+_PROHIBITED_WOLF_ADVISORY_FIELDS = frozenset(
+    {
+        "mitigation_suggestions",
+        "recommendations",
+        "advisor_output",
+        "mitigations",
+        "recommended_action",
+        "confidence_level",  # WolfAdvisor.ConfidenceLevel
+        "mitigation_type",  # WolfAdvisor.MitigationType
+        "wolf_directive",
+        "directive_id",
+    }
+)
 
 
 def _validate_wolf_candidates_clean(wc_path: Path) -> None:
@@ -1180,28 +1181,58 @@ def export_viewer_pack(
     _add_coherence(session_dir, add_file)
     bending_data = _add_bending(session_dir, add_file)
     repeatability_data = _read_repeatability(session_dir, add_file)
-    workflow_contract, workflow_execution = _read_workflow_provenance(session_dir, add_file)
-    experiment_campaign, experiment_revision, measurement_lineage = _read_experiment_provenance(session_dir, add_file)
-    build_session, environment_record, fixture_record = _read_build_context_provenance(session_dir, add_file)
-    campaign_lifecycle, measurement_set, measurement_set_summary = _read_campaign_lifecycle_provenance(session_dir, add_file)
-    experiment_design, design_validation_evidence = _read_experiment_design_provenance(session_dir, add_file)
-    cohort_regression_evidence, formula_candidate_evidence = _read_cohort_regression_provenance(session_dir, add_file)
-    luthiery_formula_target, luthiery_formula_evidence_link = _read_luthiery_formula_provenance(session_dir, add_file)
-    formula_validation_envelope = _read_formula_validation_provenance(session_dir, add_file)
+    workflow_contract, workflow_execution = _read_workflow_provenance(
+        session_dir, add_file
+    )
+    experiment_campaign, experiment_revision, measurement_lineage = (
+        _read_experiment_provenance(session_dir, add_file)
+    )
+    build_session, environment_record, fixture_record = _read_build_context_provenance(
+        session_dir, add_file
+    )
+    campaign_lifecycle, measurement_set, measurement_set_summary = (
+        _read_campaign_lifecycle_provenance(session_dir, add_file)
+    )
+    experiment_design, design_validation_evidence = _read_experiment_design_provenance(
+        session_dir, add_file
+    )
+    cohort_regression_evidence, formula_candidate_evidence = (
+        _read_cohort_regression_provenance(session_dir, add_file)
+    )
+    luthiery_formula_target, luthiery_formula_evidence_link = (
+        _read_luthiery_formula_provenance(session_dir, add_file)
+    )
+    formula_validation_envelope = _read_formula_validation_provenance(
+        session_dir, add_file
+    )
     _add_plots(session_dir, add_file)
     _add_timeline(session_dir, add_file)
 
     # Build and write manifest
     manifest = _build_manifest(
-        files, session_dir, point_ids, bending_data, repeatability_data,
-        workflow_contract, workflow_execution,
-        experiment_campaign, experiment_revision, measurement_lineage,
-        build_session, environment_record, fixture_record,
-        campaign_lifecycle, measurement_set, measurement_set_summary,
-        experiment_design, design_validation_evidence,
-        cohort_regression_evidence, formula_candidate_evidence,
-        luthiery_formula_target, luthiery_formula_evidence_link,
-        formula_validation_envelope
+        files,
+        session_dir,
+        point_ids,
+        bending_data,
+        repeatability_data,
+        workflow_contract,
+        workflow_execution,
+        experiment_campaign,
+        experiment_revision,
+        measurement_lineage,
+        build_session,
+        environment_record,
+        fixture_record,
+        campaign_lifecycle,
+        measurement_set,
+        measurement_set_summary,
+        experiment_design,
+        design_validation_evidence,
+        cohort_regression_evidence,
+        formula_candidate_evidence,
+        luthiery_formula_target,
+        luthiery_formula_evidence_link,
+        formula_validation_envelope,
     )
     manifest_path = pack_root / "manifest.json"
     manifest_path.write_text(

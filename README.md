@@ -185,6 +185,24 @@ Key Phase 2 schemas:
 
 ---
 
+## Laboratory Manual (desktop)
+
+Laboratory Manual resources are packaged in the `tap_tone_pi` distribution: a
+versioned, read-only, offline registry of laboratory procedure documents (no
+network access required). The desktop viewer currently runs from the existing
+desktop application environment, opened via **Help → Laboratory Manual**; full
+`analyzer/` installer packaging is a separate task.
+
+Each registered procedure carries a maturity label
+(`approved` / `provisional` / `deferred` / `superseded`) so validated methods
+are never confused with exploratory ones. The manifest currently ships **empty**
+by design — no consolidated manual document exists yet — so the viewer shows a
+controlled empty state. Invalid or unavailable manual resources likewise produce
+distinct, controlled states rather than crashing the viewer. The manual documents
+procedures; it does not execute or interpret measurements.
+
+---
+
 ## Run IDs & retention
 
 - Use `from modes._shared.run_id import new_run_dir` to create timestamped run folders,

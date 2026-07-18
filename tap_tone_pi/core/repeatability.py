@@ -25,7 +25,7 @@ not instrument merit or operator correctness.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict
 from typing import Any, Sequence
 
 
@@ -146,7 +146,11 @@ def compute_repeatability_evidence(
     if rms_values and len(rms_values) == n:
         rms_mean = sum(rms_values) / n
         rms_std = _std(rms_values, rms_mean)
-        rms_var_pct = (rms_std / rms_mean * 100) if rms_mean and rms_std and rms_mean > 0 else None
+        rms_var_pct = (
+            (rms_std / rms_mean * 100)
+            if rms_mean and rms_std and rms_mean > 0
+            else None
+        )
 
     # Peak magnitude stats (dB)
     mag_mean_db = None
@@ -202,7 +206,9 @@ def compute_repeatability_evidence(
         dominant_frequency_mean_hz=round(freq_mean, 3),
         dominant_frequency_std_hz=round(freq_std, 3),
         dominant_frequency_variance_pct=round(freq_var_pct, 3),
-        peak_magnitude_mean_db=round(mag_mean_db, 2) if mag_mean_db is not None else None,
+        peak_magnitude_mean_db=round(mag_mean_db, 2)
+        if mag_mean_db is not None
+        else None,
         peak_magnitude_std_db=round(mag_std_db, 2) if mag_std_db is not None else None,
         rms_mean=round(rms_mean, 6) if rms_mean is not None else None,
         rms_std=round(rms_std, 6) if rms_std is not None else None,
@@ -212,10 +218,14 @@ def compute_repeatability_evidence(
         snr_variance_db=round(snr_std, 2) if snr_std is not None else None,
         coherence_mean=round(coh_mean, 4) if coh_mean is not None else None,
         coherence_std=round(coh_std, 4) if coh_std is not None else None,
-        transfer_uncertainty_mean=round(tf_unc_mean, 4) if tf_unc_mean is not None else None,
+        transfer_uncertainty_mean=round(tf_unc_mean, 4)
+        if tf_unc_mean is not None
+        else None,
         confidence_mean=round(conf_mean, 4) if conf_mean is not None else None,
         confidence_std=round(conf_std, 4) if conf_std is not None else None,
-        confidence_stability=round(conf_stability, 4) if conf_stability is not None else None,
+        confidence_stability=round(conf_stability, 4)
+        if conf_stability is not None
+        else None,
         observation_window_seconds=observation_window_seconds,
         passed_repeatability_gate=passed,
         gate_failure_reason=failure_reason,

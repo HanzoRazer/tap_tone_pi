@@ -1,10 +1,10 @@
 # Sprint Architecture Handoff
 
-**Sprint Period:** 2026-05-14 to 2026-05-24  
-**Commits:** 27  
-**Files Changed:** 111  
-**Net Lines:** -1,593 (6,750 added / 8,343 removed)  
-**Test Count:** 2,596  
+**Sprint Period:** 2026-05-14 to 2026-05-24
+**Commits:** 27
+**Files Changed:** 111
+**Net Lines:** -1,593 (6,750 added / 8,343 removed)
+**Test Count:** 2,596
 **Branch:** `main` (27 commits ahead of origin)
 
 ---
@@ -50,7 +50,7 @@ This sprint established the **three-pillar constitutional foundation**:
 
 ```
 ADR-0010: What guidance may/may not claim
-ADR-0011: What measurement artifacts may/may not claim  
+ADR-0011: What measurement artifacts may/may not claim
 ADR-0012: How data states relate to authority
 ```
 
@@ -704,6 +704,6 @@ tests/test_policy_engine_v1.py
 
 ---
 
-*Generated: 2026-05-24*  
-*Sprint: DO-008 + Governance Audit + DO-78 + DO-81*  
+*Generated: 2026-05-24*
+*Sprint: DO-008 + Governance Audit + DO-78 + DO-81*
 *Author: Claude Opus 4.5*

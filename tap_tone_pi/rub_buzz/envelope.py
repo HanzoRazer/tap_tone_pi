@@ -231,7 +231,7 @@ def detect_transients(
             event = TransientEvent(
                 start_sample=start,
                 end_sample=end,
-                peak_sample=peak_idx,
+                peak_sample=int(peak_idx),
                 peak_amplitude=peak_amp,
                 rise_rate=rise_rate,
                 duration_samples=duration,

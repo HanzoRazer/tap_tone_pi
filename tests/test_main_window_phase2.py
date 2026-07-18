@@ -12,14 +12,15 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
-# Skip all tests if PyQt6 is not available (CI environment)
-pytest.importorskip("PyQt6")
-
-from PyQt6.QtWidgets import QApplication
+# Skip all tests if PyQt6 or its Qt runtime (libEGL) is not available (CI environment)
+try:
+    from PyQt6.QtWidgets import QApplication
+except ImportError as _e:
+    pytest.skip(f"PyQt6 or Qt runtime unavailable: {_e}", allow_module_level=True)
 
 from analyzer.main_window import MainWindow
 
@@ -137,12 +138,10 @@ class TestMainWindowPhase2Integration:
         invalid_dir = tmp_path / "invalid_session"
         invalid_dir.mkdir()
 
-        with patch.object(main_window, "statusbar") as mock_statusbar:
+        with patch.object(main_window, "statusbar") as mock_statusbar:  # noqa: F841
             # Should not raise, but should show error dialog
             # We patch QMessageBox to prevent blocking
-            with patch(
-                "analyzer.main_window.QMessageBox.critical"
-            ) as mock_critical:
+            with patch("analyzer.main_window.QMessageBox.critical") as mock_critical:
                 main_window._load_phase2_session(str(invalid_dir))
                 mock_critical.assert_called_once()
 

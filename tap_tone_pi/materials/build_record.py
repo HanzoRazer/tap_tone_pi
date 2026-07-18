@@ -26,7 +26,11 @@ from typing import Any, Optional
 import jsonschema
 
 SCHEMA_VERSION = "instrument_build_record_v1"
-SCHEMA_PATH = Path(__file__).parent.parent.parent / "contracts" / "instrument_build_record_v1.schema.json"
+SCHEMA_PATH = (
+    Path(__file__).parent.parent.parent
+    / "contracts"
+    / "instrument_build_record_v1.schema.json"
+)
 
 DEFAULT_BUILDS_PATH = Path.home() / ".tap_tone_pi" / "builds_db.json"
 ENV_BUILDS_PATH_OVERRIDE = "TTP_BUILDS_DB_PATH"
@@ -46,6 +50,7 @@ _BUILD_ID_RE = re.compile(r"^[A-Z][A-Z0-9_]{2,80}$")
 # -----------------------------------------------------------------------------
 # Nested dataclasses
 # -----------------------------------------------------------------------------
+
 
 @dataclass
 class WoodSelection:
@@ -174,6 +179,7 @@ class SubjectiveEvaluation:
 # Main BuildRecord dataclass
 # -----------------------------------------------------------------------------
 
+
 @dataclass
 class BuildRecord:
     """A single instrument build record."""
@@ -291,7 +297,9 @@ def validate_build(build: BuildRecord) -> None:
     jsonschema.validate(instance=d, schema=schema)
 
 
-def compute_residuals(predicted: PredictedValues, measured: MeasuredSummary) -> Residuals:
+def compute_residuals(
+    predicted: PredictedValues, measured: MeasuredSummary
+) -> Residuals:
     """Compute residuals between predicted and measured values.
 
     Residual = measured - predicted
@@ -300,7 +308,9 @@ def compute_residuals(predicted: PredictedValues, measured: MeasuredSummary) -> 
     Returns Residuals dataclass with computed values.
     """
 
-    def residual(pred: Optional[float], meas: Optional[float]) -> tuple[Optional[float], Optional[float]]:
+    def residual(
+        pred: Optional[float], meas: Optional[float]
+    ) -> tuple[Optional[float], Optional[float]]:
         if pred is None or meas is None:
             return None, None
         diff = meas - pred
@@ -334,6 +344,7 @@ def compute_residuals(predicted: PredictedValues, measured: MeasuredSummary) -> 
 # -----------------------------------------------------------------------------
 # BuildDatabase — CRUD operations
 # -----------------------------------------------------------------------------
+
 
 class BuildNotFoundError(KeyError):
     """Raised when a build_id is not found in the database."""
@@ -485,22 +496,19 @@ class BuildDatabase:
             Sorted list of build IDs with matching design
         """
         return sorted(
-            bid for bid, b in self._builds.items()
-            if b.design_name == design_name
+            bid for bid, b in self._builds.items() if b.design_name == design_name
         )
 
     def list_in_progress(self) -> list[str]:
         """Return build IDs for builds not yet completed."""
         return sorted(
-            bid for bid, b in self._builds.items()
-            if b.build_completed is None
+            bid for bid, b in self._builds.items() if b.build_completed is None
         )
 
     def list_completed(self) -> list[str]:
         """Return build IDs for completed builds."""
         return sorted(
-            bid for bid, b in self._builds.items()
-            if b.build_completed is not None
+            bid for bid, b in self._builds.items() if b.build_completed is not None
         )
 
     def __len__(self) -> int:

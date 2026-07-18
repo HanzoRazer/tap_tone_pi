@@ -208,7 +208,7 @@ Two artifacts:
 ```python
 class WoodDatabase:
     """JSON-backed flitch record store with query support."""
-    
+
     def __init__(self, db_path: Path): ...
     def add_flitch(self, record: FlitchRecord) -> None: ...
     def add_measurement(self, flitch_id: str, m: PlateMeasurement) -> None: ...
@@ -367,7 +367,7 @@ A new widget `analyzer/widgets/phase2_results_widget.py`:
 ```python
 class Phase2ResultsWidget(QWidget):
     """Display Phase 2 ODS scanning results.
-    
+
     Shows:
     - WSI curve (frequency on X, weighted shape index on Y)
     - 2D heatmap of point amplitudes at selected frequency
@@ -420,10 +420,10 @@ Extension to `analyzer/widgets/phase2_results_widget.py` adding a "Compare with 
 ```python
 class Phase2ResultsWidget(QWidget):
     # ... (existing from DO-005)
-    
+
     def load_prediction(self, prediction_path: Path) -> None:
         """Load a Rayleigh-Ritz prediction file and overlay on heatmap."""
-    
+
     def show_comparison_mode(self, mode_label: str) -> None:
         """Display side-by-side predicted vs measured for selected mode."""
 ```

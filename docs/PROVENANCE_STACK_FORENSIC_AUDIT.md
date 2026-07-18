@@ -1,7 +1,7 @@
 # Provenance Stack Forensic Audit
 
-**Audit Date:** 2026-06-13  
-**Auditor:** Claude Code  
+**Audit Date:** 2026-06-13
+**Auditor:** Claude Code
 **Scope:** DO-87, DO-88, DO-89 provenance stack investigation
 
 ---
@@ -321,5 +321,5 @@ Synchronized. No divergence.
 
 ---
 
-*Audit complete: 2026-06-13*  
+*Audit complete: 2026-06-13*
 *Recovery action required: Commit and push pending changes*

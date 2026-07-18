@@ -47,7 +47,8 @@ sys.path.insert(0, str(REPO_ROOT))
 # ---------------------------------------------------------------------------
 
 try:
-    from tap_tone_pi.core.analysis import analyze_tap, Peak
+    from tap_tone_pi.core.analysis import analyze_tap, Peak  # noqa: F401
+
     CAPTURE_ENGINE_AVAILABLE = True
 except ImportError:
     CAPTURE_ENGINE_AVAILABLE = False
@@ -55,6 +56,7 @@ except ImportError:
 try:
     from analyzer.analysis.fft import compute_fft, find_resonance_frequency
     from analyzer.analysis.peaks import find_spectrum_peaks
+
     ANALYZER_AVAILABLE = True
 except ImportError:
     ANALYZER_AVAILABLE = False
@@ -111,7 +113,7 @@ def _make_synthetic_tap(
         signal += amplitude * decay * np.sin(2 * np.pi * f * t + phase)
 
     # Add white noise at specified SNR
-    signal_rms = float(np.sqrt(np.mean(signal ** 2)))
+    signal_rms = float(np.sqrt(np.mean(signal**2)))
     noise_rms = signal_rms / (10 ** (snr_db / 20.0))
     noise = rng.normal(0, noise_rms, size=len(t))
     signal = (signal + noise).astype(np.float32)
@@ -167,9 +169,7 @@ def _analyzer_dominant(
     return dominant if dominant > 0 else None
 
 
-def _analyzer_peaks(
-    signal: np.ndarray, sample_rate: int = SAMPLE_RATE
-) -> list[float]:
+def _analyzer_peaks(signal: np.ndarray, sample_rate: int = SAMPLE_RATE) -> list[float]:
     """Return top peaks from analyzer.analysis.peaks."""
     freqs, mags = compute_fft(signal, float(sample_rate), window="hann")
 
@@ -217,7 +217,7 @@ SINGLE_TONE_CASES = [
     pytest.param(220.0, [], id="220Hz_A3_reference"),
     pytest.param(310.0, [], id="310Hz_typical_mode2"),
     pytest.param(640.0, [], id="640Hz_higher_mode"),
-    pytest.param(95.0,  [], id="95Hz_low_fundamental"),
+    pytest.param(95.0, [], id="95Hz_low_fundamental"),
 ]
 
 MULTI_TONE_CASES = [
@@ -318,9 +318,7 @@ class TestMultiPeakAgreement:
         At least PEAK_OVERLAP_FRACTION of peaks detected by the capture engine
         must have a matching peak (within PEAK_MATCH_TOLERANCE_HZ) in the analyzer.
         """
-        signal = _make_synthetic_tap(
-            fundamental_hz, harmonics, snr_db=35.0
-        )
+        signal = _make_synthetic_tap(fundamental_hz, harmonics, snr_db=35.0)
 
         capture_peaks = _capture_engine_peaks(signal)
         analyzer_peaks = _analyzer_peaks(signal)

@@ -1,7 +1,7 @@
 # Build Checkpoint — tap_tone_pi
 
-**Timestamp:** 2026-06-12 @ 19:25 UTC  
-**Branch:** main  
+**Timestamp:** 2026-06-12 @ 19:25 UTC
+**Branch:** main
 **Last Commit:** `c46da30` — fix: reclassify 4 modules from MEASUREMENT to DECISION SUPPORT
 
 ---
@@ -203,5 +203,5 @@ The repository has successfully crossed from "governed analyzer" into "governed 
 
 ---
 
-*Checkpoint created: 2026-06-12 @ 19:25*  
+*Checkpoint created: 2026-06-12 @ 19:25*
 *Document owner: Build checkpoint process*

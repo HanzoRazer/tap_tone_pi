@@ -5,7 +5,6 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
-import pytest
 
 from tap_tone_pi.phase1.demo import (
     TapImpulseConfig,

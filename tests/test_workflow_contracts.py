@@ -9,7 +9,6 @@ Tests cover:
 - Export compatibility
 """
 
-import pytest
 import json
 
 from tap_tone_pi.workflow.contracts import (
@@ -17,8 +16,6 @@ from tap_tone_pi.workflow.contracts import (
     WorkflowExecutionEvidenceV1,
     WorkflowExecutionState,
     CalibrationState,
-    FixtureRequirements,
-    EnvironmentRequirements,
 )
 from tap_tone_pi.workflow.validation import (
     evaluate_workflow_execution,
@@ -319,14 +316,18 @@ class TestWorkflowSemanticsAreProcedural:
         for state in WorkflowExecutionState:
             state_lower = state.value.lower()
             for term in self.FORBIDDEN_ADVISORY_TERMS:
-                assert term not in state_lower, f"State {state.value} contains advisory term '{term}'"
+                assert term not in state_lower, (
+                    f"State {state.value} contains advisory term '{term}'"
+                )
 
     def test_calibration_states_are_procedural(self):
         """Calibration state values should be procedural, not advisory."""
         for state in CalibrationState:
             state_lower = state.value.lower()
             for term in self.FORBIDDEN_ADVISORY_TERMS:
-                assert term not in state_lower, f"State {state.value} contains advisory term '{term}'"
+                assert term not in state_lower, (
+                    f"State {state.value} contains advisory term '{term}'"
+                )
 
     def test_evidence_dict_has_no_advisory_keys(self):
         """Serialized evidence should contain no advisory keys."""
@@ -340,7 +341,9 @@ class TestWorkflowSemanticsAreProcedural:
         for key in d.keys():
             key_lower = key.lower()
             for term in self.FORBIDDEN_ADVISORY_TERMS:
-                assert term not in key_lower, f"Key '{key}' contains advisory term '{term}'"
+                assert term not in key_lower, (
+                    f"Key '{key}' contains advisory term '{term}'"
+                )
 
 
 class TestWorkflowExportCompatibility:
