@@ -17,21 +17,31 @@ jobs:
       - name: Validate measurement examples
         run: |
           python - <<'PY'
-          import json, glob
+          import json
           from jsonschema import validate
 
-          tap_schema = json.load(open('schemas/measurement/tap_peaks.schema.json'))
-          moe_schema = json.load(open('schemas/measurement/moe_result.schema.json'))
-          man_schema = json.load(open('schemas/measurement/manifest.schema.json'))
+          # Canonical schemas live under contracts/schemas/. Each example is
+          # validated against its specific schema (mirrors
+          # tests/test_measurement_schemas.py). Examples without a published
+          # schema (tap_tone.json, bending_test.json) are intentionally not
+          # validated here.
+          PAIRS = [
+              ("examples/measurement/tap_peaks.json",
+               "contracts/schemas/tap_peaks.schema.json"),
+              ("examples/measurement/moe_result.json",
+               "contracts/schemas/moe_result.schema.json"),
+              ("examples/measurement/manifest.json",
+               "contracts/schemas/manifest.schema.json"),
+              ("examples/measurement/displacement_series.json",
+               "contracts/schemas/displacement_series.schema.json"),
+              ("examples/measurement/load_series.json",
+               "contracts/schemas/load_series.schema.json"),
+          ]
 
-          def val(pat, schema):
-              for f in sorted(glob.glob(pat)):
-                  data = json.load(open(f))
-                  validate(data, schema)
-                  print("OK", f)
-
-          val('examples/measurement/*tap*.json', tap_schema)
-          val('examples/measurement/*bending*.json', moe_schema)
-          val('examples/measurement/*manifest*.json', man_schema)
+          for data_path, schema_path in PAIRS:
+              data = json.load(open(data_path))
+              schema = json.load(open(schema_path))
+              validate(data, schema)
+              print("OK", data_path)
           print("All examples validated")
           PY

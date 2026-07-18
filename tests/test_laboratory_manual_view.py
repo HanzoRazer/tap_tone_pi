@@ -86,6 +86,58 @@ class TestNavigationEntry:
             win._laboratory_manual_view.close()
             win.close()
 
+    def test_reopen_reuses_and_reveals_single_view(self, qapp):
+        """Reopening must reuse the same window, and a closed (hidden) window
+        must be re-revealed rather than left invisible."""
+        from analyzer.main_window import MainWindow
+
+        win = MainWindow()
+        try:
+            win._show_laboratory_manual()
+            first = win._laboratory_manual_view
+            assert first is not None
+
+            # Close hides the window (no WA_DeleteOnClose); reopening must
+            # reuse the same instance and make it visible again.
+            first.close()
+            qapp.processEvents()
+            win._show_laboratory_manual()
+            second = win._laboratory_manual_view
+
+            assert second is first
+            assert second.isVisible()
+        finally:
+            if win._laboratory_manual_view is not None:
+                win._laboratory_manual_view.close()
+            win.close()
+
+    def test_reopen_after_destroy_recreates_view(self, qapp):
+        """A stale reference to a deleted Qt object must not crash reopen; the
+        view is transparently recreated."""
+        from analyzer.main_window import MainWindow
+
+        win = MainWindow()
+        try:
+            win._show_laboratory_manual()
+            first = win._laboratory_manual_view
+            assert first is not None
+
+            # Force immediate underlying C++ deletion (deleteLater + a bare
+            # processEvents does NOT flush DeferredDelete in Qt), then re-plant
+            # the now-stale Python reference the destroyed() slot cleared.
+            from PyQt6 import sip
+
+            sip.delete(first)
+            win._laboratory_manual_view = first  # re-plant the stale reference
+
+            win._show_laboratory_manual()  # must not raise RuntimeError
+            assert isinstance(win._laboratory_manual_view, LaboratoryManualView)
+            assert win._laboratory_manual_view is not first
+        finally:
+            if win._laboratory_manual_view is not None:
+                win._laboratory_manual_view.close()
+            win.close()
+
 
 class TestEmptyState:
     def test_empty_manifest_shows_controlled_message(self, qapp):

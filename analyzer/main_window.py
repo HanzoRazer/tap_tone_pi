@@ -252,6 +252,12 @@ class MainWindow(QMainWindow):
         # Help menu
         help_menu = menubar.addMenu("&Help")
 
+        manual_action = QAction("&Laboratory Manual", self)
+        manual_action.triggered.connect(self._show_laboratory_manual)
+        help_menu.addAction(manual_action)
+
+        help_menu.addSeparator()
+
         about_action = QAction("&About", self)
         about_action.triggered.connect(self._show_about)
         help_menu.addAction(about_action)
@@ -905,6 +911,50 @@ class MainWindow(QMainWindow):
         """Forward auto-discover toggle to the Phase 2 widget."""
         if hasattr(self, "phase2_results") and self.phase2_results is not None:
             self.phase2_results.set_auto_discover(checked)
+
+    def _show_laboratory_manual(self):
+        """Open the read-only Laboratory Manual view.
+
+        Reference material, deliberately separate from measurement execution.
+        The view is kept alive as an attribute so it is not garbage-collected
+        the moment this method returns.
+
+        The view itself absorbs manifest load failures into controlled empty /
+        unavailable / invalid states, so opening it does not crash on bad data.
+        Importing the optional GUI module can still fail on a partial install;
+        that is surfaced as a controlled dialog rather than terminating the app.
+        Broad exceptions are deliberately not swallowed — a programmer defect in
+        view construction must still surface loudly.
+        """
+        existing = getattr(self, "_laboratory_manual_view", None)
+        if existing is not None:
+            try:
+                # show() re-reveals a window that was closed (hidden, not
+                # destroyed); raise_/activateWindow bring it to the front.
+                existing.show()
+                existing.raise_()
+                existing.activateWindow()
+                return
+            except RuntimeError:
+                # The underlying Qt object was already deleted while the
+                # Python reference lingered; drop it and recreate below.
+                self._laboratory_manual_view = None
+
+        try:
+            from analyzer.widgets.laboratory_manual_view import LaboratoryManualView
+        except ImportError as exc:
+            QMessageBox.critical(
+                self,
+                "Laboratory Manual",
+                "The Laboratory Manual viewer could not be loaded in this "
+                f"installation.\n\nDetails:\n{exc}",
+            )
+            return
+
+        view = LaboratoryManualView()
+        view.destroyed.connect(lambda: setattr(self, "_laboratory_manual_view", None))
+        self._laboratory_manual_view = view
+        view.show()
 
     def _show_about(self):
         """Show about dialog."""
