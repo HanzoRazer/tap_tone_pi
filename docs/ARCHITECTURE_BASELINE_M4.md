@@ -255,6 +255,56 @@ evidence. It produces evidence, never a verdict.
 
 ---
 
+## 10a. Laboratory Manual — `tap_tone_pi/acoustic_lab/manual/` (DO-97)
+
+The Laboratory Manual is an **operational component of the desktop instrument**,
+not external documentation and not a measurement subsystem. It is a versioned,
+read-only, offline registry of laboratory procedure documents packaged with the
+TTP Analyzer.
+
+| Module | Role |
+|---|---|
+| `acoustic_lab/manual_contracts.py` | `LaboratoryManualEntryV1`, `LaboratoryManualManifestV1`, status vocabulary |
+| `acoustic_lab/manual_registry.py` | Read-only load / lookup / filter / path-safe resolution via `importlib.resources` |
+| `acoustic_lab/manual/manual_manifest.json` | Versioned manifest (`laboratory_manual_manifest_v1`) |
+| `analyzer/widgets/laboratory_manual_view.py` | Desktop **Help → Laboratory Manual** read-only viewer |
+
+It sits **beside**, not within, the measurement stack. It is separated from
+measurement execution by construction: the registry imports no capture,
+calibration, phase2, cli, or server module, and the Laboratory core imports no
+GUI. Procedure maturity (`approved` / `provisional` / `deferred` / `superseded`)
+is registered per entry and shown in the viewer; nothing promotes an entry
+automatically. This is a documentation-resource manifest, not a measurement
+schema — it records document identity and maturity, never whether a hypothesis
+is true.
+
+The canonical manifest currently registers **no entries**: a consolidated
+Laboratory Manual does not yet exist as a document, and DO-97 prohibited
+fabricating one. The viewer shows a controlled empty state.
+
+**DO-97G corrective status (✅ Complete).** An independent review of
+DO-97 found contract, resource, GUI, and packaging-verification gaps. DO-97G
+hardens them: `applies_to` rejects scalar strings/bytes; supersession is enforced
+complete and acyclic; the private `_coerce_status` coupling is replaced by the
+public `parse_manual_status`; packaged-resource access is `Traversable`-native
+(`resolve_manual_entry_resource`) so zip-backed installs do not depend on a
+synthesized filesystem path, while `resolve_manual_entry_path` survives only as a
+truthful filesystem-only compatibility shim; and the desktop viewer distinguishes
+empty / unavailable / invalid-manifest / missing-document states. A genuine
+wheel-build-and-isolated-install test proves the manual resources ship.
+
+Verified through corrective commit
+`c7c22741bfc087a8acaee34254c4ad9b4b985960` (verification accepted 2026-07-17).
+Comparison against base `7b555ee74a521d8086e4182d16c726ca2015baef` confirmed no
+new CI failures attributable to DO-97G. Remaining failing CI jobs are documented
+repository baseline conditions outside DO-97 scope.
+
+Scope note: this packages the Laboratory Manual **resources** inside the
+`tap_tone_pi` distribution. Full `analyzer/` desktop-installer packaging remains
+a separate task, out of DO-97/DO-97G scope.
+
+---
+
 ## 11. Contracts (`contracts/`)
 
 Versioned JSON Schemas (draft 2020-12), registered in `schema_registry.json`:
@@ -291,6 +341,7 @@ export_viewer_pack_v1.py` → `viewer_pack_v1`.
 | DO-93 | Stepped & sweep excitation | ✅ |
 | DO-94 | Luthiery formula target mapping | ✅ |
 | DO-95 | Formula validation & error-detection envelope | ✅ |
+| DO-97 | Laboratory Manual packaging & desktop access | ✅ Complete |
 | — | Acoustic balance residual coupling (research, deferred) | ✅ note only |
 
 ---
@@ -305,6 +356,17 @@ These have zero effect on runtime behavior and are intentionally deferred:
    "(DO-94)" but implement pressure-response mapping, distinct from the six
    luthiery DO-94 commits. Documentation-only; noted in
    `docs/dev_orders/CURRENT.md`.
+3. **`analyzer/` is not yet a packaged distribution** — `pyproject.toml`
+   packages only `tap_tone_pi*` / `tap_tone*`. The desktop app runs from a
+   source checkout. DO-97 shipped the Laboratory Manual **resources** inside
+   `tap_tone_pi.acoustic_lab` (which *is* packaged and installed-resource
+   tested), but did **not** repair full desktop-installer packaging. That
+   remains a separate product-packaging task, out of DO-97 scope.
+4. **DO-97's stated DO-96 dependency was vacuous** — the handoff assumed a
+   prior "Laboratory manifest and registry from DO-96" and an existing
+   `tap_tone_pi/acoustic_lab/` package. Neither existed in the repository;
+   DO-96 appears nowhere in history. DO-97 was implemented self-contained,
+   creating the `acoustic_lab` package fresh.
 
 ---
 

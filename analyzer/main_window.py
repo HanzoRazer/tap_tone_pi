@@ -72,7 +72,7 @@ class MainWindow(QMainWindow):
 
         # ── Guidance engine + panel ───────────────────────────────────────
         self._guidance_engine = AnalyzerGuidanceEngine()
-        self._guidance_panel = GuidancePanelWidget(self)
+        self._guidance_panel  = GuidancePanelWidget(self)
         self._guidance_engine.on_directive = self._guidance_panel.show_directive
         self._guidance_panel.stage_changed.connect(self._guidance_engine.set_stage)
         self._guidance_panel.act_requested.connect(self._on_guidance_act)
@@ -222,15 +222,11 @@ class MainWindow(QMainWindow):
         limit_menu = analysis_menu.addMenu("Limit &Curves")
 
         apply_tonewood = QAction("Apply tonewood tap preset", self)
-        apply_tonewood.triggered.connect(
-            lambda: self._on_limit_preset_selected("tonewood_tap")
-        )
+        apply_tonewood.triggered.connect(lambda: self._on_limit_preset_selected("tonewood_tap"))
         limit_menu.addAction(apply_tonewood)
 
         apply_speaker = QAction("Apply speaker response preset", self)
-        apply_speaker.triggered.connect(
-            lambda: self._on_limit_preset_selected("speaker_response")
-        )
+        apply_speaker.triggered.connect(lambda: self._on_limit_preset_selected("speaker_response"))
         limit_menu.addAction(apply_speaker)
 
         limit_menu.addSeparator()
@@ -554,10 +550,10 @@ class MainWindow(QMainWindow):
     def _on_guidance_act(self, target_type: str) -> None:
         """Navigate analyzer UI from guidance panel Act button. Read-only."""
         tab_map = {
-            "spectrum_view": 0,
+            "spectrum_view":   0,
             "spectrum_region": 0,
-            "bode_plot": 1,
-            "wsi_plot": 2,
+            "bode_plot":       1,
+            "wsi_plot":        2,
         }
         tab_index = tab_map.get(target_type)
         if tab_index is not None:
@@ -570,7 +566,7 @@ class MainWindow(QMainWindow):
         if not self._limit_overlay.has_limits or not self.current_spectrum:
             return
         freq = np.array(self.current_spectrum.get("freq_hz", []))
-        mag = np.array(self.current_spectrum.get("H_mag", []))
+        mag  = np.array(self.current_spectrum.get("H_mag", []))
         if len(freq) == 0 or len(mag) == 0:
             return
         result = self._limit_overlay.draw(freq, mag)
@@ -589,9 +585,7 @@ class MainWindow(QMainWindow):
         self._limit_panel.update_verdict(
             verdict=result.verdict,
             violation_count=n_viol,
-            worst_margin_db=abs(result.worst_margin_db)
-            if result.worst_margin_db != float("inf")
-            else 0.0,
+            worst_margin_db=abs(result.worst_margin_db) if result.worst_margin_db != float("inf") else 0.0,
             active_preset=self._limit_overlay.preset_name,
             violation_details=[v.to_dict() for v in result.violations],
         )
