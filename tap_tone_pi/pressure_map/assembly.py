@@ -10,7 +10,6 @@ No advisory semantics. No mode-shape claims. No soundhole recommendations.
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from typing import Any, Optional
 
 from tap_tone_pi.pressure_map.contracts import (
@@ -186,13 +185,9 @@ def assemble_pressure_response_map(
     """
     # Enforce frequency XOR
     if frequency_hz is not None and frequency_band_hz is not None:
-        raise ValueError(
-            "frequency_hz and frequency_band_hz are mutually exclusive"
-        )
+        raise ValueError("frequency_hz and frequency_band_hz are mutually exclusive")
     if frequency_hz is None and frequency_band_hz is None:
-        raise ValueError(
-            "Either frequency_hz or frequency_band_hz must be specified"
-        )
+        raise ValueError("Either frequency_hz or frequency_band_hz must be specified")
 
     # Get valid point IDs from grid
     valid_point_ids = {p.point_id for p in grid.points}
@@ -204,9 +199,7 @@ def assemble_pressure_response_map(
             unknown_points.append(sample.point_id)
 
     if unknown_points:
-        raise ValueError(
-            f"Samples reference unknown grid points: {unknown_points}"
-        )
+        raise ValueError(f"Samples reference unknown grid points: {unknown_points}")
 
     return PressureResponseMapV1(
         map_id=map_id,

@@ -11,7 +11,6 @@ Test categories:
 """
 
 from dataclasses import dataclass
-from typing import List
 
 import numpy as np
 import pytest
@@ -22,7 +21,6 @@ from tap_tone_pi.design.comparison import (
     compare_mode,
     compare_modes_batch,
     _compute_phase_consistency,
-    _compute_nodal_line_match,
 )
 from tap_tone_pi.design.mode_shape_render import RenderedModeShape
 
@@ -35,6 +33,7 @@ from tap_tone_pi.design.mode_shape_render import RenderedModeShape
 @dataclass
 class MockPointSpectrum:
     """Mock PointSpectrum matching scripts/phase2/metrics.py interface."""
+
     point_id: str
     x_mm: float
     y_mm: float
@@ -149,7 +148,9 @@ class TestCompareBasic:
         # Nearest bin to 90 Hz
         expected_bin_freq = freq_axis[int(np.argmin(np.abs(freq_axis - 90.0)))]
         assert abs(result.measured_freq_hz - expected_bin_freq) < 0.1
-        assert result.freq_residual_hz == pytest.approx(expected_bin_freq - 85.0, abs=0.1)
+        assert result.freq_residual_hz == pytest.approx(
+            expected_bin_freq - 85.0, abs=0.1
+        )
 
 
 # =============================================================================
@@ -168,7 +169,9 @@ class TestPerfectMatch:
         measured = {
             "A1": make_mock_spectrum("A1", freq_axis, 1.0, 85.0),
             "A2": make_mock_spectrum("A2", freq_axis, 0.5, 85.0),
-            "A3": make_mock_spectrum("A3", freq_axis, 0.5, 85.0),  # sign not preserved in H_mag
+            "A3": make_mock_spectrum(
+                "A3", freq_axis, 0.5, 85.0
+            ),  # sign not preserved in H_mag
             "A4": make_mock_spectrum("A4", freq_axis, 1.0, 85.0),
         }
 
@@ -179,8 +182,12 @@ class TestPerfectMatch:
         # For this test, let's use same-sign values
         predicted2 = make_predicted_shape({"A1": 1.0, "A2": 0.5})
         measured2 = {
-            "A1": make_mock_spectrum("A1", freq_axis, 2.0, 85.0),  # will normalize to 1.0
-            "A2": make_mock_spectrum("A2", freq_axis, 1.0, 85.0),  # will normalize to 0.5
+            "A1": make_mock_spectrum(
+                "A1", freq_axis, 2.0, 85.0
+            ),  # will normalize to 1.0
+            "A2": make_mock_spectrum(
+                "A2", freq_axis, 1.0, 85.0
+            ),  # will normalize to 0.5
         }
 
         result2 = compare_mode(predicted2, measured2)
@@ -271,11 +278,16 @@ class TestNodalLineMatch:
         freq_axis = make_freq_axis()
 
         # Predicted has node at B2 (amplitude near zero)
-        predicted = make_predicted_shape({
-            "A1": 1.0, "A2": 0.5,
-            "B1": 0.5, "B2": 0.05,  # node
-            "C1": 0.5, "C2": 1.0,
-        })
+        predicted = make_predicted_shape(
+            {
+                "A1": 1.0,
+                "A2": 0.5,
+                "B1": 0.5,
+                "B2": 0.05,  # node
+                "C1": 0.5,
+                "C2": 1.0,
+            }
+        )
 
         # Measured also has node at B2
         measured = {
@@ -297,9 +309,12 @@ class TestNodalLineMatch:
         freq_axis = make_freq_axis()
 
         # Predicted has node at B2
-        predicted = make_predicted_shape({
-            "A1": 1.0, "B2": 0.05,  # node at B2
-        })
+        predicted = make_predicted_shape(
+            {
+                "A1": 1.0,
+                "B2": 0.05,  # node at B2
+            }
+        )
 
         # Measured has node at A1 instead
         measured = {

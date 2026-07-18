@@ -1,6 +1,6 @@
 PK
      º†~\               word/PK
-     º†~\            
+     º†~\
    word/_rels/PK
     º†~\9ÅÚ  ž     word/_rels/document.xml.rels­”ËnÃ EÅb_c§mU!ÙT•²­Ü xüP
 ƒ`R5_*çA¤uÁr.pïa±Þþè©øçG4‚ÕeÅ
@@ -117,7 +117,7 @@ i–´·hhÄ5ÁšI¿ÇƒÞŠ)’S9Ú†á æEXÊ™yâœPE!ô™Œ.þš6öÜSR$
 Ó¹×Í×9
 ÃÓä‘ï¦Ÿ9+ÝJ¯`B~Í(Í,ô´
 Ÿ—ë‘1³v(ŒÒá·y $||&}“¹„Ù0 rºu3¶RŠÝ{i·ƒ‘G Î„ç›äv˜ÚžM'aÐßÿB)¼ss	üeFÈñ. ÝZŽ¬Þd±é² ©kAðl=›’Ûï“};û;ôµÿ¬{k¤G°cŽuúPµƒJ…õMöùUöI†¨µgpÚ¯ïdÙ-GvÇiB+S
-¼GaÝé?²/2Á»•Kt6Ã‘¿';3¨×ËÍŸYB1§ _ü	
+¼GaÝé?²/2Á»•Kt6Ã‘¿';3¨×ËÍŸYB1§ _ü
 íex…ô½öœ4Ú6”ï’„[¤àfÞiâêÐÐk¢)Ø•Yü¢@w¬ô–E€q’<é4™I©
 ™J»YÞ•Ðdc*üydÌ,džœYSæïdL²£ñmr‰VÊg©-‰V¨ J}xëú½Ñ•b¥¼køÐ¢
 (9ðÅ·©Ò_²xŠ$»à5Çv·ÐI"3Ž¤Dz˜@rÙš['[sëP±gáI¸´œºsÄÖXdEVl:ƒïvšuœ®CöçóIrâ	_R½kÿY ¨kgþÓ~'hì4V¬Ÿg|:;
@@ -160,7 +160,7 @@ M)}qgHæŒÔ¥¯/>ËðFÉ<s&NÆL¼P
  ñ›ƒ™3b	*d¶À
 ¸à°~ÿC¶Q-¿xq÷Íáf¬wï ‡ÊKFà
 -Àh[=9„Hyá\ÿ'f	ŒÖGDë®ëB pì§eœ|IJÁýÆ
-½ 
+½
 `c2u
 ¶~Î´€q\d!"•|¹&i¯ç9´•fU°Õ»ö,È8VwŽÉ½ÊŒ)í½,€‘÷<è¡I†ºž›ÁŒS&`ããÇ|çN¦¬vº'âTZþ[Ÿíäz¢@S±DLñì,þ‹ûv^øï©çœÂ;Ù“±yËë«å,~-ª²çåñ$®QcõöóæË\'5Í[\?S\jØúL8™‰R(š›Ôæ	lÞl˜Sqúâú  Ÿ:ê8DAAC\‹àâál[.¢`uçìÓú@Êús«¬yÆÁ ÿtAÞ>§ïÏêÎ8_ÝMÆyáqþµÀçR°å.â¯.á…Ðû	\2ëžÐfÚ±84]èÜ¼+47—¤ŽçDÚšýoÝ\;5îfvàÕûŸÞÿXkn½ÿiÿýOÿøë3&!zVÈWÎwÈ,`íðÙ:ìP°ƒµ Àïû;ÝÁû+µú:üã¯;®ìùÖï–Î2Å`DÑM¦Ç~™b<0ÅïZk¼ÿáÃþØïxF|£Þd¾ÁÀbjg°õÂ»Ã@ø½1Ž/ù…H}ò
 ÛƒJƒ	C¸À>–Ž
@@ -220,11 +220,11 @@ $%Å·Þ{è­¹=ôÃú%%eK^š¤¶\Ê‰&gæ½Ç!ghûüò–'GRaÎbàw<à –ð³i>Ý\Ÿ
 U‡âDrÅ'º“pêòÉ'È-¸LÝÀó½ò“<AJŽ—åPUpôO4.3Æ	—j3•S—B9ÏÄ™APã1&X/¶×¯`x2É¢ÄY-È†DKA«¡Šûð.C®x’QÄtÉèJDŒÎÔ‹õ6š¢ã¬ÉÛDNÉúüð¸3¸’°0Ãpùé2ˆ’¥òÇ}o±uÄ>¶9+%b¶&n”šäú½Ã ‚] 1=îp^Iž‰5>mÄæ5–-ú°V‡¼¹5uœ˜3(°- Ž•–0Ñï2êlÍF©i]À¶H"Ó­¤]\v§çä
 ‰à<^‰B3¢ñ”#r³È å…‹±Äé[k#Ö\ëKrb°ltI MšZÎ‘¥´>%_ã/ãLs¼¦õâ8#éñÝÖ¦_w_ëõ×IµJÐdå.>H;`–›]ŽÁ °J¢dÓ²IwûžõuWÎn‰µ+Þ?ø/‡Š÷Ã°úà$ê¿}?T}à÷¨ï¶äâÃaõaKnŽÛ@}¯%7'ì6©Ú~KnNÏkRµƒ¶¨4©ÚaKÔ÷ÃýªÖÝzÿú\Oó¹üüãDÏåéë>ÍôÝý<øÁöNrýÂöæ/E	¦Ü›Àg~ç¿Ý?VæUßnwR:Jw6aPÞ›ßñ&-h#	õ–7lë(w+¬œ³{Èƒ‡Éƒ““w&ÿ=¹»ñÇÆÅoPK
      º†~\               _rels/PK
-    º†~\£’–æ   Î  
+    º†~\£’–æ   Î
    _rels/.rels­’ÏJ1‡_%Ì½;ÛVD¤i/RèM¤>@HfwƒÍ&S­oo(ŠVêÚC™üæË7C«CØ©WââSÔ0mZPmr>öž·ëÉ¬–‹'Ú©‰2ø\Tm‰EÃ ’ï‹(˜Ò¤L±Þt‰ƒ‘zä³±/¦'œµí-òOœ2ÕÆià›‚Ú¾gº„ºÎ[zHv(Ê™'~%*ÙpO¢á-±C÷Yn*ð¼Íìr›¿'Å@bœƒ61M2×nOå[¨º<Ör9&Æ„æ×\„¢#7®dr3º¹¦‘ÝIáŸ3_Jxò1—PK
-    º†~\Òwü·m   {      word/_rels/header1.xml.relsMŒA!E¯BºwŠ.Œ1ÃÌn`ô 
+    º†~\Òwü·m   {      word/_rels/header1.xml.relsMŒA!E¯BºwŠ.Œ1ÃÌn`ô
 V …Pb<¾,]þ¼÷þ¼~ón>Ü4qpœ,_žI‚ƒÇ};\`]æïÔ‡¡1U5#u{¯WDõ‘3éT*Ë ¯Ò2õ1[ÀJþMñdíÛÿ àòPK
-    º†~\Òwü·m   {      word/_rels/footer1.xml.relsMŒA!E¯BºwŠ.Œ1ÃÌn`ô 
+    º†~\Òwü·m   {      word/_rels/footer1.xml.relsMŒA!E¯BºwŠ.Œ1ÃÌn`ô
 V …Pb<¾,]þ¼÷þ¼~ón>Ü4qpœ,_žI‚ƒÇ};\`]æïÔ‡¡1U5#u{¯WDõ‘3éT*Ë ¯Ò2õ1[ÀJþMñdíÛÿ àòPK
     º†~\:iY  	     word/header1.xml¥–ÝnÚ0Ç_ÅÊÕv&)PÐuÚ]µ² p‡X?d›¸ÚCì	÷$³ó%S@‘lÇöùÿ±Lw,Qš
 >óüþÀ„cQ¾™y¿ÖÏ½‰÷8Ÿæa)`§ræÏ¼ÄB¨qBÒ}F±ZÄ¦ƒ"Ž)&0*‚ÁÀ-©&Z[î
@@ -246,7 +246,7 @@ n$×5Œb ObRCØŸ ÃN'ßÇ1ÿëýEû²zPK
 Â0…á«”ÙÛT"¥i7âÚEuÒihfB&-ööFàòñÃÇkº—_Š
 £8&
 Ç²‚ÉòàhÒðèo‡
-’
+’
 faB
 ;
 tms0&‡Rd€DÃœR¨•;£7RæL¹Œ½IyÆIñ8:‹W¶«GJêTUgeWIìáÇÁ×«·ô/9°ý¼“g¿‡ì©ö
@@ -260,10 +260,10 @@ PK
 wIÞIr¼ÕÂ„1#uB¡ 0¾‘v.ã³4\lŽî\V$µ ¸¹® ÷Žõ8ÌÀKìï&‘V“óóÄ"¿ #").±ðoÎ£Í¤™jkN6·¸ý`õ`÷×5ç§ƒÖÎ4yíÑ¼&–bÅ&Ÿ–æ¯3³m˜Å¨yù¸7àØ‹BGØ²w=~krzåd}#¼°Ì± Žà'¹«È¢íøxrÃà-ã˜Xžî|Vr¨yu“&Ïí’µÝ¬i’Oø¾
  5dï˜ªÈCtó,jáðŠQƒëy9~O¸d;-ÐÑ3Uï–ËÁiÚñ–Ù¾-=ÿ
 •¿[Á¹]8™øÍ_PK
-    º†~\Òwü·m   {      word/_rels/footnotes.xml.relsMŒA!E¯BºwŠ.Œ1ÃÌn`ô 
+    º†~\Òwü·m   {      word/_rels/footnotes.xml.relsMŒA!E¯BºwŠ.Œ1ÃÌn`ô
 V …Pb<¾,]þ¼÷þ¼~ón>Ü4qpœ,_žI‚ƒÇ};\`]æïÔ‡¡1U5#u{¯WDõ‘3éT*Ë ¯Ò2õ1[ÀJþMñdíÛÿ àòPK
     º†~\(Ž–à   s     word/settings.xml¥”ÁnÜ †_Åâ¾‹5UeÅ‰ÚFms¨zHû À6Z`»ûöÛëu’JÑnöÖðó3cææî¯5Y¯BÔ+Vls–)Njl*öç÷·Í'–Å(Á8TÛ«Èîno†2ª”èPÌ€±¼¨X›’/9¢UâÖj\tuÚ
-g¹«k-\ü*/òiçƒ*F}ì!²ÎþOs^!k,$ú
+g¹«k-\ü*/òiçƒ*F}ì!²ÎþOs^!k,$ú
 ·vßÝCÒOÚè´'vþqÁ¸ŠuËbs44JÊÙÐaYá”¼³äÞ‰Î*LSF”!c«ýz÷Ò(Ø.þ­KôÖ°c
 Š—õà>À@Ë
 <Å¾œEÖÌÎß&ù	GÅ)^æ\œXÐ¸&~Wiž·¸>põà›Ëšó=¸Î¯4}íwGÖø®Ï`šüüjñ23-xzV”
@@ -272,36 +272,36 @@ g¹«k-\ü*/òiçƒ*F}ì!²ÎþOs^!k,$ú
     º†~\‹†9ÄÅ  Æ     word/comments.xml¥ÔÝrâ à[q8W’XS7Ó´'íôxÛ
  €Â4ü Ñ»_R%I—N‚Gê$ß“—×ÀÃÓI4‹#5–+Yƒ|••X.÷5xû½Ü‚…uHÔ(Ikp¦<=>´VBPéìÂÒVøTæœ® ´˜QìJpl”U;·ò÷BµÛqL!1¨õ6,²üb†Œ£'ÐùldÁm	PžÁ"©õlª„]ªºK‚|ªHÚ¤IÿY\™&±tŸ&­ci›&E¯“À¤4•þâNœÿiöP óyÐKkäø o¸;{3+ƒ¸üLHä§zA¬Élá
 Eh³&AQ58Y]ç—ý|½ºÌ_?Â„™²þËÈ³Â‡n;­Úø.”´ŒkÛ×™ªù‹, ÇŸqM¸¯ÕùÄíÒ*Cº¾²¯oÚ(L­õ>_ªÀ)ñ¯ý‹æ’üg1Ï&ü#ÑOL‰ðý™!‰ðoáðà¤jFåæ Pb:ñÀÆöj@<ìÐÎá·FpÊÞádä¤…–8Âf)Eèv³È!†,‹t^¨MÏÅ¨#½¿m#¼uÐƒÆoÓ^‡c­•ó˜•ÿ¶®ímaþ0¤)€PK
-    º†~\Òwü·m   {      word/_rels/comments.xml.relsMŒA!E¯BºwŠ.Œ1ÃÌn`ô 
+    º†~\Òwü·m   {      word/_rels/comments.xml.relsMŒA!E¯BºwŠ.Œ1ÃÌn`ô
 V …Pb<¾,]þ¼÷þ¼~ón>Ü4qpœ,_žI‚ƒÇ};\`]æïÔ‡¡1U5#u{¯WDõ‘3éT*Ë ¯Ò2õ1[ÀJþMñdíÛÿ àòPK
     º†~\cí^Ö  C     word/fontTable.xmlÑÝnÂ  ðW!Ü+µ™i¬Þ,Kv¿= µD§áàÔ·­¶kâÝòÿå|l÷WpìÇ²è+¾Zfœ¯P[¬ø÷×ÇbÃEéµtèMÅo†ø~·½”5úH,¥=• *ÞÄØ–BjHZbk|ú¬1€ŒéŽd8Û…Bhe´ ël¼‰<Ë
 þ`Â+
 ÖµUæÕŒ}^ã’ˆžÛÒ ]^Ñ.tP¢Ô1¸» Òú‘Y½=A`U@Â:.S3Šz*ÅWY÷ ¬çùP(sgl†HÉ©cõ<§«'ÎÿŠ™ ¤£nf)ù0WÑee”¤f*šyE­GîÝŒ@•ŸGA\’ÒÖYZëavŸ\w°û2ØÐ»_PK
-    º†~\Òwü·m   {      word/_rels/fontTable.xml.relsMŒA!E¯BºwŠ.Œ1ÃÌn`ô 
-V …Pb<¾,]þ¼÷þ¼~ón>Ü4qpœ,_žI‚ƒÇ};\`]æïÔ‡¡1U5#u{¯WDõ‘3éT*Ë ¯Ò2õ1[ÀJþMñdíÛÿ àòPK 
-     º†~\                            word/PK 
-     º†~\            
-            #   word/_rels/PK 
-    º†~\9ÅÚ  ž               L   word/_rels/document.xml.relsPK 
-    º†~\UÉ©ßŸ<                 ‹  word/document.xmlPK 
-    º†~\%‘mïG  p               Y>  word/styles.xmlPK 
-     º†~\            	            ÍA  docProps/PK 
-    º†~\Só:  ƒ               ôA  docProps/core.xmlPK 
-    º†~\WÌ3X¯                 ]C  word/numbering.xmlPK 
-     º†~\                        <F  _rels/PK 
-    º†~\£’–æ   Î  
-             `F  _rels/.relsPK 
-    º†~\Òwü·m   {                oG  word/_rels/header1.xml.relsPK 
-    º†~\Òwü·m   {                H  word/_rels/footer1.xml.relsPK 
-    º†~\:iY  	               »H  word/header1.xmlPK 
-    º†~\bsâù                 BK  word/footer1.xmlPK 
-    º†~\­@¬v¤  µ               iM  [Content_Types].xmlPK 
-    º†~\XyÛ"’   ä                >O  docProps/custom.xmlPK 
-    º†~\âüÚ“   æ                P  docProps/app.xmlPK 
-    º†~\ÏáçÂÂ  œ               ÂP  word/footnotes.xmlPK 
-    º†~\Òwü·m   {                ´R  word/_rels/footnotes.xml.relsPK 
-    º†~\(Ž–à   s               \S  word/settings.xmlPK 
-    º†~\‹†9ÄÅ  Æ               +U  word/comments.xmlPK 
-    º†~\Òwü·m   {                W  word/_rels/comments.xml.relsPK 
-    º†~\cí^Ö  C               ÆW  word/fontTable.xmlPK 
-    º†~\Òwü·m   {                Y  word/_rels/fontTable.xml.relsPK        »Y    
+    º†~\Òwü·m   {      word/_rels/fontTable.xml.relsMŒA!E¯BºwŠ.Œ1ÃÌn`ô
+V …Pb<¾,]þ¼÷þ¼~ón>Ü4qpœ,_žI‚ƒÇ};\`]æïÔ‡¡1U5#u{¯WDõ‘3éT*Ë ¯Ò2õ1[ÀJþMñdíÛÿ àòPK
+     º†~\                            word/PK
+     º†~\
+            #   word/_rels/PK
+    º†~\9ÅÚ  ž               L   word/_rels/document.xml.relsPK
+    º†~\UÉ©ßŸ<                 ‹  word/document.xmlPK
+    º†~\%‘mïG  p               Y>  word/styles.xmlPK
+     º†~\            	            ÍA  docProps/PK
+    º†~\Só:  ƒ               ôA  docProps/core.xmlPK
+    º†~\WÌ3X¯                 ]C  word/numbering.xmlPK
+     º†~\                        <F  _rels/PK
+    º†~\£’–æ   Î
+             `F  _rels/.relsPK
+    º†~\Òwü·m   {                oG  word/_rels/header1.xml.relsPK
+    º†~\Òwü·m   {                H  word/_rels/footer1.xml.relsPK
+    º†~\:iY  	               »H  word/header1.xmlPK
+    º†~\bsâù                 BK  word/footer1.xmlPK
+    º†~\­@¬v¤  µ               iM  [Content_Types].xmlPK
+    º†~\XyÛ"’   ä                >O  docProps/custom.xmlPK
+    º†~\âüÚ“   æ                P  docProps/app.xmlPK
+    º†~\ÏáçÂÂ  œ               ÂP  word/footnotes.xmlPK
+    º†~\Òwü·m   {                ´R  word/_rels/footnotes.xml.relsPK
+    º†~\(Ž–à   s               \S  word/settings.xmlPK
+    º†~\‹†9ÄÅ  Æ               +U  word/comments.xmlPK
+    º†~\Òwü·m   {                W  word/_rels/comments.xml.relsPK
+    º†~\cí^Ö  C               ÆW  word/fontTable.xmlPK
+    º†~\Òwü·m   {                Y  word/_rels/fontTable.xml.relsPK        »Y

@@ -330,7 +330,7 @@ def _calculate_moe(
     poisson_used = poisson_ratio
 
     if specimen_type == "full_plate" and poisson_ratio is not None:
-        plate_correction_factor = 1.0 - poisson_ratio ** 2
+        plate_correction_factor = 1.0 - poisson_ratio**2
         E_plate_corrected = E_corrected * plate_correction_factor
         plate_correction_applied = True
     else:

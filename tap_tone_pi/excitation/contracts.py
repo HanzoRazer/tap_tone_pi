@@ -338,7 +338,6 @@ def create_stepped_excitation_record(
     Returns:
         SteppedExcitationRecordV1 instance
     """
-    from datetime import datetime, timezone
 
     if emitted_at_utc is None:
         emitted_at_utc = datetime.now(timezone.utc).isoformat()
@@ -398,7 +397,6 @@ def create_sweep_excitation_record(
     Returns:
         SweepExcitationRecordV1 instance
     """
-    from datetime import datetime, timezone
 
     if emitted_at_utc is None:
         emitted_at_utc = datetime.now(timezone.utc).isoformat()

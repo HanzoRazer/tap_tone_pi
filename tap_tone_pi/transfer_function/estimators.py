@@ -36,7 +36,6 @@ Coherence drops when:
 # They may appear in viewer_pack_v1 and are subject to provenance tracking.
 # See docs/ADR-0009-advisory-boundary.md
 
-
 from dataclasses import dataclass, field
 from typing import Tuple, Optional
 import numpy as np
@@ -362,7 +361,7 @@ def compute_coherence(
         min_coherence=min_coh,
         coherent_fraction=coherent_frac,
         problem_frequencies=problem_freqs,
-        coherence_band = grade,
+        coherence_band=grade,
     )
 
 

@@ -648,11 +648,7 @@ def _apply_escalations(
                 "Silence repeated; likely wrong device",
             )
         )
-        add(
-            SuggestedAction(
-                "run_setup", "Run setup wizard", "Persist selected device"
-            )
-        )
+        add(SuggestedAction("run_setup", "Run setup wizard", "Persist selected device"))
     if "Q010" in rule_ids and repeated("Q010", 3):
         add(
             SuggestedAction(

@@ -14,10 +14,8 @@ from __future__ import annotations
 
 import json
 import sys
-from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -37,6 +35,7 @@ from tap_tone_pi.calibration.storage import CalibrationData, CalibrationStatus
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _utc(days_ago: int = 0) -> str:
     """Return ISO datetime string N days ago."""
@@ -67,8 +66,8 @@ def _stale_cal(device_index: int = 0) -> CalibrationData:
 # Section 1: CalibrationGate unit tests
 # ---------------------------------------------------------------------------
 
-class TestCalibrationGateValid:
 
+class TestCalibrationGateValid:
     def test_valid_cal_is_allowed(self, monkeypatch):
         monkeypatch.setattr(
             "tap_tone_pi.calibration.gate.get_calibration_status",
@@ -99,7 +98,6 @@ class TestCalibrationGateValid:
 
 
 class TestCalibrationGateStale:
-
     def test_stale_blocked_by_default(self, monkeypatch):
         monkeypatch.setattr(
             "tap_tone_pi.calibration.gate.get_calibration_status",
@@ -114,7 +112,9 @@ class TestCalibrationGateStale:
         assert result.gate_verdict == "blocked"
         assert result.is_stale is True
         assert "BLOCKED" in result.message
-        assert "recalibrate" in result.message.lower() or "ttp calibrate" in result.message
+        assert (
+            "recalibrate" in result.message.lower() or "ttp calibrate" in result.message
+        )
 
     def test_stale_allowed_with_force(self, monkeypatch):
         monkeypatch.setattr(
@@ -146,7 +146,6 @@ class TestCalibrationGateStale:
 
 
 class TestCalibrationGateUncalibrated:
-
     def test_uncalibrated_blocked_by_default(self, monkeypatch):
         monkeypatch.setattr(
             "tap_tone_pi.calibration.gate.get_calibration_status",
@@ -204,7 +203,6 @@ class TestCalibrationGateUncalibrated:
 
 
 class TestCalibrationGateFailed:
-
     def test_failed_always_blocked(self, monkeypatch):
         monkeypatch.setattr(
             "tap_tone_pi.calibration.gate.get_calibration_status",
@@ -228,14 +226,11 @@ class TestCalibrationGateFailed:
             lambda idx: None,
         )
         # Neither force flag bypasses FAILED
-        result = enforce_calibration_gate(
-            0, allow_stale=True, allow_uncalibrated=True
-        )
+        result = enforce_calibration_gate(0, allow_stale=True, allow_uncalibrated=True)
         assert result.allowed is False
 
 
 class TestCalibrationGateHelpers:
-
     def test_to_dict_contains_required_fields(self, monkeypatch):
         monkeypatch.setattr(
             "tap_tone_pi.calibration.gate.get_calibration_status",
@@ -293,12 +288,13 @@ class TestCalibrationGateHelpers:
 # Section 2: Wolf candidates purity gate
 # ---------------------------------------------------------------------------
 
-class TestWolfCandidatesPurityGate:
 
+class TestWolfCandidatesPurityGate:
     def _get_gate_fn(self):
         """Import _validate_wolf_candidates_clean from export script."""
         try:
             import scripts.phase2.export_viewer_pack_v1 as mod
+
             return getattr(mod, "_validate_wolf_candidates_clean", None)
         except Exception:
             pytest.skip("export_viewer_pack_v1 could not be loaded")
@@ -310,17 +306,21 @@ class TestWolfCandidatesPurityGate:
             pytest.skip("_validate_wolf_candidates_clean not found")
 
         wc = tmp_path / "wolf_candidates.json"
-        wc.write_text(json.dumps({
-            "wolf_candidates": [
+        wc.write_text(
+            json.dumps(
                 {
-                    "freq_hz": 203.0,
-                    "peak_pair_idx": 0,
-                    "wsi": 0.65,
-                    "beat_frequency_hz": 8.2,
-                    "omega": 0.041,
+                    "wolf_candidates": [
+                        {
+                            "freq_hz": 203.0,
+                            "peak_pair_idx": 0,
+                            "wsi": 0.65,
+                            "beat_frequency_hz": 8.2,
+                            "omega": 0.041,
+                        }
+                    ]
                 }
-            ]
-        }))
+            )
+        )
         fn(wc)  # must not raise
 
     def test_advisory_field_at_root_raises(self, tmp_path):
@@ -330,10 +330,14 @@ class TestWolfCandidatesPurityGate:
 
         wc = tmp_path / "wolf_candidates.json"
         # mitigation_type is a WolfAdvisor field
-        wc.write_text(json.dumps({
-            "wolf_candidates": [{"freq_hz": 203.0}],
-            "mitigation_type": "add_mass",  # ← prohibited
-        }))
+        wc.write_text(
+            json.dumps(
+                {
+                    "wolf_candidates": [{"freq_hz": 203.0}],
+                    "mitigation_type": "add_mass",  # ← prohibited
+                }
+            )
+        )
         with pytest.raises(ValueError, match="advisory fields"):
             fn(wc)
 
@@ -343,27 +347,34 @@ class TestWolfCandidatesPurityGate:
             pytest.skip("_validate_wolf_candidates_clean not found")
 
         wc = tmp_path / "wolf_candidates.json"
-        wc.write_text(json.dumps({
-            "wolf_candidates": [
+        wc.write_text(
+            json.dumps(
                 {
-                    "freq_hz": 203.0,
-                    "recommendations": [{"type": "add_mass"}],  # ← prohibited
+                    "wolf_candidates": [
+                        {
+                            "freq_hz": 203.0,
+                            "recommendations": [{"type": "add_mass"}],  # ← prohibited
+                        }
+                    ],
                 }
-            ],
-        }))
+            )
+        )
         with pytest.raises(ValueError, match="advisory fields"):
             fn(wc)
 
-    @pytest.mark.parametrize("bad_field", [
-        "mitigation_suggestions",
-        "recommendations",
-        "advisor_output",
-        "mitigation_type",
-        "recommended_action",
-        "confidence_level",
-        "wolf_directive",
-        "directive_id",
-    ])
+    @pytest.mark.parametrize(
+        "bad_field",
+        [
+            "mitigation_suggestions",
+            "recommendations",
+            "advisor_output",
+            "mitigation_type",
+            "recommended_action",
+            "confidence_level",
+            "wolf_directive",
+            "directive_id",
+        ],
+    )
     def test_all_prohibited_fields_caught(self, tmp_path, bad_field):
         fn = self._get_gate_fn()
         if fn is None:
@@ -411,6 +422,7 @@ class TestWolfCandidatesPurityGate:
 try:
     from fastapi.testclient import TestClient
     from tap_tone_pi.server.app import create_app
+
     FASTAPI_OK = True
 except ImportError:
     FASTAPI_OK = False
@@ -453,7 +465,6 @@ def fake_session(tmp_path: Path) -> Path:
 
 @pytest.mark.skipif(not FASTAPI_OK, reason="fastapi not installed")
 class TestExportEndpoint:
-
     def test_export_missing_session_returns_404(self, client, tmp_path):
         resp = client.get(
             "/export/session_nonexistent",
@@ -489,7 +500,9 @@ class TestExportEndpoint:
         assert "pack_path" in body
         assert body["status"] == "ok"
 
-    def test_export_wolf_purity_violation_returns_422(self, client, fake_session, tmp_path):
+    def test_export_wolf_purity_violation_returns_422(
+        self, client, fake_session, tmp_path
+    ):
         """Wolf advisory contamination must return HTTP 422."""
         out_dir = tmp_path / "exports"
         out_dir.mkdir()
@@ -510,8 +523,10 @@ class TestExportEndpoint:
             )
 
         assert resp.status_code == 422
-        assert "advisory" in resp.json()["detail"].lower() or \
-               "wolf" in resp.json()["detail"].lower()
+        assert (
+            "advisory" in resp.json()["detail"].lower()
+            or "wolf" in resp.json()["detail"].lower()
+        )
 
     def test_export_file_not_found_returns_404(self, client, tmp_path):
         with patch(
@@ -562,6 +577,7 @@ class TestExportEndpoint:
 # Section 4: Phase 2 CLI calibration gate integration
 # ---------------------------------------------------------------------------
 
+
 class TestPhase2CalibrationGateCLI:
     """
     Test that _run_new() honours the gate result without calling real hardware.
@@ -569,8 +585,6 @@ class TestPhase2CalibrationGateCLI:
 
     def _run_new(self, monkeypatch, gate_allowed: bool, force_uncal: bool = False):
         """Call _run_new() with a mocked gate result and a minimal args object."""
-        from types import SimpleNamespace
-        import tap_tone_pi.cli.phase2_cmd as cmd
 
         # Mock the gate
         monkeypatch.setattr(

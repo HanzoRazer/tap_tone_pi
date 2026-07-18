@@ -11,12 +11,9 @@ Tests cover:
 """
 
 import pytest
-import math
 
 from tap_tone_pi.core.repeatability import (
-    RepeatabilityEvidenceV1,
     RepeatabilityScoreWeights,
-    MeasurementValidityEnvelopeV1,
     ThresholdResult,
     compute_repeatability_evidence,
     compute_repeatability_score,
@@ -163,7 +160,9 @@ class TestRepeatabilityScore:
 
         # Scores should be monotonically decreasing
         for i in range(len(scores) - 1):
-            assert scores[i] >= scores[i + 1], f"score[{i}]={scores[i]} < score[{i+1}]={scores[i+1]}"
+            assert scores[i] >= scores[i + 1], (
+                f"score[{i}]={scores[i]} < score[{i + 1}]={scores[i + 1]}"
+            )
 
     def test_custom_weights(self):
         """Custom weights should affect score computation."""

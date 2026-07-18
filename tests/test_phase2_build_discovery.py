@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
@@ -182,7 +181,10 @@ class TestDiscoverySilentWhenDisabled:
     """Tests for discovery opt-out."""
 
     def test_discovery_silent_when_disabled(
-        self, widget: Phase2ResultsWidget, session: Phase2Session, build_db: BuildDatabase
+        self,
+        widget: Phase2ResultsWidget,
+        session: Phase2Session,
+        build_db: BuildDatabase,
     ):
         """When auto-discover is disabled, no build is discovered."""
         widget.set_auto_discover(False)
@@ -209,7 +211,11 @@ class TestDiscoverySilentWhenNoBuildFile:
     """Tests for missing build records."""
 
     def test_discovery_silent_when_no_build_file(
-        self, widget: Phase2ResultsWidget, session: Phase2Session, tmp_path: Path, monkeypatch
+        self,
+        widget: Phase2ResultsWidget,
+        session: Phase2Session,
+        tmp_path: Path,
+        monkeypatch,
     ):
         """When build file doesn't exist, discovery is silent."""
         monkeypatch.setenv("TTP_BUILDS_DB_PATH", str(tmp_path / "missing.json"))
@@ -223,7 +229,10 @@ class TestDiscoverySuccess:
     """Tests for successful build discovery."""
 
     def test_discovery_success(
-        self, widget: Phase2ResultsWidget, session: Phase2Session, build_db: BuildDatabase
+        self,
+        widget: Phase2ResultsWidget,
+        session: Phase2Session,
+        build_db: BuildDatabase,
     ):
         """Discovery populates _discovered_build on success."""
         widget.set_session(session)
@@ -233,7 +242,10 @@ class TestDiscoverySuccess:
         assert widget._discovered_build.design_name == "Carlos Jumbo"
 
     def test_discovery_updates_status_label(
-        self, widget: Phase2ResultsWidget, session: Phase2Session, build_db: BuildDatabase
+        self,
+        widget: Phase2ResultsWidget,
+        session: Phase2Session,
+        build_db: BuildDatabase,
     ):
         """Discovery updates build label with build info."""
         widget.set_session(session)
@@ -247,7 +259,11 @@ class TestDiscoveryHandlesCorruptBuildFile:
     """Tests for corrupt build records."""
 
     def test_discovery_handles_corrupt_build_file(
-        self, widget: Phase2ResultsWidget, session: Phase2Session, tmp_path: Path, monkeypatch
+        self,
+        widget: Phase2ResultsWidget,
+        session: Phase2Session,
+        tmp_path: Path,
+        monkeypatch,
     ):
         """Corrupt build file doesn't crash the widget."""
         db_path = tmp_path / "corrupt_builds.json"
@@ -298,7 +314,10 @@ class TestExistingBehaviorUnchanged:
     """Regression tests for existing behavior."""
 
     def test_existing_load_session_behavior_unchanged(
-        self, widget: Phase2ResultsWidget, session: Phase2Session, build_db: BuildDatabase
+        self,
+        widget: Phase2ResultsWidget,
+        session: Phase2Session,
+        build_db: BuildDatabase,
     ):
         """Widget still loads session and comparison correctly."""
         widget.set_session(session)
@@ -314,7 +333,10 @@ class TestHasDiscoveredBuild:
     """Tests for has_discovered_build method."""
 
     def test_has_discovered_build_true(
-        self, widget: Phase2ResultsWidget, session: Phase2Session, build_db: BuildDatabase
+        self,
+        widget: Phase2ResultsWidget,
+        session: Phase2Session,
+        build_db: BuildDatabase,
     ):
         """has_discovered_build returns True when build is found."""
         widget.set_session(session)

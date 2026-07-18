@@ -110,14 +110,14 @@ for path in schema_changes:
     if not sid:
         errors.append(f"{path}: not referenced in HEAD registry; add an entry to contracts/schema_registry.json.")
         continue
-    
+
     head_entry = head_by_id.get(sid, {})
     head_ver = head_entry.get("version") if isinstance(head_entry, dict) else None
-    
+
     base_sid = base_by_path.get(path, sid)
     base_entry = base_by_id.get(base_sid, {})
     base_ver = base_entry.get("version") if isinstance(base_entry, dict) else None
-    
+
     if not head_ver:
         errors.append(f"{path}: schema_id '{sid}' has no 'version' in HEAD registry.")
         continue

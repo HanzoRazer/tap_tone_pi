@@ -8,13 +8,8 @@ Tests cover:
 - Constitutional semantics
 """
 
-import pytest
 import json
 
-from tap_tone_pi.provenance.experiment_contracts import (
-    ExperimentCampaignV1,
-    ExperimentRevisionV1,
-)
 from tap_tone_pi.provenance.measurement_links import MeasurementLineageV1
 from tap_tone_pi.provenance.lineage import (
     create_campaign,

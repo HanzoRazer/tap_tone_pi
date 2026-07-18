@@ -11,7 +11,6 @@ Validates:
 
 from __future__ import annotations
 
-import pytest
 
 from tap_tone_pi.agentic.contracts.advisory_authority import (
     AuthorityClass,
@@ -167,7 +166,9 @@ class TestPredefinedAuthorities:
 
     def test_age_attention_authority_is_decision_support(self):
         """AGE_ATTENTION_AUTHORITY should be DECISION_SUPPORT."""
-        assert AGE_ATTENTION_AUTHORITY.authority_class == AuthorityClass.DECISION_SUPPORT
+        assert (
+            AGE_ATTENTION_AUTHORITY.authority_class == AuthorityClass.DECISION_SUPPORT
+        )
 
     def test_age_attention_authority_cannot_establish_truth(self):
         """AGE_ATTENTION_AUTHORITY cannot establish truth."""

@@ -29,7 +29,6 @@ Usage:
 # Operator expertise is required to interpret recommendations.
 # See docs/ADR-0009-advisory-boundary.md
 
-
 from __future__ import annotations
 
 from dataclasses import dataclass

@@ -57,9 +57,7 @@ class SourceCharacterizationRecordV1:
         notes: Additional notes
     """
 
-    schema_version: str = field(
-        default="source_characterization_record_v1", init=False
-    )
+    schema_version: str = field(default="source_characterization_record_v1", init=False)
     characterization_id: str = ""
     output_device_name: str = ""
     amplifier_model: Optional[str] = None

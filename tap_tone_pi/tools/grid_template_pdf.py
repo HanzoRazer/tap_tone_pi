@@ -22,7 +22,6 @@ CLI:
 from __future__ import annotations
 
 import json
-import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Literal
@@ -33,6 +32,7 @@ try:
     from reportlab.lib.units import mm, inch
     from reportlab.pdfgen import canvas
     from reportlab.lib.colors import black, gray, lightgrey, red
+
     HAS_REPORTLAB = True
 except ImportError:
     HAS_REPORTLAB = False
@@ -41,6 +41,7 @@ except ImportError:
 @dataclass
 class GridPoint:
     """Point in the measurement grid."""
+
     id: str
     x: float  # mm from origin
     y: float  # mm from origin
@@ -49,6 +50,7 @@ class GridPoint:
 @dataclass
 class Grid:
     """Measurement grid definition."""
+
     units: str  # "mm" or "inch"
     origin: str  # "center", "corner", etc.
     points: list[GridPoint]
@@ -116,10 +118,7 @@ def load_grid(path: Path) -> Grid:
     with open(path) as f:
         data = json.load(f)
 
-    points = [
-        GridPoint(id=p["id"], x=p["x"], y=p["y"])
-        for p in data.get("points", [])
-    ]
+    points = [GridPoint(id=p["id"], x=p["x"], y=p["y"]) for p in data.get("points", [])]
 
     return Grid(
         units=data.get("units", "mm"),
@@ -332,7 +331,6 @@ def generate_grid_pdf(
 
 def add_grid_template_subcommand(subparsers) -> None:
     """Add grid-template subcommand to CLI."""
-    import argparse
 
     parser = subparsers.add_parser(
         "grid-template",
@@ -341,21 +339,24 @@ def add_grid_template_subcommand(subparsers) -> None:
     )
 
     parser.add_argument(
-        "--grid", "-g",
+        "--grid",
+        "-g",
         type=str,
         required=True,
         help="Path to grid JSON file",
     )
 
     parser.add_argument(
-        "--out", "-o",
+        "--out",
+        "-o",
         type=str,
         default="grid_template.pdf",
         help="Output PDF path (default: grid_template.pdf)",
     )
 
     parser.add_argument(
-        "--scale", "-s",
+        "--scale",
+        "-s",
         type=float,
         default=1.0,
         help="Scale factor (1.0 = actual size, 0.5 = half size)",
@@ -392,7 +393,6 @@ def add_grid_template_subcommand(subparsers) -> None:
 
 def cmd_grid_template(args) -> int:
     """CLI handler for grid-template command."""
-    from pathlib import Path
 
     config = TemplateConfig(
         page_size=args.page,

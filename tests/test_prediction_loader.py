@@ -11,7 +11,6 @@ DO-006 Stage E acceptance tests:
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
@@ -29,7 +28,6 @@ from tap_tone_pi.materials import (
     MeasuredSummary,
     PredictedValues,
     Residuals,
-    WoodSelection,
 )
 
 

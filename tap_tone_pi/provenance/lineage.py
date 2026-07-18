@@ -248,9 +248,7 @@ def link_measurement_to_context(
     """
     revision_id = revision.revision_id if revision else None
     campaign_id = (
-        campaign.campaign_id if campaign
-        else revision.campaign_id if revision
-        else None
+        campaign.campaign_id if campaign else revision.campaign_id if revision else None
     )
     fixture_id = fixture.fixture_id if fixture else None
     environment_id = environment.environment_id if environment else None
