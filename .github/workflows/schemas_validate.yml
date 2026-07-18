@@ -13,8 +13,8 @@ jobs:
           python - <<'PY'
           import json
           from jsonschema import validate
-          tap = json.load(open('examples/measurement/tap_tone.json')); validate(tap, json.load(open('schemas/measurement/tap_peaks.schema.json')))
-          moe = json.load(open('examples/measurement/bending_test.json')); validate(moe, json.load(open('schemas/measurement/moe_result.schema.json')))
-          man = json.load(open('examples/measurement/manifest.json')); validate(man, json.load(open('schemas/measurement/manifest.schema.json')))
+          tap = json.load(open('examples/measurement/tap_peaks.json')); validate(tap, json.load(open('contracts/schemas/tap_peaks.schema.json')))
+          moe = json.load(open('examples/measurement/moe_result.json')); validate(moe, json.load(open('contracts/schemas/moe_result.schema.json')))
+          man = json.load(open('examples/measurement/manifest.json')); validate(man, json.load(open('contracts/schemas/manifest.schema.json')))
           print("All measurement examples validate.")
           PY
