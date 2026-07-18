@@ -282,7 +282,7 @@ The canonical manifest currently registers **no entries**: a consolidated
 Laboratory Manual does not yet exist as a document, and DO-97 prohibited
 fabricating one. The viewer shows a controlled empty state.
 
-**DO-97G corrective status (verification pending).** An independent review of
+**DO-97G corrective status (✅ Complete).** An independent review of
 DO-97 found contract, resource, GUI, and packaging-verification gaps. DO-97G
 hardens them: `applies_to` rejects scalar strings/bytes; supersession is enforced
 complete and acyclic; the private `_coerce_status` coupling is replaced by the
@@ -291,9 +291,13 @@ public `parse_manual_status`; packaged-resource access is `Traversable`-native
 synthesized filesystem path, while `resolve_manual_entry_path` survives only as a
 truthful filesystem-only compatibility shim; and the desktop viewer distinguishes
 empty / unavailable / invalid-manifest / missing-document states. A genuine
-wheel-build-and-isolated-install test proves the manual resources ship. The two
-milestone rows above are marked **⚠ verification pending** until CI and final
-adjudication confirm the correction commit.
+wheel-build-and-isolated-install test proves the manual resources ship.
+
+Verified through corrective commit
+`c7c22741bfc087a8acaee34254c4ad9b4b985960` (verification accepted 2026-07-17).
+Comparison against base `7b555ee74a521d8086e4182d16c726ca2015baef` confirmed no
+new CI failures attributable to DO-97G. Remaining failing CI jobs are documented
+repository baseline conditions outside DO-97 scope.
 
 Scope note: this packages the Laboratory Manual **resources** inside the
 `tap_tone_pi` distribution. Full `analyzer/` desktop-installer packaging remains
@@ -337,7 +341,7 @@ export_viewer_pack_v1.py` → `viewer_pack_v1`.
 | DO-93 | Stepped & sweep excitation | ✅ |
 | DO-94 | Luthiery formula target mapping | ✅ |
 | DO-95 | Formula validation & error-detection envelope | ✅ |
-| DO-97 | Laboratory Manual packaging & desktop access | ⚠ verification pending |
+| DO-97 | Laboratory Manual packaging & desktop access | ✅ Complete |
 | — | Acoustic balance residual coupling (research, deferred) | ✅ note only |
 
 ---

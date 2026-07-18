@@ -1,41 +1,40 @@
 # Active Dev Order
 
-**Current:** DO-97G — Laboratory Manual corrective verification
-**Status:** verification pending (CI + final adjudication)
-**Previous:** DO-97 — Laboratory Manual Packaging & Desktop Access
+**Current:** DO-97 — COMPLETE
+**Previous:** DO-95 — Formula Validation & Error Detection Envelope
 
-> **DO-97G status:** DO-97G implementation complete locally; verification pending
-> CI and final adjudication. An independent review of DO-97 found contract,
-> resource, GUI, and packaging-verification gaps; DO-97G is the single correction
-> commit that closes them without redesigning the feature or merging PR #9. The
-> six original DO-97 commits are untouched. DO-97 is **not** marked complete —
-> the milestone row in `docs/ARCHITECTURE_BASELINE_M4.md` remains
-> **⚠ verification pending** until CI and final review confirm the correction.
+> **DO-97 — COMPLETE**
 >
-> **Corrections:** reject scalar `applies_to`; enforce complete + acyclic
-> supersession; replace private `_coerce_status` with public `parse_manual_status`;
-> `Traversable`-native resource access (`resolve_manual_entry_resource`) with
-> `resolve_manual_entry_path` reduced to a truthful filesystem-only shim; desktop
-> viewer distinguishes empty / unavailable / invalid-manifest / missing-document
-> states and cannot crash on a bad manifest; genuine wheel-build + isolated-install
-> packaging test asserting the import origin is the installed wheel, not the checkout.
+> Final corrective commit:
+> `c7c22741bfc087a8acaee34254c4ad9b4b985960`
 >
-> **Local validation (2026-07-17):**
-> - Focused tests: `tests/test_laboratory_manual_registry.py` (74), `..._view.py` (11),
->   `test_manual_packaging.py` (5) — all pass.
-> - Ruff (touched files): clean. Compileall: pass.
-> - Boundary checks: `check_advisory_boundary.py --strict` exit 0;
->   `check_boundary_imports.py --preset analyzer` exit 0;
->   `--preset analyzer_isolation --root analyzer` exit 0.
-> - Full suite: 3308 passed, 2 failed, 4 skipped, 1 xfailed. The 2 failures
->   (`scripts/phase2/tests/test_validate_viewer_pack_v1_real_sessions.py`) are
->   pre-existing baseline failures — they reproduce on base with DO-97G changes
->   stashed, concern viewer-pack real-session fixture data (`manifest.contents`
->   missing `bending`), and touch no DO-97 file. Not repaired here (out of scope).
-> - PR #9 remains open and unmerged; branch pushed without history rewrite.
+> **Verification summary**
+> - Focused verification passed (`tests/test_laboratory_manual_registry.py`,
+>   `tests/test_laboratory_manual_view.py`, `tests/test_manual_packaging.py`).
+> - Wheel packaging verified (real build + isolated `--target` install).
+> - Installed-resource verification passed (import origin is the installed wheel,
+>   not the checkout; packaged manifest + README load via the public registry API).
+> - Boundary validation passed (advisory-boundary + analyzer-isolation checks).
+> - Compile validation passed.
+> - Ruff checks on touched files passed.
 >
-> Incidental: removed one pre-existing unused import (`QDockWidget`) from the
-> touched `analyzer/main_window.py` to keep the file lint-clean.
+> Comparison against base commit
+> `7b555ee74a521d8086e4182d16c726ca2015baef`
+> confirmed that DO-97G introduced no new CI failures. Repository-wide CI failures
+> remain and are tracked separately as baseline conditions (they reproduce on base
+> and touch no DO-97 file).
+>
+> **Final adjudication:** COMPLETE WITH DOCUMENTED BASELINE FAILURES.
+>
+> The corrective work is a single commit (`c7c2274`) on top of the six original
+> DO-97 commits (97A–97F); history was not rewritten. Corrections delivered:
+> reject scalar `applies_to`; enforce complete + acyclic supersession; replace
+> private `_coerce_status` with public `parse_manual_status`; `Traversable`-native
+> resource access (`resolve_manual_entry_resource`) with `resolve_manual_entry_path`
+> reduced to a truthful filesystem-only shim; desktop viewer distinguishes
+> empty / unavailable / invalid-manifest / missing-document states and cannot crash
+> on a bad manifest. Production code is frozen at `c7c2274`; PR #9 is ready for
+> final merge review.
 
 > **DO-97 note:** the handoff listed a DO-96 "Laboratory manifest and registry"
 > and an existing `tap_tone_pi/acoustic_lab/` package as dependencies. Neither
