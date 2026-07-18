@@ -15,6 +15,7 @@ Or via CLI:
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, List, Dict
@@ -30,6 +31,33 @@ except ImportError:
     # Stub for import without fastapi
     FastAPI = None
     BaseModel = object
+
+
+# --- Path helpers ---
+
+_CWD = Path(os.getcwd()).resolve()
+
+
+def _safe_directory(directory: str) -> Path:
+    """Resolve *directory* to an absolute path and reject traversal attempts.
+
+    Only paths that resolve inside the current working directory (or its
+    descendants) are permitted.  Absolute paths that happen to fall within
+    the working tree are accepted; paths that would escape it raise
+    HTTPException 400.
+    """
+    candidate = Path(directory)
+    if not candidate.is_absolute():
+        candidate = _CWD / candidate
+    resolved = candidate.resolve()
+    try:
+        resolved.relative_to(_CWD)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Directory '{directory}' is outside the working directory.",
+        )
+    return resolved
 
 
 # --- Pydantic Models ---
@@ -226,7 +254,7 @@ def create_app() -> "FastAPI":
         directory: str = Query(default="config/grids", description="Grid directory"),
     ):
         """List available measurement grids."""
-        grid_dir = Path(directory)
+        grid_dir = _safe_directory(directory)
 
         if not grid_dir.exists():
             return []
@@ -265,7 +293,7 @@ def create_app() -> "FastAPI":
         ),
     ):
         """List Phase 2 capture sessions."""
-        sessions_dir = Path(directory)
+        sessions_dir = _safe_directory(directory)
 
         if not sessions_dir.exists():
             return []
