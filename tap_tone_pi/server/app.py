@@ -136,6 +136,28 @@ def create_app() -> "FastAPI":
         redoc_url="/redoc",
     )
 
+    # --- Path validation helper ---
+
+    _CWD = Path.cwd().resolve()
+
+    def _safe_directory(directory: str) -> Path:
+        """Resolve a user-supplied directory path.
+
+        Absolute paths are resolved as-is.  Relative paths are resolved
+        relative to CWD and must stay within the CWD subtree to prevent
+        directory-traversal attacks (e.g. ``../../etc/passwd``).
+        """
+        p = Path(directory)
+        if p.is_absolute():
+            return p.resolve()
+        resolved = (_CWD / directory).resolve()
+        if not str(resolved).startswith(str(_CWD)):
+            raise HTTPException(
+                status_code=400,
+                detail="Relative directory must be within the working directory.",
+            )
+        return resolved
+
     # --- Health & Info ---
 
     @app.get("/health", response_model=HealthResponse, tags=["System"])
@@ -219,7 +241,7 @@ def create_app() -> "FastAPI":
         directory: str = Query(default="config/grids", description="Grid directory")
     ):
         """List available measurement grids."""
-        grid_dir = Path(directory)
+        grid_dir = _safe_directory(directory)
 
         if not grid_dir.exists():
             return []
@@ -254,7 +276,7 @@ def create_app() -> "FastAPI":
         directory: str = Query(default="./runs_phase2", description="Sessions directory")
     ):
         """List Phase 2 capture sessions."""
-        sessions_dir = Path(directory)
+        sessions_dir = _safe_directory(directory)
 
         if not sessions_dir.exists():
             return []
