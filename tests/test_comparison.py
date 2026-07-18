@@ -175,7 +175,7 @@ class TestPerfectMatch:
             "A4": make_mock_spectrum("A4", freq_axis, 1.0, 85.0),
         }
 
-        result = compare_mode(predicted, measured)
+        _result = compare_mode(predicted, measured)
 
         # Residuals may not be exactly zero because measured doesn't preserve sign
         # but the magnitudes should match after normalization

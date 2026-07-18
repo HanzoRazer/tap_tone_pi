@@ -201,7 +201,7 @@ def search_species(query: str) -> list[str]:
     return sorted(set(results))
 
 
-from tap_tone_pi.materials.wood_db import (
+from tap_tone_pi.materials.wood_db import (  # noqa: E402
     DuplicateFlitchError,
     FlitchNotFoundError,
     FlitchRecord,
@@ -217,7 +217,7 @@ from tap_tone_pi.materials.wood_db import (
     validate_flitch,
 )
 
-from tap_tone_pi.materials.build_record import (
+from tap_tone_pi.materials.build_record import (  # noqa: E402
     AsBuiltDimensions,
     BraceDimension,
     BuildDatabase,

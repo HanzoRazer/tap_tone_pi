@@ -87,7 +87,6 @@ def scan_for_advisory_vocab(filepath: Path) -> set[str]:
     found = set()
     for term in ADVISORY_VOCABULARY:
         if term in content:
-            in_exclude_context = False
             for exc in EXCLUDE_PATTERNS:
                 if exc in content[:500]:
                     pass

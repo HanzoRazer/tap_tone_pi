@@ -240,7 +240,7 @@ class LimitOverlay:
         try:
             y_min, y_max = self._ax.get_ylim()
         except Exception:
-            y_min, y_max = 1e-6, 10.0
+            _y_min, _y_max = 1e-6, 10.0
 
         for region in self._mask.regions:
             patch = self._ax.axvspan(

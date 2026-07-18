@@ -228,7 +228,7 @@ class GridDisplay:
             captured = stats["captured"]
             warnings = stats["warning"]
             failed = stats["failed"]
-            pending = stats["pending"]
+            _pending = stats["pending"]
 
             pct = (captured + warnings) / total * 100 if total > 0 else 0
 

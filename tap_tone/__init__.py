@@ -26,4 +26,4 @@ warnings.warn(
 
 # Re-export tap_tone_pi for backward compatibility
 # This allows `from tap_tone import X` to work (with warning)
-from tap_tone_pi import *  # noqa: F401, F403
+from tap_tone_pi import *  # noqa: F401, F403, E402

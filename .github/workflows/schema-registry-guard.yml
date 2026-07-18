@@ -47,97 +47,97 @@ jobs:
 
           # Helper: run a Python guard inline
           python - << 'PY'
-import json, subprocess, sys, os
-BASE = os.environ.get("BASE_SHA")
+          import json, subprocess, sys, os
+          BASE = os.environ.get("BASE_SHA")
 
-def git_show(sha, path):
-    try:
-        return subprocess.check_output(["git","show", f"{sha}:{path}"], text=True)
-    except subprocess.CalledProcessError:
-        return None
+          def git_show(sha, path):
+              try:
+                  return subprocess.check_output(["git","show", f"{sha}:{path}"], text=True)
+              except subprocess.CalledProcessError:
+                  return None
 
-def registry_map(text):
-    data = json.loads(text)
-    schemas = data.get("schemas", {})
-    # Handle both dict and list formats
-    if isinstance(schemas, dict):
-        by_id = schemas
-        by_path = {}
-        for sid, entry in schemas.items():
-            if "path" in entry:
-                by_path[entry["path"]] = sid
-            elif "file" in entry:
-                by_path[entry["file"]] = sid
-    else:
-        by_id = { e["schema_id"]: e for e in schemas }
-        by_path = {}
-        for e in schemas:
-            by_path[e.get("file", e.get("path", ""))] = e["schema_id"]
-    return by_id, by_path
+          def registry_map(text):
+              data = json.loads(text)
+              schemas = data.get("schemas", {})
+              # Handle both dict and list formats
+              if isinstance(schemas, dict):
+                  by_id = schemas
+                  by_path = {}
+                  for sid, entry in schemas.items():
+                      if "path" in entry:
+                          by_path[entry["path"]] = sid
+                      elif "file" in entry:
+                          by_path[entry["file"]] = sid
+              else:
+                  by_id = { e["schema_id"]: e for e in schemas }
+                  by_path = {}
+                  for e in schemas:
+                      by_path[e.get("file", e.get("path", ""))] = e["schema_id"]
+              return by_id, by_path
 
-# Load HEAD registry
-with open("contracts/schema_registry.json","r",encoding="utf-8") as f:
-    head_reg_text = f.read()
-head_by_id, head_by_path = registry_map(head_reg_text)
+          # Load HEAD registry
+          with open("contracts/schema_registry.json","r",encoding="utf-8") as f:
+              head_reg_text = f.read()
+          head_by_id, head_by_path = registry_map(head_reg_text)
 
-# Load BASE registry
-base_reg_text = git_show(BASE, "contracts/schema_registry.json")
-if not base_reg_text:
-    print("❌ Could not load base contracts/schema_registry.json; ensure it exists on base.", file=sys.stderr)
-    sys.exit(1)
-base_by_id, base_by_path = registry_map(base_reg_text)
+          # Load BASE registry
+          base_reg_text = git_show(BASE, "contracts/schema_registry.json")
+          if not base_reg_text:
+              print("❌ Could not load base contracts/schema_registry.json; ensure it exists on base.", file=sys.stderr)
+              sys.exit(1)
+          base_by_id, base_by_path = registry_map(base_reg_text)
 
-# Get changed schema files
-changed = subprocess.check_output(["git","diff","--name-only", f"{BASE}...HEAD"], text=True).splitlines()
-schema_changes = [p for p in changed if p.startswith("contracts/schemas/") and p.endswith(".schema.json")]
+          # Get changed schema files
+          changed = subprocess.check_output(["git","diff","--name-only", f"{BASE}...HEAD"], text=True).splitlines()
+          schema_changes = [p for p in changed if p.startswith("contracts/schemas/") and p.endswith(".schema.json")]
 
-errors = []
+          errors = []
 
-# Sanity: registry must also be part of the diff when schemas change
-if "contracts/schema_registry.json" not in changed:
-    errors.append("contracts/schemas/*.schema.json changed but contracts/schema_registry.json was NOT modified.")
+          # Sanity: registry must also be part of the diff when schemas change
+          if "contracts/schema_registry.json" not in changed:
+              errors.append("contracts/schemas/*.schema.json changed but contracts/schema_registry.json was NOT modified.")
 
-for path in schema_changes:
-    # Resolve schema_id by path in HEAD registry (preferred)
-    sid = head_by_path.get(path)
-    if not sid:
-        # Fallback: try to resolve by filename only
-        fname = path.split("/")[-1]
-        for p, s in head_by_path.items():
-            if p.endswith(fname):
-                sid = s
-                break
-    if not sid:
-        errors.append(f"{path}: not referenced in HEAD registry; add an entry to contracts/schema_registry.json.")
-        continue
-    
-    head_entry = head_by_id.get(sid, {})
-    head_ver = head_entry.get("version") if isinstance(head_entry, dict) else None
-    
-    base_sid = base_by_path.get(path, sid)
-    base_entry = base_by_id.get(base_sid, {})
-    base_ver = base_entry.get("version") if isinstance(base_entry, dict) else None
-    
-    if not head_ver:
-        errors.append(f"{path}: schema_id '{sid}' has no 'version' in HEAD registry.")
-        continue
-    if not base_ver:
-        # New schema: registry must contain an entry; head_ver must exist (already checked)
-        continue
-    if head_ver == base_ver:
-        errors.append(f"{path}: version NOT bumped in registry for schema_id '{sid}' (still {head_ver}).")
+          for path in schema_changes:
+              # Resolve schema_id by path in HEAD registry (preferred)
+              sid = head_by_path.get(path)
+              if not sid:
+                  # Fallback: try to resolve by filename only
+                  fname = path.split("/")[-1]
+                  for p, s in head_by_path.items():
+                      if p.endswith(fname):
+                          sid = s
+                          break
+              if not sid:
+                  errors.append(f"{path}: not referenced in HEAD registry; add an entry to contracts/schema_registry.json.")
+                  continue
 
-if errors:
-    print("❌ Schema registry guard failed:")
-    for e in errors:
-        print(" - " + e)
-    print("\nFix:")
-    print(" • Bump the version for the affected schema_id(s) in contracts/schema_registry.json (semver).")
-    print(" • Ensure contracts/schema_registry.json is part of this PR.")
-    sys.exit(1)
-else:
-    print("✅ Schema registry guard passed.")
-    sys.exit(0)
-PY
+              head_entry = head_by_id.get(sid, {})
+              head_ver = head_entry.get("version") if isinstance(head_entry, dict) else None
+
+              base_sid = base_by_path.get(path, sid)
+              base_entry = base_by_id.get(base_sid, {})
+              base_ver = base_entry.get("version") if isinstance(base_entry, dict) else None
+
+              if not head_ver:
+                  errors.append(f"{path}: schema_id '{sid}' has no 'version' in HEAD registry.")
+                  continue
+              if not base_ver:
+                  # New schema: registry must contain an entry; head_ver must exist (already checked)
+                  continue
+              if head_ver == base_ver:
+                  errors.append(f"{path}: version NOT bumped in registry for schema_id '{sid}' (still {head_ver}).")
+
+          if errors:
+              print("❌ Schema registry guard failed:")
+              for e in errors:
+                  print(" - " + e)
+              print("\nFix:")
+              print(" • Bump the version for the affected schema_id(s) in contracts/schema_registry.json (semver).")
+              print(" • Ensure contracts/schema_registry.json is part of this PR.")
+              sys.exit(1)
+          else:
+              print("✅ Schema registry guard passed.")
+              sys.exit(0)
+          PY
         env:
           BASE_SHA: ${{ steps.base.outputs.sha }}

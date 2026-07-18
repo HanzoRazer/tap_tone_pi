@@ -36,8 +36,8 @@ except ImportError:
 try:
     from tap_tone_pi.server.app import (
         get_calibration_status,
-        load_calibration,
-        is_calibration_stale,
+        load_calibration,  # noqa: F401
+        is_calibration_stale,  # noqa: F401
     )
 
     HAS_CALIBRATION = get_calibration_status is not None

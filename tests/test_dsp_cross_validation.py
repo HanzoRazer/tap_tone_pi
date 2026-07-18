@@ -47,7 +47,7 @@ sys.path.insert(0, str(REPO_ROOT))
 # ---------------------------------------------------------------------------
 
 try:
-    from tap_tone_pi.core.analysis import analyze_tap, Peak
+    from tap_tone_pi.core.analysis import analyze_tap, Peak  # noqa: F401
 
     CAPTURE_ENGINE_AVAILABLE = True
 except ImportError:
