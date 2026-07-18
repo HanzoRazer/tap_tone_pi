@@ -29,7 +29,7 @@ from typing import Optional, Literal
 # Use reportlab for PDF generation (optional dependency)
 try:
     from reportlab.lib.pagesizes import letter, A4, A3
-    from reportlab.lib.units import mm, inch
+    from reportlab.lib.units import mm, inch  # noqa: F401
     from reportlab.pdfgen import canvas
     from reportlab.lib.colors import black, gray, lightgrey, red
 

@@ -255,7 +255,7 @@ class TestLimitOverlayNoCrash:
         overlay = LimitOverlay()
         overlay.set_axes(MagicMock())
         overlay.set_limits([_make_upper_limit()])
-        result = overlay.draw(np.array([]), np.array([]))
+        _result = overlay.draw(np.array([]), np.array([]))
         # Empty arrays — should return without crashing
 
     def test_load_from_file_with_valid_json(self):
@@ -291,8 +291,8 @@ class TestLimitOverlayNoCrash:
 
 PYQT6_OK = False
 try:
-    from PyQt6.QtWidgets import QApplication
-    import sys
+    from PyQt6.QtWidgets import QApplication  # noqa: F401
+    import sys  # noqa: F401
 
     PYQT6_OK = True
 except ImportError:

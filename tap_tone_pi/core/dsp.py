@@ -83,7 +83,7 @@ def _adaptive_epsilon(data: np.ndarray, min_eps: float | None = None) -> float:
     dtype_eps = (
         np.finfo(data.dtype).eps if np.issubdtype(data.dtype, np.floating) else 1e-7
     )
-    min_eps = min_eps if min_eps is not None else dtype_eps
+    min_eps = min_eps if min_eps is not None else dtype_eps  # type: ignore[assignment]
 
     # Scale to ~10 orders of magnitude below data maximum
     data_scale = np.abs(data).max() * 1e-10 if data.size > 0 else dtype_eps

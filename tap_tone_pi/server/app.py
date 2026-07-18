@@ -21,8 +21,8 @@ from typing import Optional, List, Dict
 
 try:
     from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
-    from fastapi.responses import JSONResponse, FileResponse
-    from pydantic import BaseModel, Field
+    from fastapi.responses import JSONResponse, FileResponse  # noqa: F401
+    from pydantic import BaseModel, Field  # noqa: F401
 
     HAS_FASTAPI = True
 except ImportError:
@@ -332,7 +332,7 @@ def create_app() -> "FastAPI":
                 signal, fs = read_wav_mono(Path(request.wav_path))
             elif request.wav_base64:
                 # Decode base64 WAV
-                wav_bytes = base64.b64decode(request.wav_base64)
+                wav_bytes = base64.b64decode(request.wav_base64)  # noqa: F841
                 # TODO: Parse WAV from bytes
                 raise HTTPException(
                     status_code=501, detail="Base64 WAV input not yet implemented"
@@ -343,7 +343,7 @@ def create_app() -> "FastAPI":
                 )
 
             # Analyze
-            result = analyze_tap(signal, fs, fft_size=request.fft_size)
+            result = analyze_tap(signal, fs.sample_rate)
 
             return AnalysisResult(
                 dominant_hz=result.dominant_hz,

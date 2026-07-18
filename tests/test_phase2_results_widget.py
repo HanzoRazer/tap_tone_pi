@@ -224,7 +224,7 @@ class TestPhase2ResultsWidgetPeaksInteraction:
         widget.set_session(session)
 
         if widget._peaks_list.count() > 0:
-            initial_value = widget._freq_slider.value()
+            _initial_value = widget._freq_slider.value()  # noqa: F841
             item = widget._peaks_list.item(0)
             peak_idx = item.data(Qt.ItemDataRole.UserRole)
 

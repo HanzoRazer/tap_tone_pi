@@ -247,6 +247,6 @@ def get_calibration_attachment(device_index: int) -> dict:
     if cal_data is not None:
         # Build calibration ID from device + timestamp
         result["calibration_id"] = f"cal_{device_index}_{cal_data.calibrated_at}"
-        result["age_days"] = float(_cal_age_days(cal_data))
+        result["age_days"] = float(_cal_age_days(cal_data))  # type: ignore[assignment]
 
     return result

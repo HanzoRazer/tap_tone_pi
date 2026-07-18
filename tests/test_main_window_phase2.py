@@ -137,7 +137,7 @@ class TestMainWindowPhase2Integration:
         invalid_dir = tmp_path / "invalid_session"
         invalid_dir.mkdir()
 
-        with patch.object(main_window, "statusbar") as mock_statusbar:
+        with patch.object(main_window, "statusbar") as mock_statusbar:  # noqa: F841
             # Should not raise, but should show error dialog
             # We patch QMessageBox to prevent blocking
             with patch("analyzer.main_window.QMessageBox.critical") as mock_critical:

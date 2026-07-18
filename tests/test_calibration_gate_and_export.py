@@ -23,13 +23,13 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-from tap_tone_pi.calibration.gate import (
+from tap_tone_pi.calibration.gate import (  # noqa: E402
     CalibrationGateResult,
     enforce_calibration_gate,
     print_gate_result,
     _cal_age_days,
 )
-from tap_tone_pi.calibration.storage import CalibrationData, CalibrationStatus
+from tap_tone_pi.calibration.storage import CalibrationData, CalibrationStatus  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -480,7 +480,7 @@ class TestExportEndpoint:
         with patch(
             "scripts.phase2.export_viewer_pack_v1.export_viewer_pack",
             return_value=out_dir / "viewer_pack_v1",
-        ) as mock_export:
+        ) as mock_export:  # noqa: F841
             # Create a fake pack directory
             pack_dir = out_dir / "viewer_pack_v1"
             pack_dir.mkdir(parents=True)

@@ -167,7 +167,7 @@ class TestRepeatabilityScore:
     def test_custom_weights(self):
         """Custom weights should affect score computation."""
         # High frequency CV, low magnitude CV
-        score_default = compute_repeatability_score(
+        _score_default = compute_repeatability_score(
             frequency_cv=1.0,
             magnitude_cv=0.0,
         )
@@ -324,8 +324,8 @@ class TestSampleCountScaling:
         )
 
         # Mean should be closer to true value with more samples
-        error_few = abs(evidence_few.dominant_frequency_mean_hz - true_freq)
-        error_many = abs(evidence_many.dominant_frequency_mean_hz - true_freq)
+        _error_few = abs(evidence_few.dominant_frequency_mean_hz - true_freq)  # noqa: F841
+        _error_many = abs(evidence_many.dominant_frequency_mean_hz - true_freq)  # noqa: F841
 
         # This is probabilistic but with seed=42 should be consistent
         # With many more samples, we expect error to be smaller (on average)

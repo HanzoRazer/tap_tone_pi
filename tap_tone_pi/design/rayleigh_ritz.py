@@ -643,7 +643,7 @@ def solve_rayleigh_ritz(
             RayleighRitzMode(
                 mode_number=i + 1,
                 frequency_Hz=float(frequencies_Hz[i]),
-                mode_indices=(mi, ni),
+                mode_indices=(int(mi), int(ni)),
                 coefficients=coeffs.copy(),
             )
         )

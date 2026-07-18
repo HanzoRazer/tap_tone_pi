@@ -19,7 +19,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-from ci.check_advisory_boundary import (
+from ci.check_advisory_boundary import (  # noqa: E402
     BoundaryReport,
     check_declarations,
     check_export_isolation,
