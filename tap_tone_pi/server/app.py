@@ -144,12 +144,20 @@ def create_app() -> "FastAPI":
     _CWD = Path.cwd().resolve()
 
     def _safe_directory(directory: str) -> Path:
-        """Resolve a user-supplied directory path and restrict it to CWD subtree."""
+        """Resolve a user-supplied directory path.
+
+        Absolute paths are resolved as-is.  Relative paths are resolved
+        relative to CWD and must stay within the CWD subtree to prevent
+        directory-traversal attacks (e.g. ``../../etc/passwd``).
+        """
+        p = Path(directory)
+        if p.is_absolute():
+            return p.resolve()
         resolved = (_CWD / directory).resolve()
         if not str(resolved).startswith(str(_CWD)):
             raise HTTPException(
                 status_code=400,
-                detail="Directory must be within the working directory.",
+                detail="Relative directory must be within the working directory.",
             )
         return resolved
 
