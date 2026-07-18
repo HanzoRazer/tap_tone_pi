@@ -139,6 +139,20 @@ def create_app() -> "FastAPI":
         redoc_url="/redoc",
     )
 
+    # --- Path validation helper ---
+
+    _CWD = Path.cwd().resolve()
+
+    def _safe_directory(directory: str) -> Path:
+        """Resolve a user-supplied directory path and restrict it to CWD subtree."""
+        resolved = (_CWD / directory).resolve()
+        if not str(resolved).startswith(str(_CWD)):
+            raise HTTPException(
+                status_code=400,
+                detail="Directory must be within the working directory.",
+            )
+        return resolved
+
     # --- Health & Info ---
 
     @app.get("/health", response_model=HealthResponse, tags=["System"])
@@ -226,7 +240,7 @@ def create_app() -> "FastAPI":
         directory: str = Query(default="config/grids", description="Grid directory"),
     ):
         """List available measurement grids."""
-        grid_dir = Path(directory)
+        grid_dir = _safe_directory(directory)
 
         if not grid_dir.exists():
             return []
@@ -265,7 +279,7 @@ def create_app() -> "FastAPI":
         ),
     ):
         """List Phase 2 capture sessions."""
-        sessions_dir = Path(directory)
+        sessions_dir = _safe_directory(directory)
 
         if not sessions_dir.exists():
             return []
