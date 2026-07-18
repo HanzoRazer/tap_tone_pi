@@ -105,17 +105,22 @@ class TestPopulatedView:
             manual_revision="1.0",
             entries=(
                 _entry(doc_id="a", title="Tap Location", status="approved"),
-                _entry(doc_id="b", title="Draft Method", status="deferred", path="b.md"),
+                _entry(
+                    doc_id="b", title="Draft Method", status="deferred", path="b.md"
+                ),
             ),
         )
 
     def test_status_and_revision_visible_on_selection(self, qapp, two_entries):
-        with mock.patch(
-            "analyzer.widgets.laboratory_manual_view.load_laboratory_manual_manifest",
-            return_value=two_entries,
-        ), mock.patch(
-            "analyzer.widgets.laboratory_manual_view.read_manual_entry_text",
-            return_value="# Tap Location\n\nBody.",
+        with (
+            mock.patch(
+                "analyzer.widgets.laboratory_manual_view.load_laboratory_manual_manifest",
+                return_value=two_entries,
+            ),
+            mock.patch(
+                "analyzer.widgets.laboratory_manual_view.read_manual_entry_text",
+                return_value="# Tap Location\n\nBody.",
+            ),
         ):
             view = LaboratoryManualView()
             try:
@@ -147,12 +152,15 @@ class TestPopulatedView:
     def test_missing_document_shows_controlled_state(self, qapp, two_entries):  # G-04
         from tap_tone_pi.acoustic_lab import ManualDocumentMissingError
 
-        with mock.patch(
-            f"{_VIEW_MODULE}.load_laboratory_manual_manifest",
-            return_value=two_entries,
-        ), mock.patch(
-            f"{_VIEW_MODULE}.read_manual_entry_text",
-            side_effect=ManualDocumentMissingError("gone"),
+        with (
+            mock.patch(
+                f"{_VIEW_MODULE}.load_laboratory_manual_manifest",
+                return_value=two_entries,
+            ),
+            mock.patch(
+                f"{_VIEW_MODULE}.read_manual_entry_text",
+                side_effect=ManualDocumentMissingError("gone"),
+            ),
         ):
             view = LaboratoryManualView()
             try:

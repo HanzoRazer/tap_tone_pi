@@ -57,16 +57,18 @@ _MANUAL_LOAD_ERRORS = (ManualRegistryError, ManualContractError)
 class ManualViewState(Enum):
     """Load state of the manual, driving which controlled copy is shown."""
 
-    READY = "ready"          # valid manifest with at least one entry
-    EMPTY = "empty"          # valid manifest, zero entries
+    READY = "ready"  # valid manifest with at least one entry
+    EMPTY = "empty"  # valid manifest, zero entries
     UNAVAILABLE = "unavailable"  # manifest resources absent/unreadable
-    INVALID = "invalid"      # manifest present but contract-invalid/malformed
+    INVALID = "invalid"  # manifest present but contract-invalid/malformed
 
 
 # Primary user-facing copy per non-ready state (DO-97G §6.7).
 _EMPTY_STATE_TEXT = "No laboratory procedures are currently registered."
 _UNAVAILABLE_STATE_TEXT = "The Laboratory Manual is unavailable in this installation."
-_INVALID_STATE_TEXT = "The Laboratory Manual manifest is invalid and cannot be displayed."
+_INVALID_STATE_TEXT = (
+    "The Laboratory Manual manifest is invalid and cannot be displayed."
+)
 _MISSING_DOCUMENT_TEXT = "This registered procedure is unavailable."
 
 _STATE_MESSAGES: dict[ManualViewState, str] = {
@@ -174,7 +176,9 @@ class LaboratoryManualView(QWidget):
         header.addWidget(self._title_label, stretch=1)
 
         self._status_label = QLabel("")
-        self._status_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self._status_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
         header.addWidget(self._status_label)
         right_layout.addLayout(header)
 
@@ -219,7 +223,9 @@ class LaboratoryManualView(QWidget):
             section_item = section_items.get(entry.section)
             if section_item is None:
                 section_item = QTreeWidgetItem([entry.section])
-                section_item.setFlags(section_item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+                section_item.setFlags(
+                    section_item.flags() & ~Qt.ItemFlag.ItemIsSelectable
+                )
                 self._nav.addTopLevelItem(section_item)
                 section_items[entry.section] = section_item
 

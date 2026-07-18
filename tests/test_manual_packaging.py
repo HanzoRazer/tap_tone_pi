@@ -42,10 +42,27 @@ def built_wheel(tmp_path_factory) -> Path:
     # Prefer `python -m build`; fall back to `pip wheel`. Use no build isolation
     # so the build backend resolves from this interpreter (no network needed).
     attempts = [
-        [sys.executable, "-m", "build", "--wheel", "--no-isolation",
-         "--outdir", str(out), str(_REPO_ROOT)],
-        [sys.executable, "-m", "pip", "wheel", "--no-deps", "--no-build-isolation",
-         "-w", str(out), str(_REPO_ROOT)],
+        [
+            sys.executable,
+            "-m",
+            "build",
+            "--wheel",
+            "--no-isolation",
+            "--outdir",
+            str(out),
+            str(_REPO_ROOT),
+        ],
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "wheel",
+            "--no-deps",
+            "--no-build-isolation",
+            "-w",
+            str(out),
+            str(_REPO_ROOT),
+        ],
     ]
 
     errors: list[str] = []
@@ -67,10 +84,18 @@ def built_wheel(tmp_path_factory) -> Path:
 def installed_target(built_wheel, tmp_path_factory) -> Path:
     """Install the wheel into an isolated --target directory (P-02)."""
     target = tmp_path_factory.mktemp("isolated_site")
-    proc = _run([
-        sys.executable, "-m", "pip", "install", "--no-deps",
-        "--target", str(target), str(built_wheel),
-    ])
+    proc = _run(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--no-deps",
+            "--target",
+            str(target),
+            str(built_wheel),
+        ]
+    )
     if proc.returncode != 0:
         pytest.skip(f"isolated install failed:\n{proc.stdout}\n{proc.stderr}")
     return target
@@ -111,7 +136,9 @@ class TestIsolatedWheelPackaging:
         assert origin.is_relative_to(installed_target.resolve()), origin
         assert not origin.is_relative_to(_REPO_ROOT), origin
 
-    def test_packaged_manifest_loads_via_public_api(self, installed_target, tmp_path):  # P-04
+    def test_packaged_manifest_loads_via_public_api(
+        self, installed_target, tmp_path
+    ):  # P-04
         code = (
             "import json\n"
             "from importlib import resources\n"

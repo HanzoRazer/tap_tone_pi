@@ -116,7 +116,9 @@ def load_laboratory_manual_manifest() -> LaboratoryManualManifestV1:
             f"packaged manual. The package build may be missing manual data."
         ) from exc
     except OSError as exc:
-        raise ManualRegistryError(f"Could not read Laboratory Manual manifest: {exc}") from exc
+        raise ManualRegistryError(
+            f"Could not read Laboratory Manual manifest: {exc}"
+        ) from exc
 
     try:
         parsed = json.loads(raw)
@@ -315,7 +317,9 @@ def read_manual_entry_text(
             f"manual: {entry.path!r}"
         ) from exc
     except OSError as exc:
-        raise ManualRegistryError(f"Could not read document {entry.doc_id!r}: {exc}") from exc
+        raise ManualRegistryError(
+            f"Could not read document {entry.doc_id!r}: {exc}"
+        ) from exc
 
 
 @dataclass(frozen=True)

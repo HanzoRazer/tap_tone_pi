@@ -85,7 +85,16 @@ class TestEntryConstruction:
 class TestPathSafety:
     @pytest.mark.parametrize(
         "bad_path",
-        ["/etc/passwd", "../secret.md", "a/../../b.md", "C:/x.md", "sub/../../y.md", "", "   ", ".."],
+        [
+            "/etc/passwd",
+            "../secret.md",
+            "a/../../b.md",
+            "C:/x.md",
+            "sub/../../y.md",
+            "",
+            "   ",
+            "..",
+        ],
     )
     def test_unsafe_paths_rejected(self, bad_path):
         with pytest.raises(ManualContractError):
@@ -100,8 +109,14 @@ class TestSerialization:
         e = _entry(applies_to=("phase2",), superseded_by=None)
         d = e.to_dict()
         assert list(d) == [
-            "doc_id", "title", "path", "section",
-            "status", "revision", "applies_to", "superseded_by",
+            "doc_id",
+            "title",
+            "path",
+            "section",
+            "status",
+            "revision",
+            "applies_to",
+            "superseded_by",
         ]
         assert d["status"] == "approved"
         assert d["applies_to"] == ["phase2"]
@@ -119,7 +134,9 @@ class TestSerialization:
 
     def test_manifest_json_roundtrip(self):
         m = LaboratoryManualManifestV1(manual_revision="1.0", entries=(_entry(),))
-        restored = LaboratoryManualManifestV1.from_dict(json.loads(json.dumps(m.to_dict())))
+        restored = LaboratoryManualManifestV1.from_dict(
+            json.loads(json.dumps(m.to_dict()))
+        )
         assert restored == m
 
     def test_from_dict_rejects_unknown_entry_field(self):
@@ -144,7 +161,9 @@ class TestManifestInvariants:
             )
 
     def test_unsupported_schema_version_rejected(self):
-        with pytest.raises(ManualContractError, match="unsupported manifest schema_version"):
+        with pytest.raises(
+            ManualContractError, match="unsupported manifest schema_version"
+        ):
             LaboratoryManualManifestV1(manual_revision="1.0", schema_version="v99")
 
     def test_dangling_supersession_rejected(self):
@@ -188,14 +207,19 @@ class TestFilteringAndLookup:
             get_manual_entry("zzz", manifest)
 
     def test_filter_by_section(self, manifest):
-        assert [e.doc_id for e in filter_manual_entries(manifest, section="Setup")] == ["a", "b"]
+        assert [e.doc_id for e in filter_manual_entries(manifest, section="Setup")] == [
+            "a",
+            "b",
+        ]
 
     def test_filter_by_status(self, manifest):
         got = filter_manual_entries(manifest, status="approved")
         assert [e.doc_id for e in got] == ["a", "c"]
 
     def test_filter_combined(self, manifest):
-        got = filter_manual_entries(manifest, section="Setup", status=ManualStatus.APPROVED)
+        got = filter_manual_entries(
+            manifest, section="Setup", status=ManualStatus.APPROVED
+        )
         assert [e.doc_id for e in got] == ["a"]
 
     def test_filter_unknown_status_raises(self, manifest):
@@ -300,8 +324,10 @@ class TestBoundary:
         import importlib
         import sys
 
-        for name in ("tap_tone_pi.acoustic_lab.manual_contracts",
-                     "tap_tone_pi.acoustic_lab.manual_registry"):
+        for name in (
+            "tap_tone_pi.acoustic_lab.manual_contracts",
+            "tap_tone_pi.acoustic_lab.manual_registry",
+        ):
             sys.modules.pop(name, None)
         importlib.import_module("tap_tone_pi.acoustic_lab")
 
@@ -311,7 +337,9 @@ class TestBoundary:
             "__init__",
         }
         for name, mod in list(sys.modules.items()):
-            if name.startswith("tap_tone_pi.acoustic_lab") and getattr(mod, "__file__", None):
+            if name.startswith("tap_tone_pi.acoustic_lab") and getattr(
+                mod, "__file__", None
+            ):
                 stem = Path(mod.__file__).stem
                 if stem in core_files:
                     src = Path(mod.__file__).read_text(encoding="utf-8")
@@ -502,7 +530,9 @@ class TestTraversableResourceAccess:
     def test_native_path_api_rejects_non_filesystem_resource(self):  # R-05
         root = _FakeDir({"a.md": _FakeFile("# hi")})
         with mock.patch.object(manual_registry, "_manual_root", return_value=root):
-            with pytest.raises(ManualRegistryError, match="not backed by a filesystem path"):
+            with pytest.raises(
+                ManualRegistryError, match="not backed by a filesystem path"
+            ):
                 resolve_manual_entry_path("a", self._manifest())
 
     def test_unsafe_path_declarations_still_rejected(self):

@@ -49,7 +49,9 @@ class ManualContractError(ValueError):
 def _require_text(value: Any, field_name: str) -> str:
     """Return value as a non-empty stripped string or raise."""
     if not isinstance(value, str):
-        raise ManualContractError(f"{field_name} must be a string, got {type(value).__name__}")
+        raise ManualContractError(
+            f"{field_name} must be a string, got {type(value).__name__}"
+        )
     text = value.strip()
     if not text:
         raise ManualContractError(f"{field_name} must not be empty")
@@ -85,12 +87,16 @@ def _validate_relative_path(value: Any) -> str:
     normalized = text.replace("\\", "/")
 
     if normalized.startswith("/") or PurePosixPath(normalized).is_absolute():
-        raise ManualContractError(f"path must be relative to the manual root, got {text!r}")
+        raise ManualContractError(
+            f"path must be relative to the manual root, got {text!r}"
+        )
     # Catches Windows drive letters ('C:/x') and UNC-ish forms that PurePosixPath treats as relative.
     if ":" in normalized.split("/")[0]:
         raise ManualContractError(f"path must not be drive-qualified, got {text!r}")
     if ".." in PurePosixPath(normalized).parts:
-        raise ManualContractError(f"path must not traverse outside the manual root, got {text!r}")
+        raise ManualContractError(
+            f"path must not traverse outside the manual root, got {text!r}"
+        )
 
     collapsed = posixpath.normpath(normalized)
     if collapsed in (".", ""):
@@ -175,7 +181,9 @@ class LaboratoryManualEntryV1:
     def from_dict(cls, d: dict[str, Any]) -> "LaboratoryManualEntryV1":
         """Construct from a manifest entry dict."""
         if not isinstance(d, dict):
-            raise ManualContractError(f"entry must be an object, got {type(d).__name__}")
+            raise ManualContractError(
+                f"entry must be an object, got {type(d).__name__}"
+            )
 
         unknown = set(d) - {
             "doc_id",
@@ -188,11 +196,15 @@ class LaboratoryManualEntryV1:
             "superseded_by",
         }
         if unknown:
-            raise ManualContractError(f"unknown entry field(s): {', '.join(sorted(unknown))}")
+            raise ManualContractError(
+                f"unknown entry field(s): {', '.join(sorted(unknown))}"
+            )
 
         missing = {"doc_id", "title", "path", "section", "status", "revision"} - set(d)
         if missing:
-            raise ManualContractError(f"entry missing required field(s): {', '.join(sorted(missing))}")
+            raise ManualContractError(
+                f"entry missing required field(s): {', '.join(sorted(missing))}"
+            )
 
         applies_to = d.get("applies_to") or []
         if not isinstance(applies_to, list):
@@ -223,8 +235,14 @@ class LaboratoryManualManifestV1:
     schema_version: str = SCHEMA_VERSION
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "manual_revision", _require_text(self.manual_revision, "manual_revision"))
-        object.__setattr__(self, "schema_version", _require_text(self.schema_version, "schema_version"))
+        object.__setattr__(
+            self,
+            "manual_revision",
+            _require_text(self.manual_revision, "manual_revision"),
+        )
+        object.__setattr__(
+            self, "schema_version", _require_text(self.schema_version, "schema_version")
+        )
         object.__setattr__(self, "entries", tuple(self.entries))
 
         if self.schema_version != SCHEMA_VERSION:
@@ -240,7 +258,9 @@ class LaboratoryManualManifestV1:
                     f"entries must be LaboratoryManualEntryV1, got {type(entry).__name__}"
                 )
             if entry.doc_id in seen:
-                raise ManualContractError(f"duplicate doc_id in manifest: {entry.doc_id!r}")
+                raise ManualContractError(
+                    f"duplicate doc_id in manifest: {entry.doc_id!r}"
+                )
             seen.add(entry.doc_id)
 
         # Invariant 4: a superseded entry names its replacement when one exists.
@@ -266,7 +286,7 @@ class LaboratoryManualManifestV1:
             while node is not None:
                 if node in on_path:
                     path.append(node)
-                    cycle = path[path.index(node):]
+                    cycle = path[path.index(node) :]
                     raise ManualContractError(
                         "supersession cycle detected: " + " -> ".join(cycle)
                     )
@@ -286,15 +306,21 @@ class LaboratoryManualManifestV1:
     def from_dict(cls, d: dict[str, Any]) -> "LaboratoryManualManifestV1":
         """Construct from a parsed manifest document."""
         if not isinstance(d, dict):
-            raise ManualContractError(f"manifest must be an object, got {type(d).__name__}")
+            raise ManualContractError(
+                f"manifest must be an object, got {type(d).__name__}"
+            )
 
         unknown = set(d) - {"schema_version", "manual_revision", "entries"}
         if unknown:
-            raise ManualContractError(f"unknown manifest field(s): {', '.join(sorted(unknown))}")
+            raise ManualContractError(
+                f"unknown manifest field(s): {', '.join(sorted(unknown))}"
+            )
 
         missing = {"schema_version", "manual_revision"} - set(d)
         if missing:
-            raise ManualContractError(f"manifest missing required field(s): {', '.join(sorted(missing))}")
+            raise ManualContractError(
+                f"manifest missing required field(s): {', '.join(sorted(missing))}"
+            )
 
         entries = d.get("entries")
         if entries is None:
