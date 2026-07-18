@@ -10,7 +10,7 @@ workflow execution, not quality judgments or recommendations.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from tap_tone_pi.workflow.contracts import (
     MeasurementWorkflowContractV1,
@@ -55,9 +55,7 @@ def evaluate_workflow_execution(
 
     # Evaluate repetition completion
     required_reps = contract.required_repetitions
-    reps_completed = required_repetitions_completed = (
-        repetitions_completed >= required_reps
-    )
+    reps_completed = required_repetitions_completed = repetitions_completed >= required_reps
 
     # Evaluate calibration requirement
     calibration_ok = True

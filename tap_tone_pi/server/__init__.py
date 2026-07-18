@@ -21,7 +21,6 @@ try:
         create_app,
         add_server_subcommand,
     )
-
     HAS_SERVER = True
 except ImportError:
     HAS_SERVER = False

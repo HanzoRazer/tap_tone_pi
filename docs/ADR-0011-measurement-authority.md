@@ -1,8 +1,8 @@
 # ADR-0011: Measurement Authority
 
-**Status:** Accepted
-**Date:** 2026-05-24
-**Supersedes:** None
+**Status:** Accepted  
+**Date:** 2026-05-24  
+**Supersedes:** None  
 **Related:** ADR-0009, ADR-0010, ADR-0012
 
 ---

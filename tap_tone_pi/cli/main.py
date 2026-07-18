@@ -343,9 +343,7 @@ def cmd_demo(args: argparse.Namespace) -> int:
         expected = args.fundamental
         error_pct = abs(detected - expected) / expected * 100
         if error_pct > 5:
-            print(
-                f"WARNING: Detected {detected:.1f} Hz differs from expected {expected:.1f} Hz by {error_pct:.1f}%"
-            )
+            print(f"WARNING: Detected {detected:.1f} Hz differs from expected {expected:.1f} Hz by {error_pct:.1f}%")
             return 1
 
     return 0
@@ -1107,6 +1105,7 @@ def cmd_emit_tone(args: argparse.Namespace) -> int:
         create_known_tone_record,
         validate_amplitude,
         AmplitudeGuardrail,
+        DEFAULT_AMPLITUDE,
     )
 
     frequency_hz = args.frequency_hz
@@ -1130,7 +1129,7 @@ def cmd_emit_tone(args: argparse.Namespace) -> int:
     if dry_run:
         # Create record without emitting
         record = create_known_tone_record(
-            record_id="tone_dryrun",
+            record_id=f"tone_dryrun",
             frequency_hz=frequency_hz,
             duration_s=duration_s,
             amplitude=amplitude,

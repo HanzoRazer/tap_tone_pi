@@ -13,18 +13,13 @@ Tests cover:
 
 import pytest
 import json
-from unittest.mock import patch
+from pathlib import Path
+from unittest.mock import patch, MagicMock
 
 # Check if FastAPI is available
 try:
     from fastapi.testclient import TestClient
-    from tap_tone_pi.server.app import (
-        create_app,
-        app,
-        HAS_FASTAPI,
-        add_server_subcommand,
-    )
-
+    from tap_tone_pi.server.app import create_app, app, HAS_FASTAPI, add_server_subcommand
     SKIP_REASON = "FastAPI not installed"  # placeholder, tests won't skip
 except ImportError:
     SKIP_REASON = "FastAPI not installed"
@@ -36,17 +31,15 @@ except ImportError:
 try:
     from tap_tone_pi.server.app import (
         get_calibration_status,
-        load_calibration,  # noqa: F401
-        is_calibration_stale,  # noqa: F401
+        load_calibration,
+        is_calibration_stale,
     )
-
     HAS_CALIBRATION = get_calibration_status is not None
 except (ImportError, AttributeError):
     HAS_CALIBRATION = False
 
 
 # --- Fixtures ---
-
 
 @pytest.fixture
 def client():
@@ -110,7 +103,6 @@ def sample_session_dir(tmp_path):
 
 # --- App Creation Tests ---
 
-
 @pytest.mark.skipif(not HAS_FASTAPI, reason=SKIP_REASON)
 class TestAppCreation:
     """Tests for app creation."""
@@ -142,7 +134,6 @@ class TestAppCreation:
 
 # --- Health Endpoint Tests ---
 
-
 @pytest.mark.skipif(not HAS_FASTAPI, reason=SKIP_REASON)
 class TestHealthEndpoint:
     """Tests for /health endpoint."""
@@ -172,7 +163,6 @@ class TestHealthEndpoint:
 
 # --- Info Endpoint Tests ---
 
-
 @pytest.mark.skipif(not HAS_FASTAPI, reason=SKIP_REASON)
 class TestInfoEndpoint:
     """Tests for /info endpoint."""
@@ -196,7 +186,6 @@ class TestInfoEndpoint:
 
 
 # --- Devices Endpoint Tests ---
-
 
 @pytest.mark.skipif(not HAS_FASTAPI, reason=SKIP_REASON)
 class TestDevicesEndpoint:
@@ -224,11 +213,7 @@ class TestDevicesEndpoint:
 
 # --- Calibration Endpoint Tests ---
 
-
-@pytest.mark.skipif(
-    not HAS_FASTAPI or not HAS_CALIBRATION,
-    reason="FastAPI or calibration module not available",
-)
+@pytest.mark.skipif(not HAS_FASTAPI or not HAS_CALIBRATION, reason="FastAPI or calibration module not available")
 class TestCalibrationEndpoint:
     """Tests for /calibration/{device_index} endpoint."""
 
@@ -277,7 +262,6 @@ class TestCalibrationEndpoint:
 
 # --- Grids Endpoint Tests ---
 
-
 @pytest.mark.skipif(not HAS_FASTAPI, reason=SKIP_REASON)
 class TestGridsEndpoint:
     """Tests for /grids endpoint."""
@@ -301,7 +285,6 @@ class TestGridsEndpoint:
 
 
 # --- Sessions Endpoint Tests ---
-
 
 @pytest.mark.skipif(not HAS_FASTAPI, reason=SKIP_REASON)
 class TestSessionsEndpoint:
@@ -337,13 +320,14 @@ class TestSessionsEndpoint:
 
     def test_session_not_found(self, client, sample_session_dir):
         """Should return 404 for nonexistent session."""
-        response = client.get(f"/sessions/nonexistent?directory={sample_session_dir}")
+        response = client.get(
+            f"/sessions/nonexistent?directory={sample_session_dir}"
+        )
 
         assert response.status_code == 404
 
 
 # --- Analysis Endpoint Tests ---
-
 
 @pytest.mark.skipif(not HAS_FASTAPI, reason=SKIP_REASON)
 class TestAnalysisEndpoint:
@@ -359,18 +343,14 @@ class TestAnalysisEndpoint:
 
     def test_analyze_file_not_found(self, client, tmp_path):
         """Should return 404 for nonexistent file."""
-        response = client.post(
-            "/analyze",
-            json={
-                "wav_path": str(tmp_path / "nonexistent.wav"),
-            },
-        )
+        response = client.post("/analyze", json={
+            "wav_path": str(tmp_path / "nonexistent.wav"),
+        })
 
         assert response.status_code == 404
 
 
 # --- CLI Tests ---
-
 
 @pytest.mark.skipif(not HAS_FASTAPI, reason=SKIP_REASON)
 class TestCLIIntegration:

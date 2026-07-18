@@ -75,9 +75,9 @@ class LimitEditorPanel(QDockWidget):
         warn_margin_changed(float) — emitted when warn margin spinner changes
     """
 
-    preset_selected = pyqtSignal(str)
-    file_selected = pyqtSignal(str)
-    limits_cleared = pyqtSignal()
+    preset_selected    = pyqtSignal(str)
+    file_selected      = pyqtSignal(str)
+    limits_cleared     = pyqtSignal()
     warn_margin_changed = pyqtSignal(float)
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
@@ -102,9 +102,7 @@ class LimitEditorPanel(QDockWidget):
 
         # ── Preset selector ───────────────────────────────────────────────
         preset_group_label = QLabel("Preset")
-        preset_group_label.setStyleSheet(
-            "font-weight: bold; font-size: 11px; color: palette(mid);"
-        )
+        preset_group_label.setStyleSheet("font-weight: bold; font-size: 11px; color: palette(mid);")
         layout.addWidget(preset_group_label)
 
         preset_row = QHBoxLayout()
@@ -112,9 +110,7 @@ class LimitEditorPanel(QDockWidget):
         self._preset_combo = QComboBox()
         for name in get_preset_names():
             self._preset_combo.addItem(name.replace("_", " ").title(), name)
-        self._preset_combo.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
-        )
+        self._preset_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         preset_row.addWidget(self._preset_combo)
 
         self._apply_btn = QPushButton("Apply")
@@ -185,24 +181,18 @@ class LimitEditorPanel(QDockWidget):
         verdict_header.addWidget(self._verdict_badge)
         verdict_header.addStretch()
         self._violation_count_label = QLabel("")
-        self._violation_count_label.setStyleSheet(
-            "color: palette(mid); font-size: 11px;"
-        )
+        self._violation_count_label.setStyleSheet("color: palette(mid); font-size: 11px;")
         verdict_header.addWidget(self._violation_count_label)
         verdict_layout.addLayout(verdict_header)
 
         self._active_preset_label = QLabel("No limits active")
-        self._active_preset_label.setStyleSheet(
-            "color: palette(mid); font-style: italic; font-size: 10px;"
-        )
+        self._active_preset_label.setStyleSheet("color: palette(mid); font-style: italic; font-size: 10px;")
         verdict_layout.addWidget(self._active_preset_label)
         layout.addWidget(self._verdict_card)
 
         # ── Violations list ───────────────────────────────────────────────
         violations_label = QLabel("Violations")
-        violations_label.setStyleSheet(
-            "font-weight: bold; font-size: 11px; color: palette(mid);"
-        )
+        violations_label.setStyleSheet("font-weight: bold; font-size: 11px; color: palette(mid);")
         layout.addWidget(violations_label)
 
         self._violations_list = QListWidget()
@@ -235,7 +225,9 @@ class LimitEditorPanel(QDockWidget):
         """
         if active_preset:
             self._active_preset = active_preset
-            self._active_preset_label.setText(active_preset.replace("_", " ").title())
+            self._active_preset_label.setText(
+                active_preset.replace("_", " ").title()
+            )
 
         if verdict is None:
             self._verdict_badge.setText("—")
@@ -265,7 +257,9 @@ class LimitEditorPanel(QDockWidget):
                 f"· {violation_count} within ±{worst_margin_db:.1f} dB"
             )
         else:
-            self._violation_count_label.setText(f"· {violation_count} violation(s)")
+            self._violation_count_label.setText(
+                f"· {violation_count} violation(s)"
+            )
 
         # Populate violations list
         self._violations_list.clear()

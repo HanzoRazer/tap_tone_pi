@@ -26,6 +26,7 @@ from tap_tone_pi.experiment import (
     CohortExecutionPlanV1,
     ResponseVariableSummaryV1,
     CovariateSummaryV1,
+    BaselineScheduleSummaryV1,
     ExecutionChecklistItemV1,
     create_cohort_execution_plan,
     render_cohort_execution_plan_markdown,
@@ -456,7 +457,9 @@ class TestAdvisoryFreeSemantics:
         """Markdown output must not contain advisory terms."""
         md = render_cohort_execution_plan_markdown(sample_plan).lower()
         for term in self.FORBIDDEN_ADVISORY_TERMS:
-            assert term not in md, f"Markdown contains forbidden advisory term '{term}'"
+            assert term not in md, (
+                f"Markdown contains forbidden advisory term '{term}'"
+            )
 
     def test_checklist_uses_procedural_language(self, sample_plan):
         """Checklist items must use procedural, not prescriptive language."""

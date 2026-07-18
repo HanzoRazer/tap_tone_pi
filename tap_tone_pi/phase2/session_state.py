@@ -331,7 +331,11 @@ class SessionState:
 
     def pending_points(self) -> List[str]:
         """Get list of pending point IDs in order."""
-        return [pid for pid in self.point_order if self.points[pid].status == "pending"]
+        return [
+            pid
+            for pid in self.point_order
+            if self.points[pid].status == "pending"
+        ]
 
     def completed_points(self) -> List[str]:
         """Get list of completed (captured or warning) point IDs."""
@@ -343,11 +347,19 @@ class SessionState:
 
     def failed_points(self) -> List[str]:
         """Get list of failed point IDs."""
-        return [pid for pid in self.point_order if self.points[pid].status == "failed"]
+        return [
+            pid
+            for pid in self.point_order
+            if self.points[pid].status == "failed"
+        ]
 
     def warning_points(self) -> List[str]:
         """Get list of points with low coherence warnings."""
-        return [pid for pid in self.point_order if self.points[pid].status == "warning"]
+        return [
+            pid
+            for pid in self.point_order
+            if self.points[pid].status == "warning"
+        ]
 
     def next_point(self) -> Optional[str]:
         """Get the next pending point, or None if all done."""
@@ -371,10 +383,16 @@ class SessionState:
             "captured": len(
                 [p for p in self.points.values() if p.status == "captured"]
             ),
-            "warning": len([p for p in self.points.values() if p.status == "warning"]),
+            "warning": len(
+                [p for p in self.points.values() if p.status == "warning"]
+            ),
             "failed": len([p for p in self.points.values() if p.status == "failed"]),
-            "pending": len([p for p in self.points.values() if p.status == "pending"]),
-            "skipped": len([p for p in self.points.values() if p.status == "skipped"]),
+            "pending": len(
+                [p for p in self.points.values() if p.status == "pending"]
+            ),
+            "skipped": len(
+                [p for p in self.points.values() if p.status == "skipped"]
+            ),
             "progress_pct": self.progress_pct(),
             "is_complete": self.is_complete(),
         }
@@ -412,7 +430,7 @@ def demo() -> None:
         state.save()
 
         loaded = SessionState.load(session_dir)
-        print("\nLoaded session:")
+        print(f"\nLoaded session:")
         print(f"  Summary: {loaded.summary()}")
         print(f"  Next point: {loaded.next_point()}")
         print(f"  Warnings: {loaded.warning_points()}")

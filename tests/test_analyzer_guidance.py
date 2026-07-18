@@ -8,12 +8,15 @@ stage suppression, history, and threading behaviour.
 
 from __future__ import annotations
 
+import os
 import time
+from typing import Dict, Any, List
 
 import pytest
 
 from tap_tone_pi.agent.types import UserStage
 from tap_tone_pi.agentic.contracts.analyzer_attention import (
+    AttentionAction,
     AttentionDirectiveV1,
 )
 from analyzer.guidance.engine import AnalyzerGuidanceEngine
@@ -25,14 +28,10 @@ def _no_api_key(monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
 
-PACK = {
-    "metadata": {
-        "session": {"specimen_id": "SP_001", "calibration": {"status": "valid"}}
-    }
-}
+PACK = {"metadata": {"session": {"specimen_id": "SP_001", "calibration": {"status": "valid"}}}}
 PEAKS = [{"freq_hz": 203.1, "magnitude": 0.85}, {"freq_hz": 378.4, "magnitude": 0.52}]
 POOR_COH = {"mean": 0.52, "min": 0.31, "problem_frequencies": [220.0, 350.0]}
-GOOD_COH = {"mean": 0.95, "min": 0.88, "problem_frequencies": []}
+GOOD_COH  = {"mean": 0.95, "min": 0.88, "problem_frequencies": []}
 PROPS = {"radiation_coefficient": 12.8, "density_kg_m3": 430.0, "confidence": 0.82}
 
 
@@ -52,6 +51,7 @@ def _wait(received, n=1, timeout=2.0):
 
 
 class TestEngineEmits:
+
     def test_pack_loaded_emits_directive(self):
         engine, received = _engine(UserStage.NOVICE)
         engine.on_pack_loaded(PACK)
@@ -103,6 +103,7 @@ class TestEngineEmits:
 
 
 class TestExpertSuppression:
+
     def test_expert_pack_suppressed(self):
         engine, received = _engine(UserStage.EXPERT)
         engine.on_pack_loaded(PACK)
@@ -123,6 +124,7 @@ class TestExpertSuppression:
 
 
 class TestHistory:
+
     def test_history_accumulates(self):
         engine, received = _engine(UserStage.NOVICE)
         engine.on_pack_loaded(PACK)
@@ -150,6 +152,7 @@ class TestHistory:
 
 
 class TestStageAndCallback:
+
     def test_set_stage_changes_stage(self):
         engine, _ = _engine(UserStage.REGULAR)
         engine.set_stage(UserStage.EXPERT)
@@ -170,25 +173,24 @@ class TestStageAndCallback:
 
 
 @pytest.mark.skipif(
-    not __import__("importlib").util.find_spec("PyQt6"), reason="PyQt6 not available"
+    not __import__("importlib").util.find_spec("PyQt6"),
+    reason="PyQt6 not available"
 )
 class TestPanelSmoke:
+
     @pytest.fixture(scope="class")
     def app(self):
         import sys
         from PyQt6.QtWidgets import QApplication
-
         return QApplication.instance() or QApplication(sys.argv)
 
     def test_panel_constructs(self, app):
         from analyzer.guidance.panel import GuidancePanelWidget
-
         panel = GuidancePanelWidget()
         assert panel is not None
 
     def test_panel_shows_directive(self, app):
         from analyzer.guidance.panel import GuidancePanelWidget
-
         engine, received = _engine(UserStage.NOVICE)
         engine.on_pack_loaded(PACK)
         _wait(received)

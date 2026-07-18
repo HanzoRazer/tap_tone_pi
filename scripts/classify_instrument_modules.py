@@ -87,6 +87,7 @@ def scan_for_advisory_vocab(filepath: Path) -> set[str]:
     found = set()
     for term in ADVISORY_VOCABULARY:
         if term in content:
+            in_exclude_context = False
             for exc in EXCLUDE_PATTERNS:
                 if exc in content[:500]:
                     pass
@@ -106,18 +107,9 @@ def classify_module(filepath: Path) -> tuple[str, set[str]]:
     found = scan_for_advisory_vocab(filepath)
 
     high_signal_terms = found & {
-        "recommend",
-        "advise",
-        "suggest",
-        "guidance",
-        "advisory",
-        "verdict",
-        "judgment",
-        "interpret",
-        "diagnose",
-        "heuristic",
-        "attention",
-        "priority",
+        "recommend", "advise", "suggest", "guidance", "advisory",
+        "verdict", "judgment", "interpret", "diagnose", "heuristic",
+        "attention", "priority",
     }
 
     if high_signal_terms:
@@ -177,7 +169,7 @@ def main() -> None:
             if found:
                 terms = ", ".join(sorted(found)[:5])
                 if len(found) > 5:
-                    terms += f" (+{len(found) - 5} more)"
+                    terms += f" (+{len(found)-5} more)"
                 print(f"  {filename:<40} -> SUGGEST: {suggestion}")
                 print(f"    found: {terms}")
             else:

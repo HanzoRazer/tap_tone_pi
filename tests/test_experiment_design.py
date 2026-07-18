@@ -13,8 +13,16 @@ Tests cover:
 """
 
 import json
+import pytest
 
 from tap_tone_pi.experiment import (
+    MinimumInterestingEffectV1,
+    DeclaredResponseVariableV1,
+    CovariateDefinitionV1,
+    RandomizationPlanV1,
+    BaselineRebuildPlanV1,
+    ExperimentDesignV1,
+    DesignValidationEvidenceV1,
     create_response_variable,
     create_minimum_interesting_effect,
     create_covariate,

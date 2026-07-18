@@ -1,7 +1,7 @@
 # Headless Run Template — tap_tone_pi
 
-**Purpose:** Kick off autonomous tasks from the desk, monitor via Remote Control.
-**Platform:** Windows 11 / PowerShell 7+ / Always-on PC
+**Purpose:** Kick off autonomous tasks from the desk, monitor via Remote Control.  
+**Platform:** Windows 11 / PowerShell 7+ / Always-on PC  
 **Constraint:** 48h reboot window — tasks must complete or be restartable.
 
 ---

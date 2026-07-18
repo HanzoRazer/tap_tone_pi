@@ -11,6 +11,7 @@ Validates:
 from __future__ import annotations
 
 import math
+import pytest
 
 from tap_tone_pi.core.repeatability import (
     RepeatabilityEvidenceV1,

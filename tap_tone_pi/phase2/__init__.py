@@ -16,17 +16,17 @@ Usage:
         check_coherence_from_arrays,
         CoherenceResult,
     )
-
+    
     # Create grid display
     display = GridDisplay(grid)
     display.update("A1", PointStatus.CAPTURED)
     print(display.render())
-
+    
     # Manage session state (resume support)
     state = SessionState.create(session_dir, grid)
     state.mark_captured("A1", coherence=0.95)
     state.save()
-
+    
     # Check capture quality
     result = check_coherence_from_arrays(signal, None, sample_rate)
     if not result.passed:
@@ -56,9 +56,11 @@ __all__ = [
     "GridDisplay",
     "PointStatus",
     "Colors",
+    
     # Session state
     "SessionState",
     "PointRecord",
+    
     # Coherence gate
     "CoherenceResult",
     "check_coherence",

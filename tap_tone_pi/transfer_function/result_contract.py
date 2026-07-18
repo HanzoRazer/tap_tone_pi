@@ -13,12 +13,9 @@ No advisory semantics. No quality judgments.
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import numpy as np
-
-if TYPE_CHECKING:
-    from tap_tone_pi.transfer_function.estimators import TransferFunctionResult
 
 
 @dataclass(frozen=True)

@@ -1,7 +1,7 @@
 # Review Decision Semantics (v1)
 
-**Version:** 1.0.0
-**Status:** Draft
+**Version:** 1.0.0  
+**Status:** Draft  
 **Scope:** Cross-repository contract for review decision states
 
 ---

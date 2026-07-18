@@ -63,10 +63,7 @@ class TestMergeAndMoeCanonical:
 
         import tap_tone_pi.bending.merge_and_moe as canonical
 
-        assert (
-            legacy._timoshenko_correction_factor
-            is canonical._timoshenko_correction_factor
-        )
+        assert legacy._timoshenko_correction_factor is canonical._timoshenko_correction_factor
 
     def test_legacy_linear_fit_result_is_canonical(self):
         """Legacy LinearFitResult must be the exact same class."""
@@ -137,7 +134,5 @@ class TestLegacyEmitsDeprecationWarning:
         for k in modules_to_remove:
             del sys.modules[k]
 
-        with pytest.warns(
-            DeprecationWarning, match="modes.bending_rig.merge_and_moe is deprecated"
-        ):
+        with pytest.warns(DeprecationWarning, match="modes.bending_rig.merge_and_moe is deprecated"):
             import modes.bending_rig.merge_and_moe  # noqa: F401

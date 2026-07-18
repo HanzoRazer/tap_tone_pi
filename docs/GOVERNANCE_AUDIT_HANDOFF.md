@@ -1,7 +1,7 @@
 # Governance Audit Handoff — Annotated Developer Guide
 
-> **Audit Date:** 2026-05-22
-> **Scope:** Authority, Provenance, Execution, and Boundary Interrogation
+> **Audit Date:** 2026-05-22  
+> **Scope:** Authority, Provenance, Execution, and Boundary Interrogation  
 > **Purpose:** Enable new developers to understand what claims truth, what can mutate state, and where legitimacy boundaries exist.
 
 ---
@@ -885,8 +885,8 @@ Detectable conditions (recorded factually, never as a verdict):
 
 ---
 
-*Audit completed: 2026-06-19 (DO-89C cohort regression evidence added)*
-*Updated: 2026-06-27 (DO-94 luthiery formula target layer added)*
-*Updated: 2026-06-27 (DO-95 formula validation envelope added)*
-*Document owner: Governance audit process*
+*Audit completed: 2026-06-19 (DO-89C cohort regression evidence added)*  
+*Updated: 2026-06-27 (DO-94 luthiery formula target layer added)*  
+*Updated: 2026-06-27 (DO-95 formula validation envelope added)*  
+*Document owner: Governance audit process*  
 *Next review: Upon schema version bump or ADR update*

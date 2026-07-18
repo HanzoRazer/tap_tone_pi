@@ -158,9 +158,7 @@ def summarize_measurement_set(
     rep_mean = rep_std = rep_min = rep_max = None
 
     if dominant_frequencies_hz and len(dominant_frequencies_hz) > 0:
-        freq_mean, freq_std, freq_min, freq_max = _compute_stats(
-            dominant_frequencies_hz
-        )
+        freq_mean, freq_std, freq_min, freq_max = _compute_stats(dominant_frequencies_hz)
 
     if repeatability_scores and len(repeatability_scores) > 0:
         rep_mean, rep_std, rep_min, rep_max = _compute_stats(repeatability_scores)

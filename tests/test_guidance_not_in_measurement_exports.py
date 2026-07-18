@@ -15,8 +15,11 @@ See: docs/AGE_CONSTITUTIONAL_CONTRACT.md
 from __future__ import annotations
 
 import json
+import tempfile
 from pathlib import Path
 from typing import Any
+
+import pytest
 
 
 FORBIDDEN_EXPORT_KEYS = {
@@ -94,12 +97,7 @@ def _create_clean_quality_check_json() -> dict:
         "schema_version": "1.0.0",
         "checks": [
             {"name": "snr_threshold", "passed": True, "value": 42.5, "threshold": 30.0},
-            {
-                "name": "repeatability",
-                "passed": True,
-                "variance_pct": 1.2,
-                "threshold_pct": 5.0,
-            },
+            {"name": "repeatability", "passed": True, "variance_pct": 1.2, "threshold_pct": 5.0},
         ],
         "overall_status": "passed",
     }
@@ -233,7 +231,13 @@ class TestForbiddenKeyDetection:
         """Deeply nested forbidden keys are detected."""
         data = _create_clean_analysis_json()
         data["nested"] = {
-            "level1": {"level2": {"level3": {"recommendation": "hidden advisory"}}}
+            "level1": {
+                "level2": {
+                    "level3": {
+                        "recommendation": "hidden advisory"
+                    }
+                }
+            }
         }
 
         found = _contains_forbidden_key(data, FORBIDDEN_EXPORT_KEYS)

@@ -113,7 +113,8 @@ class TestFormulaValidationEnvelope:
         )
         assert env.extrapolation_detected is False
         assert (
-            "declared range extends beyond observed range" not in env.validation_notes
+            "declared range extends beyond observed range"
+            not in env.validation_notes
         )
 
     def test_no_extrapolation_when_range_unknown(self):
@@ -149,9 +150,7 @@ class TestValidateFromEvidence:
     def _make_formula(self, with_covariate=True):
         x = [1.0, 2.0, 3.0, 4.0, 5.0]
         y = [12.0, 14.0, 16.0, 18.0, 20.0]
-        covariates = (
-            {"density_g_cm3": [0.4, 0.41, 0.42, 0.43, 0.44]} if with_covariate else None
-        )
+        covariates = {"density_g_cm3": [0.4, 0.41, 0.42, 0.43, 0.44]} if with_covariate else None
         evidence = fit_linear_cohort_regression(
             evidence_id="ev_001",
             experiment_design_id="design_001",

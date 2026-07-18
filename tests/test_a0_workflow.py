@@ -330,9 +330,7 @@ class TestPeakDetection:
         for peak_freq, peak_height in [(85, 0.5), (100, 1.0), (120, 0.3)]:
             q = 15
             bandwidth = peak_freq / q
-            peak = peak_height / (
-                1 + ((frequencies - peak_freq) / (bandwidth / 2)) ** 2
-            )
+            peak = peak_height / (1 + ((frequencies - peak_freq) / (bandwidth / 2)) ** 2)
             magnitude += peak
 
         return frequencies, magnitude

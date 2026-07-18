@@ -13,7 +13,7 @@ See: docs/ADR-0010-guidance-authority-boundary.md
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from enum import Enum
 from typing import Any
 
@@ -95,7 +95,9 @@ class AdvisoryAuthorityV1:
         # DECISION_SUPPORT cannot establish truth
         if self.authority_class == AuthorityClass.DECISION_SUPPORT:
             if self.can_establish_truth:
-                errors.append("DECISION_SUPPORT authority cannot establish truth")
+                errors.append(
+                    "DECISION_SUPPORT authority cannot establish truth"
+                )
             if self.can_enter_measurement_export:
                 errors.append(
                     "DECISION_SUPPORT authority cannot enter measurement export"
@@ -104,7 +106,9 @@ class AdvisoryAuthorityV1:
         # MEASUREMENT authority has inverse constraints
         if self.authority_class == AuthorityClass.MEASUREMENT:
             if not self.can_establish_truth:
-                errors.append("MEASUREMENT authority must be able to establish truth")
+                errors.append(
+                    "MEASUREMENT authority must be able to establish truth"
+                )
             if not self.can_enter_measurement_export:
                 errors.append(
                     "MEASUREMENT authority must be able to enter measurement export"

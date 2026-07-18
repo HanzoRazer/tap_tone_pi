@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 
 ROOT = Path(__file__).parent.parent / "docs" / "platform-contracts"
 
@@ -62,14 +64,8 @@ class TestAuthorityContractInvariants:
     def test_six_authority_classes_defined(self):
         """Authority contract must define six authority classes."""
         text = (ROOT / "authority-v1.md").read_text(encoding="utf-8")
-        for cls in [
-            "measurement",
-            "provenance",
-            "decision_support",
-            "interpretive",
-            "operator",
-            "external",
-        ]:
+        for cls in ["measurement", "provenance", "decision_support",
+                    "interpretive", "operator", "external"]:
             assert f"### {cls}" in text, f"Missing authority class: {cls}"
 
 
@@ -89,14 +85,8 @@ class TestConfidenceContractInvariants:
     def test_six_confidence_domains_defined(self):
         """Confidence contract must define six domains."""
         text = (ROOT / "confidence-v1.md").read_text(encoding="utf-8")
-        for domain in [
-            "signal",
-            "measurement",
-            "interpretive",
-            "recommendation",
-            "historical",
-            "ranking",
-        ]:
+        for domain in ["signal", "measurement", "interpretive",
+                       "recommendation", "historical", "ranking"]:
             assert f"### {domain}" in text, f"Missing confidence domain: {domain}"
 
 
@@ -116,15 +106,8 @@ class TestEpistemicStatusContractInvariants:
     def test_seven_statuses_defined(self):
         """Epistemic contract must define seven statuses."""
         text = (ROOT / "epistemic-status-v1.md").read_text(encoding="utf-8")
-        for status in [
-            "observed",
-            "derived",
-            "estimated",
-            "predicted",
-            "heuristic",
-            "operator_annotated",
-            "externally_sourced",
-        ]:
+        for status in ["observed", "derived", "estimated", "predicted",
+                       "heuristic", "operator_annotated", "externally_sourced"]:
             assert f"### {status}" in text, f"Missing epistemic status: {status}"
 
 
@@ -146,12 +129,6 @@ class TestReviewDecisionContractInvariants:
     def test_six_decision_types_defined(self):
         """Review contract must define six decision types."""
         text = (ROOT / "review-decision-v1.md").read_text(encoding="utf-8")
-        for dtype in [
-            "acknowledge",
-            "request_more_evidence",
-            "defer",
-            "reject",
-            "mark_reviewed",
-            "approve_for_downstream_review",
-        ]:
+        for dtype in ["acknowledge", "request_more_evidence", "defer",
+                      "reject", "mark_reviewed", "approve_for_downstream_review"]:
             assert f"### {dtype}" in text, f"Missing decision type: {dtype}"

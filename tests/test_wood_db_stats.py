@@ -196,17 +196,13 @@ class TestGetSpeciesStats:
 
         # Check density stats (4 values: 400, 420, 410, 395)
         expected_density_mean = (400 + 420 + 410 + 395) / 4
-        assert stats.density_kg_m3_mean == pytest.approx(
-            expected_density_mean, rel=1e-6
-        )
+        assert stats.density_kg_m3_mean == pytest.approx(expected_density_mean, rel=1e-6)
         assert stats.density_kg_m3_std is not None
         assert stats.density_kg_m3_std > 0
 
         # Check thickness stats (4 values: 3.0, 3.2, 3.1, 2.9)
         expected_thickness_mean = (3.0 + 3.2 + 3.1 + 2.9) / 4
-        assert stats.thickness_mm_mean == pytest.approx(
-            expected_thickness_mean, rel=1e-6
-        )
+        assert stats.thickness_mm_mean == pytest.approx(expected_thickness_mean, rel=1e-6)
 
         # Check E_L stats (4 values: 12.0, 12.5, 12.2, 11.8)
         expected_el_mean = (12.0 + 12.5 + 12.2 + 11.8) / 4

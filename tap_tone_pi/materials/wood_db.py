@@ -16,19 +16,16 @@ import json
 import os
 import re
 from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
 import jsonschema
 
-from tap_tone_pi.materials import get_species
+from tap_tone_pi.materials import get_species, list_species
 
 SCHEMA_VERSION = "wood_flitch_record_v1"
-SCHEMA_PATH = (
-    Path(__file__).parent.parent.parent
-    / "contracts"
-    / "wood_flitch_record_v1.schema.json"
-)
+SCHEMA_PATH = Path(__file__).parent.parent.parent / "contracts" / "wood_flitch_record_v1.schema.json"
 
 DEFAULT_DB_PATH = Path.home() / ".tap_tone_pi" / "wood_db.json"
 ENV_DB_PATH_OVERRIDE = "TTP_WOOD_DB_PATH"
@@ -117,7 +114,6 @@ def normalize_species_freetext(freetext: str) -> Optional[str]:
 # Dataclasses
 # -----------------------------------------------------------------------------
 
-
 @dataclass
 class PlateMeasurement:
     """A single measurement event on one piece of a flitch."""
@@ -188,7 +184,6 @@ class FlitchRecord:
         if not is_known_species(self.species_id):
             # Warn but allow — species reference may add new species before db updates
             import warnings
-
             warnings.warn(
                 f"species_id {self.species_id!r} not found in wood_species.json. "
                 f"Use list_species() to see canonical IDs.",
@@ -244,7 +239,6 @@ def validate_flitch(flitch: FlitchRecord) -> None:
 # -----------------------------------------------------------------------------
 # WoodDatabase — CRUD operations
 # -----------------------------------------------------------------------------
-
 
 class FlitchNotFoundError(KeyError):
     """Raised when a flitch_id is not found in the database."""
@@ -381,7 +375,9 @@ class WoodDatabase:
             raise FlitchNotFoundError(f"Flitch {flitch_id!r} not found")
         del self._flitches[flitch_id]
 
-    def add_measurement(self, flitch_id: str, measurement: PlateMeasurement) -> None:
+    def add_measurement(
+        self, flitch_id: str, measurement: PlateMeasurement
+    ) -> None:
         """Append a measurement to an existing flitch.
 
         Args:
@@ -409,7 +405,8 @@ class WoodDatabase:
             Sorted list of flitch IDs with matching species
         """
         return sorted(
-            fid for fid, f in self._flitches.items() if f.species_id == species_id
+            fid for fid, f in self._flitches.items()
+            if f.species_id == species_id
         )
 
     def __len__(self) -> int:
@@ -483,7 +480,6 @@ class WoodDatabase:
 # -----------------------------------------------------------------------------
 # Stage D: SpeciesStats dataclass
 # -----------------------------------------------------------------------------
-
 
 class InsufficientDataError(ValueError):
     """Raised when there is not enough data to compute statistics."""

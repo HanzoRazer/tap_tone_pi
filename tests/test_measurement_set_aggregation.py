@@ -14,7 +14,10 @@ import json
 
 from tap_tone_pi.provenance import (
     MeasurementSetV1,
+    MeasurementSetSummaryV1,
     CampaignLifecycleExportV1,
+    MeasurementLineageV1,
+    ExperimentCampaignV1,
     create_campaign,
     create_measurement_lineage,
     create_measurement_set,
@@ -330,9 +333,7 @@ class TestConstitutionalSemantics:
         """All DO-89 types epistemic_status should be 'derived'."""
         mset = create_measurement_set("set_001", [])
         summary = summarize_measurement_set(mset)
-        export = CampaignLifecycleExportV1(
-            campaign_id="test", lifecycle_state="planned"
-        )
+        export = CampaignLifecycleExportV1(campaign_id="test", lifecycle_state="planned")
 
         assert mset.epistemic_status == "derived"
         assert summary.epistemic_status == "derived"

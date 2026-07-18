@@ -528,7 +528,6 @@ class OperatorLoop:
         # Attach calibration trust info (PR 2)
         try:
             from tap_tone_pi.calibration.gate import get_calibration_attachment
-
             cal_info = get_calibration_attachment(device or 0)
             attempt.attach_calibration(
                 status=cal_info["status"],

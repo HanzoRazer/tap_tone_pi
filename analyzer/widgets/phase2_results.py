@@ -258,7 +258,9 @@ class Phase2ResultsWidget(QWidget):
 
         build_id = self._session.build_id
         if not build_id:
-            _log.debug("No build_id in session; skipping build discovery")
+            _log.debug(
+                "No build_id in session; skipping build discovery"
+            )
             return
 
         try:

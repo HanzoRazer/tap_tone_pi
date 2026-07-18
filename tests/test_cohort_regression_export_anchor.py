@@ -6,9 +6,12 @@ blocks in viewer pack exports serialize correctly and contain no advisory
 semantics.
 """
 
+import pytest
 import json
 
 from tap_tone_pi.experiment import (
+    CohortRegressionEvidenceV1,
+    FormulaCandidateEvidenceV1,
     fit_linear_cohort_regression,
     create_formula_candidate_evidence,
 )

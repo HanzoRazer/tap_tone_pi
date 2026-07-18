@@ -17,16 +17,16 @@ EXAMPLES = ROOT / "examples" / "measurement"
 
 class TestTapPeaksSchema:
     """Tests for tap_peaks schema validation."""
-
+    
     @pytest.fixture
     def schema(self):
         return json.loads((SCHEMAS / "tap_peaks.schema.json").read_text())
-
+    
     def test_valid_example(self, schema):
         """Valid tap_peaks example should validate."""
         example = json.loads((EXAMPLES / "tap_peaks.json").read_text())
         validate(example, schema)
-
+    
     def test_minimal_valid(self, schema):
         """Minimal valid document should pass."""
         doc = {
@@ -40,7 +40,7 @@ class TestTapPeaksSchema:
             "peaks_hz": [102.5, 175.3, 248.1],
         }
         validate(doc, schema)
-
+    
     def test_missing_required_field_fails(self, schema):
         """Missing required field should fail."""
         doc = {
@@ -54,16 +54,16 @@ class TestTapPeaksSchema:
 
 class TestMoeResultSchema:
     """Tests for moe_result schema validation."""
-
+    
     @pytest.fixture
     def schema(self):
         return json.loads((SCHEMAS / "moe_result.schema.json").read_text())
-
+    
     def test_valid_example(self, schema):
         """Valid moe_result example should validate."""
         example = json.loads((EXAMPLES / "moe_result.json").read_text())
         validate(example, schema)
-
+    
     def test_minimal_valid(self, schema):
         """Minimal valid document should pass."""
         doc = {
@@ -79,7 +79,7 @@ class TestMoeResultSchema:
             "E_GPa": 12.8,
         }
         validate(doc, schema)
-
+    
     def test_with_optional_fields(self, schema):
         """Document with optional fields should pass."""
         doc = {
@@ -104,16 +104,16 @@ class TestMoeResultSchema:
 
 class TestManifestSchema:
     """Tests for manifest schema validation."""
-
+    
     @pytest.fixture
     def schema(self):
         return json.loads((SCHEMAS / "manifest.schema.json").read_text())
-
+    
     def test_valid_example(self, schema):
         """Valid manifest example should validate."""
         example = json.loads((EXAMPLES / "manifest.json").read_text())
         validate(example, schema)
-
+    
     def test_minimal_valid(self, schema):
         """Minimal valid document should pass."""
         doc = {
@@ -123,7 +123,7 @@ class TestManifestSchema:
             "artifacts": ["tap_peaks.json", "moe_result.json"],
         }
         validate(doc, schema)
-
+    
     def test_with_artifact_objects(self, schema):
         """Artifacts as objects should pass."""
         doc = {
@@ -143,16 +143,16 @@ class TestManifestSchema:
 
 class TestDisplacementSeriesSchema:
     """Tests for displacement_series schema validation."""
-
+    
     @pytest.fixture
     def schema(self):
         return json.loads((SCHEMAS / "displacement_series.schema.json").read_text())
-
+    
     def test_valid_example(self, schema):
         """Valid displacement_series example should validate."""
         example = json.loads((EXAMPLES / "displacement_series.json").read_text())
         validate(example, schema)
-
+    
     def test_minimal_valid(self, schema):
         """Minimal valid document should pass."""
         doc = {
@@ -169,16 +169,16 @@ class TestDisplacementSeriesSchema:
 
 class TestLoadSeriesSchema:
     """Tests for load_series schema validation."""
-
+    
     @pytest.fixture
     def schema(self):
         return json.loads((SCHEMAS / "load_series.schema.json").read_text())
-
+    
     def test_valid_example(self, schema):
         """Valid load_series example should validate."""
         example = json.loads((EXAMPLES / "load_series.json").read_text())
         validate(example, schema)
-
+    
     def test_minimal_valid(self, schema):
         """Minimal valid document should pass."""
         doc = {

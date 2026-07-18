@@ -1,7 +1,7 @@
 # TTP Analyzer — Canonical Hardware Stack Specification
 
-**Document status:** Authoritative design reference
-**Scope:** TTP Analyzer physical instrument (standalone acoustic measurement device)
+**Document status:** Authoritative design reference  
+**Scope:** TTP Analyzer physical instrument (standalone acoustic measurement device)  
 **Revision:** 1.3 — Consolidated per-unit calibration coverage and scope-boundary
 section from the superseded root-level copy (`HARDWARE_STACK_SPEC.md`, now
 removed); earlier (1.2): gain staging corrected for self-excitation

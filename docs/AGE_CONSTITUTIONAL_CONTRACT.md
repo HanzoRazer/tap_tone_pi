@@ -1,7 +1,7 @@
 # AGE Constitutional Contract
 
-**Version:** 1.0.0
-**Effective:** 2026-05-23
+**Version:** 1.0.0  
+**Effective:** 2026-05-23  
 **Authority:** ADR-0010 (Guidance Authority Boundary)
 
 ---

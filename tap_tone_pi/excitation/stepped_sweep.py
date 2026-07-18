@@ -23,7 +23,7 @@ from tap_tone_pi.excitation.contracts import (
     SteppedExcitationRecordV1,
     SweepExcitationRecordV1,
 )
-from tap_tone_pi.signal_gen.generators import generate_sweep
+from tap_tone_pi.signal_gen.generators import generate_sine, generate_sweep
 
 
 def generate_stepped_signal(

@@ -213,15 +213,9 @@ class ExperimentCampaignV1:
             build_session_id=self.build_session_id,
             experiment_design_id=self.experiment_design_id,
             lifecycle_state=state,
-            started_at_utc=started_at_utc
-            if started_at_utc is not None
-            else self.started_at_utc,
-            completed_at_utc=completed_at_utc
-            if completed_at_utc is not None
-            else self.completed_at_utc,
-            archived_at_utc=archived_at_utc
-            if archived_at_utc is not None
-            else self.archived_at_utc,
+            started_at_utc=started_at_utc if started_at_utc is not None else self.started_at_utc,
+            completed_at_utc=completed_at_utc if completed_at_utc is not None else self.completed_at_utc,
+            archived_at_utc=archived_at_utc if archived_at_utc is not None else self.archived_at_utc,
             workflow_ids=self.workflow_ids,
             revision_ids=self.revision_ids,
             measurement_ids=self.measurement_ids,

@@ -13,7 +13,9 @@ DO-003 Stage B acceptance tests:
 """
 
 import warnings
+from datetime import datetime, timezone
 
+import jsonschema
 import pytest
 
 from tap_tone_pi.materials import (
@@ -198,9 +200,7 @@ class TestNormalizeSpeciesFreetext:
         assert normalize_species_freetext("Sitka Spruce") == "spruce_sitka"
         assert normalize_species_freetext("sitka") == "spruce_sitka"
         assert normalize_species_freetext("Honduran Mahogany") == "mahogany_honduran"
-        assert (
-            normalize_species_freetext("East Indian Rosewood") == "rosewood_east_indian"
-        )
+        assert normalize_species_freetext("East Indian Rosewood") == "rosewood_east_indian"
         assert normalize_species_freetext("WRC") == "cedar_western_red"
 
     def test_space_to_underscore(self):

@@ -1,5 +1,5 @@
 # tap_tone_pi — Three Open Issues: Elaboration
-**Date:** 2026-03-30
+**Date:** 2026-03-30  
 **Status:** Engineering analysis + action items
 
 ---
@@ -19,7 +19,7 @@ tap_tone_pi/core/analysis.py     ← Capture engine FFT (Pi-side)
     analyze_tap() → AnalysisResult
     Hanning window, scipy.fft.rfft, normalized 0..1, float32
 
-analyzer/analysis/fft.py         ← Desktop viewer FFT (PC-side)
+analyzer/analysis/fft.py         ← Desktop viewer FFT (PC-side)  
     compute_fft() → (frequencies, magnitudes)
     Hanning window, scipy.fft.rfft, amplitude scaling (2.0/N), NOT normalized
 ```

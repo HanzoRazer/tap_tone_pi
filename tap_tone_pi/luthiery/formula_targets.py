@@ -114,7 +114,9 @@ class LuthieryFormulaEvidenceLinkV1:
         campaign_id: Optional link to a measurement campaign.
     """
 
-    schema_version: str = field(default="luthiery_formula_evidence_link_v1", init=False)
+    schema_version: str = field(
+        default="luthiery_formula_evidence_link_v1", init=False
+    )
     link_id: str = ""
     target_id: str = ""
     formula_id: str = ""

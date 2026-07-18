@@ -1,7 +1,7 @@
 # Session Handoff — 2026-05-22
 
-> **Session scope:** Governance audit + MOE calculation path consolidation
-> **Status:** Implementation complete, pending team review
+> **Session scope:** Governance audit + MOE calculation path consolidation  
+> **Status:** Implementation complete, pending team review  
 > **Artifacts:** 2 new docs, 1 new test file, 3 modified files
 
 ---
@@ -220,5 +220,5 @@ Many files in `tap_tone_pi/agent/` and `tap_tone_pi/agentic/` lack instrument cl
 
 ---
 
-*Session completed: 2026-05-22*
+*Session completed: 2026-05-22*  
 *Ready for team review and commit*

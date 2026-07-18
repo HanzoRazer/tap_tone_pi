@@ -17,7 +17,7 @@ Usage:
         reference_path="session/reference.wav",  # Optional
         threshold=0.7,
     )
-
+    
     if result.passed:
         print(f"Good capture: γ² = {result.coherence:.2f}")
     else:
@@ -85,33 +85,33 @@ compute_coherence = _compute_coherence
 @dataclass
 class CoherenceResult:
     """Result of coherence gate check."""
-
+    
     # Pass/fail
     passed: bool
-
+    
     # Coherence value at dominant frequency
     coherence: float
-
+    
     # Dominant frequency where coherence was measured
     dominant_freq_hz: float
-
+    
     # Threshold used
     threshold: float
-
+    
     # Additional diagnostics
     mean_coherence: float = 0.0
     coherence_at_peaks: List[Tuple[float, float]] = None  # [(freq, coherence), ...]
-
+    
     # Recommendation if failed
     recommendation: str = ""
-
+    
     def __post_init__(self):
         if self.coherence_at_peaks is None:
             self.coherence_at_peaks = []
-
+        
         if not self.passed and not self.recommendation:
             self._generate_recommendation()
-
+    
     def _generate_recommendation(self) -> None:
         """Generate actionable recommendation based on coherence pattern."""
         if self.coherence < 0.3:
@@ -141,10 +141,10 @@ def check_coherence(
 ) -> CoherenceResult:
     """
     Check coherence of a capture against threshold.
-
+    
     For Phase 2, we typically use auto-coherence (signal with itself
     after trigger detection) or cross-coherence with a reference mic.
-
+    
     Args:
         capture_wav: Path to captured WAV file
         reference_wav: Optional path to reference WAV (for cross-coherence)
@@ -152,12 +152,12 @@ def check_coherence(
         freq_range_hz: Frequency range to analyze
         sample_rate: Expected sample rate
         nperseg: FFT segment size
-
+    
     Returns:
         CoherenceResult with pass/fail and diagnostics
     """
     capture_path = Path(capture_wav)
-
+    
     if not capture_path.exists():
         return CoherenceResult(
             passed=False,
@@ -166,11 +166,11 @@ def check_coherence(
             threshold=threshold,
             recommendation=f"Capture file not found: {capture_path}",
         )
-
+    
     # Read capture
     signal, meta = read_wav_mono(capture_path)
     fs = meta.sample_rate
-
+    
     if len(signal) < nperseg * 2:
         return CoherenceResult(
             passed=False,
@@ -187,7 +187,7 @@ def check_coherence(
         freq_min=freq_range_hz[0],
         freq_max=freq_range_hz[1],
     )
-
+    
     if not peaks:
         return CoherenceResult(
             passed=False,
@@ -196,9 +196,9 @@ def check_coherence(
             threshold=threshold,
             recommendation="No significant peaks found in capture.",
         )
-
+    
     dominant_freq = peaks[0][0]  # (freq, magnitude) tuple
-
+    
     # Compute coherence
     if reference_wav is not None:
         # Cross-coherence with reference
@@ -211,39 +211,43 @@ def check_coherence(
                 threshold=threshold,
                 recommendation=f"Reference file not found: {ref_path}",
             )
-
+        
         ref_signal, ref_meta = read_wav_mono(ref_path)
-
+        
         # Ensure same length
         min_len = min(len(signal), len(ref_signal))
         signal = signal[:min_len]
         ref_signal = ref_signal[:min_len]
-
-        freqs, coh = _compute_coherence(signal, ref_signal, fs, nperseg=nperseg)
+        
+        freqs, coh = _compute_coherence(
+            signal, ref_signal, fs, nperseg=nperseg
+        )
     else:
         # Auto-coherence: split signal in half and compare
         half = len(signal) // 2
         sig1 = signal[:half]
         sig2 = signal[half : half * 2]
 
-        freqs, coh = _compute_coherence(sig1, sig2, fs, nperseg=max(128, nperseg // 2))
-
+        freqs, coh = _compute_coherence(
+            sig1, sig2, fs, nperseg=max(128, nperseg // 2)
+        )
+    
     # Find coherence at dominant frequency
     freq_idx = np.argmin(np.abs(freqs - dominant_freq))
     coherence_at_dominant = float(coh[freq_idx])
-
+    
     # Mean coherence in frequency range
     freq_mask = (freqs >= freq_range_hz[0]) & (freqs <= freq_range_hz[1])
     mean_coh = float(np.mean(coh[freq_mask])) if np.any(freq_mask) else 0.0
-
+    
     # Coherence at each peak
     coherence_at_peaks = []
     for freq, mag in peaks[:5]:
         idx = np.argmin(np.abs(freqs - freq))
         coherence_at_peaks.append((freq, float(coh[idx])))
-
+    
     passed = coherence_at_dominant >= threshold
-
+    
     return CoherenceResult(
         passed=passed,
         coherence=coherence_at_dominant,
@@ -264,7 +268,7 @@ def check_coherence_from_arrays(
 ) -> CoherenceResult:
     """
     Check coherence from numpy arrays (for use in capture loop).
-
+    
     Args:
         signal: Captured audio signal
         reference: Optional reference signal
@@ -272,12 +276,12 @@ def check_coherence_from_arrays(
         threshold: Minimum acceptable coherence
         freq_range_hz: Frequency range to analyze
         nperseg: FFT segment size
-
+    
     Returns:
         CoherenceResult with pass/fail and diagnostics
     """
     fs = sample_rate
-
+    
     if len(signal) < nperseg * 2:
         return CoherenceResult(
             passed=False,
@@ -286,7 +290,7 @@ def check_coherence_from_arrays(
             threshold=threshold,
             recommendation="Signal too short for coherence analysis.",
         )
-
+    
     # Find dominant frequency
     peaks = _compute_fft_peaks(
         signal,
@@ -320,20 +324,20 @@ def check_coherence_from_arrays(
             fs,
             nperseg=max(128, nperseg // 2),
         )
-
+    
     freq_idx = np.argmin(np.abs(freqs - dominant_freq))
     coherence_at_dominant = float(coh[freq_idx])
-
+    
     freq_mask = (freqs >= freq_range_hz[0]) & (freqs <= freq_range_hz[1])
     mean_coh = float(np.mean(coh[freq_mask])) if np.any(freq_mask) else 0.0
-
+    
     coherence_at_peaks = []
     for freq, mag in peaks[:5]:
         idx = np.argmin(np.abs(freqs - freq))
         coherence_at_peaks.append((freq, float(coh[idx])))
-
+    
     passed = coherence_at_dominant >= threshold
-
+    
     return CoherenceResult(
         passed=passed,
         coherence=coherence_at_dominant,
@@ -347,11 +351,11 @@ def check_coherence_from_arrays(
 def format_coherence_feedback(result: CoherenceResult, use_color: bool = True) -> str:
     """
     Format coherence result for terminal display.
-
+    
     Args:
         result: CoherenceResult to format
         use_color: Whether to use ANSI colors
-
+    
     Returns:
         Formatted string for display
     """
@@ -361,7 +365,7 @@ def format_coherence_feedback(result: CoherenceResult, use_color: bool = True) -
     RED = "\033[31m" if use_color else ""
     RESET = "\033[0m" if use_color else ""
     BOLD = "\033[1m" if use_color else ""
-
+    
     if result.passed:
         status = f"{GREEN}{BOLD}PASS{RESET}"
         icon = "✓"
@@ -371,41 +375,41 @@ def format_coherence_feedback(result: CoherenceResult, use_color: bool = True) -
     else:
         status = f"{RED}{BOLD}FAIL{RESET}"
         icon = "✗"
-
+    
     line1 = f"{icon} Coherence: γ² = {result.coherence:.3f} (threshold: {result.threshold:.2f}) [{status}]"
     line2 = f"  Dominant frequency: {result.dominant_freq_hz:.1f} Hz"
-
+    
     lines = [line1, line2]
-
+    
     if not result.passed and result.recommendation:
         lines.append(f"  → {result.recommendation}")
-
+    
     return "\n".join(lines)
 
 
 def demo():
     """Demo coherence gate with synthetic data."""
     import numpy as np
-
+    
     fs = 44100
     duration = 1.0
     t = np.linspace(0, duration, int(fs * duration))
-
+    
     # Create test signals
     # Good coherence: clean sinusoid
     clean_signal = np.sin(2 * np.pi * 200 * t) * 0.5
-
+    
     # Poor coherence: mostly noise
     noisy_signal = clean_signal * 0.1 + np.random.randn(len(t)) * 0.5
-
+    
     print("Testing coherence gate with synthetic signals:\n")
-
+    
     # Test 1: Clean signal (should pass)
     result1 = check_coherence_from_arrays(clean_signal, None, fs, threshold=0.7)
     print("Clean signal:")
     print(format_coherence_feedback(result1))
     print()
-
+    
     # Test 2: Noisy signal (should fail)
     result2 = check_coherence_from_arrays(noisy_signal, None, fs, threshold=0.7)
     print("Noisy signal:")

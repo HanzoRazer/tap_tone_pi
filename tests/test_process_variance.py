@@ -11,10 +11,15 @@ Tests cover:
 """
 
 import json
+import math
 import pytest
 
 from tap_tone_pi.experiment import (
+    ReferenceBodyRecordV1,
+    VarianceDecompositionV1,
+    ProcessVarianceEvidenceV1,
     VarianceBandThresholdsV1,
+    FeasibilitySummaryV1,
     create_reference_body,
     decompose_variance,
     compute_process_variance_evidence,

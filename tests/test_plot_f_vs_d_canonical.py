@@ -119,7 +119,5 @@ class TestLegacyEmitsDeprecationWarning:
         for k in modules_to_remove:
             del sys.modules[k]
 
-        with pytest.warns(
-            DeprecationWarning, match="modes.bending_rig.plot_f_vs_d is deprecated"
-        ):
+        with pytest.warns(DeprecationWarning, match="modes.bending_rig.plot_f_vs_d is deprecated"):
             import modes.bending_rig.plot_f_vs_d  # noqa: F401

@@ -13,6 +13,7 @@ import pytest
 
 from tap_tone_pi.provenance import (
     CampaignLifecycleState,
+    ExperimentCampaignV1,
     create_campaign,
     transition_campaign_state,
     start_campaign,

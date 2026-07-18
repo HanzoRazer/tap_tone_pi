@@ -10,8 +10,10 @@ Validates:
 
 from __future__ import annotations
 
+import pytest
+from datetime import datetime, timezone
 
-from tap_tone_pi.workflow.attempt import Attempt
+from tap_tone_pi.workflow.attempt import Attempt, AttemptStatus
 from tap_tone_pi.calibration.storage import CalibrationStatus
 
 

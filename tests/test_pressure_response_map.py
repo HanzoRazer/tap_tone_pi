@@ -22,6 +22,7 @@ from tap_tone_pi.pressure_map import (
     PressureResponseSampleV1,
     PressureResponseMapV1,
     PressureResponseMappingWorkflowV1,
+    PressureResponseMapSummaryV1,
     create_pressure_grid_point,
     create_pressure_grid,
     create_pressure_response_sample,
@@ -212,8 +213,12 @@ class TestPressureResponseMap:
         p2 = create_pressure_grid_point("A2", 10.0, 0.0)
         grid = create_pressure_grid(grid_id="grid_001", points=[p1, p2])
 
-        s1 = create_pressure_response_sample("s_001", "A1", 100.0, -10.0, "exc_001")
-        s2 = create_pressure_response_sample("s_002", "A2", 100.0, -15.0, "exc_001")
+        s1 = create_pressure_response_sample(
+            "s_001", "A1", 100.0, -10.0, "exc_001"
+        )
+        s2 = create_pressure_response_sample(
+            "s_002", "A2", 100.0, -15.0, "exc_001"
+        )
 
         return grid, [s1, s2]
 
@@ -379,8 +384,12 @@ class TestNormalization:
         p2 = create_pressure_grid_point("A2", 10.0, 0.0)
         grid = create_pressure_grid(grid_id="grid_001", points=[p1, p2])
 
-        s1 = create_pressure_response_sample("s_001", "A1", 100.0, -10.0, "exc_001")
-        s2 = create_pressure_response_sample("s_002", "A2", 100.0, -15.0, "exc_001")
+        s1 = create_pressure_response_sample(
+            "s_001", "A1", 100.0, -10.0, "exc_001"
+        )
+        s2 = create_pressure_response_sample(
+            "s_002", "A2", 100.0, -15.0, "exc_001"
+        )
 
         prm = assemble_pressure_response_map(
             map_id="map_001",
@@ -415,8 +424,12 @@ class TestSummary:
         p2 = create_pressure_grid_point("A2", 10.0, 0.0)
         grid = create_pressure_grid(grid_id="grid_001", points=[p1, p2])
 
-        s1 = create_pressure_response_sample("s_001", "A1", 100.0, -10.0, "exc_001")
-        s2 = create_pressure_response_sample("s_002", "A2", 100.0, -15.0, "exc_001")
+        s1 = create_pressure_response_sample(
+            "s_001", "A1", 100.0, -10.0, "exc_001"
+        )
+        s2 = create_pressure_response_sample(
+            "s_002", "A2", 100.0, -15.0, "exc_001"
+        )
 
         prm = assemble_pressure_response_map(
             map_id="map_001",
@@ -504,7 +517,9 @@ class TestAdvisoryFreeSemantics:
         """PressureResponseMapV1 must not contain forbidden terms."""
         p1 = create_pressure_grid_point("A1", 0.0, 0.0)
         grid = create_pressure_grid(grid_id="grid_001", points=[p1])
-        s1 = create_pressure_response_sample("s_001", "A1", 100.0, -10.0, "exc_001")
+        s1 = create_pressure_response_sample(
+            "s_001", "A1", 100.0, -10.0, "exc_001"
+        )
 
         prm = assemble_pressure_response_map(
             map_id="map_001",
@@ -519,13 +534,17 @@ class TestAdvisoryFreeSemantics:
         json_str = json.dumps(d).lower()
 
         for term in self.FORBIDDEN_TERMS:
-            assert term not in json_str, f"Map contains forbidden term '{term}'"
+            assert term not in json_str, (
+                f"Map contains forbidden term '{term}'"
+            )
 
     def test_summary_contains_no_forbidden_terms(self):
         """PressureResponseMapSummaryV1 must not contain forbidden terms."""
         p1 = create_pressure_grid_point("A1", 0.0, 0.0)
         grid = create_pressure_grid(grid_id="grid_001", points=[p1])
-        s1 = create_pressure_response_sample("s_001", "A1", 100.0, -10.0, "exc_001")
+        s1 = create_pressure_response_sample(
+            "s_001", "A1", 100.0, -10.0, "exc_001"
+        )
 
         prm = assemble_pressure_response_map(
             map_id="map_001",
@@ -541,7 +560,9 @@ class TestAdvisoryFreeSemantics:
         json_str = json.dumps(d).lower()
 
         for term in self.FORBIDDEN_TERMS:
-            assert term not in json_str, f"Summary contains forbidden term '{term}'"
+            assert term not in json_str, (
+                f"Summary contains forbidden term '{term}'"
+            )
 
     def test_workflow_contains_no_forbidden_terms(self):
         """PressureResponseMappingWorkflowV1 must not contain forbidden terms."""
@@ -556,13 +577,17 @@ class TestAdvisoryFreeSemantics:
         json_str = json.dumps(d).lower()
 
         for term in self.FORBIDDEN_TERMS:
-            assert term not in json_str, f"Workflow contains forbidden term '{term}'"
+            assert term not in json_str, (
+                f"Workflow contains forbidden term '{term}'"
+            )
 
     def test_map_contains_no_mode_shape_claims(self):
         """Artifacts must not claim to identify mode shapes."""
         p1 = create_pressure_grid_point("A1", 0.0, 0.0)
         grid = create_pressure_grid(grid_id="grid_001", points=[p1])
-        s1 = create_pressure_response_sample("s_001", "A1", 100.0, -10.0, "exc_001")
+        s1 = create_pressure_response_sample(
+            "s_001", "A1", 100.0, -10.0, "exc_001"
+        )
 
         prm = assemble_pressure_response_map(
             map_id="map_001",

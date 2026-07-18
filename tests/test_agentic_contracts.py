@@ -36,6 +36,7 @@ from tap_tone_pi.agentic.events import (
 )
 from tap_tone_pi.agentic.contracts.advisory_authority import (
     AuthorityClass,
+    GuidanceScope,
     AGE_ATTENTION_AUTHORITY,
 )
 from tap_tone_pi.agentic.contracts.confidence_domain import (

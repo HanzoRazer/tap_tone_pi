@@ -463,8 +463,8 @@ For applications requiring these specifications, commercial analyzers remain app
 
 ## Phase 4: Production Shop Integration
 
-**Status:** Planning
-**Target version:** v2.4.x
+**Status:** Planning  
+**Target version:** v2.4.x  
 **Prerequisite:** v2.3.0-alpha.7 tag (all Phase 3 items complete)
 
 The viewer_pack_v1 bundle now carries everything the Production Shop inverse brace engine needs — modal peaks, transfer function, coherence, wood properties, and bending stiffness. Phase 4 closes the loop from measurement to prescription.

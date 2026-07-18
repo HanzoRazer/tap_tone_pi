@@ -288,10 +288,7 @@ class TestListMethods:
         assert dread_ids == ["DREAD_001"]
 
     def test_list_in_progress(
-        self,
-        temp_db_path: Path,
-        sample_build: BuildRecord,
-        completed_build: BuildRecord,
+        self, temp_db_path: Path, sample_build: BuildRecord, completed_build: BuildRecord
     ):
         """list_in_progress() returns builds without build_completed."""
         db = BuildDatabase(temp_db_path)
@@ -304,10 +301,7 @@ class TestListMethods:
         assert in_progress == ["CARLOS_JUMBO_001"]
 
     def test_list_completed(
-        self,
-        temp_db_path: Path,
-        sample_build: BuildRecord,
-        completed_build: BuildRecord,
+        self, temp_db_path: Path, sample_build: BuildRecord, completed_build: BuildRecord
     ):
         """list_completed() returns builds with build_completed set."""
         db = BuildDatabase(temp_db_path)

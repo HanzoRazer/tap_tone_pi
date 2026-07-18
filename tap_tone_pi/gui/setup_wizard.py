@@ -271,9 +271,9 @@ class SetupWizardDialog(tk.Toplevel):
                     try:
                         self.after(
                             0,
-                            lambda level=normalized: (
-                                self.meter.set_level(level) if self._recording else None
-                            ),
+                            lambda level=normalized: self.meter.set_level(level)
+                            if self._recording
+                            else None,
                         )
                     except tk.TclError:
                         break  # Widget destroyed

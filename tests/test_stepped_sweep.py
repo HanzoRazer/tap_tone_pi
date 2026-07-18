@@ -22,6 +22,7 @@ from tap_tone_pi.excitation import (
     SweepExcitationRecordV1,
     create_sweep_excitation_record,
     # Measurement linkage (DO-91)
+    ExcitationMeasurementLinkV1,
     create_excitation_measurement_link,
 )
 

@@ -111,7 +111,6 @@ class PointSpectrumLike:
     Avoids hard import from scripts/phase2/metrics.py.
     Any object with these attributes works.
     """
-
     point_id: str
     x_mm: float
     y_mm: float
@@ -161,9 +160,7 @@ def compare_mode(
 
     # Frequency residual
     freq_residual_hz = actual_measured_freq - predicted_freq
-    freq_residual_pct = (
-        (freq_residual_hz / predicted_freq * 100.0) if predicted_freq > 0 else 0.0
-    )
+    freq_residual_pct = (freq_residual_hz / predicted_freq * 100.0) if predicted_freq > 0 else 0.0
 
     # Extract measured amplitudes at the target frequency
     measured_amps: dict[str, float] = {}
@@ -194,9 +191,7 @@ def compare_mode(
     if measured_amps:
         peak_measured = max(abs(v) for v in measured_amps.values())
         if peak_measured > 0:
-            measured_amps_norm = {
-                k: v / peak_measured for k, v in measured_amps.items()
-            }
+            measured_amps_norm = {k: v / peak_measured for k, v in measured_amps.items()}
         else:
             measured_amps_norm = {k: 0.0 for k in measured_amps}
     else:

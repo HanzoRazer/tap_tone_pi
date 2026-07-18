@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
@@ -24,6 +25,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication
 
 from analyzer.loaders.phase2_session import Phase2Session, load_phase2_session
+from analyzer.loaders.prediction_loader import BuildComparison, ModeComparison
 from analyzer.widgets.phase2_results import Phase2ResultsWidget
 from tap_tone_pi.materials import (
     BuildDatabase,
@@ -224,7 +226,7 @@ class TestPhase2ResultsWidgetPeaksInteraction:
         widget.set_session(session)
 
         if widget._peaks_list.count() > 0:
-            _initial_value = widget._freq_slider.value()
+            initial_value = widget._freq_slider.value()
             item = widget._peaks_list.item(0)
             peak_idx = item.data(Qt.ItemDataRole.UserRole)
 
@@ -329,10 +331,7 @@ class TestPhase2ResultsWidgetComparison:
         assert widget.comparison is None
 
     def test_load_comparison_success(
-        self,
-        widget: Phase2ResultsWidget,
-        session: Phase2Session,
-        build_db: BuildDatabase,
+        self, widget: Phase2ResultsWidget, session: Phase2Session, build_db: BuildDatabase
     ):
         """load_comparison loads data from build database."""
         widget.set_session(session)
@@ -343,10 +342,7 @@ class TestPhase2ResultsWidgetComparison:
         assert widget.comparison.build_id == "TEST_BUILD_001"
 
     def test_auto_loads_comparison_on_set_session(
-        self,
-        widget: Phase2ResultsWidget,
-        session: Phase2Session,
-        build_db: BuildDatabase,
+        self, widget: Phase2ResultsWidget, session: Phase2Session, build_db: BuildDatabase
     ):
         """set_session auto-loads comparison for session.build_id."""
         widget.set_session(session)
@@ -356,10 +352,7 @@ class TestPhase2ResultsWidgetComparison:
         assert widget.comparison.build_id == "TEST_BUILD_001"
 
     def test_comparison_display_updated(
-        self,
-        widget: Phase2ResultsWidget,
-        session: Phase2Session,
-        build_db: BuildDatabase,
+        self, widget: Phase2ResultsWidget, session: Phase2Session, build_db: BuildDatabase
     ):
         """Comparison panel shows mode data."""
         widget.set_session(session)
@@ -371,10 +364,7 @@ class TestPhase2ResultsWidgetComparison:
         assert widget._comparison_list.count() >= 2  # T1 and A0
 
     def test_load_comparison_missing_build(
-        self,
-        widget: Phase2ResultsWidget,
-        session: Phase2Session,
-        build_db: BuildDatabase,
+        self, widget: Phase2ResultsWidget, session: Phase2Session, build_db: BuildDatabase
     ):
         """load_comparison handles missing build gracefully."""
         widget.set_session(session)

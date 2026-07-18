@@ -147,10 +147,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     if getattr(args, "resume", None):
         session_dir = Path(args.resume).expanduser().resolve()
         if not session_dir.is_dir():
-            print(
-                f"error: --resume path is not a directory: {session_dir}",
-                file=sys.stderr,
-            )
+            print(f"error: --resume path is not a directory: {session_dir}", file=sys.stderr)
             return 1
         try:
             state = load_session_state(session_dir)

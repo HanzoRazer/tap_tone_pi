@@ -36,20 +36,16 @@ class ConfidenceDomain(str, Enum):
 
 
 # Domains reserved for MEASUREMENT authority
-MEASUREMENT_DOMAINS = frozenset(
-    {
-        ConfidenceDomain.SIGNAL,
-        ConfidenceDomain.MEASUREMENT,
-    }
-)
+MEASUREMENT_DOMAINS = frozenset({
+    ConfidenceDomain.SIGNAL,
+    ConfidenceDomain.MEASUREMENT,
+})
 
 # Domains allowed for DECISION_SUPPORT authority
-ADVISORY_DOMAINS = frozenset(
-    {
-        ConfidenceDomain.INTERPRETIVE,
-        ConfidenceDomain.RECOMMENDATION,
-    }
-)
+ADVISORY_DOMAINS = frozenset({
+    ConfidenceDomain.INTERPRETIVE,
+    ConfidenceDomain.RECOMMENDATION,
+})
 
 
 @dataclass(frozen=True)
@@ -78,9 +74,7 @@ class TypedConfidenceV1:
 
     def __post_init__(self):
         if not 0.0 <= self.value <= 1.0:
-            raise ValueError(
-                f"Confidence value must be in [0.0, 1.0], got {self.value}"
-            )
+            raise ValueError(f"Confidence value must be in [0.0, 1.0], got {self.value}")
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""

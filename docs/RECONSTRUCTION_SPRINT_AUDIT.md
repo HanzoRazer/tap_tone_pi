@@ -1,8 +1,8 @@
 # Reconstruction Sprint Audit — tap_tone_pi
 
-**Generated:** 2026-05-24
-**Branch:** main
-**Latest Commit:** 3ef56d5
+**Generated:** 2026-05-24  
+**Branch:** main  
+**Latest Commit:** 3ef56d5  
 **Status:** Phase 0 + Phase 1 Complete
 
 ---
@@ -26,7 +26,7 @@ The tap_tone_pi repository has completed its constitutional architecture sprint.
 
 ### DO-78: AGE Constitutional Contract
 
-**Status:** Complete
+**Status:** Complete  
 **PRs:** 78A–78G
 
 | PR | Description | Commit |
@@ -48,7 +48,7 @@ The tap_tone_pi repository has completed its constitutional architecture sprint.
 
 ### DO-81: Measurement Authority & Epistemic Status
 
-**Status:** Complete
+**Status:** Complete  
 **PRs:** 81A–81D
 
 | PR | Description | Commit |
