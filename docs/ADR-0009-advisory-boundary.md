@@ -1,8 +1,8 @@
 # ADR-0009: Advisory Boundary — Measurement vs Decision Support Instrument Classes
 
-**Status:** Accepted  
-**Date:** 2026-03-30  
-**Sprint:** QW (Quick Wins), v2.3.0-alpha.4  
+**Status:** Accepted
+**Date:** 2026-03-30
+**Sprint:** QW (Quick Wins), v2.3.0-alpha.4
 **Enforced by:** `ci/check_advisory_boundary.py`, `.github/workflows/advisory_boundary_guard.yml`
 
 ---

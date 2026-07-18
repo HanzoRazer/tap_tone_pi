@@ -1,9 +1,9 @@
 # Roadmap: Acoustic Excitation Framework
 
-**Status:** DEFERRED FUTURE CAPABILITY  
-**Priority:** High (post-provenance completion)  
-**Classification:** INSTRUMENT CLASS: MEASUREMENT  
-**Created:** 2026-06-12  
+**Status:** DEFERRED FUTURE CAPABILITY
+**Priority:** High (post-provenance completion)
+**Classification:** INSTRUMENT CLASS: MEASUREMENT
+**Created:** 2026-06-12
 **Blocks:** Controlled acoustic workflows, A0 resonance measurement, transfer-function workflows
 
 ---
@@ -55,8 +55,8 @@ Controlled excitation is treated as a **measurement condition**, not an advisory
 
 ## DO-90 — Acoustic Excitation Framework Foundation
 
-**Status:** Planned (Post-DO-89)  
-**Priority:** High  
+**Status:** Planned (Post-DO-89)
+**Priority:** High
 **Classification:** INSTRUMENT CLASS: MEASUREMENT
 
 ### Scope
@@ -174,8 +174,8 @@ Not included in DO-90:
 
 ## DO-91 — Excitation Provenance & Transfer Function Workflow
 
-**Status:** Planned  
-**Priority:** High  
+**Status:** Planned
+**Priority:** High
 **Depends on:** DO-90
 
 ### Scope (Stub)
@@ -196,8 +196,8 @@ Not included in DO-90:
 
 ## DO-92 — MainBodyAirResonanceWorkflowV1
 
-**Status:** Planned  
-**Priority:** Medium  
+**Status:** Planned
+**Priority:** Medium
 **Depends on:** DO-91
 
 ### Scope (Stub)
@@ -218,8 +218,8 @@ Not included in DO-90:
 
 ## DO-93 — FlatPlateResonanceWorkflowV1
 
-**Status:** Planned  
-**Priority:** Medium  
+**Status:** Planned
+**Priority:** Medium
 **Depends on:** DO-91
 
 ### Scope (Stub)
@@ -240,8 +240,8 @@ Not included in DO-90:
 
 ## DO-94 — ModalParticipationMappingWorkflowV1
 
-**Status:** Planned  
-**Priority:** Medium  
+**Status:** Planned
+**Priority:** Medium
 **Depends on:** DO-92, DO-93
 
 ### Scope (Stub)
@@ -262,8 +262,8 @@ Not included in DO-90:
 
 ## DO-95 — Soundhole Placement Research Workflow
 
-**Status:** Planned  
-**Priority:** Low  
+**Status:** Planned
+**Priority:** Low
 **Depends on:** DO-92, DO-94
 
 ### Scope (Stub)

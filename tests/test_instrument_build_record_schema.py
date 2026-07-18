@@ -17,7 +17,11 @@ from pathlib import Path
 import jsonschema
 import pytest
 
-SCHEMA_PATH = Path(__file__).parent.parent / "contracts" / "instrument_build_record_v1.schema.json"
+SCHEMA_PATH = (
+    Path(__file__).parent.parent
+    / "contracts"
+    / "instrument_build_record_v1.schema.json"
+)
 
 
 @pytest.fixture

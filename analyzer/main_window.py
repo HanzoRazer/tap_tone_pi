@@ -72,7 +72,7 @@ class MainWindow(QMainWindow):
 
         # ── Guidance engine + panel ───────────────────────────────────────
         self._guidance_engine = AnalyzerGuidanceEngine()
-        self._guidance_panel = GuidancePanelWidget(self)
+        self._guidance_panel  = GuidancePanelWidget(self)
         self._guidance_engine.on_directive = self._guidance_panel.show_directive
         self._guidance_panel.stage_changed.connect(self._guidance_engine.set_stage)
         self._guidance_panel.act_requested.connect(self._on_guidance_act)
@@ -222,15 +222,11 @@ class MainWindow(QMainWindow):
         limit_menu = analysis_menu.addMenu("Limit &Curves")
 
         apply_tonewood = QAction("Apply tonewood tap preset", self)
-        apply_tonewood.triggered.connect(
-            lambda: self._on_limit_preset_selected("tonewood_tap")
-        )
+        apply_tonewood.triggered.connect(lambda: self._on_limit_preset_selected("tonewood_tap"))
         limit_menu.addAction(apply_tonewood)
 
         apply_speaker = QAction("Apply speaker response preset", self)
-        apply_speaker.triggered.connect(
-            lambda: self._on_limit_preset_selected("speaker_response")
-        )
+        apply_speaker.triggered.connect(lambda: self._on_limit_preset_selected("speaker_response"))
         limit_menu.addAction(apply_speaker)
 
         limit_menu.addSeparator()
@@ -251,12 +247,6 @@ class MainWindow(QMainWindow):
 
         # Help menu
         help_menu = menubar.addMenu("&Help")
-
-        manual_action = QAction("&Laboratory Manual", self)
-        manual_action.triggered.connect(self._show_laboratory_manual)
-        help_menu.addAction(manual_action)
-
-        help_menu.addSeparator()
 
         about_action = QAction("&About", self)
         about_action.triggered.connect(self._show_about)
@@ -554,10 +544,10 @@ class MainWindow(QMainWindow):
     def _on_guidance_act(self, target_type: str) -> None:
         """Navigate analyzer UI from guidance panel Act button. Read-only."""
         tab_map = {
-            "spectrum_view": 0,
+            "spectrum_view":   0,
             "spectrum_region": 0,
-            "bode_plot": 1,
-            "wsi_plot": 2,
+            "bode_plot":       1,
+            "wsi_plot":        2,
         }
         tab_index = tab_map.get(target_type)
         if tab_index is not None:
@@ -570,7 +560,7 @@ class MainWindow(QMainWindow):
         if not self._limit_overlay.has_limits or not self.current_spectrum:
             return
         freq = np.array(self.current_spectrum.get("freq_hz", []))
-        mag = np.array(self.current_spectrum.get("H_mag", []))
+        mag  = np.array(self.current_spectrum.get("H_mag", []))
         if len(freq) == 0 or len(mag) == 0:
             return
         result = self._limit_overlay.draw(freq, mag)
@@ -589,9 +579,7 @@ class MainWindow(QMainWindow):
         self._limit_panel.update_verdict(
             verdict=result.verdict,
             violation_count=n_viol,
-            worst_margin_db=abs(result.worst_margin_db)
-            if result.worst_margin_db != float("inf")
-            else 0.0,
+            worst_margin_db=abs(result.worst_margin_db) if result.worst_margin_db != float("inf") else 0.0,
             active_preset=self._limit_overlay.preset_name,
             violation_details=[v.to_dict() for v in result.violations],
         )
@@ -911,42 +899,6 @@ class MainWindow(QMainWindow):
         """Forward auto-discover toggle to the Phase 2 widget."""
         if hasattr(self, "phase2_results") and self.phase2_results is not None:
             self.phase2_results.set_auto_discover(checked)
-
-    def _show_laboratory_manual(self):
-        """Open the read-only Laboratory Manual view.
-
-        Reference material, deliberately separate from measurement execution.
-        The view is kept alive as an attribute so it is not garbage-collected
-        the moment this method returns.
-
-        The view itself absorbs manifest load failures into controlled empty /
-        unavailable / invalid states, so opening it does not crash on bad data.
-        Importing the optional GUI module can still fail on a partial install;
-        that is surfaced as a controlled dialog rather than terminating the app.
-        Broad exceptions are deliberately not swallowed — a programmer defect in
-        view construction must still surface loudly.
-        """
-        existing = getattr(self, "_laboratory_manual_view", None)
-        if existing is not None:
-            existing.raise_()
-            existing.activateWindow()
-            return
-
-        try:
-            from analyzer.widgets.laboratory_manual_view import LaboratoryManualView
-        except ImportError as exc:
-            QMessageBox.critical(
-                self,
-                "Laboratory Manual",
-                "The Laboratory Manual viewer could not be loaded in this "
-                f"installation.\n\nDetails:\n{exc}",
-            )
-            return
-
-        view = LaboratoryManualView()
-        view.destroyed.connect(lambda: setattr(self, "_laboratory_manual_view", None))
-        self._laboratory_manual_view = view
-        view.show()
 
     def _show_about(self):
         """Show about dialog."""

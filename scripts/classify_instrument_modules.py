@@ -107,9 +107,18 @@ def classify_module(filepath: Path) -> tuple[str, set[str]]:
     found = scan_for_advisory_vocab(filepath)
 
     high_signal_terms = found & {
-        "recommend", "advise", "suggest", "guidance", "advisory",
-        "verdict", "judgment", "interpret", "diagnose", "heuristic",
-        "attention", "priority",
+        "recommend",
+        "advise",
+        "suggest",
+        "guidance",
+        "advisory",
+        "verdict",
+        "judgment",
+        "interpret",
+        "diagnose",
+        "heuristic",
+        "attention",
+        "priority",
     }
 
     if high_signal_terms:
@@ -169,7 +178,7 @@ def main() -> None:
             if found:
                 terms = ", ".join(sorted(found)[:5])
                 if len(found) > 5:
-                    terms += f" (+{len(found)-5} more)"
+                    terms += f" (+{len(found) - 5} more)"
                 print(f"  {filename:<40} -> SUGGEST: {suggestion}")
                 print(f"    found: {terms}")
             else:

@@ -8,7 +8,6 @@ Tests cover:
 - Constitutional semantics (no advisory fields)
 """
 
-import pytest
 import json
 
 from tap_tone_pi.provenance.experiment_contracts import (

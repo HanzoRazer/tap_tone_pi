@@ -383,7 +383,7 @@ class QualityVerdictViewer(tk.Toplevel):
                     )
                 frame.after(
                     delay * (steps + 1),
-                    lambda: (frame.pack_forget() if frame.winfo_exists() else None),
+                    lambda: frame.pack_forget() if frame.winfo_exists() else None,
                 )
             except (ImportError, OSError, ValueError, KeyError, AttributeError):
                 try:

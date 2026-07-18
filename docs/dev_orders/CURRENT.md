@@ -1,48 +1,8 @@
 # Active Dev Order
 
-**Current:** DO-97 — COMPLETE
-**Previous:** DO-95 — Formula Validation & Error Detection Envelope
-
-> **DO-97 — COMPLETE**
->
-> Final corrective commit:
-> `c7c22741bfc087a8acaee34254c4ad9b4b985960`
->
-> **Verification summary**
-> - Focused verification passed (`tests/test_laboratory_manual_registry.py`,
->   `tests/test_laboratory_manual_view.py`, `tests/test_manual_packaging.py`).
-> - Wheel packaging verified (real build + isolated `--target` install).
-> - Installed-resource verification passed (import origin is the installed wheel,
->   not the checkout; packaged manifest + README load via the public registry API).
-> - Boundary validation passed (advisory-boundary + analyzer-isolation checks).
-> - Compile validation passed.
-> - Ruff checks on touched files passed.
->
-> Comparison against base commit
-> `7b555ee74a521d8086e4182d16c726ca2015baef`
-> confirmed that DO-97G introduced no new CI failures. Repository-wide CI failures
-> remain and are tracked separately as baseline conditions (they reproduce on base
-> and touch no DO-97 file).
->
-> **Final adjudication:** COMPLETE WITH DOCUMENTED BASELINE FAILURES.
->
-> The corrective work is a single commit (`c7c2274`) on top of the six original
-> DO-97 commits (97A–97F); history was not rewritten. Corrections delivered:
-> reject scalar `applies_to`; enforce complete + acyclic supersession; replace
-> private `_coerce_status` with public `parse_manual_status`; `Traversable`-native
-> resource access (`resolve_manual_entry_resource`) with `resolve_manual_entry_path`
-> reduced to a truthful filesystem-only shim; desktop viewer distinguishes
-> empty / unavailable / invalid-manifest / missing-document states and cannot crash
-> on a bad manifest. Production code is frozen at `c7c2274`; PR #9 is ready for
-> final merge review.
-
-> **DO-97 note:** the handoff listed a DO-96 "Laboratory manifest and registry"
-> and an existing `tap_tone_pi/acoustic_lab/` package as dependencies. Neither
-> existed in the repo, and DO-96 appears nowhere in history. DO-97 was
-> implemented self-contained (see `docs/ARCHITECTURE_BASELINE_M4.md` §13). The
-> manifest ships **empty** by design — no consolidated Laboratory Manual
-> document exists yet, and fabricating one was prohibited. `analyzer/` full
-> desktop-installer packaging remains a separate out-of-scope task.
+**Current:** DO-95 — Formula Validation & Error Detection Envelope
+**Previous:** DO-94 — Luthiery Formula Target Mapping
+**Completed:** 2026-06-27 (DO-95)
 
 > **Note on DO-94 numbering:** the commits `6b74304` / `8255c8e` are tagged
 > "(DO-94)" but implement *pressure response mapping* — a non-goal of this
@@ -144,15 +104,6 @@ These are documented baseline failures, not introduced by this sprint.
 - DO-089 Stage G: Export integration in export_viewer_pack_v1.py
 - DO-089 Stage H: Audit reconciliation (GOVERNANCE_AUDIT_HANDOFF.md, CURRENT.md)
 - DO-089 complete — 42 tests
-
-### 2026-07-16
-- DO-97 (97A): Laboratory Manual contracts + empty manifest + canonical READMEs
-- DO-97 (97B): Read-only path-safe manual registry (importlib.resources)
-- DO-97 (97C): Desktop Help → Laboratory Manual read-only view
-- DO-97 (97D): Package-data config; manifest + README verified in built wheel
-- DO-97 (97E): 54 tests — contracts, negative, packaging, boundary, GUI
-- DO-97 (97F): Reconciled M4 baseline, README, CURRENT.md
-- DO-97 complete — 54 new tests, empty manifest by design
 
 ### 2026-05-03
 - DO-008 Stage A: Doc reconciliation — no-op (no prediction.py refs found)

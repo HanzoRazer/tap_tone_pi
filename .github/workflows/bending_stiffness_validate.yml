@@ -46,7 +46,7 @@ jobs:
           from pathlib import Path
           from jsonschema import validate
           bundle = Path(sys.argv[1])
-          schema_path = Path("contracts/schemas/bending_stiffness.schema.json")
+          schema_path = Path("schemas/bending_stiffness.schema.json")
           data_path = bundle/"analysis"/"bending_stiffness.json"
           schema = json.loads(schema_path.read_text())
           data = json.loads(data_path.read_text())

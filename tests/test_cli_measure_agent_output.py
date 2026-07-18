@@ -84,8 +84,9 @@ def _stub_operator_loop(monkeypatch, tmp_path: Path):
                 "Store",
                 (),
                 {
-                    "get_attempt_dir": lambda _self, attempt: session_dir
-                    / attempt.attempt_id
+                    "get_attempt_dir": lambda _self, attempt: (
+                        session_dir / attempt.attempt_id
+                    )
                 },
             )()
 

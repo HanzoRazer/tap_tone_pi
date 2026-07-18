@@ -12,8 +12,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -33,18 +31,5 @@ jobs:
           python -m pip install --upgrade pip
           pip install pre-commit
 
-      - name: Run pre-commit
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            pre-commit run \
-              --from-ref "${{ github.event.pull_request.base.sha }}" \
-              --to-ref "${{ github.sha }}" \
-              --show-diff-on-failure
-          elif [ "${{ github.event_name }}" = "push" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
-            pre-commit run \
-              --from-ref "${{ github.event.before }}" \
-              --to-ref "${{ github.sha }}" \
-              --show-diff-on-failure
-          else
-            pre-commit run --all-files --show-diff-on-failure
-          fi
+      - name: Run pre-commit (all files)
+        run: pre-commit run --all-files --show-diff-on-failure

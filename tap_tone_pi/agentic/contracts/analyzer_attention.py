@@ -152,5 +152,7 @@ class AttentionDirectiveV1:
             "created_at": self.created_at,
             "expires_at": self.expires_at,
             "authority": self.authority.to_dict() if self.authority else None,
-            "typed_confidence": self.typed_confidence.to_dict() if self.typed_confidence else None,
+            "typed_confidence": self.typed_confidence.to_dict()
+            if self.typed_confidence
+            else None,
         }

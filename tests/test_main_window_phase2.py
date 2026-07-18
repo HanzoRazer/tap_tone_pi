@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -140,9 +140,7 @@ class TestMainWindowPhase2Integration:
         with patch.object(main_window, "statusbar") as mock_statusbar:
             # Should not raise, but should show error dialog
             # We patch QMessageBox to prevent blocking
-            with patch(
-                "analyzer.main_window.QMessageBox.critical"
-            ) as mock_critical:
+            with patch("analyzer.main_window.QMessageBox.critical") as mock_critical:
                 main_window._load_phase2_session(str(invalid_dir))
                 mock_critical.assert_called_once()
 

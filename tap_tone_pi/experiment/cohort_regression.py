@@ -17,7 +17,6 @@ No optimization. No "best" selection. No build prescriptions.
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Mapping, Sequence
-import math
 
 import numpy as np
 
@@ -296,14 +295,14 @@ def fit_linear_cohort_regression(
 
     # Compute residual standard deviation
     if n > p + 1:
-        residual_std = float(np.sqrt(np.sum(residuals ** 2) / (n - p - 1)))
+        residual_std = float(np.sqrt(np.sum(residuals**2) / (n - p - 1)))
     else:
         residual_std = None
 
     # Compute R² and adjusted R²
     y_mean = np.mean(y)
     ss_tot = np.sum((y - y_mean) ** 2)
-    ss_res = np.sum(residuals ** 2)
+    ss_res = np.sum(residuals**2)
 
     r_squared: float | None = None
     adjusted_r_squared: float | None = None
@@ -319,8 +318,10 @@ def fit_linear_cohort_regression(
     if residual_std is not None and n > p + 1:
         try:
             XtX_inv = np.linalg.inv(X.T @ X)
-            var_coeffs = (residual_std ** 2) * np.diag(XtX_inv)
-            standard_errors = [float(np.sqrt(v)) if v >= 0 else None for v in var_coeffs]
+            var_coeffs = (residual_std**2) * np.diag(XtX_inv)
+            standard_errors = [
+                float(np.sqrt(v)) if v >= 0 else None for v in var_coeffs
+            ]
         except np.linalg.LinAlgError:
             pass  # Singular matrix, leave as None
 
@@ -328,26 +329,32 @@ def fit_linear_cohort_regression(
     all_coefficients: list[RegressionCoefficientV1] = []
 
     # Intercept
-    all_coefficients.append(RegressionCoefficientV1(
-        term_name="intercept",
-        coefficient=intercept,
-        standard_error=standard_errors[0],
-    ))
+    all_coefficients.append(
+        RegressionCoefficientV1(
+            term_name="intercept",
+            coefficient=intercept,
+            standard_error=standard_errors[0],
+        )
+    )
 
     # Primary variable
-    all_coefficients.append(RegressionCoefficientV1(
-        term_name=primary_variable_name,
-        coefficient=primary_coeff,
-        standard_error=standard_errors[1],
-    ))
+    all_coefficients.append(
+        RegressionCoefficientV1(
+            term_name=primary_variable_name,
+            coefficient=primary_coeff,
+            standard_error=standard_errors[1],
+        )
+    )
 
     # Covariates
     for i, name in enumerate(covariate_names):
-        all_coefficients.append(RegressionCoefficientV1(
-            term_name=name,
-            coefficient=covariate_coeffs[i],
-            standard_error=standard_errors[2 + i],
-        ))
+        all_coefficients.append(
+            RegressionCoefficientV1(
+                term_name=name,
+                coefficient=covariate_coeffs[i],
+                standard_error=standard_errors[2 + i],
+            )
+        )
 
     return CohortRegressionEvidenceV1(
         evidence_id=evidence_id,

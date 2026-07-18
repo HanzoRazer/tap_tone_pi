@@ -113,8 +113,12 @@ def build_flat_plate_pilot_design() -> ExperimentDesignV1:
         create_covariate(
             "cov_support", "support method", "category", source="fixture_log"
         ),
-        create_covariate("cov_humidity", "humidity", "percent_rh", source="environment_log"),
-        create_covariate("cov_temperature", "temperature", "deg_C", source="environment_log"),
+        create_covariate(
+            "cov_humidity", "humidity", "percent_rh", source="environment_log"
+        ),
+        create_covariate(
+            "cov_temperature", "temperature", "deg_C", source="environment_log"
+        ),
     ]
 
     randomization_plan = create_randomization_plan(
@@ -200,11 +204,15 @@ def main() -> int:
     plan = build_pilot_plan()
     markdown = render_cohort_execution_plan_markdown(plan)
 
-    plan_md_path = root / "docs" / "handoffs" / "FLAT_PLATE_RESONANCE_PILOT_EXECUTION_PLAN.md"
+    plan_md_path = (
+        root / "docs" / "handoffs" / "FLAT_PLATE_RESONANCE_PILOT_EXECUTION_PLAN.md"
+    )
     plan_md_path.parent.mkdir(parents=True, exist_ok=True)
     plan_md_path.write_text(_GENERATED_BANNER + markdown + "\n", encoding="utf-8")
 
-    json_path = root / "examples" / "acoustic_lab" / "flat_plate_resonance_pilot_v1.json"
+    json_path = (
+        root / "examples" / "acoustic_lab" / "flat_plate_resonance_pilot_v1.json"
+    )
     json_path.write_text(
         json.dumps(
             {"experiment_design": design.to_dict(), "execution_plan": plan.to_dict()},

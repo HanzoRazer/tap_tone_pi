@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
 
 from tap_tone_pi.workflow.contracts import (
     MeasurementWorkflowContractV1,
@@ -25,9 +24,7 @@ from tap_tone_pi.workflow.registry import (
     list_workflow_ids,
     validate_registry,
     FREE_PLATE_TAP_V1,
-    BRACED_TOP_TAP_V1,
     CLOSED_BOX_TAP_V1,
-    BACK_TAP_V1,
     AIR_RESONANCE_CHECK_V1,
     CALIBRATION_PASS_V1,
 )
@@ -230,4 +227,7 @@ class TestBuiltinWorkflowProperties:
 
     def test_air_resonance_allows_fewer_repetitions(self):
         """Air resonance check allows fewer repetitions (quick check)."""
-        assert AIR_RESONANCE_CHECK_V1.required_repetitions < FREE_PLATE_TAP_V1.required_repetitions
+        assert (
+            AIR_RESONANCE_CHECK_V1.required_repetitions
+            < FREE_PLATE_TAP_V1.required_repetitions
+        )

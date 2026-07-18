@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import math
 import pytest
-import numpy as np
 
 from tap_tone_pi.design import (
     OrthotropicPlate,
@@ -215,8 +213,12 @@ class TestCoordinateTransforms:
             points=[GridPointLike(id="CTR", x=250.0, y=190.0)],  # plate dims/2
         )
 
-        r1 = render_mode_shape_on_grid(result, grid_center, mode_index=0, normalize=False)
-        r2 = render_mode_shape_on_grid(result, grid_corner, mode_index=0, normalize=False)
+        r1 = render_mode_shape_on_grid(
+            result, grid_center, mode_index=0, normalize=False
+        )
+        r2 = render_mode_shape_on_grid(
+            result, grid_corner, mode_index=0, normalize=False
+        )
         assert r1.amplitudes_by_id["CTR"] == pytest.approx(
             r2.amplitudes_by_id["CTR"], abs=1e-9
         )
@@ -253,11 +255,19 @@ class TestCoordinateTransforms:
         )
 
         r_normal = render_mode_shape_on_grid(
-            result, grid, mode_index=0, x_axis="grain", y_axis="cross_grain",
+            result,
+            grid,
+            mode_index=0,
+            x_axis="grain",
+            y_axis="cross_grain",
             normalize=False,
         )
         r_swapped = render_mode_shape_on_grid(
-            result, grid, mode_index=0, x_axis="cross_grain", y_axis="grain",
+            result,
+            grid,
+            mode_index=0,
+            x_axis="cross_grain",
+            y_axis="grain",
             normalize=False,
         )
         # The two should differ for non-square plates (a != b).
@@ -318,9 +328,7 @@ class TestErrorHandling:
         result = make_test_result()
         grid = make_simple_grid()
         with pytest.raises(ValueError, match="axes must be"):
-            render_mode_shape_on_grid(
-                result, grid, mode_index=0, x_axis="diagonal"
-            )
+            render_mode_shape_on_grid(result, grid, mode_index=0, x_axis="diagonal")
 
 
 # =============================================================================

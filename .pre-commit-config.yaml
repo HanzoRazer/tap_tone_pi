@@ -27,5 +27,5 @@ repos:
         additional_dependencies:
           - numpy>=1.24
           - types-setuptools
-        args: [--config-file=mypy.ini, --follow-imports=silent]
-        files: ^tap_tone_pi/
+        args: [--config-file=mypy.ini]
+        pass_filenames: false

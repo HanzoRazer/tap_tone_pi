@@ -17,7 +17,9 @@ from pathlib import Path
 import jsonschema
 import pytest
 
-SCHEMA_PATH = Path(__file__).parent.parent / "contracts" / "wood_flitch_record_v1.schema.json"
+SCHEMA_PATH = (
+    Path(__file__).parent.parent / "contracts" / "wood_flitch_record_v1.schema.json"
+)
 
 
 @pytest.fixture
@@ -74,7 +76,9 @@ class TestValidRecords:
         """Minimal valid flitch with empty measurements passes."""
         jsonschema.validate(instance=valid_flitch, schema=schema)
 
-    def test_flitch_with_measurement_passes(self, schema, valid_flitch, valid_measurement):
+    def test_flitch_with_measurement_passes(
+        self, schema, valid_flitch, valid_measurement
+    ):
         """Flitch with one measurement passes."""
         valid_flitch["measurements"] = [valid_measurement]
         jsonschema.validate(instance=valid_flitch, schema=schema)
@@ -238,7 +242,9 @@ class TestAdditionalProperties:
         with pytest.raises(jsonschema.ValidationError, match="Additional properties"):
             jsonschema.validate(instance=valid_flitch, schema=schema)
 
-    def test_extra_measurement_field_rejected(self, schema, valid_flitch, valid_measurement):
+    def test_extra_measurement_field_rejected(
+        self, schema, valid_flitch, valid_measurement
+    ):
         """Unknown field at measurement level fails."""
         valid_measurement["unknown_field"] = "should fail"
         valid_flitch["measurements"] = [valid_measurement]

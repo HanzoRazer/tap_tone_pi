@@ -12,10 +12,10 @@ Usage:
         load_bending_data,
         add_bending_to_manifest,
     )
-    
+
     # Load bending measurement
     bending = load_bending_data("out/bending_session")
-    
+
     # Add to viewer pack manifest
     add_bending_to_manifest(manifest, bending_data=bending)
 """

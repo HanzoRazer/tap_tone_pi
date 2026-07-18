@@ -648,11 +648,7 @@ def _apply_escalations(
                 "Silence repeated; likely wrong device",
             )
         )
-        add(
-            SuggestedAction(
-                "run_setup", "Run setup wizard", "Persist selected device"
-            )
-        )
+        add(SuggestedAction("run_setup", "Run setup wizard", "Persist selected device"))
     if "Q010" in rule_ids and repeated("Q010", 3):
         add(
             SuggestedAction(
@@ -730,19 +726,15 @@ def _merge_actions(
         # reorder: novice/first_run => retry first; regular/expert => accept first
         if stage in ("first_run", "novice"):
             merged.sort(
-                key=lambda a: 0
-                if a.action_id == "retry"
-                else 1
-                if a.action_id == "accept"
-                else 2
+                key=lambda a: (
+                    0 if a.action_id == "retry" else 1 if a.action_id == "accept" else 2
+                )
             )
         else:
             merged.sort(
-                key=lambda a: 0
-                if a.action_id == "accept"
-                else 1
-                if a.action_id == "retry"
-                else 2
+                key=lambda a: (
+                    0 if a.action_id == "accept" else 1 if a.action_id == "retry" else 2
+                )
             )
         return tuple(merged[:3])
 

@@ -23,7 +23,7 @@ INSTRUMENT CLASS: MEASUREMENT
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple, Any
+from typing import List, Optional, Any
 
 import numpy as np
 
@@ -41,12 +41,12 @@ from tap_tone_pi.limits.testing import (
 # Colour map for limit curve types
 # ---------------------------------------------------------------------------
 
-UPPER_LIMIT_COLOUR = "#E2453A"   # Red — ceiling not to exceed
-LOWER_LIMIT_COLOUR = "#3A7BD5"   # Blue — floor to meet
-MASK_COLOUR        = "#888780"   # Gray — excluded zone
-PASS_COLOUR        = "#538135"
-WARN_COLOUR        = "#C55A11"
-FAIL_COLOUR        = "#7B0000"
+UPPER_LIMIT_COLOUR = "#E2453A"  # Red — ceiling not to exceed
+LOWER_LIMIT_COLOUR = "#3A7BD5"  # Blue — floor to meet
+MASK_COLOUR = "#888780"  # Gray — excluded zone
+PASS_COLOUR = "#538135"
+WARN_COLOUR = "#C55A11"
+FAIL_COLOUR = "#7B0000"
 
 VERDICT_COLOURS = {
     TestVerdict.PASS: PASS_COLOUR,
@@ -58,6 +58,7 @@ VERDICT_COLOURS = {
 # ---------------------------------------------------------------------------
 # Unit helpers
 # ---------------------------------------------------------------------------
+
 
 def _db_to_linear(db: float, epsilon: float = 1e-6) -> float:
     """Convert dB to linear amplitude (power-based: 10^(dB/20))."""
@@ -73,6 +74,7 @@ def _linear_to_db(linear: np.ndarray, epsilon: float = 1e-10) -> np.ndarray:
 # LimitOverlay
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class LimitOverlay:
     """
@@ -87,7 +89,7 @@ class LimitOverlay:
     """
 
     # ── State ─────────────────────────────────────────────────────────────
-    _ax: Any = field(default=None, repr=False)              # matplotlib Axes
+    _ax: Any = field(default=None, repr=False)  # matplotlib Axes
     _limits: List[LimitCurve] = field(default_factory=list)
     _mask: Optional[FrequencyMask] = field(default=None)
     _preset_name: Optional[str] = field(default=None)
@@ -115,6 +117,7 @@ class LimitOverlay:
     def load_from_file(self, path: str) -> None:
         """Load limit curves from a JSON file."""
         from pathlib import Path
+
         limits, mask = load_preset_from_file(path)
         self._limits = limits
         self._mask = mask
@@ -193,7 +196,7 @@ class LimitOverlay:
             if not curve.points:
                 continue
             freqs = np.array([p.frequency_hz for p in curve.points])
-            dbs   = np.array([p.value_db     for p in curve.points])
+            dbs = np.array([p.value_db for p in curve.points])
 
             # SpectrumChartWidget uses semilogy → convert dB to linear
             linear_vals = np.array([_db_to_linear(d) for d in dbs])
@@ -282,7 +285,11 @@ class LimitOverlay:
 
     def _remove_handles(self) -> None:
         """Remove all previously drawn overlay elements from the axes."""
-        for h in self._limit_line_handles + self._mask_patch_handles + self._violation_handles:
+        for h in (
+            self._limit_line_handles
+            + self._mask_patch_handles
+            + self._violation_handles
+        ):
             try:
                 h.remove()
             except Exception:

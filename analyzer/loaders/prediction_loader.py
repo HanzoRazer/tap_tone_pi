@@ -125,9 +125,7 @@ def _build_comparison_from_record(build: BuildRecord) -> BuildComparison:
         build_id=build.build_id,
         design_name=build.design_name,
         modes=modes,
-        bridge_deflection_predicted_mm=(
-            pred.bridge_deflection_mm_at_string_load
-        ),
+        bridge_deflection_predicted_mm=(pred.bridge_deflection_mm_at_string_load),
         bridge_deflection_measured_mm=meas.bridge_deflection_mm,
         bridge_deflection_residual_mm=res.bridge_deflection_residual_mm,
         bridge_deflection_residual_pct=res.bridge_deflection_residual_pct,

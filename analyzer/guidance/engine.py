@@ -40,8 +40,8 @@ from tap_tone_pi.agent.types import UserStage
 # Claude API
 # ---------------------------------------------------------------------------
 
-_API_URL    = "https://api.anthropic.com/v1/messages"
-_MODEL      = "claude-sonnet-4-20250514"
+_API_URL = "https://api.anthropic.com/v1/messages"
+_MODEL = "claude-sonnet-4-20250514"
 _MAX_TOKENS = 400
 
 _SYSTEM_BASE = (
@@ -74,20 +74,22 @@ def _call_claude(user_prompt: str) -> str:
     if not api_key:
         return ""
 
-    payload = json.dumps({
-        "model":      _MODEL,
-        "max_tokens": _MAX_TOKENS,
-        "system":     _SYSTEM_BASE,
-        "messages":   [{"role": "user", "content": user_prompt}],
-    }).encode()
+    payload = json.dumps(
+        {
+            "model": _MODEL,
+            "max_tokens": _MAX_TOKENS,
+            "system": _SYSTEM_BASE,
+            "messages": [{"role": "user", "content": user_prompt}],
+        }
+    ).encode()
 
     req = urllib.request.Request(
         _API_URL,
         data=payload,
         headers={
-            "x-api-key":         api_key,
+            "x-api-key": api_key,
             "anthropic-version": "2023-06-01",
-            "content-type":      "application/json",
+            "content-type": "application/json",
         },
         method="POST",
     )
@@ -103,12 +105,13 @@ def _call_claude(user_prompt: str) -> str:
 # Prompt builders
 # ---------------------------------------------------------------------------
 
+
 def _pack_prompt(pack: Dict[str, Any], stage: UserStage) -> str:
-    meta    = (pack or {}).get("metadata", {}).get("session", {})
-    sid     = meta.get("specimen_id", "unknown")
+    meta = (pack or {}).get("metadata", {}).get("session", {})
+    sid = meta.get("specimen_id", "unknown")
     species = meta.get("species", "unknown")
-    cal     = (meta.get("calibration") or {}).get("status", "unknown")
-    dims    = meta.get("dimensions_mm", {})
+    cal = (meta.get("calibration") or {}).get("status", "unknown")
+    dims = meta.get("dimensions_mm", {})
     return (
         f"Stage: {_stage_label(stage)}\n"
         f"Action: viewer pack loaded\n"
@@ -121,14 +124,14 @@ def _pack_prompt(pack: Dict[str, Any], stage: UserStage) -> str:
 
 def _peaks_prompt(peaks: List[Dict[str, Any]], stage: UserStage) -> str:
     dominant = peaks[0].get("freq_hz", 0.0)
-    n        = len(peaks)
+    n = len(peaks)
     ratio_line = ""
     if n >= 2:
         m2 = peaks[1].get("freq_hz", 0.0)
         if dominant > 0:
-            ratio_line = f"Mode-1 to mode-2 ratio: {m2/dominant:.2f}\n"
+            ratio_line = f"Mode-1 to mode-2 ratio: {m2 / dominant:.2f}\n"
     peak_lines = "\n".join(
-        f"  peak {i+1}: {p.get('freq_hz',0):.1f} Hz, mag={p.get('magnitude',0):.4f}"
+        f"  peak {i + 1}: {p.get('freq_hz', 0):.1f} Hz, mag={p.get('magnitude', 0):.4f}"
         for i, p in enumerate(peaks[:6])
     )
     return (
@@ -141,10 +144,10 @@ def _peaks_prompt(peaks: List[Dict[str, Any]], stage: UserStage) -> str:
 
 
 def _coherence_prompt(stats: Dict[str, Any], stage: UserStage) -> str:
-    mean  = stats.get("mean", 1.0)
-    mn    = stats.get("min", 1.0)
+    mean = stats.get("mean", 1.0)
+    mn = stats.get("min", 1.0)
     n_bad = len(stats.get("problem_frequencies", []))
-    band  = stats.get("coherence_band", stats.get("quality_grade", ""))
+    band = stats.get("coherence_band", stats.get("quality_grade", ""))
     return (
         f"Stage: {_stage_label(stage)}\n"
         f"Action: coherence analysis complete\n"
@@ -176,16 +179,20 @@ def _wood_prompt(props: Dict[str, Any], stage: UserStage) -> str:
 # Fallback summaries (used when API unavailable)
 # ---------------------------------------------------------------------------
 
+
 def _fb_pack(pack: Dict) -> str:
     sid = (pack or {}).get("metadata", {}).get("session", {}).get("specimen_id", "")
     return f"Bundle loaded{f' — {sid}' if sid else ''}. Run Find Peaks to begin."
+
 
 def _fb_peaks(peaks: List[Dict]) -> str:
     hz = peaks[0].get("freq_hz", 0.0) if peaks else 0.0
     return f"Dominant mode at {hz:.1f} Hz. Run Estimate Wood Properties."
 
+
 def _fb_coherence(stats: Dict) -> str:
     return f"Coherence mean {stats.get('mean', 0):.2f}."
+
 
 def _fb_wood(props: Dict) -> str:
     return f"Radiation coefficient {props.get('radiation_coefficient', 0):.1f}."
@@ -194,6 +201,7 @@ def _fb_wood(props: Dict) -> str:
 # ---------------------------------------------------------------------------
 # AnalyzerGuidanceEngine
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AnalyzerGuidanceEngine:
@@ -205,7 +213,7 @@ class AnalyzerGuidanceEngine:
     Expert stage suppresses low-urgency directives entirely.
     """
 
-    stage:        UserStage = UserStage.REGULAR
+    stage: UserStage = UserStage.REGULAR
     on_directive: Optional[Callable[[AttentionDirectiveV1], None]] = field(
         default=None, repr=False
     )
@@ -222,24 +230,24 @@ class AnalyzerGuidanceEngine:
 
     def _fire_async(
         self,
-        prompt:           str,
+        prompt: str,
         fallback_summary: str,
-        action:           AttentionAction,
-        focus_type:       str,
-        focus_id:         str,
-        prefix:           str,
-        urgency:          float = 0.2,
+        action: AttentionAction,
+        focus_type: str,
+        focus_id: str,
+        prefix: str,
+        urgency: float = 0.2,
     ) -> None:
         """Call Claude in a daemon thread; emit directive when done."""
         if self.stage == UserStage.EXPERT and urgency < 0.5:
             return
 
-        emit = self._emit   # capture reference for thread closure
+        emit = self._emit  # capture reference for thread closure
 
         def _worker() -> None:
-            text    = _call_claude(prompt) if prompt else ""
-            summary = (text.split("\n")[0][:120] if text else fallback_summary)
-            detail  = text if text else fallback_summary
+            text = _call_claude(prompt) if prompt else ""
+            summary = text.split("\n")[0][:120] if text else fallback_summary
+            detail = text if text else fallback_summary
 
             directive = AttentionDirectiveV1(
                 directive_id=_directive_id(prefix),
@@ -251,8 +259,11 @@ class AnalyzerGuidanceEngine:
                 confidence=0.9 if text else 0.5,
                 source_tool="analyzer_guidance_claude",
                 auto_dismiss_after_seconds=(
-                    None if urgency >= 0.5 else
-                    None if self.stage == UserStage.FIRST_RUN else 30
+                    None
+                    if urgency >= 0.5
+                    else None
+                    if self.stage == UserStage.FIRST_RUN
+                    else 30
                 ),
             )
             emit(directive)
@@ -275,8 +286,10 @@ class AnalyzerGuidanceEngine:
             prompt=_pack_prompt(pack, self.stage),
             fallback_summary=_fb_pack(pack),
             action=AttentionAction.INSPECT,
-            focus_type="spectrum_view", focus_id="main_spectrum",
-            prefix="pack", urgency=0.15,
+            focus_type="spectrum_view",
+            focus_id="main_spectrum",
+            prefix="pack",
+            urgency=0.15,
         )
 
     def on_peaks_found(self, peaks: List[Dict[str, Any]]) -> None:
@@ -288,7 +301,8 @@ class AnalyzerGuidanceEngine:
             action=AttentionAction.INSPECT,
             focus_type="spectrum_region",
             focus_id=f"peak_{peaks[0].get('freq_hz', 0):.0f}hz",
-            prefix="peaks", urgency=0.2,
+            prefix="peaks",
+            urgency=0.2,
         )
 
     def on_coherence_analyzed(self, stats: Dict[str, Any]) -> None:
@@ -300,8 +314,10 @@ class AnalyzerGuidanceEngine:
             prompt=_coherence_prompt(stats, self.stage),
             fallback_summary=_fb_coherence(stats),
             action=AttentionAction.REVIEW if mean < 0.6 else AttentionAction.INSPECT,
-            focus_type="spectrum_view", focus_id="coherence_overlay",
-            prefix="coherence", urgency=urgency,
+            focus_type="spectrum_view",
+            focus_id="coherence_overlay",
+            prefix="coherence",
+            urgency=urgency,
         )
 
     def on_wolf_detected(
@@ -314,6 +330,7 @@ class AnalyzerGuidanceEngine:
         try:
             from unittest.mock import MagicMock
             from tap_tone_pi.agent.wolf_guidance import generate_wolf_guidance
+
             wolf_result = MagicMock()
             wolf_result.wsi = wsi
             wolf_result.beat_frequency_hz = beat_hz
@@ -342,6 +359,8 @@ class AnalyzerGuidanceEngine:
             prompt=_wood_prompt(props, self.stage),
             fallback_summary=_fb_wood(props),
             action=AttentionAction.INSPECT,
-            focus_type="stats_panel", focus_id="wood_properties",
-            prefix="wood", urgency=0.1,
+            focus_type="stats_panel",
+            focus_id="wood_properties",
+            prefix="wood",
+            urgency=0.1,
         )

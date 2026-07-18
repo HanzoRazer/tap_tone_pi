@@ -34,7 +34,7 @@ CONSTRAINTS (ADR-0009):
 
 from __future__ import annotations
 
-from typing import Callable, Optional
+from typing import Optional
 
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.QtWidgets import (
@@ -65,16 +65,16 @@ from tap_tone_pi.agent.types import UserStage
 # ---------------------------------------------------------------------------
 
 _ACTION_COLOUR: dict[AttentionAction, str] = {
-    AttentionAction.INSPECT:   "#2E74B5",   # blue
-    AttentionAction.REVIEW:    "#C55A11",   # amber
-    AttentionAction.DECIDE:    "#843C0C",   # dark amber
-    AttentionAction.INTERVENE: "#7B0000",   # red
+    AttentionAction.INSPECT: "#2E74B5",  # blue
+    AttentionAction.REVIEW: "#C55A11",  # amber
+    AttentionAction.DECIDE: "#843C0C",  # dark amber
+    AttentionAction.INTERVENE: "#7B0000",  # red
 }
 
 _ACTION_LABEL: dict[AttentionAction, str] = {
-    AttentionAction.INSPECT:   "INFO",
-    AttentionAction.REVIEW:    "REVIEW",
-    AttentionAction.DECIDE:    "DECIDE",
+    AttentionAction.INSPECT: "INFO",
+    AttentionAction.REVIEW: "REVIEW",
+    AttentionAction.DECIDE: "DECIDE",
     AttentionAction.INTERVENE: "URGENT",
 }
 
@@ -92,6 +92,7 @@ _ACT_NAVIGABLE = {
 # DirectiveCard — renders a single AttentionDirectiveV1
 # ---------------------------------------------------------------------------
 
+
 class DirectiveCard(QFrame):
     """
     Renders a single directive as a compact card.
@@ -101,8 +102,8 @@ class DirectiveCard(QFrame):
         acted       — user clicked Act (carries focus target type)
     """
 
-    dismissed = pyqtSignal(str)   # directive_id
-    acted     = pyqtSignal(str)   # focus.target_type
+    dismissed = pyqtSignal(str)  # directive_id
+    acted = pyqtSignal(str)  # focus.target_type
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
@@ -126,9 +127,7 @@ class DirectiveCard(QFrame):
         badge_font.setPointSize(9)
         badge_font.setBold(True)
         self._badge.setFont(badge_font)
-        self._badge.setStyleSheet(
-            "border-radius: 3px; padding: 2px 4px; color: white;"
-        )
+        self._badge.setStyleSheet("border-radius: 3px; padding: 2px 4px; color: white;")
         header.addWidget(self._badge)
 
         self._summary_label = QLabel()
@@ -190,7 +189,7 @@ class DirectiveCard(QFrame):
 
         action = directive.action
         colour = _ACTION_COLOUR.get(action, "#595959")
-        label  = _ACTION_LABEL.get(action, "INFO")
+        label = _ACTION_LABEL.get(action, "INFO")
 
         self._badge.setText(label)
         self._badge.setStyleSheet(
@@ -262,6 +261,7 @@ class DirectiveCard(QFrame):
         Handles **bold**, *italic*, and \n\n paragraph breaks.
         """
         import re
+
         # Escape HTML entities first
         text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         # **bold**
@@ -270,13 +270,16 @@ class DirectiveCard(QFrame):
         text = re.sub(r"\*(.+?)\*", r"<i>\1</i>", text)
         # Paragraph breaks
         paragraphs = re.split(r"\n\n+", text)
-        html_parts = [f"<p>{p.replace(chr(10), '<br>')}</p>" for p in paragraphs if p.strip()]
+        html_parts = [
+            f"<p>{p.replace(chr(10), '<br>')}</p>" for p in paragraphs if p.strip()
+        ]
         return "".join(html_parts)
 
 
 # ---------------------------------------------------------------------------
 # GuidancePanelWidget
 # ---------------------------------------------------------------------------
+
 
 class GuidancePanelWidget(QDockWidget):
     """
@@ -288,9 +291,9 @@ class GuidancePanelWidget(QDockWidget):
         directive_dismissed(str)     — user dismissed a directive (directive_id)
     """
 
-    stage_changed      = pyqtSignal(object)   # UserStage
-    act_requested      = pyqtSignal(str)       # focus.target_type
-    directive_dismissed = pyqtSignal(str)      # directive_id
+    stage_changed = pyqtSignal(object)  # UserStage
+    act_requested = pyqtSignal(str)  # focus.target_type
+    directive_dismissed = pyqtSignal(str)  # directive_id
 
     # Maximum history items to show in the list
     MAX_HISTORY = 40
@@ -353,7 +356,9 @@ class GuidancePanelWidget(QDockWidget):
 
         # ── History list ──────────────────────────────────────────────────
         history_label = QLabel("History")
-        history_label.setStyleSheet("font-weight: bold; font-size: 10px; color: palette(mid);")
+        history_label.setStyleSheet(
+            "font-weight: bold; font-size: 10px; color: palette(mid);"
+        )
         layout.addWidget(history_label)
 
         self._history_list = QListWidget()
