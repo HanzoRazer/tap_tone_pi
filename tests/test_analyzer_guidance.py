@@ -169,8 +169,18 @@ class TestStageAndCallback:
             pytest.fail(f"on_wolf_detected raised: {e}")
 
 
+def _qt_widgets_available() -> bool:
+    """Return True only if PyQt6.QtWidgets can actually be loaded (runtime check)."""
+    try:
+        import PyQt6.QtWidgets  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
 @pytest.mark.skipif(
-    not __import__("importlib").util.find_spec("PyQt6"), reason="PyQt6 not available"
+    not _qt_widgets_available(), reason="PyQt6 QtWidgets or Qt runtime not available"
 )
 class TestPanelSmoke:
     @pytest.fixture(scope="class")

@@ -17,9 +17,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-pytest.importorskip("PyQt6")
-
-from PyQt6.QtWidgets import QApplication
+try:
+    from PyQt6.QtWidgets import QApplication
+except ImportError as _e:
+    pytest.skip(f"PyQt6 or Qt runtime unavailable: {_e}", allow_module_level=True)
 
 from analyzer.loaders.phase2_session import Phase2Session, load_phase2_session
 from analyzer.widgets.phase2_results import Phase2ResultsWidget

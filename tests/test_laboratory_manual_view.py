@@ -15,9 +15,10 @@ from unittest import mock
 
 import pytest
 
-pytest.importorskip("PyQt6")
-
-from PyQt6.QtWidgets import QApplication, QTextBrowser
+try:
+    from PyQt6.QtWidgets import QApplication, QTextBrowser
+except ImportError as _e:
+    pytest.skip(f"PyQt6 or Qt runtime unavailable: {_e}", allow_module_level=True)
 
 from analyzer.widgets.laboratory_manual_view import (
     LaboratoryManualView,
