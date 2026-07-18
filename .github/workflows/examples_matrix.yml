@@ -20,9 +20,9 @@ jobs:
           import json, glob
           from jsonschema import validate
 
-          tap_schema = json.load(open('schemas/measurement/tap_peaks.schema.json'))
-          moe_schema = json.load(open('schemas/measurement/moe_result.schema.json'))
-          man_schema = json.load(open('schemas/measurement/manifest.schema.json'))
+          tap_schema = json.load(open('contracts/schemas/tap_peaks.schema.json'))
+          moe_schema = json.load(open('contracts/schemas/moe_result.schema.json'))
+          man_schema = json.load(open('contracts/schemas/manifest.schema.json'))
 
           def val(pat, schema):
               for f in sorted(glob.glob(pat)):
@@ -30,8 +30,8 @@ jobs:
                   validate(data, schema)
                   print("OK", f)
 
-          val('examples/measurement/*tap*.json', tap_schema)
-          val('examples/measurement/*bending*.json', moe_schema)
+          val('examples/measurement/tap_peaks*.json', tap_schema)
+          val('examples/measurement/moe_result*.json', moe_schema)
           val('examples/measurement/*manifest*.json', man_schema)
           print("All examples validated")
           PY
