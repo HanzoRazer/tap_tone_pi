@@ -61,9 +61,7 @@ class Finding:
     context: str
 
 
-def iter_files(
-    root: Path, extensions: tuple[str, ...] = (".py", ".md")
-) -> Iterator[Path]:
+def iter_files(root: Path, extensions: tuple[str, ...] = (".py", ".md")) -> Iterator[Path]:
     """Iterate over files with given extensions under root."""
     if root.is_file():
         if root.suffix in extensions:
@@ -99,9 +97,7 @@ def extract_user_facing_strings_from_python(source: str) -> List[tuple[int, str]
 
     for node in ast.walk(tree):
         # Docstrings (module, class, function)
-        if isinstance(
-            node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
-        ):
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
             docstring = ast.get_docstring(node)
             if docstring:
                 # Find the line number of the docstring

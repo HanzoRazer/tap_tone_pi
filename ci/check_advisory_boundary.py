@@ -135,7 +135,7 @@ def _extract_instrument_class(path: Path) -> str | None:
     for line in lines[:30]:
         stripped = line.strip()
         if stripped.startswith(DECLARATION_MARKER):
-            declared = stripped[len(DECLARATION_MARKER) :].strip().upper()
+            declared = stripped[len(DECLARATION_MARKER):].strip().upper()
             return declared
     return None
 
@@ -184,32 +184,28 @@ def check_declarations(report: BoundaryReport, repo_root: Path) -> None:
             rel_path = str(py_file.relative_to(repo_root))
 
             if declared is None:
-                report.add(
-                    Finding(
-                        severity="warning",
-                        code="ADRY-001",
-                        file=rel_path,
-                        message=(
-                            "Missing instrument class declaration. "
-                            "Add '# INSTRUMENT CLASS: MEASUREMENT' or "
-                            "'# INSTRUMENT CLASS: DECISION SUPPORT' "
-                            "as the first comment in the module docstring. "
-                            "See docs/ADR-0009-advisory-boundary.md"
-                        ),
-                    )
-                )
+                report.add(Finding(
+                    severity="warning",
+                    code="ADRY-001",
+                    file=rel_path,
+                    message=(
+                        f"Missing instrument class declaration. "
+                        f"Add '# INSTRUMENT CLASS: MEASUREMENT' or "
+                        f"'# INSTRUMENT CLASS: DECISION SUPPORT' "
+                        f"as the first comment in the module docstring. "
+                        f"See docs/ADR-0009-advisory-boundary.md"
+                    ),
+                ))
             elif declared not in VALID_CLASSES:
-                report.add(
-                    Finding(
-                        severity="warning",
-                        code="ADRY-002",
-                        file=rel_path,
-                        message=(
-                            f"Unknown instrument class: '{declared}'. "
-                            f"Valid values: {sorted(VALID_CLASSES)}"
-                        ),
-                    )
-                )
+                report.add(Finding(
+                    severity="warning",
+                    code="ADRY-002",
+                    file=rel_path,
+                    message=(
+                        f"Unknown instrument class: '{declared}'. "
+                        f"Valid values: {sorted(VALID_CLASSES)}"
+                    ),
+                ))
 
 
 # ---------------------------------------------------------------------------
@@ -235,19 +231,17 @@ def check_export_isolation(report: BoundaryReport, repo_root: Path) -> None:
             for imp in imports:
                 for advisory_mod in KNOWN_ADVISORY_MODULES:
                     if imp == advisory_mod or imp.startswith(advisory_mod + "."):
-                        report.add(
-                            Finding(
-                                severity="error",
-                                code="ADRY-010",
-                                file=file_rel,
-                                message=(
-                                    f"Export pipeline file imports advisory module: "
-                                    f"'{imp}'. "
-                                    f"Advisory outputs must not appear in viewer_pack_v1. "
-                                    f"See docs/ADR-0009-advisory-boundary.md"
-                                ),
-                            )
-                        )
+                        report.add(Finding(
+                            severity="error",
+                            code="ADRY-010",
+                            file=file_rel,
+                            message=(
+                                f"Export pipeline file imports advisory module: "
+                                f"'{imp}'. "
+                                f"Advisory outputs must not appear in viewer_pack_v1. "
+                                f"See docs/ADR-0009-advisory-boundary.md"
+                            ),
+                        ))
 
 
 # ---------------------------------------------------------------------------
@@ -281,19 +275,17 @@ def check_no_advisory_in_instrument_core(
             for imp in imports:
                 for advisory_mod in KNOWN_ADVISORY_MODULES:
                     if imp == advisory_mod or imp.startswith(advisory_mod + "."):
-                        report.add(
-                            Finding(
-                                severity="error",
-                                code="ADRY-011",
-                                file=file_rel,
-                                message=(
-                                    f"Measurement-only module imports advisory module: "
-                                    f"'{imp}'. "
-                                    f"This violates the measurement boundary. "
-                                    f"See docs/ADR-0009-advisory-boundary.md"
-                                ),
-                            )
-                        )
+                        report.add(Finding(
+                            severity="error",
+                            code="ADRY-011",
+                            file=file_rel,
+                            message=(
+                                f"Measurement-only module imports advisory module: "
+                                f"'{imp}'. "
+                                f"This violates the measurement boundary. "
+                                f"See docs/ADR-0009-advisory-boundary.md"
+                            ),
+                        ))
 
 
 # ---------------------------------------------------------------------------
