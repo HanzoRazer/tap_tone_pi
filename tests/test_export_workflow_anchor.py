@@ -5,12 +5,10 @@ Validates that workflow_contract and workflow_execution blocks in viewer pack
 exports serialize correctly and contain no advisory semantics.
 """
 
-import pytest
 import json
 
 from tap_tone_pi.workflow.contracts import (
     MeasurementWorkflowContractV1,
-    WorkflowExecutionEvidenceV1,
     CalibrationState,
 )
 from tap_tone_pi.workflow.validation import evaluate_workflow_execution

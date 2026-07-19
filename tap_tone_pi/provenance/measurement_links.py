@@ -73,13 +73,15 @@ class MeasurementLineageV1:
 
     def has_experimental_context(self) -> bool:
         """Return True if this measurement belongs to any experimental context."""
-        return any([
-            self.workflow_id is not None,
-            self.revision_id is not None,
-            self.campaign_id is not None,
-            self.fixture_id is not None,
-            self.environment_id is not None,
-        ])
+        return any(
+            [
+                self.workflow_id is not None,
+                self.revision_id is not None,
+                self.campaign_id is not None,
+                self.fixture_id is not None,
+                self.environment_id is not None,
+            ]
+        )
 
     def with_workflow(self, workflow_id: str) -> MeasurementLineageV1:
         """Return a new lineage with the workflow set."""

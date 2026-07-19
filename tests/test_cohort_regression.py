@@ -13,14 +13,11 @@ Tests cover:
 """
 
 import json
-import math
 import pytest
 
 from tap_tone_pi.experiment import (
     RegressionInputV1,
     RegressionCoefficientV1,
-    CohortRegressionEvidenceV1,
-    FormulaCandidateEvidenceV1,
     fit_linear_cohort_regression,
     create_formula_candidate_evidence,
 )

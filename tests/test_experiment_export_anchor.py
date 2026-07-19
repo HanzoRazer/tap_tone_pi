@@ -5,13 +5,9 @@ Validates that experiment_campaign, experiment_revision, and measurement_lineage
 blocks serialize correctly and contain no advisory semantics.
 """
 
-import pytest
 import json
 
 from tap_tone_pi.provenance import (
-    ExperimentCampaignV1,
-    ExperimentRevisionV1,
-    MeasurementLineageV1,
     create_campaign,
     create_revision,
     create_measurement_lineage,

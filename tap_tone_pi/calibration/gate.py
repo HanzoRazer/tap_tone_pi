@@ -39,14 +39,12 @@ USAGE:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 from tap_tone_pi.calibration.storage import (
     CalibrationStatus,
     get_calibration_status,
     load_calibration,
-    is_calibration_stale,
     CALIBRATION_EXPIRY_DAYS,
 )
 
@@ -54,6 +52,7 @@ from tap_tone_pi.calibration.storage import (
 # ---------------------------------------------------------------------------
 # Result type
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CalibrationGateResult:
@@ -63,8 +62,8 @@ class CalibrationGateResult:
     status: str  # CalibrationStatus.value
 
     # Human-readable messages
-    message: str = ""          # Shown when blocked or warned
-    warning: str = ""          # Non-blocking advisory shown to operator
+    message: str = ""  # Shown when blocked or warned
+    warning: str = ""  # Non-blocking advisory shown to operator
 
     # Machine-readable flags
     is_stale: bool = False
@@ -72,7 +71,7 @@ class CalibrationGateResult:
     is_failed: bool = False
 
     # For embedding in session_state.metadata
-    gate_verdict: str = "allowed"   # "allowed" | "warned" | "blocked"
+    gate_verdict: str = "allowed"  # "allowed" | "warned" | "blocked"
 
     def to_dict(self) -> dict:
         return {
@@ -87,6 +86,7 @@ class CalibrationGateResult:
 # ---------------------------------------------------------------------------
 # Gate logic
 # ---------------------------------------------------------------------------
+
 
 def enforce_calibration_gate(
     device_index: int,
@@ -199,10 +199,9 @@ def _cal_age_days(cal_data) -> int:
     if cal_data is None:
         return 999
     try:
-        from datetime import datetime, timezone, timedelta
-        cal_at = datetime.fromisoformat(
-            cal_data.calibrated_at.replace("Z", "+00:00")
-        )
+        from datetime import datetime, timezone
+
+        cal_at = datetime.fromisoformat(cal_data.calibrated_at.replace("Z", "+00:00"))
         age = datetime.now(timezone.utc) - cal_at
         return int(age.days)
     except Exception:
@@ -212,6 +211,7 @@ def _cal_age_days(cal_data) -> int:
 # ---------------------------------------------------------------------------
 # CLI display helper
 # ---------------------------------------------------------------------------
+
 
 def print_gate_result(result: CalibrationGateResult) -> None:
     """Print gate result to stdout in a consistent format."""
@@ -247,6 +247,6 @@ def get_calibration_attachment(device_index: int) -> dict:
     if cal_data is not None:
         # Build calibration ID from device + timestamp
         result["calibration_id"] = f"cal_{device_index}_{cal_data.calibrated_at}"
-        result["age_days"] = float(_cal_age_days(cal_data))
+        result["age_days"] = float(_cal_age_days(cal_data))  # type: ignore[assignment]
 
     return result

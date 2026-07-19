@@ -27,14 +27,14 @@ jobs:
       - name: Check for deprecated tap_tone imports
         run: |
           echo "Checking for deprecated 'tap_tone' imports in tap_tone_pi/..."
-          
+
           # Find imports of tap_tone (not tap_tone_pi) inside tap_tone_pi/
           # Patterns:
           #   from tap_tone import ...
           #   from tap_tone.* import ...
           #   import tap_tone
           #   import tap_tone.*
-          
+
           VIOLATIONS=$(grep -rn \
             -e "from tap_tone import" \
             -e "from tap_tone\." \
@@ -44,7 +44,7 @@ jobs:
             --include="*.py" \
             | grep -v "tap_tone_pi" \
             || true)
-          
+
           if [ -n "$VIOLATIONS" ]; then
             echo ""
             echo "ERROR: Found deprecated 'tap_tone' imports inside tap_tone_pi/"
@@ -59,7 +59,7 @@ jobs:
             echo "  import tap_tone.foo           →  import tap_tone_pi.foo"
             exit 1
           fi
-          
+
           echo "✓ No deprecated imports found"
 
       - name: Check tap_tone shim has deprecation warning

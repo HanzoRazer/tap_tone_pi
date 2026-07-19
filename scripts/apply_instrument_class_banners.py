@@ -53,6 +53,7 @@ DECISION_SUPPORT_BANNER = (
 # Patch definitions
 # ---------------------------------------------------------------------------
 
+
 def _insert_banner_after_docstring(content: str, banner: str) -> str:
     """
     Insert banner after the module-level docstring (or at top if no docstring).
@@ -101,11 +102,11 @@ def _patch_wood_properties(content: str) -> str:
 
     # Add note to quality_grade field
     content = content.replace(
-        'quality_grade: str  # A, B, C, D based on radiation coefficient',
+        "quality_grade: str  # A, B, C, D based on radiation coefficient",
         (
-            'quality_grade: str  '
-            '# A/B/C/D — HEURISTIC ONLY, not a calibrated measurement. '
-            'Do not include in viewer_pack_v1.'
+            "quality_grade: str  "
+            "# A/B/C/D — HEURISTIC ONLY, not a calibrated measurement. "
+            "Do not include in viewer_pack_v1."
         ),
     )
     # Also handle variant without trailing comment
@@ -133,14 +134,14 @@ def _patch_estimators(content: str) -> str:
     # Rename field declarations and assignments
     renames = [
         # dataclass field
-        (r'\bquality_grade\s*:\s*str\b', 'coherence_band: str'),
+        (r"\bquality_grade\s*:\s*str\b", "coherence_band: str"),
         # default values
         (r"quality_grade\s*=\s*\"unknown\"", 'coherence_band = "unknown"'),
-        (r"quality_grade\s*=\s*grade", 'coherence_band = grade'),
+        (r"quality_grade\s*=\s*grade", "coherence_band = grade"),
         # docstring description
-        (r'quality_grade\s*:\s*str', 'coherence_band: str'),
+        (r"quality_grade\s*:\s*str", "coherence_band: str"),
         # any remaining references
-        (r'\bquality_grade\b', 'coherence_band'),
+        (r"\bquality_grade\b", "coherence_band"),
     ]
     for pattern, replacement in renames:
         content_out = re.sub(pattern, replacement, content_out)
@@ -199,6 +200,7 @@ PATCHES = [
 # Runner
 # ---------------------------------------------------------------------------
 
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Apply INSTRUMENT CLASS banners per ADR-0009"
@@ -242,8 +244,8 @@ def main(argv: list[str] | None = None) -> int:
             patch_lines = patched.splitlines()
             for i, (ol, pl) in enumerate(zip(orig_lines, patch_lines)):
                 if ol != pl:
-                    print(f"  Line {i+1}: - {ol[:80]!r}")
-                    print(f"  Line {i+1}: + {pl[:80]!r}")
+                    print(f"  Line {i + 1}: - {ol[:80]!r}")
+                    print(f"  Line {i + 1}: + {pl[:80]!r}")
                     break
         else:
             try:
@@ -254,9 +256,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"[ERROR] {rel_path} — {e}", file=sys.stderr)
                 errors += 1
 
-    print(
-        f"\nDone: {changed} patched, {skipped} unchanged/skipped, {errors} errors"
-    )
+    print(f"\nDone: {changed} patched, {skipped} unchanged/skipped, {errors} errors")
     if args.dry_run and changed == 0 and skipped > 0:
         print("(All files already up to date or not found)")
 

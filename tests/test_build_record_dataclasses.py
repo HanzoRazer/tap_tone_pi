@@ -11,9 +11,6 @@ DO-004 Stage B acceptance tests:
 - Round-trip dict→BuildRecord→dict preserves data
 """
 
-from datetime import datetime, timezone
-
-import jsonschema
 import pytest
 
 from tap_tone_pi.materials import (

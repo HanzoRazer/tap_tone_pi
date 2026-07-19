@@ -96,7 +96,9 @@ def _select_spec(preset: str) -> BoundarySpec:
         return _toolbox_spec()
     if preset == "analyzer_isolation":
         return _analyzer_isolation_spec()
-    raise ValueError(f"Unknown preset: {preset!r} (expected: analyzer|toolbox|analyzer_isolation)")
+    raise ValueError(
+        f"Unknown preset: {preset!r} (expected: analyzer|toolbox|analyzer_isolation)"
+    )
 
 
 def _parse_args(argv: List[str]) -> argparse.Namespace:

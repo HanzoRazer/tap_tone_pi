@@ -1,9 +1,9 @@
 # ADR-0010: Guidance Authority Boundary — AGE Constitutional Limits
 
-**Status:** Accepted  
-**Date:** 2026-05-23  
-**Sprint:** DO-78 (Analyzer Guidance Engine Constitutional Contract)  
-**Supersedes:** None  
+**Status:** Accepted
+**Date:** 2026-05-23
+**Sprint:** DO-78 (Analyzer Guidance Engine Constitutional Contract)
+**Supersedes:** None
 **References:** ADR-0009 (Advisory Boundary)
 
 ---

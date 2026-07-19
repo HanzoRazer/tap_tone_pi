@@ -10,8 +10,7 @@ Tests cover:
 
 import pytest
 import json
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from tap_tone_pi.tools.grid_template_pdf import (
     Grid,
@@ -26,6 +25,7 @@ from tap_tone_pi.tools.grid_template_pdf import (
 
 
 # --- Fixtures ---
+
 
 @pytest.fixture
 def sample_grid_data():
@@ -58,11 +58,13 @@ def large_grid_data():
     points = []
     for row in range(7):
         for col in range(5):
-            points.append({
-                "id": f"{chr(65+row)}{col+1}",
-                "x": col * 80.0,
-                "y": row * 70.0,
-            })
+            points.append(
+                {
+                    "id": f"{chr(65 + row)}{col + 1}",
+                    "x": col * 80.0,
+                    "y": row * 70.0,
+                }
+            )
 
     return {
         "name": "Guitar Top 35pt",
@@ -82,6 +84,7 @@ def large_grid_file(tmp_path, large_grid_data):
 
 
 # --- Grid Data Structure Tests ---
+
 
 class TestGridDataStructure:
     """Tests for Grid and GridPoint dataclasses."""
@@ -147,6 +150,7 @@ class TestGridDataStructure:
 
 # --- Grid Loading Tests ---
 
+
 class TestGridLoading:
     """Tests for load_grid function."""
 
@@ -195,6 +199,7 @@ class TestGridLoading:
 
 # --- Template Configuration Tests ---
 
+
 class TestTemplateConfig:
     """Tests for TemplateConfig dataclass."""
 
@@ -224,6 +229,7 @@ class TestTemplateConfig:
 
 
 # --- PDF Generation Tests ---
+
 
 @pytest.mark.skipif(not HAS_REPORTLAB, reason="reportlab not installed")
 class TestPDFGeneration:
@@ -314,6 +320,7 @@ class TestPDFGenerationWithoutReportlab:
 
 # --- CLI Tests ---
 
+
 class TestCLIIntegration:
     """Tests for CLI integration."""
 
@@ -327,11 +334,15 @@ class TestCLIIntegration:
         add_grid_template_subcommand(subparsers)
 
         # Should be able to parse grid-template command
-        args = parser.parse_args([
-            "grid-template",
-            "--grid", "test.json",
-            "--out", "output.pdf",
-        ])
+        args = parser.parse_args(
+            [
+                "grid-template",
+                "--grid",
+                "test.json",
+                "--out",
+                "output.pdf",
+            ]
+        )
 
         assert args.grid == "test.json"
         assert args.out == "output.pdf"
@@ -344,15 +355,21 @@ class TestCLIIntegration:
         subparsers = parser.add_subparsers()
         add_grid_template_subcommand(subparsers)
 
-        args = parser.parse_args([
-            "grid-template",
-            "--grid", "test.json",
-            "--scale", "0.5",
-            "--page", "A4",
-            "--orientation", "portrait",
-            "--no-labels",
-            "--no-crosshairs",
-        ])
+        args = parser.parse_args(
+            [
+                "grid-template",
+                "--grid",
+                "test.json",
+                "--scale",
+                "0.5",
+                "--page",
+                "A4",
+                "--orientation",
+                "portrait",
+                "--no-labels",
+                "--no-crosshairs",
+            ]
+        )
 
         assert args.scale == 0.5
         assert args.page == "A4"

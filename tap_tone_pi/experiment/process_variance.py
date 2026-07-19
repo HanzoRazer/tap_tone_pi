@@ -176,8 +176,8 @@ def decompose_variance(
     Returns:
         VarianceDecompositionV1 with computed values
     """
-    sigma_total_squared = sigma_total ** 2
-    sigma_measurement_squared = sigma_measurement ** 2
+    sigma_total_squared = sigma_total**2
+    sigma_measurement_squared = sigma_measurement**2
 
     # Compute σ²_build with clamping
     sigma_build_squared_raw = sigma_total_squared - sigma_measurement_squared
@@ -243,7 +243,9 @@ def compute_process_variance_evidence(
     if cohort_values:
         cohort_mean = sum(cohort_values) / len(cohort_values)
         if len(cohort_values) > 1:
-            variance = sum((x - cohort_mean) ** 2 for x in cohort_values) / (len(cohort_values) - 1)
+            variance = sum((x - cohort_mean) ** 2 for x in cohort_values) / (
+                len(cohort_values) - 1
+            )
             cohort_std = math.sqrt(variance)
         else:
             cohort_std = 0.0
@@ -254,7 +256,9 @@ def compute_process_variance_evidence(
     if reference_values:
         reference_mean = sum(reference_values) / len(reference_values)
         if len(reference_values) > 1:
-            variance = sum((x - reference_mean) ** 2 for x in reference_values) / (len(reference_values) - 1)
+            variance = sum((x - reference_mean) ** 2 for x in reference_values) / (
+                len(reference_values) - 1
+            )
             reference_std = math.sqrt(variance)
         else:
             reference_std = 0.0

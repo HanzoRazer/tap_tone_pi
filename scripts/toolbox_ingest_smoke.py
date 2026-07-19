@@ -74,10 +74,15 @@ def validate(doc: dict, schemas: Dict[Tuple[str, str], dict]) -> List[str]:
 
     key = (sid, ver)
     if key not in schemas:
-        # Try by schema_version_const (for phase2 schemas)
-        matching = [k for k in schemas if k[0] == sid or k[1] == ver]
+        # When schema_id is present, match by schema_id first (avoids false matches
+        # on shared version strings like "1.0" across different artifact types).
+        if sid:
+            matching = [k for k in schemas if k[0] == sid]
+        else:
+            matching = [k for k in schemas if k[1] == ver]
         if not matching:
-            # Also try just the schema_version as the key
+            # Also try just the schema_version as the key (for phase2 schemas where
+            # schema_version is used as both identifier and version const)
             matching = [k for k in schemas if sid in k]
         if matching:
             key = matching[0]

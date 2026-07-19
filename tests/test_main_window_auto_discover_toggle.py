@@ -2,9 +2,10 @@
 
 import pytest
 
-pytest.importorskip("PyQt6")
-
-from PyQt6.QtWidgets import QApplication
+try:
+    from PyQt6.QtWidgets import QApplication
+except ImportError as _e:
+    pytest.skip(f"PyQt6 or Qt runtime unavailable: {_e}", allow_module_level=True)
 
 
 @pytest.fixture(scope="module")

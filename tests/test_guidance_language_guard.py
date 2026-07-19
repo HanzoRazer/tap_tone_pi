@@ -15,10 +15,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
-
-import pytest
 
 
 GUARD_SCRIPT = Path(__file__).parent.parent / "ci" / "check_guidance_language.py"
@@ -58,12 +55,12 @@ def suggest_review():
     def test_forbidden_term_detected(self, tmp_path: Path):
         """Forbidden authority term in string is detected."""
         module = tmp_path / "bad_module.py"
-        module.write_text('''
+        module.write_text("""
 def generate_directive():
     return {
         "summary": "Wolf tone confirmed at 247Hz",
     }
-''')
+""")
         result = run_guard(str(module))
         assert "confirmed" in result.stdout.lower()
         assert "finding" in result.stdout.lower()
@@ -71,9 +68,9 @@ def generate_directive():
     def test_strict_mode_fails_on_finding(self, tmp_path: Path):
         """--strict mode exits 1 when findings exist."""
         module = tmp_path / "bad_module.py"
-        module.write_text('''
+        module.write_text("""
 summary = "Issue diagnosed and resolved"
-''')
+""")
         result = run_guard("--strict", str(module))
         assert result.returncode == 1
         assert "FAIL" in result.stdout
@@ -81,9 +78,9 @@ summary = "Issue diagnosed and resolved"
     def test_default_mode_warns_but_passes(self, tmp_path: Path):
         """Default mode exits 0 even with findings."""
         module = tmp_path / "bad_module.py"
-        module.write_text('''
+        module.write_text("""
 message = "This is the optimal solution"
-''')
+""")
         result = run_guard(str(module))
         assert result.returncode == 0
         assert "WARN" in result.stdout
@@ -115,14 +112,14 @@ def test_forbidden_terms():
     def test_internal_comments_not_scanned(self, tmp_path: Path):
         """Internal comments are not scanned (AST extracts strings only)."""
         module = tmp_path / "commented_module.py"
-        module.write_text('''
+        module.write_text("""
 # This is the best implementation (internal comment)
 # Fixed bug in previous version (internal comment)
 
 def clean_function():
     # optimal algorithm choice (internal comment)
     return "This suggestion may indicate drift"
-''')
+""")
         result = run_guard("--strict", str(module))
         assert result.returncode == 0
         assert "PASS" in result.stdout
@@ -141,22 +138,22 @@ def advisory_function():
     def test_markdown_file_scanned(self, tmp_path: Path):
         """Markdown files are scanned when targeted."""
         doc = tmp_path / "guidance.md"
-        doc.write_text('''
+        doc.write_text("""
 # Guidance Documentation
 
 The system has verified the acoustic signature.
-''')
+""")
         result = run_guard(str(doc))
         assert "verified" in result.stdout.lower()
 
     def test_multiple_findings_reported(self, tmp_path: Path):
         """Multiple forbidden terms in same file are all reported."""
         module = tmp_path / "multi_bad.py"
-        module.write_text('''
+        module.write_text("""
 summary1 = "Issue confirmed"
 summary2 = "Solution validated"
 summary3 = "This is optimal"
-''')
+""")
         result = run_guard(str(module))
         assert "confirmed" in result.stdout.lower()
         assert "validated" in result.stdout.lower()
@@ -166,11 +163,11 @@ summary3 = "This is optimal"
     def test_case_insensitive_detection(self, tmp_path: Path):
         """Detection is case-insensitive."""
         module = tmp_path / "case_module.py"
-        module.write_text('''
+        module.write_text("""
 msg1 = "CONFIRMED issue"
 msg2 = "Validated Result"
 msg3 = "OPTIMAL choice"
-''')
+""")
         result = run_guard(str(module))
         assert "confirmed" in result.stdout.lower()
         assert "validated" in result.stdout.lower()

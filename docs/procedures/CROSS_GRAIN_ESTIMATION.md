@@ -1,8 +1,8 @@
 # Cross-Grain Elastic Modulus (E_C) Estimation Procedure
 
-**Document ID:** `PROC-CROSS-GRAIN-001`  
-**Status:** Draft  
-**Author:** tap_tone_pi  
+**Document ID:** `PROC-CROSS-GRAIN-001`
+**Status:** Draft
+**Author:** tap_tone_pi
 **Last Updated:** 2026-03-28
 
 ---

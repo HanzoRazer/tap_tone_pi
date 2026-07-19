@@ -17,12 +17,13 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 
 try:
     from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
-    from fastapi.responses import JSONResponse, FileResponse
-    from pydantic import BaseModel, Field
+    from fastapi.responses import JSONResponse, FileResponse  # noqa: F401
+    from pydantic import BaseModel, Field  # noqa: F401
+
     HAS_FASTAPI = True
 except ImportError:
     HAS_FASTAPI = False
@@ -37,22 +38,23 @@ if HAS_FASTAPI:
 
     class HealthResponse(BaseModel):
         """Health check response."""
+
         status: str = "ok"
         version: str
         timestamp: str
 
-
     class DeviceInfo(BaseModel):
         """Audio device information."""
+
         index: int
         name: str
         sample_rate: int
         channels: int
         is_default: bool = False
 
-
     class CalibrationStatus(BaseModel):
         """Calibration status for a device."""
+
         device_index: int
         status: str  # "valid", "stale", "uncalibrated", "failed"
         calibrated_at: Optional[str] = None
@@ -60,9 +62,9 @@ if HAS_FASTAPI:
         amplitude_offset_db: Optional[float] = None
         is_stale: bool = False
 
-
     class GridInfo(BaseModel):
         """Grid information."""
+
         name: str
         path: str
         point_count: int
@@ -70,9 +72,9 @@ if HAS_FASTAPI:
         width: float
         height: float
 
-
     class SessionInfo(BaseModel):
         """Session information."""
+
         session_id: str
         path: str
         grid_name: str
@@ -84,33 +86,33 @@ if HAS_FASTAPI:
         last_updated: str
         is_complete: bool
 
-
     class CaptureRequest(BaseModel):
         """Request to capture a single point."""
+
         session_id: str
         point_id: str
         device_index: Optional[int] = None
 
-
     class CaptureResult(BaseModel):
         """Result of a capture operation."""
+
         success: bool
         point_id: str
         coherence: Optional[float] = None
         status: str  # "captured", "warning", "failed"
         message: str = ""
 
-
     class AnalysisRequest(BaseModel):
         """Request for tap tone analysis."""
+
         wav_path: Optional[str] = None
         wav_base64: Optional[str] = None
         sample_rate: int = 48000
         fft_size: int = 8192
 
-
     class AnalysisResult(BaseModel):
         """Result of tap tone analysis."""
+
         dominant_hz: Optional[float] = None
         peaks: List[Dict[str, float]]
         confidence: float
@@ -119,6 +121,7 @@ if HAS_FASTAPI:
 
 
 # --- App Factory ---
+
 
 def create_app() -> "FastAPI":
     """Create and configure FastAPI application."""
@@ -215,7 +218,11 @@ def create_app() -> "FastAPI":
 
     # --- Calibration ---
 
-    @app.get("/calibration/{device_index}", response_model=CalibrationStatus, tags=["Calibration"])
+    @app.get(
+        "/calibration/{device_index}",
+        response_model=CalibrationStatus,
+        tags=["Calibration"],
+    )
     async def get_calibration_status(device_index: int):
         """Get calibration status for a device."""
         try:
@@ -250,7 +257,7 @@ def create_app() -> "FastAPI":
 
     @app.get("/grids", response_model=List[GridInfo], tags=["Grids"])
     async def list_grids(
-        directory: str = Query(default="config/grids", description="Grid directory")
+        directory: str = Query(default="config/grids", description="Grid directory"),
     ):
         """List available measurement grids."""
         grid_dir = _safe_directory(directory)
@@ -268,14 +275,16 @@ def create_app() -> "FastAPI":
                 xs = [p["x"] for p in points]
                 ys = [p["y"] for p in points]
 
-                grids.append(GridInfo(
-                    name=data.get("name", grid_file.stem),
-                    path=str(grid_file),
-                    point_count=len(points),
-                    units=data.get("units", "mm"),
-                    width=max(xs) - min(xs) if xs else 0,
-                    height=max(ys) - min(ys) if ys else 0,
-                ))
+                grids.append(
+                    GridInfo(
+                        name=data.get("name", grid_file.stem),
+                        path=str(grid_file),
+                        point_count=len(points),
+                        units=data.get("units", "mm"),
+                        width=max(xs) - min(xs) if xs else 0,
+                        height=max(ys) - min(ys) if ys else 0,
+                    )
+                )
             except Exception:
                 continue
 
@@ -285,7 +294,9 @@ def create_app() -> "FastAPI":
 
     @app.get("/sessions", response_model=List[SessionInfo], tags=["Sessions"])
     async def list_sessions(
-        directory: str = Query(default="./runs_phase2", description="Sessions directory")
+        directory: str = Query(
+            default="./runs_phase2", description="Sessions directory"
+        ),
     ):
         """List Phase 2 capture sessions."""
         sessions_dir = _safe_directory(directory)
@@ -309,18 +320,20 @@ def create_app() -> "FastAPI":
                 points = state.get("points", {})
                 statuses = [p.get("status", "pending") for p in points.values()]
 
-                sessions.append(SessionInfo(
-                    session_id=session_dir.name,
-                    path=str(session_dir),
-                    grid_name=state.get("grid_path", "unknown"),
-                    point_count=len(points),
-                    captured=statuses.count("captured") + statuses.count("warning"),
-                    pending=statuses.count("pending"),
-                    failed=statuses.count("failed"),
-                    started_at=state.get("started_at_utc", ""),
-                    last_updated=state.get("last_updated_utc", ""),
-                    is_complete=state.get("is_complete", False),
-                ))
+                sessions.append(
+                    SessionInfo(
+                        session_id=session_dir.name,
+                        path=str(session_dir),
+                        grid_name=state.get("grid_path", "unknown"),
+                        point_count=len(points),
+                        captured=statuses.count("captured") + statuses.count("warning"),
+                        pending=statuses.count("pending"),
+                        failed=statuses.count("failed"),
+                        started_at=state.get("started_at_utc", ""),
+                        last_updated=state.get("last_updated_utc", ""),
+                        is_complete=state.get("is_complete", False),
+                    )
+                )
             except Exception:
                 continue
 
@@ -347,28 +360,24 @@ def create_app() -> "FastAPI":
             from tap_tone_pi.core.analysis import analyze_tap
             from tap_tone_pi.io.wav import read_wav_mono
             import base64
-            import io
-            import numpy as np
 
             # Load audio
             if request.wav_path:
                 signal, fs = read_wav_mono(Path(request.wav_path))
             elif request.wav_base64:
                 # Decode base64 WAV
-                wav_bytes = base64.b64decode(request.wav_base64)
+                wav_bytes = base64.b64decode(request.wav_base64)  # noqa: F841
                 # TODO: Parse WAV from bytes
                 raise HTTPException(
-                    status_code=501,
-                    detail="Base64 WAV input not yet implemented"
+                    status_code=501, detail="Base64 WAV input not yet implemented"
                 )
             else:
                 raise HTTPException(
-                    status_code=400,
-                    detail="Either wav_path or wav_base64 required"
+                    status_code=400, detail="Either wav_path or wav_base64 required"
                 )
 
             # Analyze
-            result = analyze_tap(signal, fs, fft_size=request.fft_size)
+            result = analyze_tap(signal, fs.sample_rate)
 
             return AnalysisResult(
                 dominant_hz=result.dominant_hz,
@@ -455,9 +464,7 @@ def create_app() -> "FastAPI":
         manifest_sha = ""
         manifest_path = pack_path / "manifest.json" if pack_path.is_dir() else None
         if manifest_path and manifest_path.exists():
-            manifest_sha = hashlib.sha256(
-                manifest_path.read_bytes()
-            ).hexdigest()[:16]
+            manifest_sha = hashlib.sha256(manifest_path.read_bytes()).hexdigest()[:16]
         elif pack_path.is_file():
             manifest_sha = hashlib.sha256(pack_path.read_bytes()).hexdigest()[:16]
 
@@ -539,9 +546,9 @@ app = create_app() if HAS_FASTAPI else None
 
 # --- CLI Integration ---
 
+
 def add_server_subcommand(subparsers) -> None:
     """Add server subcommand to CLI."""
-    import argparse
 
     parser = subparsers.add_parser(
         "server",

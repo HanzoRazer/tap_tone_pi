@@ -20,7 +20,6 @@ import numpy as np
 import pytest
 
 from analyzer.loaders.phase2_session import (
-    Phase2Point,
     Phase2Session,
     Phase2SessionLoadError,
     load_phase2_session,
