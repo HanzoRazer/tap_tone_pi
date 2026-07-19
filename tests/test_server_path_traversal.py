@@ -6,6 +6,8 @@ server working directory must be rejected, while a benign relative path is
 allowed through to the normal (possibly empty) listing.
 """
 
+from pathlib import Path
+
 import pytest
 
 try:
@@ -37,3 +39,13 @@ class TestDirectoryTraversalProtection:
         # returns a normal, possibly empty, list — never a 400 traversal error).
         resp = client.get("/grids", params={"directory": "config/grids"})
         assert resp.status_code != 400
+
+    def test_sibling_prefix_directory_rejected(self, client):
+        # A relative path that resolves to a *sibling* of the working directory
+        # sharing its name prefix (CWD ".../repo" -> ".../repo_evil_sibling")
+        # must be rejected. A naive str-prefix containment check would wrongly
+        # accept it because the sibling's path string starts with the CWD string;
+        # a true path-component check rejects it. Regresses the prefix-bypass bug.
+        sibling = f"../{Path.cwd().name}_evil_sibling"
+        resp = client.get("/grids", params={"directory": sibling})
+        assert resp.status_code == 400

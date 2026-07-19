@@ -143,15 +143,27 @@ def create_app() -> "FastAPI":
     def _safe_directory(directory: str) -> Path:
         """Resolve a user-supplied directory path.
 
-        Absolute paths are resolved as-is.  Relative paths are resolved
-        relative to CWD and must stay within the CWD subtree to prevent
-        directory-traversal attacks (e.g. ``../../etc/passwd``).
+        Relative paths are resolved against the server working directory and
+        must stay within that subtree, which blocks directory-traversal via
+        ``..`` (e.g. ``../../etc/passwd``).
+
+        Containment is a true path-component check (``is_relative_to``), not a
+        string-prefix test: a string prefix would wrongly accept a sibling that
+        merely shares the name prefix (CWD ``/srv/app`` vs ``/srv/app_evil``).
+
+        Known limitations (by design for this endpoint's threat model):
+          * Absolute paths are resolved as-is and are NOT confined to CWD; a
+            caller that can pass an absolute path can still target any directory
+            the process may read. This guard addresses relative traversal, not
+            absolute-path access control.
+          * Containment is anchored to ``Path.cwd()`` captured at app creation,
+            so the accepted subtree depends on where the server was launched.
         """
         p = Path(directory)
         if p.is_absolute():
             return p.resolve()
         resolved = (_CWD / directory).resolve()
-        if not str(resolved).startswith(str(_CWD)):
+        if not resolved.is_relative_to(_CWD):
             raise HTTPException(
                 status_code=400,
                 detail="Relative directory must be within the working directory.",
