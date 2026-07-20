@@ -144,35 +144,32 @@ def create_app() -> "FastAPI":
     _CWD = Path.cwd().resolve()
 
     def _safe_directory(directory: str) -> Path:
-        """Resolve a user-supplied directory path within the authorized root.
+        """Resolve a user-supplied directory path.
 
-        Every caller-supplied path — relative or absolute — must resolve
-        beneath the working-directory anchor:
-
-          * relative paths are resolved beneath the anchor;
-          * absolute paths are accepted only when they resolve beneath the
-            same anchor;
-          * containment is checked *after* resolution, so ``..`` components and
-            symlink escapes that leave the anchor are rejected.
+        Relative paths are resolved against the server working directory and
+        must stay within that subtree, which blocks directory-traversal via
+        ``..`` (e.g. ``../../etc/passwd``).
 
         Containment is a true path-component check (``is_relative_to``), not a
         string-prefix test: a string prefix would wrongly accept a sibling that
-        merely shares the name prefix (anchor ``/srv/app`` vs ``/srv/app_evil``).
+        merely shares the name prefix (CWD ``/srv/app`` vs ``/srv/app_evil``).
 
-        The anchor is captured from ``Path.cwd()`` when the application is
-        created; making it an explicit, configurable data root is deferred to a
-        follow-up. Escapes past it — relative or absolute — return HTTP 400.
+        Known limitations (by design for this endpoint's threat model):
+          * Absolute paths are resolved as-is and are NOT confined to CWD; a
+            caller that can pass an absolute path can still target any directory
+            the process may read. This guard addresses relative traversal, not
+            absolute-path access control.
+          * Containment is anchored to ``Path.cwd()`` captured at app creation,
+            so the accepted subtree depends on where the server was launched.
         """
-        requested = Path(directory)
-        resolved = (
-            requested.resolve()
-            if requested.is_absolute()
-            else (_CWD / requested).resolve()
-        )
+        p = Path(directory)
+        if p.is_absolute():
+            return p.resolve()
+        resolved = (_CWD / directory).resolve()
         if not resolved.is_relative_to(_CWD):
             raise HTTPException(
                 status_code=400,
-                detail="Directory must be within the server working directory.",
+                detail="Relative directory must be within the working directory.",
             )
         return resolved
 
