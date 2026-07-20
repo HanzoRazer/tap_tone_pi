@@ -139,6 +139,40 @@ def create_app() -> "FastAPI":
         redoc_url="/redoc",
     )
 
+    # --- Path validation helper ---
+
+    _CWD = Path.cwd().resolve()
+
+    def _safe_directory(directory: str) -> Path:
+        """Resolve a user-supplied directory path.
+
+        Relative paths are resolved against the server working directory and
+        must stay within that subtree, which blocks directory-traversal via
+        ``..`` (e.g. ``../../etc/passwd``).
+
+        Containment is a true path-component check (``is_relative_to``), not a
+        string-prefix test: a string prefix would wrongly accept a sibling that
+        merely shares the name prefix (CWD ``/srv/app`` vs ``/srv/app_evil``).
+
+        Known limitations (by design for this endpoint's threat model):
+          * Absolute paths are resolved as-is and are NOT confined to CWD; a
+            caller that can pass an absolute path can still target any directory
+            the process may read. This guard addresses relative traversal, not
+            absolute-path access control.
+          * Containment is anchored to ``Path.cwd()`` captured at app creation,
+            so the accepted subtree depends on where the server was launched.
+        """
+        p = Path(directory)
+        if p.is_absolute():
+            return p.resolve()
+        resolved = (_CWD / directory).resolve()
+        if not resolved.is_relative_to(_CWD):
+            raise HTTPException(
+                status_code=400,
+                detail="Relative directory must be within the working directory.",
+            )
+        return resolved
+
     # --- Health & Info ---
 
     @app.get("/health", response_model=HealthResponse, tags=["System"])
@@ -226,7 +260,7 @@ def create_app() -> "FastAPI":
         directory: str = Query(default="config/grids", description="Grid directory"),
     ):
         """List available measurement grids."""
-        grid_dir = Path(directory)
+        grid_dir = _safe_directory(directory)
 
         if not grid_dir.exists():
             return []
@@ -265,7 +299,7 @@ def create_app() -> "FastAPI":
         ),
     ):
         """List Phase 2 capture sessions."""
-        sessions_dir = Path(directory)
+        sessions_dir = _safe_directory(directory)
 
         if not sessions_dir.exists():
             return []
