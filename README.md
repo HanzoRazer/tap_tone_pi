@@ -203,6 +203,55 @@ procedures; it does not execute or interpret measurements.
 
 ---
 
+## HTTP API server
+
+An optional FastAPI server exposes read-only listing endpoints (`/grids`,
+`/sessions`) plus health/info. Start it with:
+
+```bash
+ttp server --host 0.0.0.0 --port 8000            # or: uvicorn tap_tone_pi.server.app:app
+ttp server --data-root /srv/tap-tone-data        # authorize a specific data root
+```
+
+### Data-root authorization
+
+The file-backed endpoints accept a `directory` query parameter, and every
+supplied path — **relative or absolute** — must resolve **beneath the configured
+data root**. Resolution precedence:
+
+1. `create_app(data_root=...)` (programmatic / tests);
+2. `--data-root` → `TTP_SERVER_DATA_ROOT` environment variable;
+3. `Path.cwd()` (default when nothing is configured).
+
+Containment is a true path-component check applied **after** resolving the path,
+so the following are rejected with **HTTP 400**:
+
+- relative `..` traversal that escapes the root (`../../etc`);
+- an absolute path outside the root (`/etc`, `/home/other`);
+- a sibling directory that merely shares the root's name prefix
+  (`/srv/app` vs `/srv/app_evil`);
+- a symlink beneath the root whose target resolves outside it.
+
+Paths that resolve beneath the root — including absolute paths under it and
+`..` segments that normalize back inside — are accepted. A configured root that
+does not exist fails at server startup rather than silently falling back to the
+working directory. Relative request paths are interpreted **relative to the
+configured data root**, not the process launch directory.
+
+For example, with `--data-root /srv/tap-tone-data`:
+
+```text
+/srv/tap-tone-data/runs/session-001   ALLOWED
+runs/session-001                      ALLOWED  (relative to the data root)
+/etc                                  REJECTED (HTTP 400)
+../private                            REJECTED (HTTP 400)
+```
+
+This boundary constrains filesystem *reads* for these endpoints; it is not an
+authentication or per-user permission system.
+
+---
+
 ## Run IDs & retention
 
 - Use `from modes._shared.run_id import new_run_dir` to create timestamped run folders,
