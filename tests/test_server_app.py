@@ -23,6 +23,8 @@ try:
         app,
         HAS_FASTAPI,
         add_server_subcommand,
+        cmd_server,
+        DATA_ROOT_ENV,
     )
 
     SKIP_REASON = "FastAPI not installed"  # placeholder, tests won't skip
@@ -282,15 +284,19 @@ class TestCalibrationEndpoint:
 class TestGridsEndpoint:
     """Tests for /grids endpoint."""
 
-    def test_grids_empty_directory(self, client, tmp_path):
+    def test_grids_empty_directory(self, tmp_path):
         """Should return empty list for nonexistent directory."""
+        # The served directory is authorized as the data root (DO-98); the
+        # requested absolute path is beneath it.
+        client = TestClient(create_app(data_root=tmp_path))
         response = client.get(f"/grids?directory={tmp_path / 'nonexistent'}")
 
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_grids_with_files(self, client, sample_grid_dir):
+    def test_grids_with_files(self, sample_grid_dir):
         """Should return grid info for valid grids."""
+        client = TestClient(create_app(data_root=sample_grid_dir.parent))
         response = client.get(f"/grids?directory={sample_grid_dir}")
 
         assert response.status_code == 200
@@ -307,15 +313,17 @@ class TestGridsEndpoint:
 class TestSessionsEndpoint:
     """Tests for /sessions endpoint."""
 
-    def test_sessions_empty_directory(self, client, tmp_path):
+    def test_sessions_empty_directory(self, tmp_path):
         """Should return empty list for nonexistent directory."""
+        client = TestClient(create_app(data_root=tmp_path))
         response = client.get(f"/sessions?directory={tmp_path / 'nonexistent'}")
 
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_sessions_with_data(self, client, sample_session_dir):
+    def test_sessions_with_data(self, sample_session_dir):
         """Should return session info."""
+        client = TestClient(create_app(data_root=sample_session_dir.parent))
         response = client.get(f"/sessions?directory={sample_session_dir}")
 
         assert response.status_code == 200
@@ -402,3 +410,41 @@ class TestCLIIntegration:
         assert args.host == "0.0.0.0"
         assert args.port == 8000
         assert args.reload is False
+        assert args.data_root is None
+
+    def test_data_root_argument_parses(self):
+        """--data-root should be parsed onto the server args."""
+        import argparse
+
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers()
+        add_server_subcommand(subparsers)
+
+        args = parser.parse_args(["server", "--data-root", "/srv/tap-tone-data"])
+
+        assert args.data_root == "/srv/tap-tone-data"
+
+    def test_cmd_server_sets_and_restores_data_root_env(self, tmp_path, monkeypatch):
+        """cmd_server exposes --data-root via the env during the (mocked) run and
+        restores the parent-process environment afterwards, so a direct unit test
+        cannot leak the override."""
+        import os
+        import argparse
+        from unittest import mock
+
+        monkeypatch.delenv(DATA_ROOT_ENV, raising=False)
+
+        seen = {}
+
+        def fake_run(*_a, **_k):
+            seen["env"] = os.environ.get(DATA_ROOT_ENV)
+
+        args = argparse.Namespace(
+            host="127.0.0.1", port=1, reload=False, data_root=str(tmp_path)
+        )
+        with mock.patch.dict("sys.modules", {"uvicorn": mock.MagicMock(run=fake_run)}):
+            rc = cmd_server(args)
+
+        assert rc == 0
+        assert seen["env"] == str(tmp_path)  # set for the import-string app
+        assert DATA_ROOT_ENV not in os.environ  # restored (was unset)

@@ -15,9 +15,38 @@ Or via CLI:
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, List, Dict
+
+#: Environment variable that configures the server data root when no explicit
+#: ``data_root`` argument is passed to :func:`create_app` (see precedence there).
+DATA_ROOT_ENV = "TTP_SERVER_DATA_ROOT"
+
+
+def _resolve_data_root(data_root: Path | str | None) -> Path:
+    """Resolve the authorized data root: explicit arg > ``$TTP_SERVER_DATA_ROOT`` > cwd.
+
+    The returned path is absolute and canonical (symlinks resolved). A root that
+    is *configured* — via the argument or the environment — but does not exist as
+    a directory raises ``ValueError`` at application creation, rather than
+    silently falling back to the working directory. The implicit cwd default
+    (used when nothing is configured) always exists and is not re-validated.
+    """
+    configured = (
+        data_root if data_root is not None else (os.environ.get(DATA_ROOT_ENV) or None)
+    )
+    if configured is None:
+        return Path.cwd().resolve()
+    root = Path(configured).expanduser().resolve()
+    if not root.is_dir():
+        raise ValueError(
+            "configured server data root does not exist or is not a directory: "
+            f"{str(configured)!r}"
+        )
+    return root
+
 
 try:
     from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
@@ -123,13 +152,24 @@ if HAS_FASTAPI:
 # --- App Factory ---
 
 
-def create_app() -> "FastAPI":
-    """Create and configure FastAPI application."""
+def create_app(*, data_root: Path | str | None = None) -> "FastAPI":
+    """Create and configure FastAPI application.
+
+    Args:
+        data_root: root directory beneath which the ``/grids`` and ``/sessions``
+            endpoints may read. Resolution precedence is this argument, then the
+            ``TTP_SERVER_DATA_ROOT`` environment variable, then ``Path.cwd()``.
+            A configured root that does not exist raises ``ValueError`` here, at
+            application creation, rather than failing later per request. The
+            resolved root is exposed on ``app.state.data_root``.
+    """
     if not HAS_FASTAPI:
         raise ImportError(
             "FastAPI is required for the server. "
             "Install with: pip install fastapi uvicorn"
         )
+
+    resolved_root = _resolve_data_root(data_root)
 
     app = FastAPI(
         title="tap_tone_pi API",
@@ -138,38 +178,38 @@ def create_app() -> "FastAPI":
         docs_url="/docs",
         redoc_url="/redoc",
     )
+    app.state.data_root = resolved_root
 
     # --- Path validation helper ---
 
-    _CWD = Path.cwd().resolve()
-
     def _safe_directory(directory: str) -> Path:
-        """Resolve a user-supplied directory path.
+        """Resolve a caller-supplied directory within the authorized data root.
 
-        Relative paths are resolved against the server working directory and
-        must stay within that subtree, which blocks directory-traversal via
-        ``..`` (e.g. ``../../etc/passwd``).
+        Every path — relative *or* absolute — must resolve beneath the
+        configured data root:
+
+          * relative paths are resolved beneath the root;
+          * absolute paths are accepted only when they resolve beneath the root;
+          * containment is checked *after* resolution, so ``..`` components and
+            symlink escapes that leave the root are rejected.
 
         Containment is a true path-component check (``is_relative_to``), not a
         string-prefix test: a string prefix would wrongly accept a sibling that
-        merely shares the name prefix (CWD ``/srv/app`` vs ``/srv/app_evil``).
+        merely shares the name prefix (root ``/srv/app`` vs ``/srv/app_evil``).
 
-        Known limitations (by design for this endpoint's threat model):
-          * Absolute paths are resolved as-is and are NOT confined to CWD; a
-            caller that can pass an absolute path can still target any directory
-            the process may read. This guard addresses relative traversal, not
-            absolute-path access control.
-          * Containment is anchored to ``Path.cwd()`` captured at app creation,
-            so the accepted subtree depends on where the server was launched.
+        The root is resolved once at application creation (see ``create_app``);
+        escapes past it — relative or absolute — return HTTP 400.
         """
-        p = Path(directory)
-        if p.is_absolute():
-            return p.resolve()
-        resolved = (_CWD / directory).resolve()
-        if not resolved.is_relative_to(_CWD):
+        requested = Path(directory).expanduser()
+        resolved = (
+            requested.resolve()
+            if requested.is_absolute()
+            else (resolved_root / requested).resolve()
+        )
+        if not resolved.is_relative_to(resolved_root):
             raise HTTPException(
                 status_code=400,
-                detail="Relative directory must be within the working directory.",
+                detail="Directory must be within the configured data root.",
             )
         return resolved
 
@@ -576,6 +616,17 @@ def add_server_subcommand(subparsers) -> None:
         help="Enable auto-reload for development",
     )
 
+    parser.add_argument(
+        "--data-root",
+        type=str,
+        default=None,
+        help=(
+            "Root directory from which server grid and session data may be read. "
+            "Relative and absolute request paths must resolve beneath it "
+            "(default: current working directory)."
+        ),
+    )
+
     parser.set_defaults(fn=cmd_server)
 
 
@@ -596,11 +647,26 @@ def cmd_server(args) -> int:
     print(f"Starting tap_tone_pi server on {args.host}:{args.port}")
     print(f"API docs: http://{args.host}:{args.port}/docs")
 
-    uvicorn.run(
-        "tap_tone_pi.server.app:app",
-        host=args.host,
-        port=args.port,
-        reload=args.reload,
-    )
+    # The app is launched by import string ("...:app") so uvicorn --reload can
+    # re-import it, which means the configured root must reach create_app()
+    # through the environment rather than a factory argument. Set it only around
+    # the (blocking) run and restore the previous value afterward so a direct
+    # unit test of cmd_server cannot leak the override into the parent process.
+    data_root = getattr(args, "data_root", None)
+    previous = os.environ.get(DATA_ROOT_ENV)
+    try:
+        if data_root is not None:
+            os.environ[DATA_ROOT_ENV] = data_root
+        uvicorn.run(
+            "tap_tone_pi.server.app:app",
+            host=args.host,
+            port=args.port,
+            reload=args.reload,
+        )
+    finally:
+        if previous is None:
+            os.environ.pop(DATA_ROOT_ENV, None)
+        else:
+            os.environ[DATA_ROOT_ENV] = previous
 
     return 0
