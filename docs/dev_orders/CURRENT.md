@@ -1,7 +1,41 @@
 # Active Dev Order
 
-**Current:** DO-97 — COMPLETE
-**Previous:** DO-95 — Formula Validation & Error Detection Envelope
+**Current:** DO-98 — Server Data-Root Authorization Boundary
+**Previous:** DO-97 — Laboratory Manual packaging & desktop access (COMPLETE)
+
+> **DO-98 — Server Data-Root Authorization Boundary (in progress)**
+>
+> Depends on **PR #10** (relative-traversal + sibling-prefix containment),
+> merged to `main` as `d8010dd`. DO-98 branches from `d8010dd`
+> (`fix/server-data-root-authorization`).
+>
+> **Scope:** replace the fixed `Path.cwd()` authorization anchor with an explicit
+> configurable server data root, and unify containment so **relative and
+> absolute** request paths must both resolve beneath it. Closes the absolute-path
+> gap PR #10 intentionally left, while preserving external data directories
+> (authorized by configuring the root).
+>
+> **Delivered:**
+> - `create_app(*, data_root=None)`; precedence `arg > TTP_SERVER_DATA_ROOT > cwd`;
+>   invalid configured root fails at creation; resolved root on `app.state.data_root`.
+> - Unified `_safe_directory` (post-resolution `is_relative_to` containment for
+>   relative *and* absolute; `..` and symlink escapes rejected).
+> - `--data-root` on `ttp server`, bridged to the import-string app via the env
+>   var (preserves `uvicorn --reload`), non-contaminating for direct unit tests.
+> - The four `/grids`/`/sessions` endpoint tests reconstructed with an explicit
+>   `data_root`; new authorization, precedence, symlink, and CLI tests.
+> - README "HTTP API server" section documents the policy.
+>
+> **Verification commands:**
+> ```bash
+> python -m pytest -q tests/test_server_path_traversal.py tests/test_server_app.py
+> python -m ruff check tap_tone_pi/server/app.py tests/test_server_path_traversal.py tests/test_server_app.py
+> python -m ruff format --check tap_tone_pi/server/app.py tests/test_server_path_traversal.py tests/test_server_app.py
+> ```
+> Full `pre-commit run --all-files` + `pytest -q` + the CI 3.10/3.11 matrix gate merge.
+>
+> Commit sequence on branch: `c8d1cd8` (tests), `1519870` (implementation), docs (this).
+> PR/merge reference to be recorded on completion.
 
 > **DO-97 — COMPLETE**
 >
