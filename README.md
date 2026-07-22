@@ -205,13 +205,27 @@ procedures; it does not execute or interpret measurements.
 
 ## HTTP API server
 
-An optional FastAPI server exposes read-only listing endpoints (`/grids`,
-`/sessions`) plus health/info. Start it with:
+An optional FastAPI server exposes read-only listing/detail endpoints (`/grids`,
+`/sessions`, `/sessions/{id}`, `/export/{id}`) plus health/info.
+
+### Starting the server
+
+The `--data-root` flag lives on the `ttp server` wrapper. If you launch uvicorn
+directly, the flag does **not** apply — configure the root via the
+`TTP_SERVER_DATA_ROOT` environment variable instead:
 
 ```bash
-ttp server --host 0.0.0.0 --port 8000            # or: uvicorn tap_tone_pi.server.app:app
-ttp server --data-root /srv/tap-tone-data        # authorize a specific data root
+# ttp wrapper (recommended): --data-root is honored
+ttp server --host 0.0.0.0 --port 8000                      # root defaults to cwd
+ttp server --data-root /srv/tap-tone-data                  # authorize a specific root
+
+# direct uvicorn: --data-root does NOT exist here; set the env var explicitly
+TTP_SERVER_DATA_ROOT=/srv/tap-tone-data uvicorn tap_tone_pi.server.app:app
+uvicorn tap_tone_pi.server.app:app                         # root = cwd (no confinement to a mounted dir)
 ```
+
+Under the `ttp server` wrapper, `--data-root` is bridged to the launched app via
+`TTP_SERVER_DATA_ROOT` (required so `--reload`'s re-imported process sees it).
 
 ### Data-root authorization
 
@@ -236,7 +250,8 @@ Paths that resolve beneath the root — including absolute paths under it and
 `..` segments that normalize back inside — are accepted. A configured root that
 does not exist fails at server startup rather than silently falling back to the
 working directory. Relative request paths are interpreted **relative to the
-configured data root**, not the process launch directory.
+configured data root**, not the process launch directory. A leading `~` in a
+request path is **not** expanded (only the server-configured root expands `~`).
 
 For example, with `--data-root /srv/tap-tone-data`:
 
@@ -247,8 +262,16 @@ runs/session-001                      ALLOWED  (relative to the data root)
 ../private                            REJECTED (HTTP 400)
 ```
 
-This boundary constrains filesystem *reads* for these endpoints; it is not an
-authentication or per-user permission system.
+**Compatibility note:** before this boundary existed, absolute `directory` values
+were accepted as-is. They are now rejected unless they resolve beneath the
+configured root — point clients at directories under `--data-root` (or widen the
+root) if they previously passed absolute paths elsewhere.
+
+**Scope.** This boundary confines filesystem *reads* of the `directory` parameter
+across `/grids`, `/sessions`, `/sessions/{id}`, and `/export/{id}`; it is not an
+authentication or per-user permission system. The export endpoints' `output_dir`
+is a *write* target and is deliberately **not** confined to the data root (write
+authorization is a separate concern) — treat it as trusted-operator input.
 
 ---
 
