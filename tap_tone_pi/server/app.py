@@ -198,9 +198,15 @@ def create_app(*, data_root: Path | str | None = None) -> "FastAPI":
         merely shares the name prefix (root ``/srv/app`` vs ``/srv/app_evil``).
 
         The root is resolved once at application creation (see ``create_app``);
-        escapes past it — relative or absolute — return HTTP 400.
+        escapes past it — relative or absolute — return HTTP 400. A leading ``~``
+        in a request path is *not* expanded (that would leak the server user's
+        home into a client-controlled value); ``~`` expansion applies only to the
+        server-configured data root.
+
+        This is the single gate for every read of a caller-supplied directory
+        (``/grids``, ``/sessions``, ``/sessions/{id}``, and ``/export/{id}``).
         """
-        requested = Path(directory).expanduser()
+        requested = Path(directory)
         resolved = (
             requested.resolve()
             if requested.is_absolute()
@@ -382,7 +388,9 @@ def create_app(*, data_root: Path | str | None = None) -> "FastAPI":
     @app.get("/sessions/{session_id}", tags=["Sessions"])
     async def get_session(session_id: str, directory: str = "./runs_phase2"):
         """Get detailed session information."""
-        session_dir = Path(directory) / session_id
+        # Same data-root authorization as /sessions: confine the full
+        # directory/session_id read path (a `..` in either escapes -> HTTP 400).
+        session_dir = _safe_directory(str(Path(directory) / session_id))
         state_file = session_dir / "session_state.json"
 
         if not state_file.exists():
@@ -471,14 +479,16 @@ def create_app(*, data_root: Path | str | None = None) -> "FastAPI":
         """
         import hashlib
         from pathlib import Path as P
+
         from scripts.phase2.export_viewer_pack_v1 import export_viewer_pack as _export
 
-        # Resolve session directory
-        sessions_root = P(directory).resolve()
-        # Try exact match first, then prefix match
-        session_dir = sessions_root / session_id
+        # Resolve session directory under the authorized data root (same policy
+        # as /sessions). The read root and the selected session directory are
+        # both confined; an escaping `directory` or `session_id` yields HTTP 400.
+        sessions_root = _safe_directory(directory)
+        # Try exact match first, then prefix match (glob results stay under root).
+        session_dir = _safe_directory(str(sessions_root / session_id))
         if not session_dir.exists():
-            # Look for a matching directory
             matches = sorted(sessions_root.glob(f"{session_id}*"))
             if not matches:
                 raise HTTPException(
@@ -487,6 +497,9 @@ def create_app(*, data_root: Path | str | None = None) -> "FastAPI":
                 )
             session_dir = matches[0]
 
+        # output_dir is a write target, not a read of app data; DO-98 governs
+        # read authorization only (writes are out of scope) so it is not confined
+        # to the data root. See README "HTTP API server".
         out_dir = P(output_dir).resolve()
         out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -532,10 +545,12 @@ def create_app(*, data_root: Path | str | None = None) -> "FastAPI":
         """GET convenience alias for the export endpoint. Same as POST /export/{session_id}."""
         import hashlib
         from pathlib import Path as P
+
         from scripts.phase2.export_viewer_pack_v1 import export_viewer_pack as _export
 
-        sessions_root = P(directory).resolve()
-        session_dir = sessions_root / session_id
+        # Confined to the authorized data root, same as POST /export.
+        sessions_root = _safe_directory(directory)
+        session_dir = _safe_directory(str(sessions_root / session_id))
         if not session_dir.exists():
             matches = sorted(sessions_root.glob(f"{session_id}*"))
             if not matches:
@@ -545,6 +560,7 @@ def create_app(*, data_root: Path | str | None = None) -> "FastAPI":
                 )
             session_dir = matches[0]
 
+        # output_dir is a write target; not confined (DO-98 governs reads only).
         out_dir = P(output_dir).resolve()
         out_dir.mkdir(parents=True, exist_ok=True)
 

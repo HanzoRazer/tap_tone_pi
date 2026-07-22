@@ -429,8 +429,11 @@ except ImportError:
 
 
 @pytest.fixture()
-def client():
-    app = create_app()
+def client(tmp_path: Path):
+    # DO-98: the export tests read session directories under tmp_path via
+    # absolute paths, so authorize tmp_path as the server data root. /export now
+    # confines its `directory` read param to the configured root like /sessions.
+    app = create_app(data_root=tmp_path)
     return TestClient(app)
 
 

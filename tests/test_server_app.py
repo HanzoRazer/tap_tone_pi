@@ -333,8 +333,9 @@ class TestSessionsEndpoint:
         assert data[0]["captured"] == 1
         assert data[0]["pending"] == 1
 
-    def test_session_detail(self, client, sample_session_dir):
+    def test_session_detail(self, sample_session_dir):
         """Should return detailed session info."""
+        client = TestClient(create_app(data_root=sample_session_dir.parent))
         response = client.get(
             f"/sessions/session_20260328T100000Z?directory={sample_session_dir}"
         )
@@ -343,8 +344,9 @@ class TestSessionsEndpoint:
         data = response.json()
         assert "points" in data
 
-    def test_session_not_found(self, client, sample_session_dir):
+    def test_session_not_found(self, sample_session_dir):
         """Should return 404 for nonexistent session."""
+        client = TestClient(create_app(data_root=sample_session_dir.parent))
         response = client.get(f"/sessions/nonexistent?directory={sample_session_dir}")
 
         assert response.status_code == 404
@@ -448,3 +450,29 @@ class TestCLIIntegration:
         assert rc == 0
         assert seen["env"] == str(tmp_path)  # set for the import-string app
         assert DATA_ROOT_ENV not in os.environ  # restored (was unset)
+
+    def test_cmd_server_restores_preexisting_data_root_env(self, tmp_path, monkeypatch):
+        """A pre-existing TTP_SERVER_DATA_ROOT is restored to its exact prior
+        value after the run, not just deleted."""
+        import os
+        import argparse
+        from unittest import mock
+
+        prior = str(tmp_path / "prior")
+        override = str(tmp_path / "override")
+        monkeypatch.setenv(DATA_ROOT_ENV, prior)
+
+        seen = {}
+
+        def fake_run(*_a, **_k):
+            seen["env"] = os.environ.get(DATA_ROOT_ENV)
+
+        args = argparse.Namespace(
+            host="127.0.0.1", port=1, reload=False, data_root=override
+        )
+        with mock.patch.dict("sys.modules", {"uvicorn": mock.MagicMock(run=fake_run)}):
+            rc = cmd_server(args)
+
+        assert rc == 0
+        assert seen["env"] == override  # override active during the run
+        assert os.environ[DATA_ROOT_ENV] == prior  # restored to exact prior value

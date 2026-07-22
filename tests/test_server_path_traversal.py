@@ -188,6 +188,23 @@ class TestDataRootAuthorization:
         under_cwd = str(Path.cwd() / "config")
         assert client.get(endpoint, params={"directory": under_cwd}).status_code == 400
 
+    @pytest.mark.parametrize("endpoint", ["/sessions/some_id", "/export/some_id"])
+    def test_adjacent_read_endpoints_reject_outside_root(
+        self, client_for_root, endpoint, tmp_path
+    ):
+        # The session-detail and export read endpoints share the same data-root
+        # boundary as the list endpoints — their `directory` read param routes
+        # through the same guard — so an absolute directory outside the root is
+        # rejected (HTTP 400), not silently read. Regresses the bypass where only
+        # /grids and /sessions were confined.
+        root = tmp_path / "root"
+        root.mkdir()
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        client = client_for_root(root)
+        resp = client.get(endpoint, params={"directory": str(outside)})
+        assert resp.status_code == 400
+
 
 @pytest.mark.skipif(not HAS_FASTAPI, reason="FastAPI not installed")
 class TestDataRootPrecedence:
