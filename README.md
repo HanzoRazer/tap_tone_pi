@@ -289,15 +289,24 @@ The authorization layer is observable without exposing any host path.
 ```
 
 - `configured` — `true` when the root came from `--data-root`/`TTP_SERVER_DATA_ROOT`,
-  `false` when it defaulted to cwd (it does not reveal which source).
-- `root_digest` — a one-way `sha256(root)[:12]` digest, **never** the path.
+  `false` when it defaulted to cwd (it does not reveal which source). Captured
+  once at app creation; `/server/status` reflects that startup state, not the
+  current environment.
+- `root_digest` — a one-way `sha256(canonical_root)[:12]` digest, **never** the
+  path. It is derived from the *canonical resolved* root, so differently-spelled
+  equivalents (`.`, `./data`, `foo/../data`) share one digest. It fingerprints a
+  path, not a logical environment: the same service on a different mount produces
+  a different digest — use it to correlate events with a running instance, not as
+  a durable cross-deploy environment id.
 
-Every authorization decision also emits a structured event on the
-`tap_tone_pi.server.authz` logger (configure a handler to collect them):
+Both request-time authorization decisions **and** the startup root validation
+emit a structured event on the `tap_tone_pi.server.authz` logger (configure a
+handler to collect them):
 
 - **allowed** → `DEBUG`; **rejected** (`OUTSIDE_ROOT`, `SYMLINK_ESCAPE`) →
-  `WARNING`; **startup invalid root** (`INVALID_ROOT`) and
-  **resolution failure** (`PATH_RESOLUTION_FAILURE`) → `ERROR`.
+  `WARNING`; **startup invalid root** (`INVALID_ROOT`, emitted by `create_app`
+  before the `ValueError`, not a per-request decision) and **resolution failure**
+  (`PATH_RESOLUTION_FAILURE`) → `ERROR`.
 - Reason codes are stable: `OUTSIDE_ROOT` (absolute/`..` escape), `SYMLINK_ESCAPE`
   (lexically in-root but resolves out), `INVALID_ROOT`, `PATH_RESOLUTION_FAILURE`.
 - Events carry only: endpoint, input role, path type (relative/absolute), result,
@@ -305,6 +314,9 @@ Every authorization decision also emits a structured event on the
   paths and no exception text (only an exception *class* name when relevant).
 
 Diagnostics are observability only; they do not change any authorization decision.
+`PATH_RESOLUTION_FAILURE` deliberately preserves the original exception (it does
+not convert it to a sanitized 4xx), so a filesystem/permission error surfaces as
+a 500 — the event records it without leaking the path.
 
 ---
 
