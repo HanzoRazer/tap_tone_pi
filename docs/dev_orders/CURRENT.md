@@ -1,13 +1,45 @@
 # Active Dev Order
 
-**Current:** DO-98 — Server Data-Root Authorization Boundary
-**Previous:** DO-97 — Laboratory Manual packaging & desktop access (COMPLETE)
+**Current:** DO-99 — Server Authorization Observability & Diagnostics
+**Previous:** DO-98 — Server Data-Root Authorization Boundary (COMPLETE)
 
-> **DO-98 — Server Data-Root Authorization Boundary (in progress)**
+> **DO-99 — Server Authorization Observability & Diagnostics (in progress)**
 >
-> Depends on **PR #10** (relative-traversal + sibling-prefix containment),
-> merged to `main` as `d8010dd`. DO-98 branches from `d8010dd`
-> (`fix/server-data-root-authorization`).
+> Depends on **PR #10** + **PR #11** (both merged to `main`). Branches from `main`
+> (`fix/server-authz-observability`). **Diagnostics only — no authorization
+> decision changes; all DO-98 tests pass unchanged.**
+>
+> **Scope:** make the filesystem-authorization layer observable without exposing
+> host paths — structured events + a status endpoint.
+>
+> **Delivered:**
+> - `tap_tone_pi.server.authz` logger emits one path-free `AuthorizationEvent`
+>   per authorization call (frozen dataclass via `extra=`): allowed→DEBUG,
+>   OUTSIDE_ROOT/SYMLINK_ESCAPE→WARNING, INVALID_ROOT/PATH_RESOLUTION_FAILURE→ERROR.
+> - `OUTSIDE_ROOT` vs `SYMLINK_ESCAPE` distinguished by a diagnostic-only lexical
+>   check (decision unchanged); `INVALID_ROOT` emitted at `create_app` before the
+>   `ValueError` re-raises; `PATH_RESOLUTION_FAILURE` emitted then original
+>   exception re-raised unchanged (no HTTP conversion).
+> - `_safe_directory(directory, *, endpoint, input_role)`; fields `endpoint`,
+>   `input_role`, `request_path_type` kept separate.
+> - `GET /server/status` → `policy_version="filesystem-auth-v2"`, `configured`,
+>   `root_digest=sha256(root)[:12]`, `started_at`; no host-path disclosure.
+> - No raw request/resolved/root path or exception text ever logged (only an
+>   exception class name where relevant).
+>
+> Commit sequence on branch: `521d39d` (tests), implementation, docs.
+> PR/merge reference to be recorded on completion.
+
+> **DO-98 — COMPLETE**
+>
+> Merged as **PR #11** → `main` commit `79c2d36` (branch
+> `fix/server-data-root-authorization`, off `d8010dd`).
+> Replaced the fixed `Path.cwd()` anchor with a configurable data root and unified
+> containment for relative *and* absolute request paths across `/grids`,
+> `/sessions`, `/sessions/{id}`, and `/export/{id}` reads. `--data-root` on
+> `ttp server` (env-bridged for `uvicorn --reload`, non-contaminating).
+> Full CI green on 3.10/3.11 at merge; the deferred `output_dir` write policy and
+> Windows path tests are tracked in `SPRINTS.md` (B-001/B-002).
 >
 > **Scope:** replace the fixed `Path.cwd()` authorization anchor with an explicit
 > configurable server data root, and unify containment so **relative and

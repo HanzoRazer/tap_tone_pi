@@ -14,8 +14,11 @@ Or via CLI:
 
 from __future__ import annotations
 
+import hashlib
 import json
+import logging
 import os
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, List, Dict
@@ -23,6 +26,93 @@ from typing import Optional, List, Dict
 #: Environment variable that configures the server data root when no explicit
 #: ``data_root`` argument is passed to :func:`create_app` (see precedence there).
 DATA_ROOT_ENV = "TTP_SERVER_DATA_ROOT"
+
+#: Stable identifier for the filesystem-authorization policy this build enforces.
+#: v2 = explicit configurable data-root containment (DO-98); v1 was the
+#: cwd-anchored relative-only guard. Surfaced by ``/server/status`` and events.
+POLICY_VERSION = "filesystem-auth-v2"
+
+#: Dedicated diagnostics logger for authorization decisions. The host
+#: application configures handlers/formatters; this module only emits. Records
+#: never carry raw request/resolved/root paths — see :class:`AuthorizationEvent`.
+_authz_logger = logging.getLogger("tap_tone_pi.server.authz")
+
+
+@dataclass(frozen=True)
+class AuthorizationEvent:
+    """One filesystem-authorization decision, as structured diagnostics.
+
+    Deliberately path-free: it carries a non-reversible digest of the configured
+    root, the request path *type*, the endpoint/role, the result, and a stable
+    reason code — never the requested path, resolved path, root path, or any
+    exception text. This is the payload logged via ``extra=`` on the authz
+    logger, so structured handlers can render each field.
+    """
+
+    timestamp: str
+    endpoint: str
+    input_role: str
+    request_path_type: str  # "relative" | "absolute"
+    authorization_result: str  # "allowed" | "rejected"
+    policy_version: str
+    root_digest: str
+    reason_code: str | None = None
+    error_type: str | None = None
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _root_digest(value: str) -> str:
+    """Stable, non-reversible 12-char digest of a root path (never the path)."""
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:12]
+
+
+def _configured_root_value(data_root: Path | str | None) -> str | None:
+    """Return the explicitly configured root value (arg or env), else ``None``.
+
+    ``None`` means "nothing configured — default to cwd". An empty or whitespace
+    environment value is treated as unset.
+    """
+    if data_root is not None:
+        return str(data_root)
+    env = os.environ.get(DATA_ROOT_ENV)
+    return env if (env and env.strip()) else None
+
+
+def _emit_authz(event: AuthorizationEvent) -> None:
+    """Log one authorization event at the level appropriate to its outcome.
+
+    allowed → DEBUG; OUTSIDE_ROOT/SYMLINK_ESCAPE → WARNING; INVALID_ROOT and
+    PATH_RESOLUTION_FAILURE → ERROR. The message and every ``extra`` field are
+    path-free.
+    """
+    if event.authorization_result == "allowed":
+        level = logging.DEBUG
+    elif event.reason_code in ("INVALID_ROOT", "PATH_RESOLUTION_FAILURE"):
+        level = logging.ERROR
+    else:  # OUTSIDE_ROOT / SYMLINK_ESCAPE
+        level = logging.WARNING
+    _authz_logger.log(
+        level,
+        "authorization %s: endpoint=%s role=%s type=%s reason=%s",
+        event.authorization_result,
+        event.endpoint,
+        event.input_role,
+        event.request_path_type,
+        event.reason_code or "-",
+        extra=asdict(event),
+    )
+
+
+def _lexically_under(candidate: Path, root: Path) -> bool:
+    """True if ``candidate`` is at/under ``root`` by path components, *without*
+    resolving symlinks — used only to label SYMLINK_ESCAPE vs OUTSIDE_ROOT."""
+    try:
+        return candidate == root or root in candidate.parents
+    except (OSError, ValueError):  # pragma: no cover - defensive
+        return False
 
 
 def _resolve_data_root(data_root: Path | str | None) -> Path:
@@ -34,9 +124,7 @@ def _resolve_data_root(data_root: Path | str | None) -> Path:
     silently falling back to the working directory. The implicit cwd default
     (used when nothing is configured) always exists and is not re-validated.
     """
-    configured = (
-        data_root if data_root is not None else (os.environ.get(DATA_ROOT_ENV) or None)
-    )
+    configured = _configured_root_value(data_root)
     if configured is None:
         return Path.cwd().resolve()
     root = Path(configured).expanduser().resolve()
@@ -148,6 +236,19 @@ if HAS_FASTAPI:
         clipped: bool
         rms: float
 
+    class AuthorizationStatus(BaseModel):
+        """Server filesystem-authorization status — diagnostics, no host paths.
+
+        ``configured`` is True when the root came from an explicit argument or
+        ``TTP_SERVER_DATA_ROOT``; it does not reveal which of the two (that is
+        internal). ``root_digest`` is a one-way digest, not the path.
+        """
+
+        policy_version: str
+        configured: bool
+        root_digest: str
+        started_at: str
+
 
 # --- App Factory ---
 
@@ -169,7 +270,34 @@ def create_app(*, data_root: Path | str | None = None) -> "FastAPI":
             "Install with: pip install fastapi uvicorn"
         )
 
-    resolved_root = _resolve_data_root(data_root)
+    configured_value = _configured_root_value(data_root)
+    is_configured = configured_value is not None
+    try:
+        resolved_root = _resolve_data_root(data_root)
+    except ValueError as exc:
+        # Startup authorization failure — emit a path-free diagnostic, then
+        # preserve the existing ValueError (behavior unchanged).
+        _emit_authz(
+            AuthorizationEvent(
+                timestamp=_now_iso(),
+                endpoint="<startup>",
+                input_role="data_root",
+                request_path_type=(
+                    "absolute"
+                    if Path(str(configured_value)).is_absolute()
+                    else "relative"
+                ),
+                authorization_result="rejected",
+                policy_version=POLICY_VERSION,
+                root_digest=_root_digest(str(configured_value)),
+                reason_code="INVALID_ROOT",
+                error_type=type(exc).__name__,
+            )
+        )
+        raise
+
+    root_digest_value = _root_digest(str(resolved_root))
+    started_at = _now_iso()
 
     app = FastAPI(
         title="tap_tone_pi API",
@@ -179,10 +307,14 @@ def create_app(*, data_root: Path | str | None = None) -> "FastAPI":
         redoc_url="/redoc",
     )
     app.state.data_root = resolved_root
+    app.state.policy_version = POLICY_VERSION
+    app.state.root_digest = root_digest_value
+    app.state.configured = is_configured
+    app.state.started_at = started_at
 
     # --- Path validation helper ---
 
-    def _safe_directory(directory: str) -> Path:
+    def _safe_directory(directory: str, *, endpoint: str, input_role: str) -> Path:
         """Resolve a caller-supplied directory within the authorized data root.
 
         Every path — relative *or* absolute — must resolve beneath the
@@ -205,18 +337,52 @@ def create_app(*, data_root: Path | str | None = None) -> "FastAPI":
 
         This is the single gate for every read of a caller-supplied directory
         (``/grids``, ``/sessions``, ``/sessions/{id}``, and ``/export/{id}``).
+
+        Each call emits exactly one structured authorization event (DO-99). The
+        authorization *decision* is unchanged; the event only records it.
         """
         requested = Path(directory)
-        resolved = (
-            requested.resolve()
-            if requested.is_absolute()
-            else (resolved_root / requested).resolve()
-        )
+        request_path_type = "absolute" if requested.is_absolute() else "relative"
+        base = requested if requested.is_absolute() else (resolved_root / requested)
+
+        def _event(
+            result: str, reason: str | None = None, error_type: str | None = None
+        ):
+            return AuthorizationEvent(
+                timestamp=_now_iso(),
+                endpoint=endpoint,
+                input_role=input_role,
+                request_path_type=request_path_type,
+                authorization_result=result,
+                policy_version=POLICY_VERSION,
+                root_digest=root_digest_value,
+                reason_code=reason,
+                error_type=error_type,
+            )
+
+        try:
+            resolved = base.resolve()
+        except Exception as exc:  # resolution itself failed
+            _emit_authz(
+                _event("rejected", "PATH_RESOLUTION_FAILURE", type(exc).__name__)
+            )
+            raise  # preserve the original exception path (no HTTP conversion)
+
         if not resolved.is_relative_to(resolved_root):
+            # Diagnostic-only distinction; the rejection is identical either way.
+            lexical = Path(os.path.normpath(str(base)))
+            reason = (
+                "SYMLINK_ESCAPE"
+                if _lexically_under(lexical, resolved_root)
+                else "OUTSIDE_ROOT"
+            )
+            _emit_authz(_event("rejected", reason))
             raise HTTPException(
                 status_code=400,
                 detail="Directory must be within the configured data root.",
             )
+
+        _emit_authz(_event("allowed"))
         return resolved
 
     # --- Health & Info ---
@@ -244,6 +410,25 @@ def create_app(*, data_root: Path | str | None = None) -> "FastAPI":
                 "python": "3.10+",
             },
         }
+
+    @app.get(
+        "/server/status",
+        response_model=AuthorizationStatus,
+        tags=["System"],
+    )
+    async def server_status():
+        """Filesystem-authorization status (DO-99) — policy metadata only.
+
+        Reports the active policy version, whether a data root was explicitly
+        configured, a one-way digest of that root, and when the app was created.
+        Deliberately discloses no host path.
+        """
+        return AuthorizationStatus(
+            policy_version=POLICY_VERSION,
+            configured=is_configured,
+            root_digest=root_digest_value,
+            started_at=started_at,
+        )
 
     # --- Devices ---
 
@@ -306,7 +491,7 @@ def create_app(*, data_root: Path | str | None = None) -> "FastAPI":
         directory: str = Query(default="config/grids", description="Grid directory"),
     ):
         """List available measurement grids."""
-        grid_dir = _safe_directory(directory)
+        grid_dir = _safe_directory(directory, endpoint="/grids", input_role="directory")
 
         if not grid_dir.exists():
             return []
@@ -345,7 +530,9 @@ def create_app(*, data_root: Path | str | None = None) -> "FastAPI":
         ),
     ):
         """List Phase 2 capture sessions."""
-        sessions_dir = _safe_directory(directory)
+        sessions_dir = _safe_directory(
+            directory, endpoint="/sessions", input_role="directory"
+        )
 
         if not sessions_dir.exists():
             return []
@@ -390,7 +577,11 @@ def create_app(*, data_root: Path | str | None = None) -> "FastAPI":
         """Get detailed session information."""
         # Same data-root authorization as /sessions: confine the full
         # directory/session_id read path (a `..` in either escapes -> HTTP 400).
-        session_dir = _safe_directory(str(Path(directory) / session_id))
+        session_dir = _safe_directory(
+            str(Path(directory) / session_id),
+            endpoint="/sessions/{session_id}",
+            input_role="session",
+        )
         state_file = session_dir / "session_state.json"
 
         if not state_file.exists():
@@ -485,9 +676,15 @@ def create_app(*, data_root: Path | str | None = None) -> "FastAPI":
         # Resolve session directory under the authorized data root (same policy
         # as /sessions). The read root and the selected session directory are
         # both confined; an escaping `directory` or `session_id` yields HTTP 400.
-        sessions_root = _safe_directory(directory)
+        sessions_root = _safe_directory(
+            directory, endpoint="/export/{session_id}", input_role="directory"
+        )
         # Try exact match first, then prefix match (glob results stay under root).
-        session_dir = _safe_directory(str(sessions_root / session_id))
+        session_dir = _safe_directory(
+            str(sessions_root / session_id),
+            endpoint="/export/{session_id}",
+            input_role="session",
+        )
         if not session_dir.exists():
             matches = sorted(sessions_root.glob(f"{session_id}*"))
             if not matches:
@@ -549,8 +746,14 @@ def create_app(*, data_root: Path | str | None = None) -> "FastAPI":
         from scripts.phase2.export_viewer_pack_v1 import export_viewer_pack as _export
 
         # Confined to the authorized data root, same as POST /export.
-        sessions_root = _safe_directory(directory)
-        session_dir = _safe_directory(str(sessions_root / session_id))
+        sessions_root = _safe_directory(
+            directory, endpoint="/export/{session_id}", input_role="directory"
+        )
+        session_dir = _safe_directory(
+            str(sessions_root / session_id),
+            endpoint="/export/{session_id}",
+            input_role="session",
+        )
         if not session_dir.exists():
             matches = sorted(sessions_root.glob(f"{session_id}*"))
             if not matches:
