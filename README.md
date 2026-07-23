@@ -273,6 +273,39 @@ authentication or per-user permission system. The export endpoints' `output_dir`
 is a *write* target and is deliberately **not** confined to the data root (write
 authorization is a separate concern) — treat it as trusted-operator input.
 
+### Authorization diagnostics
+
+The authorization layer is observable without exposing any host path.
+
+`GET /server/status` returns policy metadata only:
+
+```json
+{
+  "policy_version": "filesystem-auth-v2",
+  "configured": true,
+  "root_digest": "3f9a1c0b7e42",
+  "started_at": "2026-07-22T18:20:29.123456+00:00"
+}
+```
+
+- `configured` — `true` when the root came from `--data-root`/`TTP_SERVER_DATA_ROOT`,
+  `false` when it defaulted to cwd (it does not reveal which source).
+- `root_digest` — a one-way `sha256(root)[:12]` digest, **never** the path.
+
+Every authorization decision also emits a structured event on the
+`tap_tone_pi.server.authz` logger (configure a handler to collect them):
+
+- **allowed** → `DEBUG`; **rejected** (`OUTSIDE_ROOT`, `SYMLINK_ESCAPE`) →
+  `WARNING`; **startup invalid root** (`INVALID_ROOT`) and
+  **resolution failure** (`PATH_RESOLUTION_FAILURE`) → `ERROR`.
+- Reason codes are stable: `OUTSIDE_ROOT` (absolute/`..` escape), `SYMLINK_ESCAPE`
+  (lexically in-root but resolves out), `INVALID_ROOT`, `PATH_RESOLUTION_FAILURE`.
+- Events carry only: endpoint, input role, path type (relative/absolute), result,
+  reason code, policy version, and the root digest — **no** requested/resolved/root
+  paths and no exception text (only an exception *class* name when relevant).
+
+Diagnostics are observability only; they do not change any authorization decision.
+
 ---
 
 ## Run IDs & retention
