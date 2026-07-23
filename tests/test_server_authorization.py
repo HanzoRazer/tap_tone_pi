@@ -41,29 +41,24 @@ def _client_for_root(root) -> "TestClient":
     return TestClient(create_app(data_root=root))
 
 
-# The authorization-event fields we inject via ``extra=`` — the diagnostic
-# content *we* control. (LogRecord's own ``pathname``/``filename`` always point
-# at the emitting source file, app.py, and are framework metadata, not an
-# authorization data-path leak; they are intentionally not inspected.)
-_AUTHZ_FIELDS = (
-    "timestamp",
-    "endpoint",
-    "input_role",
-    "request_path_type",
-    "authorization_result",
-    "policy_version",
-    "root_digest",
-    "reason_code",
-    "error_type",
-)
+# Standard LogRecord attributes are framework-owned: ``pathname``/``filename``
+# always point at the *emitting source file* (app.py) — code location, not an
+# authorization data path — and the rest are identifiers/counters. We exclude
+# exactly these and inspect *everything else* the record carries, so any string
+# this patch injects (present or future) is checked without an allow-list that
+# could drift from the AuthorizationEvent dataclass.
+_FRAMEWORK_ATTRS = frozenset(logging.makeLogRecord({}).__dict__.keys()) | {
+    "message",
+    "asctime",
+    "taskName",
+}
 
 
 def _record_strings(record: logging.LogRecord):
-    """The message plus every authz field value we set — what we could leak."""
+    """The formatted message plus every non-framework string value on the record."""
     out = [record.getMessage()]
-    for field in _AUTHZ_FIELDS:
-        value = getattr(record, field, None)
-        if isinstance(value, str):
+    for key, value in record.__dict__.items():
+        if key not in _FRAMEWORK_ATTRS and isinstance(value, str):
             out.append(value)
     return out
 
@@ -215,3 +210,41 @@ class TestStatusEndpoint:
         assert str(tmp_path) not in text
         for marker in _LEAK_MARKERS:
             assert marker not in text
+
+    def test_status_exact_key_set(self, tmp_path):
+        # Lock the public status surface: no extra fields may leak in silently.
+        resp = _client_for_root(tmp_path).get("/server/status")
+        assert set(resp.json().keys()) == {
+            "policy_version",
+            "configured",
+            "root_digest",
+            "started_at",
+        }
+
+
+class TestInvalidRootDigest:
+    """INVALID_ROOT's root_digest must be identity-stable (canonical), so it
+    correlates with /server/status rather than varying by input spelling."""
+
+    def _invalid_root_digest(self, data_root, caplog):
+        caplog.clear()
+        with caplog.at_level(logging.DEBUG, logger=AUTHZ_LOGGER):
+            with pytest.raises(ValueError):
+                create_app(data_root=data_root)
+        recs = [r for r in _authz_records(caplog) if r.reason_code == "INVALID_ROOT"]
+        assert recs
+        return recs[-1].root_digest
+
+    def test_invalid_root_digest_is_spelling_invariant(self, tmp_path, caplog):
+        base = tmp_path / "missing"
+        d1 = self._invalid_root_digest(str(base), caplog)
+        d2 = self._invalid_root_digest(str(tmp_path / "sub" / ".." / "missing"), caplog)
+        assert d1 == d2
+
+    def test_invalid_root_digest_is_canonical(self, tmp_path, caplog):
+        import hashlib
+
+        base = tmp_path / "missing"
+        digest = self._invalid_root_digest(str(base), caplog)
+        expected = hashlib.sha256(str(base.resolve()).encode("utf-8")).hexdigest()[:12]
+        assert digest == expected

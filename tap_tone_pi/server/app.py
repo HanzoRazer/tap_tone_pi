@@ -81,6 +81,15 @@ def _configured_root_value(data_root: Path | str | None) -> str | None:
     return env if (env and env.strip()) else None
 
 
+def _canonical_root(value: str) -> Path:
+    """Canonicalize a configured root the same way everywhere (``~`` expanded,
+    absolute, ``..`` collapsed, symlinks resolved). Digesting this — rather than
+    the raw input string — makes the root digest identity-stable: ``.``,
+    ``./data`` and ``foo/../data`` under the same cwd yield one digest, matching
+    what ``/server/status`` reports for the live root."""
+    return Path(value).expanduser().resolve()
+
+
 def _emit_authz(event: AuthorizationEvent) -> None:
     """Log one authorization event at the level appropriate to its outcome.
 
@@ -127,7 +136,7 @@ def _resolve_data_root(data_root: Path | str | None) -> Path:
     configured = _configured_root_value(data_root)
     if configured is None:
         return Path.cwd().resolve()
-    root = Path(configured).expanduser().resolve()
+    root = _canonical_root(configured)
     if not root.is_dir():
         raise ValueError(
             "configured server data root does not exist or is not a directory: "
@@ -289,7 +298,11 @@ def create_app(*, data_root: Path | str | None = None) -> "FastAPI":
                 ),
                 authorization_result="rejected",
                 policy_version=POLICY_VERSION,
-                root_digest=_root_digest(str(configured_value)),
+                # Digest the canonical form (not the raw input) so an INVALID_ROOT
+                # digest is identity-stable and correlates with /server/status.
+                # Safe: the ValueError only fires after resolve() already
+                # succeeded (the failure is the is_dir check, not resolution).
+                root_digest=_root_digest(str(_canonical_root(str(configured_value)))),
                 reason_code="INVALID_ROOT",
                 error_type=type(exc).__name__,
             )
