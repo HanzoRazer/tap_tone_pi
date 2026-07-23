@@ -81,6 +81,21 @@ def _configured_root_value(data_root: Path | str | None) -> str | None:
     return env if (env and env.strip()) else None
 
 
+def _canonical_root(value: str) -> Path:
+    """Canonicalize a configured root the same way everywhere (``~`` expanded,
+    absolute, ``..`` collapsed, symlinks resolved). Digesting this — rather than
+    the raw input string — makes the root digest identity-stable: ``.``,
+    ``./data`` and ``foo/../data`` under the same cwd yield one digest, matching
+    what ``/server/status`` reports for the live root.
+
+    Not pure: ``resolve()`` touches the filesystem and may raise ``OSError``
+    (permissions, and platform-specific conditions). Callers must never invoke
+    it on an error-reporting path where a second raise could mask the original
+    failure — compute once and reuse the result (see ``_InvalidDataRootError``).
+    """
+    return Path(value).expanduser().resolve()
+
+
 def _emit_authz(event: AuthorizationEvent) -> None:
     """Log one authorization event at the level appropriate to its outcome.
 
@@ -115,23 +130,41 @@ def _lexically_under(candidate: Path, root: Path) -> bool:
         return False
 
 
+class _InvalidDataRootError(ValueError):
+    """A configured data root that resolved but is not an existing directory.
+
+    Subclasses ``ValueError`` so existing callers/tests that expect a
+    ``ValueError`` are unaffected, and carries the already-canonicalized root so
+    the startup diagnostic can reuse it. That reuse is the point: recomputing
+    ``_canonical_root`` on the error path would touch the filesystem again and
+    could raise, masking this failure and silently dropping the INVALID_ROOT
+    event.
+    """
+
+    def __init__(self, message: str, canonical_root: Path) -> None:
+        super().__init__(message)
+        self.canonical_root = canonical_root
+
+
 def _resolve_data_root(data_root: Path | str | None) -> Path:
     """Resolve the authorized data root: explicit arg > ``$TTP_SERVER_DATA_ROOT`` > cwd.
 
     The returned path is absolute and canonical (symlinks resolved). A root that
     is *configured* — via the argument or the environment — but does not exist as
-    a directory raises ``ValueError`` at application creation, rather than
-    silently falling back to the working directory. The implicit cwd default
-    (used when nothing is configured) always exists and is not re-validated.
+    a directory raises ``_InvalidDataRootError`` (a ``ValueError``) at application
+    creation, carrying the canonical root, rather than silently falling back to
+    the working directory. The implicit cwd default (used when nothing is
+    configured) always exists and is not re-validated.
     """
     configured = _configured_root_value(data_root)
     if configured is None:
         return Path.cwd().resolve()
-    root = Path(configured).expanduser().resolve()
+    root = _canonical_root(configured)
     if not root.is_dir():
-        raise ValueError(
+        raise _InvalidDataRootError(
             "configured server data root does not exist or is not a directory: "
-            f"{str(configured)!r}"
+            f"{str(configured)!r}",
+            root,
         )
     return root
 
@@ -274,9 +307,14 @@ def create_app(*, data_root: Path | str | None = None) -> "FastAPI":
     is_configured = configured_value is not None
     try:
         resolved_root = _resolve_data_root(data_root)
-    except ValueError as exc:
+    except _InvalidDataRootError as exc:
         # Startup authorization failure — emit a path-free diagnostic, then
-        # preserve the existing ValueError (behavior unchanged).
+        # preserve the ValueError. The canonical root is taken from the exception
+        # (computed once in _resolve_data_root); this path NEVER re-canonicalizes,
+        # so it cannot raise here and drop the INVALID_ROOT event. Digesting the
+        # canonical form keeps the digest identity-stable and correlated with
+        # /server/status. request_path_type reads only is_absolute() on the raw
+        # value (no filesystem access), so it cannot raise either.
         _emit_authz(
             AuthorizationEvent(
                 timestamp=_now_iso(),
@@ -289,9 +327,9 @@ def create_app(*, data_root: Path | str | None = None) -> "FastAPI":
                 ),
                 authorization_result="rejected",
                 policy_version=POLICY_VERSION,
-                root_digest=_root_digest(str(configured_value)),
+                root_digest=_root_digest(str(exc.canonical_root)),
                 reason_code="INVALID_ROOT",
-                error_type=type(exc).__name__,
+                error_type="ValueError",
             )
         )
         raise

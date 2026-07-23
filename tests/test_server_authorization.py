@@ -13,16 +13,18 @@ formatted string.
 from __future__ import annotations
 
 import logging
+from dataclasses import fields as _dataclass_fields
 from pathlib import Path
 
 import pytest
 
 try:
     from fastapi.testclient import TestClient
-    from tap_tone_pi.server.app import create_app, HAS_FASTAPI
+    from tap_tone_pi.server.app import AuthorizationEvent, create_app, HAS_FASTAPI
 except ImportError:  # pragma: no cover
     HAS_FASTAPI = False
     create_app = None
+    AuthorizationEvent = None
 
 pytestmark = pytest.mark.skipif(not HAS_FASTAPI, reason="FastAPI not installed")
 
@@ -41,28 +43,22 @@ def _client_for_root(root) -> "TestClient":
     return TestClient(create_app(data_root=root))
 
 
-# The authorization-event fields we inject via ``extra=`` — the diagnostic
-# content *we* control. (LogRecord's own ``pathname``/``filename`` always point
-# at the emitting source file, app.py, and are framework metadata, not an
-# authorization data-path leak; they are intentionally not inspected.)
-_AUTHZ_FIELDS = (
-    "timestamp",
-    "endpoint",
-    "input_role",
-    "request_path_type",
-    "authorization_result",
-    "policy_version",
-    "root_digest",
-    "reason_code",
-    "error_type",
-)
+# The record fields this patch controls == the AuthorizationEvent fields it
+# injects via ``extra=asdict(event)``. Deriving the checked set from the
+# dataclass (rather than from a LogRecord/logging-internals blocklist) means the
+# test can neither drift from the dataclass (a new field is checked
+# automatically) nor break on a Python/logging version change. The record's own
+# ``pathname``/``filename`` (the emitting source file, app.py) are framework
+# metadata — code location, not an authorization data path — and are not ours to
+# inspect.
+_AUTHZ_FIELD_NAMES = tuple(f.name for f in _dataclass_fields(AuthorizationEvent))
 
 
 def _record_strings(record: logging.LogRecord):
-    """The message plus every authz field value we set — what we could leak."""
+    """The formatted message plus every AuthorizationEvent field on the record."""
     out = [record.getMessage()]
-    for field in _AUTHZ_FIELDS:
-        value = getattr(record, field, None)
+    for name in _AUTHZ_FIELD_NAMES:
+        value = getattr(record, name, None)
         if isinstance(value, str):
             out.append(value)
     return out
@@ -215,3 +211,76 @@ class TestStatusEndpoint:
         assert str(tmp_path) not in text
         for marker in _LEAK_MARKERS:
             assert marker not in text
+
+    def test_status_exact_key_set(self, tmp_path):
+        # Lock the public status surface: no extra fields may leak in silently.
+        resp = _client_for_root(tmp_path).get("/server/status")
+        assert set(resp.json().keys()) == {
+            "policy_version",
+            "configured",
+            "root_digest",
+            "started_at",
+        }
+
+
+class TestInvalidRootDigest:
+    """INVALID_ROOT's root_digest must be identity-stable (canonical), so it
+    correlates with /server/status rather than varying by input spelling."""
+
+    def _invalid_root_digest(self, data_root, caplog):
+        caplog.clear()
+        with caplog.at_level(logging.DEBUG, logger=AUTHZ_LOGGER):
+            with pytest.raises(ValueError):
+                create_app(data_root=data_root)
+        recs = [r for r in _authz_records(caplog) if r.reason_code == "INVALID_ROOT"]
+        assert recs
+        return recs[-1].root_digest
+
+    def test_invalid_root_digest_is_spelling_invariant(self, tmp_path, caplog):
+        base = tmp_path / "missing"
+        d1 = self._invalid_root_digest(str(base), caplog)
+        d2 = self._invalid_root_digest(str(tmp_path / "sub" / ".." / "missing"), caplog)
+        assert d1 == d2
+
+    def test_invalid_root_digest_is_canonical(self, tmp_path, caplog):
+        import hashlib
+
+        base = tmp_path / "missing"
+        digest = self._invalid_root_digest(str(base), caplog)
+        expected = hashlib.sha256(str(base.resolve()).encode("utf-8")).hexdigest()[:12]
+        assert digest == expected
+
+    def test_invalid_root_event_survives_without_recanonicalizing(
+        self, tmp_path, caplog, monkeypatch
+    ):
+        # Unreachable-category guard: the startup error path must NOT
+        # re-canonicalize. Re-canonicalizing would touch the filesystem again and
+        # could raise OSError, masking the original ValueError AND silently
+        # dropping the INVALID_ROOT event (an un-emitted event has no signature).
+        # Make a *second* canonicalization fail; the event must still emit and the
+        # original ValueError must still surface. Fails on the pre-fix code (which
+        # recomputed the digest in the except block), passes on the restructure
+        # that reuses the canonical root carried by _InvalidDataRootError.
+        import importlib
+
+        # NB: `import tap_tone_pi.server.app as x` resolves to the FastAPI app
+        # instance (the package __init__ re-exports `app`), not the module;
+        # import_module returns the real module so setattr patches the global.
+        appmod = importlib.import_module("tap_tone_pi.server.app")
+
+        real = appmod._canonical_root
+        calls = {"n": 0}
+
+        def counting(value):
+            calls["n"] += 1
+            if calls["n"] >= 2:
+                raise OSError("a second canonicalization must not happen here")
+            return real(value)
+
+        monkeypatch.setattr(appmod, "_canonical_root", counting)
+        with caplog.at_level(logging.DEBUG, logger=AUTHZ_LOGGER):
+            with pytest.raises(ValueError):  # original failure preserved, not OSError
+                appmod.create_app(data_root=str(tmp_path / "missing"))
+
+        assert calls["n"] == 1  # canonicalized once; no error-path recompute
+        assert any(r.reason_code == "INVALID_ROOT" for r in _authz_records(caplog))
