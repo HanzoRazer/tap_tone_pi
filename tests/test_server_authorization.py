@@ -41,10 +41,28 @@ def _client_for_root(root) -> "TestClient":
     return TestClient(create_app(data_root=root))
 
 
+# The authorization-event fields we inject via ``extra=`` — the diagnostic
+# content *we* control. (LogRecord's own ``pathname``/``filename`` always point
+# at the emitting source file, app.py, and are framework metadata, not an
+# authorization data-path leak; they are intentionally not inspected.)
+_AUTHZ_FIELDS = (
+    "timestamp",
+    "endpoint",
+    "input_role",
+    "request_path_type",
+    "authorization_result",
+    "policy_version",
+    "root_digest",
+    "reason_code",
+    "error_type",
+)
+
+
 def _record_strings(record: logging.LogRecord):
-    """Every human-readable string a record could expose (message + str attrs)."""
+    """The message plus every authz field value we set — what we could leak."""
     out = [record.getMessage()]
-    for value in record.__dict__.values():
+    for field in _AUTHZ_FIELDS:
+        value = getattr(record, field, None)
         if isinstance(value, str):
             out.append(value)
     return out
