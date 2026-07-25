@@ -5,12 +5,12 @@
 
 > **DO-100 — Guided Digital Laboratory Foundation (QUEUED)**
 >
-> Planning handoff only; implementation **not started**. Promoted to Current
-> now that DO-99 is complete and merged (below). The handoff document lives on
-> branch `docs/do-100-guided-digital-laboratory` (commit
-> `c35d9c8253ffd6569a59f79027d578e50d42e80c`), path
-> `docs/dev_orders/DO-100_GUIDED_DIGITAL_LABORATORY.md`; it is to be merged to
-> `main` when DO-100 implementation begins.
+> Planning handoff only; **QUEUED / NOT STARTED** — implementation begins only
+> after the handoff is reviewed and authorized. Promoted to Current now that
+> DO-99 is complete and merged (below). The authoritative handoff is on `main`
+> at `docs/dev_orders/DO-100_GUIDED_DIGITAL_LABORATORY.md` (placed via PR #15;
+> originating branch `docs/do-100-guided-digital-laboratory`, commit
+> `c35d9c8253ffd6569a59f79027d578e50d42e80c`).
 >
 > **Scope (spec only):** a declarative guided-workflow spine — builder-goal entry
 > points instead of analyzer entry points, typed workflow contracts, deterministic
