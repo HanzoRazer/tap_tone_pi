@@ -1,9 +1,23 @@
 # Active Dev Order
 
-**Current:** DO-99 — Server Authorization Observability & Diagnostics
-**Previous:** DO-98 — Server Data-Root Authorization Boundary (COMPLETE)
+**Current:** DO-100 — Guided Digital Laboratory Foundation (QUEUED — not started)
+**Previous:** DO-99 — Server Authorization Observability & Diagnostics (COMPLETE)
 
-> **DO-99 — Server Authorization Observability & Diagnostics (in progress)**
+> **DO-100 — Guided Digital Laboratory Foundation (QUEUED)**
+>
+> Planning handoff only; **QUEUED / NOT STARTED** — implementation begins only
+> after the handoff is reviewed and authorized. Promoted to Current now that
+> DO-99 is complete and merged (below). The authoritative handoff is on `main`
+> at `docs/dev_orders/DO-100_GUIDED_DIGITAL_LABORATORY.md` (placed via PR #15;
+> originating branch `docs/do-100-guided-digital-laboratory`, commit
+> `c35d9c8253ffd6569a59f79027d578e50d42e80c`).
+>
+> **Scope (spec only):** a declarative guided-workflow spine — builder-goal entry
+> points instead of analyzer entry points, typed workflow contracts, deterministic
+> and resumable workflow sessions. First reference workflow is **Plate Measurement
+> Setup**, proven at the CLI before any GUI.
+
+> **DO-99 — Server Authorization Observability & Diagnostics (COMPLETE)**
 >
 > Depends on **PR #10** + **PR #11** (both merged to `main`). Branches from `main`
 > (`fix/server-authz-observability`). **Diagnostics only — no authorization
@@ -27,8 +41,12 @@
 > - No raw request/resolved/root path or exception text ever logged (only an
 >   exception class name where relevant).
 >
-> Commit sequence on branch: `521d39d` (tests), implementation, docs.
-> PR/merge reference to be recorded on completion.
+> Commit sequence on branch: `521d39d` (tests), `c21b37b` (implementation),
+> `986d6e5` (docs).
+> Merged as **PR #13** → `main` merge commit
+> `ec9f93a362249cee037766c06e767b38c1a4b1e0` (branch
+> `fix/server-authz-observability`). A review follow-up merged as **PR #14**
+> (`fix/do99-review-followup`). DO-99 **COMPLETE**.
 
 > **DO-98 — COMPLETE**
 >
