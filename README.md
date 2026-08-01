@@ -203,6 +203,89 @@ procedures; it does not execute or interpret measurements.
 
 ---
 
+## Guided Digital Laboratory
+
+You start from what you are trying to do, not from a choice of analyzer:
+
+```bash
+ttp guided-lab list
+# → "I want to prepare a plate measurement"  (available)
+#   plus goals that are listed but not built yet, each with a reason
+```
+
+The first shipped workflow is **Plate Measurement Setup** (`plate_measurement_setup`,
+version 1). It walks through specimen identity, why you are measuring, how the
+measurement will reach the system, a preparation step, readiness questions, the
+references that tie the record together, and a review — then closes a permanent
+record of what you entered.
+
+Sessions are resumable and the CLI is stateless: a session goes in as JSON and
+comes back out as JSON, so you hold the state and the engine holds the rules.
+
+```bash
+ttp guided-lab start plate_measurement_setup > session.json
+
+# One action per invocation. Answers, acknowledgments, and evidence all go
+# through `act`; the response is the updated session plus the next step.
+ttp guided-lab act --session-file session.json --answer "TOP-2026-014"
+ttp guided-lab act --session-file session.json --advance
+ttp guided-lab act --session-file session.json --acknowledge
+ttp guided-lab act --session-file session.json \
+  --evidence '{"evidence_id":"ev-1","evidence_kind":"specimen_record","source_system":"tap_tone_pi"}'
+
+ttp guided-lab show   --session-file session.json    # read without changing
+ttp guided-lab act    --session-file session.json --pause
+ttp guided-lab resume --session-file session.json
+```
+
+Correcting an earlier answer discards whatever it invalidates. If you change the
+specimen type after acknowledging the preparation step and attaching evidence,
+the engine replays the walk under the corrected answer and drops the
+acknowledgment and evidence that no longer apply, rather than carrying state
+from a branch you abandoned. The corrected answer's `revision` increments, so
+the correction is visible in the record.
+
+`--back` follows the same rule. Stepping back onto a step keeps what is on it,
+so you can see and correct it; stepping back *past* a step abandons it, and its
+answer, acknowledgment, and evidence go with it. Re-advancing asks again rather
+than inheriting entries you never re-made. Evidence records the step it was
+attached at, so two steps that ask for the same kind of reference never satisfy
+each other.
+
+Sessions serialize against `contracts/guided_lab_session_v1.schema.json`.
+Evidence is referenced by **identifier only** — there is no path field anywhere
+in the record, and no CLI output echoes a host path, including the
+`--session-file` path you supply.
+
+Failures print one JSON object on stderr and nothing else, carrying a stable
+`GDL-*` code: `GDL-1xx` a workflow authoring problem, `GDL-2xx` a damaged
+session, `GDL-3xx` an action the current step does not permit, `GDL-4xx` a
+transport problem. Two worth knowing apart: `GDL-402` means no such workflow,
+while `GDL-404` means a goal the catalog lists but has not built yet, and
+carries the reason you were shown. A `decimal` answer is read as a binary
+float, not an exact decimal.
+
+A session you supply is checked against the same rules the contract states —
+every identifier and history entry must be a non-empty string, and
+`workflow_version` at least 1 — so a hand-edited record is refused as `GDL-401`
+rather than loaded and written back out in a shape
+`guided_lab_session_v1.schema.json` would reject.
+
+Nothing gets out of these commands except that one JSON object. A failure the
+CLI did not anticipate is reported as `GDL-406` naming the exception's class and
+nothing else, so a traceback — which would print the path of every frame — can
+never reach stderr.
+
+**Boundary.** This is a guided *procedure*, not an advisor. Completing a record
+does not say the plate is suitable, does not say the measurement is sound, does
+not identify a mode, does not compute a target thickness, and does not suggest
+removing wood. The preparation instruction is marked `provisional` and says so
+in its own text: no consolidated laboratory doctrine for plate tap setup exists
+in this repository yet, and none was invented to fill the gap. Interpretation
+belongs to a downstream system such as `luthiers-toolbox`.
+
+---
+
 ## HTTP API server
 
 An optional FastAPI server exposes read-only listing/detail endpoints (`/grids`,

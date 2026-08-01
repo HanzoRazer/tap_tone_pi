@@ -1194,6 +1194,52 @@ complete -c tap-tone -w ttp
 """
 
 
+def _register_guided_lab(sub: Any) -> None:
+    """Register ``guided-lab``, degrading to a stub if it cannot be loaded.
+
+    The guided laboratory validates its shipped workflow registry and every
+    workflow definition it holds. A defect in one of those is a guided
+    laboratory problem, and it should read as one: it must not stop ``ttp
+    devices`` or ``ttp phase2`` from building a parser and running. So the
+    registration is isolated, and a failure leaves behind a subcommand that
+    reports the reason on stderr as ``GDL-405`` rather than a subcommand that
+    is silently missing.
+    """
+    try:
+        from tap_tone_pi.guided_lab.cli import add_guided_lab_subcommand
+
+        add_guided_lab_subcommand(sub)
+        return
+    except Exception as exc:  # noqa: BLE001 - any load failure must stay local
+        reason = f"{type(exc).__name__}: {exc}"
+
+    stub = sub.add_parser(
+        "guided-lab",
+        help="Guided Digital Laboratory workflows (unavailable — see error)",
+        description=(
+            "The guided laboratory could not be loaded in this installation. "
+            "Every other ttp command is unaffected."
+        ),
+    )
+    stub.add_argument(
+        "guided_lab_args", nargs=argparse.REMAINDER, help=argparse.SUPPRESS
+    )
+    stub.set_defaults(fn=lambda _args, _reason=reason: _guided_lab_unavailable(_reason))
+
+
+def _guided_lab_unavailable(reason: str) -> int:
+    """Report an unloadable guided laboratory in its own error vocabulary."""
+    payload = {
+        "error": {
+            "code": "GDL-405",
+            "message": "the guided laboratory could not be loaded",
+            "context": {"reason": reason},
+        }
+    }
+    print(json.dumps(payload, indent=2, sort_keys=True), file=sys.stderr)
+    return 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the unified CLI argument parser."""
     epilog = """Quick Start:
@@ -1207,6 +1253,7 @@ Common Workflows:
   ttp gold-run --specimen-id "SG-001" --device 1 --out-dir ./runs
   ttp phase2 --grid grid.json --out ./runs_phase2
   ttp export-pack --session ./runs_phase2/session_* --out pack.zip
+  ttp guided-lab ...     # Guided Digital Laboratory workflows
 
 Documentation: https://github.com/HanzoRazer/tap_tone_pi
 """
@@ -1679,6 +1726,9 @@ Default amplitude is 0.2 (safe for most transducers).
     from tap_tone_pi.cli.limits_integration import add_limits_args
 
     add_verify_subcommand(sub)
+
+    # guided-lab (DO-100)
+    _register_guided_lab(sub)
 
     add_grid_template_subcommand(sub)
     if add_server_subcommand is not None:

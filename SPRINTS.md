@@ -71,6 +71,52 @@ docstring, **not** here.
 - **Acceptance:** an explicit, documented write-authorization policy plus tests
   for the chosen behavior — or a recorded decision to leave it unconstrained.
 
+### B-003 — Language policy for guided-laboratory operator prose
+- **Status:** open · **Priority:** P2 · **Area:** `tap_tone_pi/guided_lab`, `ci`
+- **Origin:** DO-100 (guided laboratory foundation).
+- **Context:** `ci/check_guidance_language.py` scans `tap_tone_pi/agent`,
+  `tap_tone_pi/agentic`, `tap_tone_pi/wolf`, and `analyzer/guidance` for
+  authority-claiming language. `tap_tone_pi/guided_lab` is **not** in its scan
+  roots, and DO-100 deliberately did not add it: guided-laboratory prose is
+  procedural instruction rather than post-verdict advisory guidance, so its
+  vocabulary and false-positive profile differ. The existing term list would
+  fire on ordinary workflow wording — DO-100's own `verify_earlier_measurement`
+  purpose and its `provisional`/`validation` phrasing are examples. Boundary
+  language is currently covered by a workflow-specific test
+  (`tests/test_guided_lab_plate_setup_workflow.py::TestBoundaryLanguage`),
+  which asserts the absence of conclusion phrases such as "target thickness",
+  "remove wood", and modal-identification claims.
+- **Decision needed:** whether guided-laboratory operator prose warrants a
+  dedicated language-policy scanner, an extension of the existing
+  guidance-language check with a separate term list, or continued reliance on
+  per-workflow tests.
+- **Trigger:** a second or third shipped workflow, at which point per-workflow
+  boundary tests start duplicating each other.
+- **Acceptance:** a recorded decision, plus the scanner or the extension if one
+  is chosen.
+
+### B-004 — Migration path for persisted guided-laboratory sessions
+- **Status:** open · **Priority:** P2 · **Area:** `tap_tone_pi/guided_lab`,
+  `contracts`
+- **Origin:** DO-100 (guided laboratory foundation).
+- **Context:** `contracts/guided_lab_session_v1.schema.json` is now a published
+  contract, and `GuidedLabSessionV1.from_dict` rejects any `schema_version`
+  other than `guided_lab_session_v1` and any field it does not know. That is
+  deliberate — a record this version cannot faithfully hold should fail loudly
+  rather than load with pieces missing — but it means a `v2` leaves every `v1`
+  record unreadable, and a session may only run against the exact workflow
+  version it was started under. DO-100 shipped no migration tooling, and none
+  is needed while one schema version and one workflow version exist.
+- **Decision needed:** whether session records get a migration path (an
+  upgrade function per version step, or a reader that accepts a range), whether
+  workflow definitions get one independently, and what happens to an in-flight
+  session when its workflow is superseded — carry on under the old definition,
+  or refuse and require a fresh run.
+- **Trigger:** the first `guided_lab_session_v2`, or the first
+  `plate_measurement_setup` v2 — whichever comes first.
+- **Acceptance:** a recorded decision, plus the upgrade path and its round-trip
+  tests if one is chosen.
+
 ---
 
 ## Not backlog — recorded here only so they aren't mistaken for open items

@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/guided_lab_session_v1.schema.json",
+  "title": "GuidedLabSession",
+  "description": "Persisted state of one guided laboratory workflow run (DO-100). Records the procedure an operator worked through: what they were asked, what they answered, what they acknowledged, and which logical evidence they referenced. Makes no claim about any specimen or measurement. Evidence is referenced by identifier only — this record holds no host path.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "session_id",
+    "workflow_id",
+    "workflow_version",
+    "status",
+    "current_node_id",
+    "started_at",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "guided_lab_session_v1",
+      "description": "Serialization identity of this record, distinct from the workflow it runs."
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque identifier for this run."
+    },
+    "workflow_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Workflow this session was started under (e.g. 'plate_measurement_setup')."
+    },
+    "workflow_version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Exact workflow version. A session may only run against the version it was started under."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "paused", "completed", "abandoned"],
+      "description": "Lifecycle state. 'completed' and 'abandoned' are terminal."
+    },
+    "current_node_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Step the operator is standing on."
+    },
+    "answers": {
+      "type": "array",
+      "description": "One entry per answered step, most recent revision only.",
+      "items": { "$ref": "#/$defs/WorkflowAnswer" }
+    },
+    "acknowledged_node_ids": {
+      "type": "array",
+      "description": "Instruction steps the operator has acknowledged.",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "evidence_references": {
+      "type": "array",
+      "description": "Logical evidence references attached during the run.",
+      "items": { "$ref": "#/$defs/WorkflowEvidenceReference" }
+    },
+    "visited_node_ids": {
+      "type": "array",
+      "description": "Ordered walk taken through the workflow. Back navigation truncates it; an answer correction replaces it with the replayed path.",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC ISO 8601 timestamp."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC ISO 8601 timestamp of the most recent action."
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC ISO 8601 timestamp. Present only on a completed session."
+    }
+  },
+  "$defs": {
+    "AnswerValue": {
+      "description": "An operator-supplied value. Arrays, objects, and null are not answers.",
+      "type": ["string", "boolean", "integer", "number"]
+    },
+    "WorkflowAnswer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["node_id", "answer_kind", "value", "answered_at"],
+      "properties": {
+        "node_id": { "type": "string", "minLength": 1 },
+        "answer_kind": {
+          "type": "string",
+          "enum": [
+            "single_choice",
+            "boolean",
+            "integer",
+            "decimal",
+            "text",
+            "measurement_reference"
+          ]
+        },
+        "value": { "$ref": "#/$defs/AnswerValue" },
+        "answered_at": { "type": "string", "format": "date-time" },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "Starts at 1 and increments each time the answer is replaced."
+        }
+      }
+    },
+    "WorkflowEvidenceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A pointer to evidence held elsewhere. Deliberately has no path, file_path, or uri property: resolving an identifier to bytes on disk belongs to the caller, not to this record.",
+      "required": ["evidence_id", "evidence_kind", "source_system"],
+      "properties": {
+        "evidence_id": { "type": "string", "minLength": 1 },
+        "evidence_kind": { "type": "string", "minLength": 1 },
+        "source_system": { "type": "string", "minLength": 1 },
+        "label": { "type": "string" },
+        "digest": { "type": "string" },
+        "attached_at": { "type": "string", "format": "date-time" },
+        "attached_node_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Requirement step this reference was attached at. Stamped by the engine so an answer correction can discard evidence belonging to an abandoned branch even when the surviving branch asks for the same evidence_kind. A workflow node identifier, never a host path."
+        }
+      }
+    }
+  }
+}
