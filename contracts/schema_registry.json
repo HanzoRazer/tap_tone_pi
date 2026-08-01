@@ -17,7 +17,8 @@
       "description": "Measurement workflow contracts, repeatability, environment records",
       "schemas": [
         "measurement_workflow_contract",
-        "repeatability_evidence"
+        "repeatability_evidence",
+        "guided_lab_session"
       ]
     },
     "agentic-team": {
@@ -80,6 +81,15 @@
       "file": "chladni_run.schema.json",
       "owner": "chladni-team",
       "path": "contracts/schemas/chladni_run.schema.json",
+      "status": "stable",
+      "version": "1.0.0"
+    },
+    "guided_lab_session": {
+      "description": "Guided laboratory workflow session record with answers, acknowledgments, and logical evidence references",
+      "file": "guided_lab_session_v1.schema.json",
+      "owner": "governance-team",
+      "path": "contracts/guided_lab_session_v1.schema.json",
+      "schema_version_const": "guided_lab_session_v1",
       "status": "stable",
       "version": "1.0.0"
     },
