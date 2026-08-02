@@ -1,129 +1,31 @@
 # Active Dev Order
 
-**Current:** DO-100 — Guided Digital Laboratory Foundation (IN PROGRESS)
-**Previous:** DO-99 — Server Authorization Observability & Diagnostics (COMPLETE)
+**Current:** _(none — awaiting DO-101A promotion)_
+**Previous:** DO-100 — Guided Digital Laboratory Foundation (COMPLETE)
 
-> **DO-100 — Guided Digital Laboratory Foundation (IN PROGRESS)**
+> **DO-100 — Guided Digital Laboratory Foundation (COMPLETE)**
 >
-> **Implementation branch:** `feat/do-100-guided-digital-laboratory`, off `main`
-> at `817298a`. The authoritative handoff is on `main` at
-> `docs/dev_orders/DO-100_GUIDED_DIGITAL_LABORATORY.md` (placed via PR #15;
-> originating branch `docs/do-100-guided-digital-laboratory`, commit
-> `c35d9c8253ffd6569a59f79027d578e50d42e80c`).
+> Merged as **PR #16** → `main` merge commit
+> `6ca0105ecc3535dfeeb13f565df92b62ccc105ab` (branch
+> `feat/do-100-guided-digital-laboratory`, feature commit
+> `f398f52b498da4a2d17607e7856a683d18efe7db`). Authoritative handoff remains
+> at `docs/dev_orders/DO-100_GUIDED_DIGITAL_LABORATORY.md` (placed via PR #15).
 >
-> **Scope:** a declarative guided-workflow spine — builder-goal entry points
-> instead of analyzer entry points, typed workflow contracts, deterministic and
-> resumable workflow sessions. First reference workflow is **Plate Measurement
-> Setup**, proven at the CLI before any GUI.
+> **Delivered:** `tap_tone_pi/guided_lab/` (contracts, error vocabulary, pure
+> definition validation, deterministic engine, builder-intent catalog, thin
+> CLI); reference workflow `plate_measurement_setup` v1 (19 nodes, 21
+> transitions); `contracts/guided_lab_session_v1.schema.json` plus
+> `schema_registry.json` entry; `guided-lab` on the unified CLI with isolated
+> registration so a guided-laboratory defect cannot stop unrelated `ttp`
+> commands.
 >
-> **Landed on the branch so far:** `tap_tone_pi/guided_lab/` (contracts, error
-> vocabulary, pure definition validation, deterministic engine, builder-intent
-> catalog, thin CLI); `plate_measurement_setup` v1 (19 nodes, 21 transitions,
-> zero validation findings); `contracts/guided_lab_session_v1.schema.json` plus
-> its `schema_registry.json` entry; `guided-lab` registered on the unified CLI.
+> **Deliberate non-goals (remain for later orders):** session persistence
+> layer, GUI, server endpoint, workflow-version migration, and an adapter
+> between `tap_tone_pi.guided_lab` and existing `tap_tone_pi.workflow`
+> measurement contracts.
 >
-> **Deviations from the handoff, all deliberate:** six error codes the handoff
-> requires rejections for but names no code for — `GDL-110` (malformed
-> transition-condition payload, §4.6), `GDL-111` (duplicate workflow registry
-> key, §6.7), `GDL-112` (a definition whose own `workflow_id`/`workflow_version`
-> cannot key a registry), `GDL-113` (a step whose requirement no operator action
-> can ever satisfy), `GDL-406` (a failure the CLI did not anticipate, reported
-> with its exception class name and nothing else so no traceback can escape),
-> `GDL-404` (a catalog goal listed but not built yet,
-> distinguished from `GDL-402` "no such workflow" so an operator who picked a
-> listed goal is not told they mistyped it), and `GDL-405` (the guided
-> laboratory could not be loaded, raised by the CLI shell rather than the
-> package); and `SourceAuthorityStatus` as a `str` enum rather than a bare
-> `str`, which preserves the required serialized values while making an invalid
-> status unconstructable.
->
-> **Review remediation (post-implementation):** back navigation now discards the
-> state of steps it abandons, through the same code path as an answer
-> correction; evidence carries the step it was attached at
-> (`attached_node_id`), so two steps requiring the same evidence kind cannot
-> satisfy each other or inherit each other's references across a correction; a
-> session whose visited history does not end at its current step is rejected as
-> `GDL-204` on any action while remaining readable; an ambiguous transition
-> found during a correction replay raises `GDL-106` rather than silently
-> halting the replay; the shipped workflow registry is validated on first use
-> instead of at import, and `guided-lab` registration on the unified CLI is
-> isolated so a guided-laboratory defect cannot stop unrelated `ttp` commands;
-> CLI failures write the JSON error object to stderr and nothing beside it; and
-> the package's public surface is narrowed to a stated vocabulary plus the
-> `engine`, `catalog`, and `validation` modules.
->
-> **Second review round — `validation.py`, `models.py`, and the shipped
-> workflow.** The first review round covered the PR as a prose risk assessment
-> and its remediation touched only the engine, catalog, CLI, and package surface.
-> `validation.py` and the substance of `models.py` — about 1,700 lines across
-> commits `0b1108a` and `96f96a1` — were never re-read against it. Six defects
-> were found there and closed:
->
-> - `attach_evidence` matched replacement on `evidence_id` alone, so reusing one
->   identifier at a second step deleted it from the first. The operator was left
->   standing past a step that had silently become unmet, learning of it only when
->   completion refused. Replacement is now scoped to the step being stood on.
-> - A review naming an evidence step, a completion node, an undeclared node, or
->   an optional step validated clean and deadlocked the session on arrival —
->   only questions and instructions produce the answer or acknowledgment a review
->   looks for. Now `GDL-113`. The shipped workflow already avoided this by hand;
->   nothing enforced it.
-> - An integer question with fractional bounds (`0.2 .. 0.8`) validated clean and
->   rejected every value an operator could supply. Now `GDL-108`.
-> - `NumericConstraintV1` accepted a non-numeric bound and raised a bare
->   `TypeError` from the bounds comparison — the one failure that escaped the
->   `GDL-*` contract. Now `GDL-108`.
-> - `GuidedLabSessionV1.from_dict` accepted integers, nulls, and nested objects
->   where `guided_lab_session_v1.schema.json` types every identifier and history
->   entry as `{"type": "string", "minLength": 1}`, then wrote them back out as
->   contract-invalid JSON. The CLI loads `--session-file` through this path with
->   no schema check, so the loader was the only guard and it was not guarding.
->   Now `GDL-401`.
-> - An empty `workflow_id` or a `workflow_version` below 1 validated clean and
->   was registrable, leaving the registry key and every session's provenance
->   pair meaningless. Now `GDL-112`.
->
-> 47 tests cover these; 30 of them fail against the pre-fix source, and the
-> remaining 17 pin the cases that must stay accepted.
->
-> **Third review round — `cli.py`, `catalog.py`, and the workflow definition.**
-> The second round read `validation.py`, `models.py`, and `engine.py`. It did
-> not read `cli.py`, `catalog.py`, `plate_measurement_setup_v1.py`, or the
-> session schema. Reading those closed four more:
->
-> - `_load_session` caught `OSError` but not `UnicodeDecodeError`, which is a
->   `ValueError`. A session file that is not UTF-8 escaped as a Python traceback
->   naming every frame's host path — from the one module whose docstring states
->   no output ever contains one. Reproduced before the fix.
-> - Nothing bounded that class of failure. `cmd_guided_lab_list` had no handler
->   at all, and the other three caught only `GuidedLabError`, so any unforeseen
->   exception took the same traceback route. All four commands now run through
->   one guard: a guided-laboratory failure keeps its code, anything else becomes
->   `GDL-406` carrying the exception *class name* and never its text. Stderr
->   holds one parseable JSON document in every path.
-> - `catalog.py` documented that an unsound definition "still fails loudly the
->   first time anything asks the catalog for a workflow". Only key uniqueness was
->   checked, so `start` — which validates on its own — was the sole place an
->   unsound shipped workflow could surface, and `show`/`act` would have gone on
->   serving it. The catalog now validates each definition on first use, matching
->   what it claimed.
-> - `from_dict` accepted `workflow_version: 0` where the contract types it
->   `{"type": "integer", "minimum": 1}` — the same loader-looser-than-schema
->   class as the round-two finding, in the one field that round missed.
->
-> `plate_measurement_setup_v1.py` and `guided_lab_session_v1.schema.json` were
-> read in full and needed no change. The workflow's exclusion of branch-only and
-> evidence steps from `REVIEW_REQUIRED_NODE_IDS` is correct, and is now enforced
-> by `GDL-113` rather than resting on a comment.
->
-> 15 further tests; 9 fail against the pre-fix source.
->
-> **Not done, deliberately:** no session persistence layer, no GUI, no server
-> endpoint, no workflow-version migration, and no adapter between
-> `tap_tone_pi.guided_lab` and the existing `tap_tone_pi.workflow` measurement
-> contracts. Each needs its own dev order.
->
-> PR and merge SHA to be recorded on completion. DO-101 is **not** promoted.
+> DO-100 **COMPLETE**. DO-101 is **not** promoted in this closure — promotion
+> belongs to DO-101A's first docs/status commit.
 
 > **DO-99 — Server Authorization Observability & Diagnostics (COMPLETE)**
 >
@@ -264,6 +166,10 @@ DO-001 through DO-008, and DO-084 through DO-089 completed. The tap_tone_pi moda
 | DO-089A | Experiment design contract and cohort planning framework | COMPLETED |
 | DO-089B | Process variance evidence and feasibility summary | COMPLETED |
 | DO-089C | Covariate-aware cohort regression | COMPLETED |
+| DO-097 | Laboratory Manual packaging & desktop access | COMPLETED |
+| DO-098 | Server data-root authorization | COMPLETED |
+| DO-099 | Server authorization observability & diagnostics | COMPLETED |
+| DO-100 | Guided Digital Laboratory Foundation | COMPLETED |
 
 ## Pre-existing test failures (baseline)
 
