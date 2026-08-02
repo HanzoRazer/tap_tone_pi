@@ -1,10 +1,14 @@
 # INSTRUMENT CLASS: MEASUREMENT
-"""Luthiery formula target layer (Dev Order 94).
+"""Luthiery formula target layer (Dev Order 94 / DO-101A consumer).
 
 Connects TTP's measurement stack to empirical luthiery formula development by
 attaching luthiery-specific domain meaning (top graduation, bracing, soundhole,
 bridge, body air, plate stiffness) to the generic cohort-regression evidence
 from DO-89C.
+
+Shared validation-envelope authority now lives in ``tap_tone_pi.empirical``
+and is re-exported here so existing imports keep working. Project targets onto
+``EmpiricalModelDefinitionV1`` via ``tap_tone_pi.empirical.luthiery_compat``.
 
 This package produces luthiery formula *target evidence*, not luthiery
 instructions. No optimization, no design selection, no build prescriptions.

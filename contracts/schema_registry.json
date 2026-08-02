@@ -18,7 +18,8 @@
       "schemas": [
         "measurement_workflow_contract",
         "repeatability_evidence",
-        "guided_lab_session"
+        "guided_lab_session",
+        "empirical_model_definition"
       ]
     },
     "agentic-team": {
@@ -90,6 +91,15 @@
       "owner": "governance-team",
       "path": "contracts/guided_lab_session_v1.schema.json",
       "schema_version_const": "guided_lab_session_v1",
+      "status": "stable",
+      "version": "1.0.0"
+    },
+    "empirical_model_definition": {
+      "description": "Empirical model metadata around an external scientific equation (assumptions, validity, evidence links, uncertainty reference)",
+      "file": "empirical_model_definition_v1.schema.json",
+      "owner": "governance-team",
+      "path": "contracts/empirical_model_definition_v1.schema.json",
+      "schema_version_const": "empirical_model_definition_v1",
       "status": "stable",
       "version": "1.0.0"
     },

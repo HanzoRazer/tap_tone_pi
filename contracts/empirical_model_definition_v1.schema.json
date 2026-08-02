@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/empirical_model_definition_v1.schema.json",
+  "title": "EmpiricalModelDefinition",
+  "description": "Versioned empirical model metadata around an external scientific equation (DO-101A). Records assumptions, input/output declarations, validity domain, measurement links, evidence references, calibration history, and a neutral uncertainty reference. Does not embed equation implementations, measurement payloads, or advisory judgements.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "model_id",
+    "version",
+    "title",
+    "description",
+    "assumptions",
+    "inputs",
+    "outputs",
+    "validity_domain",
+    "measurement_links",
+    "evidence_references",
+    "calibration_history",
+    "epistemic_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "empirical_model_definition_v1"
+    },
+    "model_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable model identity. Never changes once published."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Published version of this model_id. Never reused for a different definition."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "assumptions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "inputs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ModelInputDefinition" }
+    },
+    "outputs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ModelOutputDefinition" }
+    },
+    "validity_domain": {
+      "$ref": "#/$defs/ValidityDomain"
+    },
+    "measurement_links": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/MeasurementLink" }
+    },
+    "evidence_references": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/EvidenceReference" }
+    },
+    "calibration_history": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/CalibrationRecord" }
+    },
+    "uncertainty": {
+      "$ref": "#/$defs/UncertaintyReference"
+    },
+    "equation_module": {
+      "type": ["string", "null"],
+      "description": "Optional dotted module path of the mathematical implementation. Reference only."
+    },
+    "equation_symbol": {
+      "type": ["string", "null"],
+      "description": "Optional symbol name within equation_module. Reference only."
+    },
+    "domain": {
+      "type": ["string", "null"],
+      "description": "Optional domain tag (e.g. a luthiery formula domain)."
+    },
+    "notes": {
+      "type": ["string", "null"]
+    },
+    "epistemic_status": {
+      "type": "string",
+      "const": "derived"
+    }
+  },
+  "$defs": {
+    "ModelInputDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "required"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "unit": { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"] },
+        "required": { "type": "boolean" },
+        "quantity_kind": { "type": ["string", "null"] }
+      }
+    },
+    "ModelOutputDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "unit": { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"] },
+        "quantity_kind": { "type": ["string", "null"] }
+      }
+    },
+    "ValidityDomain": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "primary_variable_name": { "type": ["string", "null"] },
+        "observed_range": {
+          "type": ["array", "null"],
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "number" }
+        },
+        "declared_range": {
+          "type": ["array", "null"],
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "number" }
+        },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "MeasurementLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["link_id", "role"],
+      "properties": {
+        "link_id": { "type": "string", "minLength": 1 },
+        "role": { "type": "string", "minLength": 1 },
+        "experiment_design_id": { "type": ["string", "null"] },
+        "campaign_id": { "type": ["string", "null"] },
+        "session_id": { "type": ["string", "null"] },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+    "EvidenceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference_id", "kind"],
+      "properties": {
+        "reference_id": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "citation": { "type": ["string", "null"] },
+        "uri": { "type": ["string", "null"] },
+        "formula_id": { "type": ["string", "null"] },
+        "regression_evidence_id": { "type": ["string", "null"] },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+    "CalibrationRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_id"],
+      "properties": {
+        "record_id": { "type": "string", "minLength": 1 },
+        "calibrated_at_utc": { "type": ["string", "null"], "format": "date-time" },
+        "method": { "type": ["string", "null"] },
+        "evidence_reference_id": { "type": ["string", "null"] },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+    "UncertaintyReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Neutral pointer to an existing uncertainty record. Not an UncertaintyBudget.",
+      "properties": {
+        "uncertainty_model_id": { "type": ["string", "null"] },
+        "uncertainty_record_id": { "type": ["string", "null"] },
+        "uncertainty_summary": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
