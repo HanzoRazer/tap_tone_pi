@@ -154,9 +154,7 @@ def _optional_int(payload: dict[str, Any], key: str, default: int = 0) -> int:
     return value
 
 
-def _optional_range(
-    payload: dict[str, Any], key: str
-) -> tuple[float, float] | None:
+def _optional_range(payload: dict[str, Any], key: str) -> tuple[float, float] | None:
     if key not in payload or payload[key] is None:
         return None
     value = payload[key]
@@ -463,7 +461,9 @@ def empirical_model_from_dict(
         outputs=tuple(
             model_output_from_dict(item) for item in _require_list(d, "outputs")
         ),
-        validity_domain=validity_domain_from_dict(_require_present(d, "validity_domain")),
+        validity_domain=validity_domain_from_dict(
+            _require_present(d, "validity_domain")
+        ),
         measurement_links=tuple(
             measurement_link_from_dict(item)
             for item in _require_list(d, "measurement_links")

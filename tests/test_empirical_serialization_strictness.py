@@ -27,9 +27,7 @@ def _minimal_payload() -> dict:
         title="Free-free dynamic modulus",
         description="Metadata wrapper around an existing free-free E(f) relation.",
         assumptions=("free-free boundary condition",),
-        inputs=(
-            ModelInputDefinition(name="frequency_hz", unit="Hz", required=True),
-        ),
+        inputs=(ModelInputDefinition(name="frequency_hz", unit="Hz", required=True),),
         outputs=(ModelOutputDefinition(name="young_modulus_gpa", unit="GPa"),),
     )
     return empirical_model_to_dict(model)

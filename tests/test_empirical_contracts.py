@@ -49,9 +49,7 @@ def _minimal_model(**overrides) -> EmpiricalModelDefinitionV1:
             ModelInputDefinition(name="frequency_hz", unit="Hz", required=True),
             ModelInputDefinition(name="length_mm", unit="mm", required=True),
         ),
-        outputs=(
-            ModelOutputDefinition(name="young_modulus_gpa", unit="GPa"),
-        ),
+        outputs=(ModelOutputDefinition(name="young_modulus_gpa", unit="GPa"),),
         validity_domain=ValidityDomain(
             primary_variable_name="frequency_hz",
             observed_range=(40.0, 120.0),
@@ -72,9 +70,10 @@ class TestEmpiricalSchemaRegistry:
             (SCHEMA_PATH.parent / "schema_registry.json").read_text(encoding="utf-8")
         )
         assert "empirical_model_definition" in registry["schemas"]
-        assert "empirical_model_definition" in registry["owners"]["governance-team"][
-            "schemas"
-        ]
+        assert (
+            "empirical_model_definition"
+            in registry["owners"]["governance-team"]["schemas"]
+        )
         entry = registry["schemas"]["empirical_model_definition"]
         assert entry["schema_version_const"] == "empirical_model_definition_v1"
         assert entry["path"] == "contracts/empirical_model_definition_v1.schema.json"
@@ -240,13 +239,16 @@ class TestEmpiricalModelContracts:
             "uncertainty_record_id",
             "uncertainty_summary",
         }
-        assert normalize_uncertainty(
-            UncertaintyReference(
-                uncertainty_model_id="  ",
-                uncertainty_record_id=None,
-                uncertainty_summary="  ",
+        assert (
+            normalize_uncertainty(
+                UncertaintyReference(
+                    uncertainty_model_id="  ",
+                    uncertainty_record_id=None,
+                    uncertainty_summary="  ",
+                )
             )
-        ) is None
+            is None
+        )
 
     def test_clone_model_preserves_identity_unless_overridden(self):
         model = _minimal_model()

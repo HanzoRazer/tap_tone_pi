@@ -1,7 +1,7 @@
 # Empirical Model Framework
 
-**Status:** DO-101A foundation (contracts, validation, serialization, luthiery migration)  
-**Package:** `tap_tone_pi/empirical/`  
+**Status:** DO-101A foundation (contracts, validation, serialization, luthiery migration)
+**Package:** `tap_tone_pi/empirical/`
 **Follow-on:** DO-101B — registry and CLI inspection surface
 
 ---

@@ -21,6 +21,7 @@ from tap_tone_pi.luthiery.formula_targets import LuthieryFormulaTargetV1
 
 __all__ = [
     "FormulaValidationEnvelopeV1",
+    "_detect_extrapolation",
     "validate_formula_candidate",
     "validate_formula_candidate_from_evidence",
 ]
@@ -78,4 +79,3 @@ def validate_formula_candidate_from_evidence(
         observed_primary_variable_range=observed_primary_variable_range,
         declared_primary_variable_range=declared_primary_variable_range,
     )
-

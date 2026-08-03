@@ -220,9 +220,7 @@ def validate_evidence_references(
             ("notes", ref.notes),
         ):
             if text:
-                findings.extend(
-                    _scan_advisory(text, path=f"{item_path}.{field_name}")
-                )
+                findings.extend(_scan_advisory(text, path=f"{item_path}.{field_name}"))
     return findings
 
 
