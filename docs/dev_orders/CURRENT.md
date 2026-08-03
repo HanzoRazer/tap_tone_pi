@@ -1,7 +1,26 @@
 # Active Dev Order
 
-**Current:** _(none — awaiting DO-101A promotion)_
+**Current:** DO-101A — Empirical Model Framework Foundation (Contracts & Migration)
 **Previous:** DO-100 — Guided Digital Laboratory Foundation (COMPLETE)
+
+> **DO-101A — Empirical Model Framework Foundation (IN PROGRESS)**
+>
+> **Implementation branch:** `cursor/do-101a-empirical-contract-foundation-b1ad`,
+> stacked on the DO-100 closure commit. Full DO-101 handoff is split:
+> DO-101A (this PR) = contracts, schemas, validation, serialization, and
+> luthiery compatibility; DO-101B = registry + CLI inspection (after 101A merges).
+>
+> **Binding architecture:** DO-101 generalizes empirical capabilities already
+> proven in `tap_tone_pi/luthiery/` into `tap_tone_pi/empirical/`. Luthiery
+> becomes a domain consumer. No duplicate authorities for formula identity,
+> evidence references, validity domains, validation envelopes, or uncertainty
+> metadata. No third `UncertaintyBudget` — empirical contracts use a neutral
+> uncertainty *reference* (`uncertainty_model_id` / `uncertainty_record_id` /
+> `uncertainty_summary`). Reconciliation of the two existing uncertainty
+> implementations is a separate follow-up.
+>
+> **Non-goals (DO-101A):** registry CLI, MB Sound / corpus ingestion,
+> calibration fitting, calculator changes, advisory logic, DO-101B scope.
 
 > **DO-100 — Guided Digital Laboratory Foundation (COMPLETE)**
 >
@@ -181,6 +200,14 @@ DO-001 through DO-008, and DO-084 through DO-089 completed. The tap_tone_pi moda
 These are documented baseline failures, not introduced by this sprint.
 
 ## Daily log
+
+### 2026-08-02 (DO-101A promotion)
+- Promoted DO-101A to Current after DO-100 closure
+- Scope: empirical contracts + luthiery migration foundation (no registry CLI)
+
+### 2026-08-02 (DO-100 closure)
+- Recorded PR #16 merge (`6ca0105`) and closed DO-100 as Previous/Complete
+- Left Current empty pending DO-101A docs/status promotion (binding sequence)
 
 ### 2026-06-27 (DO-95)
 - DO-95 PR 95A: FormulaValidationEnvelopeV1 contract (`tap_tone_pi/luthiery/formula_validation.py`)
