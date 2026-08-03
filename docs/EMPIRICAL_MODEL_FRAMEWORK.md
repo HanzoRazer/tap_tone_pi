@@ -77,12 +77,20 @@ Reconciliation of the two budgets is a separate follow-up.
 3. **Serialize** with `to_dict` / `from_dict`. Loaders are schema-strict:
    required fields must be present, unknown keys are rejected, whitespace-only
    identifiers fail, and `empirical_model_from_dict` runs semantic validation
-   by default (`validate=False` opts out).
-4. **Clone** with `clone_model(..., validate=True)`. Overriding `model_id` or
-   `version` authors a *new* published identity; it does not rewrite history.
+   by default (`validate=False` opts out). The same unknown-key discipline
+   applies to `formula_validation_envelope_from_dict`. Envelope payloads
+   without `schema_version` are unsupported (historical `to_dict()` always
+   emitted it).
+4. **Clone** with `clone_model(..., validate=True)`. Overrides are
+   re-normalized through the same pipeline as `build_model`. Overriding
+   `model_id` or `version` authors a *new* published identity; it does not
+   rewrite history.
 5. **Register / inspect** — DO-101B (`ttp empirical list|show|validate`).
 
 Published `(model_id, version)` pairs never change meaning once published.
+
+Identifier uniqueness (inputs, outputs, link/evidence/calibration IDs) is
+whitespace-trimmed and **case-sensitive** by design.
 
 ---
 

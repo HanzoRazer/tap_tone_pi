@@ -116,6 +116,64 @@ class TestEmpiricalSerializationStrictness:
             formula_validation_envelope_from_dict(payload)
         assert exc.value.code == EmpiricalErrorCode.UNKNOWN_SCHEMA_VERSION
 
+    def test_formula_validation_envelope_from_dict_rejects_unknown_property(self):
+        payload = validate_formula_candidate(
+            validation_id="v1",
+            formula_id="f1",
+            sample_count=1,
+            minimum_sample_count=1,
+        ).to_dict()
+        payload["unexpected_field"] = "nope"
+        with pytest.raises(ValidationError) as exc:
+            formula_validation_envelope_from_dict(payload)
+        assert exc.value.code == EmpiricalErrorCode.PAYLOAD_MALFORMED
+
+    def test_formula_validation_envelope_from_dict_rejects_missing_schema_version(self):
+        payload = validate_formula_candidate(
+            validation_id="v1",
+            formula_id="f1",
+            sample_count=1,
+            minimum_sample_count=1,
+        ).to_dict()
+        del payload["schema_version"]
+        with pytest.raises(ValidationError) as exc:
+            formula_validation_envelope_from_dict(payload)
+        assert exc.value.code == EmpiricalErrorCode.MISSING_REQUIRED_FIELD
+
+    def test_historical_luthiery_envelope_payload_still_deserializes(self):
+        """Pinned DO-95 to_dict shape (schema_version always present)."""
+        historical = {
+            "schema_version": "formula_validation_envelope_v1",
+            "validation_id": "val_001",
+            "formula_id": "formula_001",
+            "sample_count": 3,
+            "minimum_sample_count": 10,
+            "sample_count_sufficient": False,
+            "process_variance_available": False,
+            "repeatability_available": True,
+            "covariates_present": True,
+            "residual_std_available": True,
+            "r_squared_available": True,
+            "extrapolation_detected": False,
+            "validation_notes": [
+                "sample count below declared minimum",
+                "process variance evidence absent",
+            ],
+            "epistemic_status": "derived",
+            "target_id": "target_top_001",
+            "regression_evidence_id": "reg_001",
+            "experiment_design_id": "design_001",
+            "campaign_id": "campaign_001",
+            "observed_primary_variable_range": [2.0, 4.0],
+            "declared_primary_variable_range": [1.5, 4.0],
+        }
+        restored = formula_validation_envelope_from_dict(historical)
+        assert restored.validation_id == "val_001"
+        assert restored.sample_count_sufficient is False
+        assert restored.extrapolation_detected is False
+        # Round-trip stays stable for historical keys we emit.
+        assert restored.to_dict()["schema_version"] == "formula_validation_envelope_v1"
+
     def test_formula_validation_envelope_from_dict_rejects_non_numeric_range(self):
         payload = validate_formula_candidate(
             validation_id="v1",

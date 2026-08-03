@@ -295,6 +295,30 @@ _EMPIRICAL_MODEL_KEYS = frozenset(
         "epistemic_status",
     }
 )
+_FORMULA_VALIDATION_ENVELOPE_KEYS = frozenset(
+    {
+        "schema_version",
+        "validation_id",
+        "formula_id",
+        "target_id",
+        "regression_evidence_id",
+        "experiment_design_id",
+        "campaign_id",
+        "sample_count",
+        "minimum_sample_count",
+        "sample_count_sufficient",
+        "process_variance_available",
+        "repeatability_available",
+        "covariates_present",
+        "residual_std_available",
+        "r_squared_available",
+        "observed_primary_variable_range",
+        "declared_primary_variable_range",
+        "extrapolation_detected",
+        "validation_notes",
+        "epistemic_status",
+    }
+)
 
 
 def model_input_from_dict(payload: Any) -> ModelInputDefinition:
@@ -488,8 +512,19 @@ def empirical_model_from_dict(
 
 
 def formula_validation_envelope_from_dict(payload: Any) -> FormulaValidationEnvelopeV1:
-    """Deserialize a formula validation envelope (shared DO-95 contract)."""
+    """Deserialize a formula validation envelope (shared DO-95 contract).
+
+    Schema-strict for the Python persistence boundary:
+
+    * ``schema_version`` is required (historical ``to_dict()`` always emits it;
+      payloads without it are unsupported by this loader);
+    * unknown properties are rejected;
+    * ``epistemic_status``, when present, must be ``derived``.
+    """
     d = _require_mapping(payload, label="FormulaValidationEnvelopeV1")
+    _reject_unknown_keys(
+        d, _FORMULA_VALIDATION_ENVELOPE_KEYS, label="FormulaValidationEnvelopeV1"
+    )
     schema_version = _require_str(d, "schema_version")
     if schema_version != FORMULA_VALIDATION_ENVELOPE_SCHEMA_VERSION:
         raise ValidationError(
@@ -499,6 +534,12 @@ def formula_validation_envelope_from_dict(payload: Any) -> FormulaValidationEnve
                 "schema_version": schema_version,
                 "expected": FORMULA_VALIDATION_ENVELOPE_SCHEMA_VERSION,
             },
+        )
+    if "epistemic_status" in d and d["epistemic_status"] != "derived":
+        raise ValidationError(
+            EmpiricalErrorCode.TYPE_MISMATCH,
+            "epistemic_status must be 'derived'",
+            {"field": "epistemic_status", "got": d["epistemic_status"]},
         )
     return FormulaValidationEnvelopeV1(
         validation_id=_require_str(d, "validation_id", strip=True),

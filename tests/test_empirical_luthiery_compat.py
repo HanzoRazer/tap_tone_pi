@@ -129,6 +129,25 @@ class TestLuthieryProjection:
         # Projection must not mutate the original target serialization.
         assert target.to_dict()["schema_version"] == "luthiery_formula_target_v1"
 
+    def test_projection_covariate_order_matches_luthiery_canonical_sort(self):
+        class UnsortedTarget:
+            target_id = "target_unsorted"
+            domain = "top_graduation"
+            studied_variable_name = "top_thickness_mm"
+            response_variable_name = "A0_Hz"
+            covariate_names = ("density_g_cm3", "humidity_pct", "E_L_GPa")
+            experiment_design_id = None
+            campaign_id = None
+            notes = None
+
+        model = empirical_model_from_luthiery_target(UnsortedTarget())
+        assert [i.name for i in model.inputs] == [
+            "top_thickness_mm",
+            "E_L_GPa",
+            "density_g_cm3",
+            "humidity_pct",
+        ]
+
     def test_target_projection_carries_domain_assumption_and_notes(self):
         target = _make_target()
         model = empirical_model_from_luthiery_target(target)

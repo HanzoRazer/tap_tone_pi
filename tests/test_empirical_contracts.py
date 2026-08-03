@@ -282,6 +282,31 @@ class TestEmpiricalModelContracts:
         findings = validate_model(cloned)
         assert any(f.code == EmpiricalErrorCode.DUPLICATE_INPUT_NAME for f in findings)
 
+    def test_clone_model_renormalizes_optional_overrides(self):
+        model = _minimal_model()
+        cloned = clone_model(
+            model,
+            notes="   ",
+            equation_module="  tap_tone_pi.bending.gore_spreadsheet  ",
+        )
+        assert cloned.notes is None
+        assert cloned.equation_module == "tap_tone_pi.bending.gore_spreadsheet"
+
+    def test_duplicate_detection_is_case_sensitive_by_design(self):
+        findings = validate_model(
+            EmpiricalModelDefinitionV1(
+                model_id="m",
+                version=1,
+                title="Valid title",
+                inputs=(
+                    ModelInputDefinition(name="A0_Hz"),
+                    ModelInputDefinition(name="a0_hz"),
+                ),
+                outputs=(ModelOutputDefinition(name="y"),),
+            )
+        )
+        assert all(f.code != EmpiricalErrorCode.DUPLICATE_INPUT_NAME for f in findings)
+
 
 class TestFormulaValidationEnvelopeMigration:
     def test_envelope_lives_in_empirical_and_serializes(self):

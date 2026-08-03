@@ -101,13 +101,22 @@ def empirical_model_from_luthiery_target(
     Preserves domain meaning as ``domain`` plus an assumption entry. Does not
     alter the target's own ``to_dict()`` serialization. Rejects missing or
     non-string identity fields instead of coercing them with ``str(...)``.
+
+    Covariate inputs are sorted to match the canonical ordering used by
+    ``create_luthiery_formula_target`` / luthiery ``to_dict()``.
+
+    ``domain`` is treated as a controlled vocabulary token (e.g.
+    ``LuthieryFormulaDomain`` values), not free prose. It is interpolated into
+    an assumption string that passes through advisory-language validation, so
+    free-text domains containing forbidden tokens will fail projection.
     """
     try:
         target_id = _require_nonempty_str(target, "target_id")
         domain = _require_nonempty_str(target, "domain")
         studied = _require_nonempty_str(target, "studied_variable_name")
         response = _require_nonempty_str(target, "response_variable_name")
-        covariates = _require_str_sequence(target, "covariate_names")
+        # Canonical order matches luthiery target serialization.
+        covariates = tuple(sorted(_require_str_sequence(target, "covariate_names")))
         experiment_design_id = _optional_str_attr(target, "experiment_design_id")
         campaign_id = _optional_str_attr(target, "campaign_id")
         notes = _optional_str_attr(target, "notes")

@@ -258,6 +258,11 @@ def validate_calibration_history(
 def validate_inputs(
     model: EmpiricalModelDefinitionV1,
 ) -> list[EmpiricalValidationFindingV1]:
+    """Validate model inputs.
+
+    Identifier uniqueness is whitespace-trimmed and **case-sensitive** by
+    design (``A0_Hz`` and ``a0_hz`` are distinct).
+    """
     findings: list[EmpiricalValidationFindingV1] = []
     if not model.inputs:
         findings.append(

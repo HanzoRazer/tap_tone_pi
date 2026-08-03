@@ -9,7 +9,6 @@ Dataclass constructors are dumb containers. Prefer :func:`build_model` /
 
 from __future__ import annotations
 
-from dataclasses import replace
 from typing import Sequence
 
 from tap_tone_pi.empirical.contracts import (
@@ -65,6 +64,29 @@ def normalize_uncertainty(
     return cleaned
 
 
+def normalize_measurement_link(link: MeasurementLink) -> MeasurementLink:
+    """Strip identifiers; collapse blank optionals to None."""
+    return MeasurementLink(
+        link_id=link.link_id.strip(),
+        role=link.role.strip(),
+        experiment_design_id=_empty_to_none(link.experiment_design_id),
+        campaign_id=_empty_to_none(link.campaign_id),
+        session_id=_empty_to_none(link.session_id),
+        notes=_empty_to_none(link.notes),
+    )
+
+
+def normalize_calibration_record(record: CalibrationRecord) -> CalibrationRecord:
+    """Strip identifiers; collapse blank optionals to None."""
+    return CalibrationRecord(
+        record_id=record.record_id.strip(),
+        calibrated_at_utc=_empty_to_none(record.calibrated_at_utc),
+        method=_empty_to_none(record.method),
+        evidence_reference_id=_empty_to_none(record.evidence_reference_id),
+        notes=_empty_to_none(record.notes),
+    )
+
+
 def build_model(
     *,
     model_id: str,
@@ -95,11 +117,15 @@ def build_model(
         inputs=tuple(inputs),
         outputs=tuple(outputs),
         validity_domain=validity_domain or ValidityDomain(),
-        measurement_links=tuple(measurement_links),
+        measurement_links=tuple(
+            normalize_measurement_link(link) for link in measurement_links
+        ),
         evidence_references=tuple(
             normalize_reference(ref) for ref in evidence_references
         ),
-        calibration_history=tuple(calibration_history),
+        calibration_history=tuple(
+            normalize_calibration_record(record) for record in calibration_history
+        ),
         uncertainty=normalize_uncertainty(uncertainty),
         equation_module=_empty_to_none(equation_module),
         equation_symbol=_empty_to_none(equation_symbol),
@@ -117,16 +143,34 @@ def clone_model(
     validate: bool = True,
     **overrides: object,
 ) -> EmpiricalModelDefinitionV1:
-    """Return a copy with selected field overrides.
+    """Return a normalized copy with selected field overrides.
 
     Overriding ``model_id`` or ``version`` authors a *new* published identity —
     it does not mutate an already-published ``(model_id, version)`` pair. The
     caller is responsible for treating the result as a new definition.
 
-    By default the clone is re-validated. Pass ``validate=False`` only when
-    intentionally constructing an intermediate invalid object.
+    Overrides are re-normalized through the same pipeline as
+    :func:`build_model` (strip / blank→None / reference normalization), then
+    optionally re-validated. Pass ``validate=False`` only when intentionally
+    constructing an intermediate invalid object.
     """
-    cloned = replace(model, **overrides)  # type: ignore[arg-type]
-    if validate:
-        validate_model(cloned, raise_on_error=True)
-    return cloned
+    fields: dict[str, object] = {
+        "model_id": model.model_id,
+        "version": model.version,
+        "title": model.title,
+        "description": model.description,
+        "assumptions": model.assumptions,
+        "inputs": model.inputs,
+        "outputs": model.outputs,
+        "validity_domain": model.validity_domain,
+        "measurement_links": model.measurement_links,
+        "evidence_references": model.evidence_references,
+        "calibration_history": model.calibration_history,
+        "uncertainty": model.uncertainty,
+        "equation_module": model.equation_module,
+        "equation_symbol": model.equation_symbol,
+        "domain": model.domain,
+        "notes": model.notes,
+    }
+    fields.update(overrides)
+    return build_model(validate=validate, **fields)  # type: ignore[arg-type]
