@@ -16,6 +16,11 @@ Constitutional boundary:
   ``tap_tone_pi.core.statistics.UncertaintyBudget`` is a separate follow-up.
 
 Identity rule: once published, ``(model_id, version)`` never changes.
+
+Dataclasses in this module are dumb containers. Structural and semantic
+validity are enforced by :mod:`tap_tone_pi.empirical.validation` and by the
+factory/loader paths (``build_model``, ``empirical_model_from_dict``,
+``clone_model`` with ``validate=True``).
 """
 
 from __future__ import annotations

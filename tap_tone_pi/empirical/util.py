@@ -2,6 +2,9 @@
 """Small pure helpers for constructing empirical model records (DO-101A).
 
 No mathematical helpers. No registry builders (those belong to DO-101B).
+
+Dataclass constructors are dumb containers. Prefer :func:`build_model` /
+:func:`clone_model` (with ``validate=True``) when you need a validated record.
 """
 
 from __future__ import annotations
@@ -22,28 +25,24 @@ from tap_tone_pi.empirical.contracts import (
 from tap_tone_pi.empirical.validation import validate_model
 
 
-def normalize_reference(ref: EvidenceReference) -> EvidenceReference:
-    """Return a copy with stripped identifier / kind whitespace."""
-    return EvidenceReference(
-        reference_id=ref.reference_id.strip(),
-        kind=ref.kind.strip(),
-        citation=ref.citation.strip() if ref.citation is not None else None,
-        uri=ref.uri.strip() if ref.uri is not None else None,
-        formula_id=ref.formula_id.strip() if ref.formula_id is not None else None,
-        regression_evidence_id=(
-            ref.regression_evidence_id.strip()
-            if ref.regression_evidence_id is not None
-            else None
-        ),
-        notes=ref.notes.strip() if ref.notes is not None else None,
-    )
-
-
 def _empty_to_none(value: str | None) -> str | None:
     if value is None:
         return None
     stripped = value.strip()
     return stripped or None
+
+
+def normalize_reference(ref: EvidenceReference) -> EvidenceReference:
+    """Return a copy with stripped identifiers; blank optionals become None."""
+    return EvidenceReference(
+        reference_id=ref.reference_id.strip(),
+        kind=ref.kind.strip(),
+        citation=_empty_to_none(ref.citation),
+        uri=_empty_to_none(ref.uri),
+        formula_id=_empty_to_none(ref.formula_id),
+        regression_evidence_id=_empty_to_none(ref.regression_evidence_id),
+        notes=_empty_to_none(ref.notes),
+    )
 
 
 def normalize_uncertainty(
@@ -102,10 +101,10 @@ def build_model(
         ),
         calibration_history=tuple(calibration_history),
         uncertainty=normalize_uncertainty(uncertainty),
-        equation_module=equation_module,
-        equation_symbol=equation_symbol,
-        domain=domain,
-        notes=notes,
+        equation_module=_empty_to_none(equation_module),
+        equation_symbol=_empty_to_none(equation_symbol),
+        domain=_empty_to_none(domain),
+        notes=_empty_to_none(notes),
     )
     if validate:
         validate_model(model, raise_on_error=True)
@@ -114,7 +113,20 @@ def build_model(
 
 def clone_model(
     model: EmpiricalModelDefinitionV1,
+    *,
+    validate: bool = True,
     **overrides: object,
 ) -> EmpiricalModelDefinitionV1:
-    """Return a copy with selected field overrides (identity fields allowed)."""
-    return replace(model, **overrides)  # type: ignore[arg-type]
+    """Return a copy with selected field overrides.
+
+    Overriding ``model_id`` or ``version`` authors a *new* published identity —
+    it does not mutate an already-published ``(model_id, version)`` pair. The
+    caller is responsible for treating the result as a new definition.
+
+    By default the clone is re-validated. Pass ``validate=False`` only when
+    intentionally constructing an intermediate invalid object.
+    """
+    cloned = replace(model, **overrides)  # type: ignore[arg-type]
+    if validate:
+        validate_model(cloned, raise_on_error=True)
+    return cloned

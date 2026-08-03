@@ -7,6 +7,8 @@ caller asks via :func:`raise_for_findings`.
 
 from __future__ import annotations
 
+import math
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -23,6 +25,16 @@ from tap_tone_pi.empirical.errors import (
     EmpiricalErrorCode,
     raise_for_findings,
 )
+
+#: Token-boundary advisory match: punctuation and quotes count as separators,
+#: but alphanumeric/underscore continuations (goodman, betterment) do not.
+_ADVISORY_PATTERNS: dict[str, re.Pattern[str]] = {
+    term: re.compile(
+        rf"(?<![A-Za-z0-9_]){re.escape(term)}(?![A-Za-z0-9_])",
+        re.IGNORECASE,
+    )
+    for term in FORBIDDEN_ADVISORY_TERMS
+}
 
 
 @dataclass(frozen=True)
@@ -43,13 +55,14 @@ class EmpiricalValidationFindingV1:
         return d
 
 
+def _is_blank(value: str | None) -> bool:
+    return value is None or value.strip() == ""
+
+
 def _scan_advisory(text: str, *, path: str) -> list[EmpiricalValidationFindingV1]:
-    lowered = text.lower()
     findings: list[EmpiricalValidationFindingV1] = []
     for term in sorted(FORBIDDEN_ADVISORY_TERMS):
-        # Word-boundary-ish check: reject whole-word matches only.
-        padded = f" {lowered} "
-        if f" {term} " in padded or lowered == term:
+        if _ADVISORY_PATTERNS[term].search(text):
             findings.append(
                 EmpiricalValidationFindingV1(
                     code=EmpiricalErrorCode.ADVISORY_LANGUAGE_FORBIDDEN,
@@ -71,6 +84,15 @@ def _validate_range_pair(
         if pair is None:
             continue
         lo, hi = pair
+        if not math.isfinite(lo) or not math.isfinite(hi):
+            findings.append(
+                EmpiricalValidationFindingV1(
+                    code=EmpiricalErrorCode.INVALID_VALIDITY_DOMAIN,
+                    message=f"{label} bounds must be finite numbers",
+                    path=f"{path}.{label}",
+                )
+            )
+            continue
         if lo > hi:
             findings.append(
                 EmpiricalValidationFindingV1(
@@ -127,7 +149,8 @@ def validate_measurement_links(
     seen: set[str] = set()
     for i, link in enumerate(links):
         item_path = f"{path}[{i}]"
-        if not link.link_id:
+        link_id = link.link_id.strip() if link.link_id else ""
+        if _is_blank(link.link_id):
             findings.append(
                 EmpiricalValidationFindingV1(
                     code=EmpiricalErrorCode.INVALID_MEASUREMENT_LINK,
@@ -135,7 +158,7 @@ def validate_measurement_links(
                     path=f"{item_path}.link_id",
                 )
             )
-        elif link.link_id in seen:
+        elif link_id in seen:
             findings.append(
                 EmpiricalValidationFindingV1(
                     code=EmpiricalErrorCode.INVALID_MEASUREMENT_LINK,
@@ -144,8 +167,8 @@ def validate_measurement_links(
                 )
             )
         else:
-            seen.add(link.link_id)
-        if not link.role:
+            seen.add(link_id)
+        if _is_blank(link.role):
             findings.append(
                 EmpiricalValidationFindingV1(
                     code=EmpiricalErrorCode.INVALID_MEASUREMENT_LINK,
@@ -165,7 +188,8 @@ def validate_evidence_references(
     seen: set[str] = set()
     for i, ref in enumerate(refs):
         item_path = f"{path}[{i}]"
-        if not ref.reference_id:
+        reference_id = ref.reference_id.strip() if ref.reference_id else ""
+        if _is_blank(ref.reference_id):
             findings.append(
                 EmpiricalValidationFindingV1(
                     code=EmpiricalErrorCode.INVALID_EVIDENCE_REFERENCE,
@@ -173,7 +197,7 @@ def validate_evidence_references(
                     path=f"{item_path}.reference_id",
                 )
             )
-        elif ref.reference_id in seen:
+        elif reference_id in seen:
             findings.append(
                 EmpiricalValidationFindingV1(
                     code=EmpiricalErrorCode.INVALID_EVIDENCE_REFERENCE,
@@ -182,8 +206,8 @@ def validate_evidence_references(
                 )
             )
         else:
-            seen.add(ref.reference_id)
-        if not ref.kind:
+            seen.add(reference_id)
+        if _is_blank(ref.kind):
             findings.append(
                 EmpiricalValidationFindingV1(
                     code=EmpiricalErrorCode.INVALID_EVIDENCE_REFERENCE,
@@ -209,7 +233,8 @@ def validate_calibration_history(
     seen: set[str] = set()
     for i, record in enumerate(records):
         item_path = f"{path}[{i}]"
-        if not record.record_id:
+        record_id = record.record_id.strip() if record.record_id else ""
+        if _is_blank(record.record_id):
             findings.append(
                 EmpiricalValidationFindingV1(
                     code=EmpiricalErrorCode.INVALID_CALIBRATION_RECORD,
@@ -217,7 +242,7 @@ def validate_calibration_history(
                     path=f"{item_path}.record_id",
                 )
             )
-        elif record.record_id in seen:
+        elif record_id in seen:
             findings.append(
                 EmpiricalValidationFindingV1(
                     code=EmpiricalErrorCode.INVALID_CALIBRATION_RECORD,
@@ -226,7 +251,7 @@ def validate_calibration_history(
                 )
             )
         else:
-            seen.add(record.record_id)
+            seen.add(record_id)
         if record.notes:
             findings.extend(_scan_advisory(record.notes, path=f"{item_path}.notes"))
     return findings
@@ -246,7 +271,8 @@ def validate_inputs(
         )
     seen: set[str] = set()
     for i, item in enumerate(model.inputs):
-        if not item.name:
+        name = item.name.strip() if item.name else ""
+        if _is_blank(item.name):
             findings.append(
                 EmpiricalValidationFindingV1(
                     code=EmpiricalErrorCode.MISSING_REQUIRED_FIELD,
@@ -255,7 +281,7 @@ def validate_inputs(
                 )
             )
             continue
-        if item.name in seen:
+        if name in seen:
             findings.append(
                 EmpiricalValidationFindingV1(
                     code=EmpiricalErrorCode.DUPLICATE_INPUT_NAME,
@@ -264,7 +290,7 @@ def validate_inputs(
                 )
             )
         else:
-            seen.add(item.name)
+            seen.add(name)
         if item.description:
             findings.extend(
                 _scan_advisory(item.description, path=f"inputs[{i}].description")
@@ -286,7 +312,8 @@ def validate_outputs(
         )
     seen: set[str] = set()
     for i, item in enumerate(model.outputs):
-        if not item.name:
+        name = item.name.strip() if item.name else ""
+        if _is_blank(item.name):
             findings.append(
                 EmpiricalValidationFindingV1(
                     code=EmpiricalErrorCode.MISSING_REQUIRED_FIELD,
@@ -295,7 +322,7 @@ def validate_outputs(
                 )
             )
             continue
-        if item.name in seen:
+        if name in seen:
             findings.append(
                 EmpiricalValidationFindingV1(
                     code=EmpiricalErrorCode.DUPLICATE_OUTPUT_NAME,
@@ -304,7 +331,7 @@ def validate_outputs(
                 )
             )
         else:
-            seen.add(item.name)
+            seen.add(name)
         if item.description:
             findings.extend(
                 _scan_advisory(item.description, path=f"outputs[{i}].description")
@@ -315,10 +342,14 @@ def validate_outputs(
 def validate_model(
     model: EmpiricalModelDefinitionV1, *, raise_on_error: bool = False
 ) -> list[EmpiricalValidationFindingV1]:
-    """Validate a model definition. Pure — no I/O, no registry."""
+    """Validate a model definition. Pure — no I/O, no registry.
+
+    Dataclass constructors are dumb containers; this function is the validity
+    gate for factory, loader, and clone paths that opt into checking.
+    """
     findings: list[EmpiricalValidationFindingV1] = []
 
-    if not model.model_id:
+    if _is_blank(model.model_id):
         findings.append(
             EmpiricalValidationFindingV1(
                 code=EmpiricalErrorCode.INVALID_MODEL_IDENTITY,
@@ -334,7 +365,7 @@ def validate_model(
                 path="version",
             )
         )
-    if not model.title:
+    if _is_blank(model.title):
         findings.append(
             EmpiricalValidationFindingV1(
                 code=EmpiricalErrorCode.MISSING_REQUIRED_FIELD,
@@ -343,13 +374,14 @@ def validate_model(
             )
         )
 
-    findings.extend(_scan_advisory(model.title, path="title"))
+    if not _is_blank(model.title):
+        findings.extend(_scan_advisory(model.title, path="title"))
     findings.extend(_scan_advisory(model.description, path="description"))
     if model.notes:
         findings.extend(_scan_advisory(model.notes, path="notes"))
 
     for i, assumption in enumerate(model.assumptions):
-        if not assumption:
+        if _is_blank(assumption):
             findings.append(
                 EmpiricalValidationFindingV1(
                     code=EmpiricalErrorCode.INVALID_ASSUMPTION,

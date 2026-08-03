@@ -156,6 +156,79 @@ class TestEmpiricalModelContracts:
             )
         assert exc.value.code == EmpiricalErrorCode.ADVISORY_LANGUAGE_FORBIDDEN
 
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "recommended.",
+            "best,",
+            "optimize:",
+            "(good)",
+            '"bad"',
+        ],
+    )
+    def test_validate_rejects_advisory_terms_with_punctuation(self, text):
+        findings = validate_model(
+            EmpiricalModelDefinitionV1(
+                model_id="m",
+                version=1,
+                title="Valid title",
+                description=text,
+                inputs=(ModelInputDefinition(name="x"),),
+                outputs=(ModelOutputDefinition(name="y"),),
+            )
+        )
+        assert any(
+            f.code == EmpiricalErrorCode.ADVISORY_LANGUAGE_FORBIDDEN for f in findings
+        )
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "goodman relation",
+            "badge identifier",
+            "betterment study",
+            "optimization-free reporting",
+        ],
+    )
+    def test_validate_does_not_reject_non_advisory_substrings(self, text):
+        findings = validate_model(
+            EmpiricalModelDefinitionV1(
+                model_id="m",
+                version=1,
+                title="Valid title",
+                description=text,
+                inputs=(ModelInputDefinition(name="x"),),
+                outputs=(ModelOutputDefinition(name="y"),),
+            )
+        )
+        assert all(
+            f.code != EmpiricalErrorCode.ADVISORY_LANGUAGE_FORBIDDEN for f in findings
+        )
+
+    def test_validate_rejects_whitespace_only_model_id(self):
+        findings = validate_model(
+            EmpiricalModelDefinitionV1(
+                model_id="   ",
+                version=1,
+                title="Valid title",
+                inputs=(ModelInputDefinition(name="x"),),
+                outputs=(ModelOutputDefinition(name="y"),),
+            )
+        )
+        assert any(f.path == "model_id" for f in findings)
+
+    def test_validate_rejects_whitespace_only_input_name(self):
+        findings = validate_model(
+            EmpiricalModelDefinitionV1(
+                model_id="m",
+                version=1,
+                title="Valid",
+                inputs=(ModelInputDefinition(name="   "),),
+                outputs=(ModelOutputDefinition(name="y"),),
+            )
+        )
+        assert any(f.path == "inputs[0].name" for f in findings)
+
     def test_uncertainty_reference_is_not_a_budget(self):
         ref = UncertaintyReference(
             uncertainty_model_id="existing",
@@ -181,6 +254,31 @@ class TestEmpiricalModelContracts:
         assert cloned.model_id == model.model_id
         assert cloned.version == model.version
         assert cloned.title != model.title
+
+    def test_clone_model_revalidates_by_default(self):
+        model = _minimal_model()
+        with pytest.raises(ValidationError) as exc:
+            clone_model(
+                model,
+                inputs=(
+                    ModelInputDefinition(name="x"),
+                    ModelInputDefinition(name="x"),
+                ),
+            )
+        assert exc.value.code == EmpiricalErrorCode.DUPLICATE_INPUT_NAME
+
+    def test_clone_model_can_skip_validation(self):
+        model = _minimal_model()
+        cloned = clone_model(
+            model,
+            validate=False,
+            inputs=(
+                ModelInputDefinition(name="x"),
+                ModelInputDefinition(name="x"),
+            ),
+        )
+        findings = validate_model(cloned)
+        assert any(f.code == EmpiricalErrorCode.DUPLICATE_INPUT_NAME for f in findings)
 
 
 class TestFormulaValidationEnvelopeMigration:

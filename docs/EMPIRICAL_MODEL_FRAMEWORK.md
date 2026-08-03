@@ -70,12 +70,17 @@ Reconciliation of the two budgets is a separate follow-up.
 
 ## Lifecycle
 
-1. **Author** an `EmpiricalModelDefinitionV1` (or project one from a luthiery
-   formula target via `empirical.luthiery_compat`).
+1. **Author** via `build_model(...)` (or project one from a luthiery formula
+   target via `empirical.luthiery_compat`). Direct dataclass construction is a
+   dumb container — validity is not enforced at `__init__`.
 2. **Validate** with `empirical.validation.validate_model` (pure; no I/O).
-3. **Serialize** with `to_dict` / `from_dict` (schema
-   `contracts/empirical_model_definition_v1.schema.json`).
-4. **Register / inspect** — DO-101B (`ttp empirical list|show|validate`).
+3. **Serialize** with `to_dict` / `from_dict`. Loaders are schema-strict:
+   required fields must be present, unknown keys are rejected, whitespace-only
+   identifiers fail, and `empirical_model_from_dict` runs semantic validation
+   by default (`validate=False` opts out).
+4. **Clone** with `clone_model(..., validate=True)`. Overriding `model_id` or
+   `version` authors a *new* published identity; it does not rewrite history.
+5. **Register / inspect** — DO-101B (`ttp empirical list|show|validate`).
 
 Published `(model_id, version)` pairs never change meaning once published.
 

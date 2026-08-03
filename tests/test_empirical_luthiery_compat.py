@@ -7,6 +7,7 @@ import json
 
 import pytest
 
+from tap_tone_pi.empirical import EmpiricalErrorCode, ValidationError
 from tap_tone_pi.empirical.luthiery_compat import (
     empirical_model_from_luthiery_target,
     evidence_reference_from_luthiery_link,
@@ -48,6 +49,12 @@ class TestLuthieryImportCompatibility:
         assert (
             luthiery_formula_validation.validate_formula_candidate
             is empirical_formula_validation.validate_formula_candidate
+        )
+
+    def test_luthiery_private_detect_extrapolation_alias_matches_empirical(self):
+        assert (
+            luthiery_formula_validation._detect_extrapolation
+            is empirical_formula_validation._detect_extrapolation
         )
 
     def test_luthiery_target_serialization_unchanged(self):
@@ -122,6 +129,19 @@ class TestLuthieryProjection:
         # Projection must not mutate the original target serialization.
         assert target.to_dict()["schema_version"] == "luthiery_formula_target_v1"
 
+    def test_target_projection_carries_domain_assumption_and_notes(self):
+        target = _make_target()
+        model = empirical_model_from_luthiery_target(target)
+        assert model.notes == "Top thickness against A0 frequency."
+        assert any(
+            a == "luthiery formula domain: top_graduation" for a in model.assumptions
+        )
+
+    def test_target_projection_omits_measurement_link_when_ids_absent(self):
+        target = _make_target(experiment_design_id=None, campaign_id=None)
+        model = empirical_model_from_luthiery_target(target)
+        assert model.measurement_links == ()
+
     def test_link_projects_to_evidence_reference(self):
         target = _make_target()
         link = link_formula_candidate_to_target(
@@ -136,9 +156,52 @@ class TestLuthieryProjection:
         assert ref.formula_id == "formula_001"
         assert ref.regression_evidence_id == "reg_001"
 
+    def test_link_projection_omits_optional_fields_when_absent(self):
+        class MinimalLink:
+            link_id = "link_001"
+            formula_id = None
+            regression_evidence_id = None
+            target_id = "target_top_001"
+
+        ref = evidence_reference_from_luthiery_link(MinimalLink())
+        payload = ref.to_dict()
+        assert "formula_id" not in payload
+        assert "regression_evidence_id" not in payload
+        assert payload["notes"] == "target_id=target_top_001"
+
     def test_projection_rejects_advisory_notes_from_target(self):
-        with pytest.raises(Exception):
-            # create_luthiery_formula_target itself does not scan advisory terms;
-            # the empirical projection does.
-            target = _make_target(notes="recommended thickness relationship")
+        target = _make_target(notes="recommended thickness relationship")
+        with pytest.raises(ValidationError) as exc:
             empirical_model_from_luthiery_target(target)
+        assert exc.value.code == EmpiricalErrorCode.ADVISORY_LANGUAGE_FORBIDDEN
+
+    def test_projection_rejects_object_missing_required_attributes(self):
+        class BadTarget:
+            target_id = "t1"
+
+        with pytest.raises(ValidationError) as exc:
+            empirical_model_from_luthiery_target(BadTarget())
+        assert exc.value.code == EmpiricalErrorCode.LUTHIERY_COMPAT_FAILED
+
+    def test_projection_rejects_none_target_id(self):
+        class BadTarget:
+            target_id = None
+            domain = "top_graduation"
+            studied_variable_name = "x"
+            response_variable_name = "y"
+            covariate_names = ()
+            experiment_design_id = None
+            campaign_id = None
+            notes = None
+
+        with pytest.raises(ValidationError) as exc:
+            empirical_model_from_luthiery_target(BadTarget())
+        assert exc.value.code == EmpiricalErrorCode.LUTHIERY_COMPAT_FAILED
+
+    def test_link_projection_rejects_object_missing_required_attributes(self):
+        class BadLink:
+            link_id = "l1"
+
+        with pytest.raises(ValidationError) as exc:
+            evidence_reference_from_luthiery_link(BadLink())
+        assert exc.value.code == EmpiricalErrorCode.LUTHIERY_COMPAT_FAILED
