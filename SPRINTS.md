@@ -117,6 +117,24 @@ docstring, **not** here.
 - **Acceptance:** a recorded decision, plus the upgrade path and its round-trip
   tests if one is chosen.
 
+### B-005 — Reconcile overlapping UncertaintyBudget implementations
+- **Status:** open · **Priority:** P2 · **Area:** `tap_tone_pi/uncertainty`,
+  `tap_tone_pi/core`
+- **Origin:** DO-101A (empirical model contract foundation).
+- **Context:** the repository has two `UncertaintyBudget` types —
+  `tap_tone_pi.uncertainty.budget.UncertaintyBudget` and
+  `tap_tone_pi.core.statistics.UncertaintyBudget`. DO-101A deliberately did
+  not choose either as the empirical canonical type; empirical contracts
+  reference uncertainty only via opaque identifiers and a summary
+  (`UncertaintyReference`). Embedding a budget into an empirical model before
+  reconciliation would freeze the wrong authority.
+- **Trigger:** before any empirical model (or DO-101B registry surface)
+  embeds a canonical uncertainty budget object, or before a Dev Order needs
+  a single shared budget type across packages.
+- **Acceptance:** one recorded ownership decision (merge, adapt, or keep
+  both with explicit roles), plus migration notes so empirical contracts can
+  reference a stable budget identity without a third implementation.
+
 ---
 
 ## Not backlog — recorded here only so they aren't mistaken for open items
