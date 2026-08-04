@@ -474,7 +474,8 @@ class QALabSpecEntry:
 
     specific_stiffness: Optional[float] = None  # E/ρ
     wave_speed_m_s: Optional[float] = None  # √(E/ρ)
-    radiation_ratio: Optional[float] = None  # c/ρ
+    # tonewood_radiation_ratio v1 — unscaled_si_derived (c/ρ); see radiation_ratio.py
+    radiation_ratio: Optional[float] = None
 
     # Instrument matching
     instrument_type: Optional[str] = None
@@ -731,15 +732,27 @@ def _compute_derived_physics(
     E_best: float,
     density_kg_m3: float,
 ) -> None:
-    """Compute wave speed, specific stiffness, radiation ratio."""
+    """Compute wave speed, specific stiffness, radiation ratio.
+
+    Radiation ratio follows tonewood_radiation_ratio v1
+    (unscaled_si_derived; scale_factor = 1.0).
+    """
     import math
+
+    from tap_tone_pi.bending.radiation_ratio import calculate_radiation_ratio
 
     E_Pa = E_best * 1e9
     spec = E_Pa / density_kg_m3
     c = math.sqrt(spec)
     entry.specific_stiffness = round(spec, 0)
     entry.wave_speed_m_s = round(c, 0)
-    entry.radiation_ratio = round(c / density_kg_m3, 4)
+    entry.radiation_ratio = round(
+        calculate_radiation_ratio(
+            wave_speed_m_s=c,
+            density_kg_m3=density_kg_m3,
+        ),
+        4,
+    )
 
 
 def _load_modal_data(

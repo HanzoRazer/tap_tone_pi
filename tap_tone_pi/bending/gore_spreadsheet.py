@@ -385,7 +385,8 @@ class BuildSpreadsheetEntry:
     # Derived properties
     specific_stiffness: Optional[float] = None  # E/ρ
     wave_speed_m_s: Optional[float] = None  # √(E/ρ)
-    radiation_ratio: Optional[float] = None  # c/ρ
+    # tonewood_radiation_ratio v1 — unscaled_si_derived (c/ρ); see radiation_ratio.py
+    radiation_ratio: Optional[float] = None
 
     # Instrument matching
     instrument_type: Optional[str] = None
@@ -569,13 +570,23 @@ def _compute_derived_properties(
     density_kg_m3: float,
 ) -> None:
     """Compute specific stiffness, wave speed, and radiation ratio."""
+    from tap_tone_pi.bending.radiation_ratio import calculate_radiation_ratio
+
     E_Pa = E_best * 1e9
     spec = E_Pa / density_kg_m3  # m²/s²
     c = math.sqrt(spec)  # m/s
 
     entry.specific_stiffness = round(spec, 0)
     entry.wave_speed_m_s = round(c, 0)
-    entry.radiation_ratio = round(c / density_kg_m3, 4)
+    # Unscaled SI-derived (tonewood_radiation_ratio v1). Rounding matches
+    # historical Gore spreadsheet output; calculation itself is unscaled.
+    entry.radiation_ratio = round(
+        calculate_radiation_ratio(
+            wave_speed_m_s=c,
+            density_kg_m3=density_kg_m3,
+        ),
+        4,
+    )
 
 
 def build_spreadsheet_entry(
