@@ -53,6 +53,22 @@ class RadiationRatioError(ValueError):
     """Invalid radiation-ratio inputs or contract payload."""
 
 
+def validate_positive_finite_number(name: str, value: object) -> float:
+    """Reject bools, strings, None, non-finite, and non-positive values.
+
+    Numeric strings are rejected deliberately — scientific unit APIs must not
+    rely on implicit ``float(...)`` coercion.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise RadiationRatioError(f"{name} must be a finite number")
+    number = float(value)
+    if not math.isfinite(number):
+        raise RadiationRatioError(f"{name} must be finite")
+    if number <= 0.0:
+        raise RadiationRatioError(f"{name} must be > 0")
+    return number
+
+
 def validate_radiation_ratio_inputs(
     *,
     density_kg_m3: float | None = None,
@@ -67,12 +83,7 @@ def validate_radiation_ratio_inputs(
     ):
         if value is None:
             continue
-        if not isinstance(value, (int, float)) or isinstance(value, bool):
-            raise RadiationRatioError(f"{name} must be a finite number")
-        if not math.isfinite(float(value)):
-            raise RadiationRatioError(f"{name} must be finite")
-        if float(value) <= 0.0:
-            raise RadiationRatioError(f"{name} must be > 0")
+        validate_positive_finite_number(name, value)
 
 
 def calculate_radiation_ratio(
@@ -107,13 +118,18 @@ def calculate_radiation_ratio_from_modulus_gpa(
     dynamic_modulus_gpa: float,
     density_kg_m3: float,
 ) -> float:
-    """Convenience wrapper: converts explicit GPa input to pascals internally."""
-    validate_radiation_ratio_inputs(
-        dynamic_modulus_pa=float(dynamic_modulus_gpa) * 1e9,
-        density_kg_m3=density_kg_m3,
+    """Convenience wrapper: converts explicit GPa input to pascals internally.
+
+    Validates the GPa argument *before* unit conversion so bools and strings
+    cannot bypass ``RadiationRatioError`` via ``float(...)`` coercion.
+    """
+    gpa = validate_positive_finite_number(
+        "dynamic_modulus_gpa",
+        dynamic_modulus_gpa,
     )
+    validate_radiation_ratio_inputs(density_kg_m3=density_kg_m3)
     return calculate_radiation_ratio_from_modulus(
-        dynamic_modulus_pa=float(dynamic_modulus_gpa) * 1e9,
+        dynamic_modulus_pa=gpa * 1e9,
         density_kg_m3=density_kg_m3,
     )
 

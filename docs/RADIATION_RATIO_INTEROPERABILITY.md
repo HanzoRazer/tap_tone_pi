@@ -1,11 +1,11 @@
 # Radiation-Ratio Interoperability Contract
 
-**Contract ID:** `tonewood_radiation_ratio`  
-**Version:** 1  
-**Output convention:** `unscaled_si_derived`  
-**Scale factor:** `1.0`  
-**Authority repository:** `HanzoRazer/tap_tone_pi`  
-**Authority artifact:** `contracts/tonewood_radiation_ratio_v1.json`  
+**Contract ID:** `tonewood_radiation_ratio`
+**Version:** 1
+**Output convention:** `unscaled_si_derived`
+**Scale factor:** `1.0`
+**Authority repository:** `HanzoRazer/tap_tone_pi`
+**Authority artifact:** `contracts/tonewood_radiation_ratio_v1.json`
 **Bug / remediation family:** BR-045 (cross-repository fragmentation)
 
 ---
@@ -118,6 +118,19 @@ python scripts/check_radiation_ratio_contract_parity.py \
 ```
 
 CI must fail when the semantic digest or fixture expectations drift.
+
+### Digest normalization (intentional ordering)
+
+`normalize_radiation_ratio_contract` / `radiation_ratio_contract_digest`:
+
+* sort object keys;
+* sort `conformance_fixtures` by `fixture_id`;
+* **preserve** the published order of `input_quantities`,
+  `equivalent_expressions`, and `validity_requirements`.
+
+Those list orders are part of the semantic contract. A mirror that reorders
+them will change the digest and fail CI, even if the set of values is
+unchanged.
 
 ---
 

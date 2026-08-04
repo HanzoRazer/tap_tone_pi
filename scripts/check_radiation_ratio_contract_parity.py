@@ -21,22 +21,15 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT))
-
-from tap_tone_pi.bending.radiation_ratio import (
-    CONTRACT_SCHEMA_VERSION,
-    FORMULA_ID,
-    FORMULA_VERSION,
-    OUTPUT_CONVENTION,
-    SCALE_FACTOR,
-    radiation_ratio_contract_digest,
-    require_matching_semantic_digest,
-)
-
 APPROVED_SEMANTIC_DIGEST = (
     "182320dadca871d767fbd7e2341cfbb237a492e88dacddfc0736bc323ed9b898"
 )
 DEFAULT_AUTHORITY = REPO_ROOT / "contracts" / "tonewood_radiation_ratio_v1.json"
+
+
+def _ensure_repo_on_path() -> None:
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
 
 
 def _load(path: Path) -> dict:
@@ -48,6 +41,14 @@ def _load(path: Path) -> dict:
 
 
 def _assert_v1_identity(payload: dict, *, label: str) -> None:
+    from tap_tone_pi.bending.radiation_ratio import (
+        CONTRACT_SCHEMA_VERSION,
+        FORMULA_ID,
+        FORMULA_VERSION,
+        OUTPUT_CONVENTION,
+        SCALE_FACTOR,
+    )
+
     checks = [
         ("schema_version", CONTRACT_SCHEMA_VERSION),
         ("formula_id", FORMULA_ID),
@@ -62,6 +63,12 @@ def _assert_v1_identity(payload: dict, *, label: str) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    _ensure_repo_on_path()
+    from tap_tone_pi.bending.radiation_ratio import (
+        radiation_ratio_contract_digest,
+        require_matching_semantic_digest,
+    )
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--authority",

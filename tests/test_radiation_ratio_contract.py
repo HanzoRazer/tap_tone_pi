@@ -194,6 +194,27 @@ class TestRadiationRatioCalculation:
         with pytest.raises(RadiationRatioError):
             calculate_radiation_ratio_from_modulus(**kwargs)
 
+    @pytest.mark.parametrize(
+        "bad_gpa",
+        [True, False, "10.07", "invalid", None],
+    )
+    def test_gpa_wrapper_rejects_non_numeric_before_coercion(
+        self, bad_gpa: object
+    ) -> None:
+        """GPa validation must run before float()*1e9 coercion."""
+        with pytest.raises(RadiationRatioError):
+            calculate_radiation_ratio_from_modulus_gpa(
+                dynamic_modulus_gpa=bad_gpa,  # type: ignore[arg-type]
+                density_kg_m3=415.0,
+            )
+
+    def test_gpa_wrapper_accepts_explicit_float(self) -> None:
+        rr = calculate_radiation_ratio_from_modulus_gpa(
+            dynamic_modulus_gpa=10.07,
+            density_kg_m3=415.0,
+        )
+        assert round(rr, 2) == 11.87
+
     def test_formula_identity_metadata(self) -> None:
         meta = formula_identity()
         assert meta == {
