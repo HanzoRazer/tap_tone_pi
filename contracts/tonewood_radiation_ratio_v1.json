@@ -1,0 +1,107 @@
+{
+  "schema_version": "tonewood_radiation_ratio_contract_v1",
+  "formula_id": "tonewood_radiation_ratio",
+  "formula_version": 1,
+  "name": "Tonewood radiation ratio (Schelleng c/ρ)",
+  "description": "Interoperability contract for the unscaled SI-derived radiation ratio R = c/ρ = √(E/ρ³). Tap Tone Pi is the scientific-method reference; Luthier's Toolbox is a conforming independent implementation.",
+  "canonical_expression": "wave_speed_m_s / density_kg_m3",
+  "equivalent_expressions": [
+    "sqrt(dynamic_modulus_pa / density_kg_m3^3)"
+  ],
+  "input_quantities": [
+    {
+      "quantity_id": "density",
+      "symbol": "rho",
+      "name": "Density",
+      "unit": "kg/m3",
+      "unit_system": "SI"
+    },
+    {
+      "quantity_id": "dynamic_modulus",
+      "symbol": "E",
+      "name": "Longitudinal dynamic modulus",
+      "unit": "Pa",
+      "unit_system": "SI",
+      "notes": "Convenience APIs may accept GPa only when the API name includes _gpa and converts internally."
+    },
+    {
+      "quantity_id": "wave_speed",
+      "symbol": "c",
+      "name": "Longitudinal wave speed",
+      "unit": "m/s",
+      "unit_system": "SI",
+      "notes": "c = sqrt(E/rho) when derived from modulus and density."
+    }
+  ],
+  "output_quantity": {
+    "quantity_id": "radiation_ratio",
+    "symbol": "R",
+    "name": "Radiation ratio",
+    "unit": "m4/(kg·s)",
+    "unit_system": "SI_derived",
+    "description": "Unscaled Schelleng index c/rho."
+  },
+  "scale_factor": 1.0,
+  "output_convention": "unscaled_si_derived",
+  "rounding_decimals": 2,
+  "validity_requirements": [
+    "density_kg_m3 > 0 and finite",
+    "dynamic_modulus_pa > 0 and finite when modulus path is used",
+    "wave_speed_m_s > 0 and finite when speed path is used",
+    "modulus unit must be declared; never inferred from magnitude",
+    "scale_factor must equal 1.0 for formula_version 1",
+    "do not apply hidden multipliers of 1000 or 1e6"
+  ],
+  "error_behavior": {
+    "zero_or_negative_density": "reject",
+    "zero_or_negative_modulus": "reject",
+    "zero_or_negative_wave_speed": "reject",
+    "non_finite_input": "reject",
+    "ambiguous_modulus_unit": "reject",
+    "unknown_schema_version": "reject"
+  },
+  "conformance_fixtures": [
+    {
+      "fixture_id": "american_basswood_reference",
+      "label": "American Basswood",
+      "specimen_class": "low_density_soundboard_adjacent",
+      "density_kg_m3": 415.0,
+      "dynamic_modulus_pa": 10070000000.0,
+      "dynamic_modulus_gpa": 10.07,
+      "wave_speed_m_s": 4925.957799348656,
+      "expected_radiation_ratio": 11.869777829755797,
+      "expected_radiation_ratio_rounded": 11.87,
+      "notes": "Shipped Toolbox/TTP reference specimen; near soundboard role target 11.5"
+    },
+    {
+      "fixture_id": "western_red_cedar_reference",
+      "label": "Western Red Cedar",
+      "specimen_class": "low_density_soundboard",
+      "density_kg_m3": 370.0,
+      "dynamic_modulus_pa": 7780000000.0,
+      "dynamic_modulus_gpa": 7.78,
+      "wave_speed_m_s": 4585.523637168063,
+      "expected_radiation_ratio": 12.393307127481254,
+      "expected_radiation_ratio_rounded": 12.39,
+      "notes": "Shipped Toolbox/TTP reference specimen; soundboard class"
+    },
+    {
+      "fixture_id": "bubinga_reference",
+      "label": "Bubinga",
+      "specimen_class": "higher_density_back_sides",
+      "density_kg_m3": 890.0,
+      "dynamic_modulus_pa": 18410000000.0,
+      "dynamic_modulus_gpa": 18.41,
+      "wave_speed_m_s": 4548.119749789683,
+      "expected_radiation_ratio": 5.110246909876048,
+      "expected_radiation_ratio_rounded": 5.11,
+      "notes": "Shipped Toolbox/TTP reference specimen; higher-density back-and-sides class"
+    }
+  ],
+  "tolerance": {
+    "absolute": 1e-09,
+    "relative": 1e-09,
+    "display_rounding_decimals": 2
+  },
+  "semantic_digest_sha256": "182320dadca871d767fbd7e2341cfbb237a492e88dacddfc0736bc323ed9b898"
+}

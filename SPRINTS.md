@@ -150,3 +150,10 @@ they are not to-dos.
   (`TTP_SERVER_DATA_ROOT`).** Required so `uvicorn --reload`'s re-imported app
   sees the configured root; mutation is scoped to the run and restored after, and
   bounded by CLI env-restore tests. Accepted design (DO-98).
+- **Radiation-ratio interoperability contract (BR-045).** Synchronized with
+  Luthier’s Toolbox via `contracts/tonewood_radiation_ratio_v1.json`
+  (`tonewood_radiation_ratio` v1, `unscaled_si_derived`, scale factor 1.0).
+  Current Tap Tone Pi implementation conforms to V1; no production numerical
+  correction was required. BR-043 / BR-044 were Toolbox-side scale defects and
+  are not attributed to Tap Tone Pi. See
+  `docs/RADIATION_RATIO_INTEROPERABILITY.md`.

@@ -19,7 +19,8 @@
         "measurement_workflow_contract",
         "repeatability_evidence",
         "guided_lab_session",
-        "empirical_model_definition"
+        "empirical_model_definition",
+        "tonewood_radiation_ratio_contract"
       ]
     },
     "agentic-team": {
@@ -100,6 +101,15 @@
       "owner": "governance-team",
       "path": "contracts/empirical_model_definition_v1.schema.json",
       "schema_version_const": "empirical_model_definition_v1",
+      "status": "stable",
+      "version": "1.0.0"
+    },
+    "tonewood_radiation_ratio_contract": {
+      "description": "Cross-repository interoperability contract for Schelleng tonewood radiation ratio (unscaled SI-derived)",
+      "file": "tonewood_radiation_ratio_v1.schema.json",
+      "owner": "governance-team",
+      "path": "contracts/tonewood_radiation_ratio_v1.schema.json",
+      "schema_version_const": "tonewood_radiation_ratio_contract_v1",
       "status": "stable",
       "version": "1.0.0"
     },
@@ -211,5 +221,5 @@
     }
   },
   "title": "tap_tone_pi Schema Registry",
-  "updated": "2026-01-01T00:00:00Z"
+  "updated": "2026-08-04T00:00:00Z"
 }
