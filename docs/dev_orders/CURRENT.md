@@ -1,26 +1,36 @@
 # Active Dev Order
 
-**Current:** DO-101A — Empirical Model Framework Foundation (Contracts & Migration)
-**Previous:** DO-100 — Guided Digital Laboratory Foundation (COMPLETE)
+**Current:** _(none — awaiting DO-101B promotion)_
+**Previous:** DO-101A — Empirical Model Framework Foundation (COMPLETE)
 
-> **DO-101A — Empirical Model Framework Foundation (IN PROGRESS)**
+> **DO-101A — Empirical Model Framework Foundation (COMPLETE)**
 >
-> **Implementation branch:** `cursor/do-101a-empirical-contract-foundation-b1ad`,
-> stacked on the DO-100 closure commit. Full DO-101 handoff is split:
-> DO-101A (this PR) = contracts, schemas, validation, serialization, and
-> luthiery compatibility; DO-101B = registry + CLI inspection (after 101A merges).
+> Merged as **PR #19** → `main` merge commit
+> `5793309cd268e7a2fe0ad92c5384cdae547e224c` (branch
+> `cursor/do-101a-empirical-contract-foundation-b1ad`, tip feature commit
+> `b71ab4b`). Framework ownership is documented at
+> `docs/EMPIRICAL_MODEL_FRAMEWORK.md` and `docs/ADR-0013-empirical-model-framework.md`.
 >
-> **Binding architecture:** DO-101 generalizes empirical capabilities already
-> proven in `tap_tone_pi/luthiery/` into `tap_tone_pi/empirical/`. Luthiery
-> becomes a domain consumer. No duplicate authorities for formula identity,
-> evidence references, validity domains, validation envelopes, or uncertainty
-> metadata. No third `UncertaintyBudget` — empirical contracts use a neutral
-> uncertainty *reference* (`uncertainty_model_id` / `uncertainty_record_id` /
-> `uncertainty_summary`). Reconciliation of the two existing uncertainty
-> implementations is a separate follow-up.
+> **Delivered:** `tap_tone_pi/empirical/` shared contract layer
+> (`EmpiricalModelDefinitionV1`, inputs/outputs, validity domain, evidence /
+> measurement / calibration / uncertainty references, validation envelope);
+> stable `EMP-*` error vocabulary; pure validation; deterministic
+> schema-strict serialization; `contracts/empirical_model_definition_v1.schema.json`
+> plus `schema_registry.json` entry; luthiery compatibility adapters and
+> re-exports so existing luthiery imports and serialized payloads remain
+> unchanged. Uncertainty is referenced only
+> (`uncertainty_model_id` / `uncertainty_record_id` / `uncertainty_summary`) —
+> no third `UncertaintyBudget`. Overlapping budget implementations are
+> deferred as `SPRINTS.md` **B-005**.
 >
-> **Non-goals (DO-101A):** registry CLI, MB Sound / corpus ingestion,
-> calibration fitting, calculator changes, advisory logic, DO-101B scope.
+> **Deliberate non-goals (remain for DO-101B / later):** empirical registry
+> discovery, `ttp empirical` CLI, registry-entry schema, MB Sound / corpus
+> ingestion, calibration fitting, calculator changes, advisory logic, and
+> uncertainty-budget reconciliation.
+>
+> DO-101A **COMPLETE**. Full DO-101 is **not** complete until DO-101B also
+> lands. DO-101B is **not** promoted in this closure — promotion belongs to
+> DO-101B's first docs/status commit.
 
 > **DO-100 — Guided Digital Laboratory Foundation (COMPLETE)**
 >
@@ -43,8 +53,7 @@
 > between `tap_tone_pi.guided_lab` and existing `tap_tone_pi.workflow`
 > measurement contracts.
 >
-> DO-100 **COMPLETE**. DO-101 is **not** promoted in this closure — promotion
-> belongs to DO-101A's first docs/status commit.
+> DO-100 **COMPLETE**.
 
 > **DO-99 — Server Authorization Observability & Diagnostics (COMPLETE)**
 >
@@ -189,6 +198,7 @@ DO-001 through DO-008, and DO-084 through DO-089 completed. The tap_tone_pi moda
 | DO-098 | Server data-root authorization | COMPLETED |
 | DO-099 | Server authorization observability & diagnostics | COMPLETED |
 | DO-100 | Guided Digital Laboratory Foundation | COMPLETED |
+| DO-101A | Empirical Model Framework Foundation (contracts & migration) | COMPLETED |
 
 ## Pre-existing test failures (baseline)
 
@@ -200,6 +210,11 @@ DO-001 through DO-008, and DO-084 through DO-089 completed. The tap_tone_pi moda
 These are documented baseline failures, not introduced by this sprint.
 
 ## Daily log
+
+### 2026-08-04 (DO-101A closure)
+- Recorded PR #19 merge (`5793309`) and closed DO-101A as Previous/Complete
+- Left Current empty pending DO-101B docs/status promotion (binding sequence)
+- Recorded uncertainty-budget reconciliation as `SPRINTS.md` B-005
 
 ### 2026-08-02 (DO-101A promotion)
 - Promoted DO-101A to Current after DO-100 closure
