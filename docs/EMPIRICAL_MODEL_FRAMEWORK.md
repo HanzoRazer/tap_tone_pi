@@ -65,7 +65,7 @@ uncertainty_record_id
 uncertainty_summary
 ```
 
-Reconciliation of the two budgets is a separate follow-up.
+Reconciliation of the two budgets is deferred as `SPRINTS.md` **B-005**.
 
 ---
 
