@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/ttp_preliminary_repeatability_study_v1.schema.json",
+  "title": "TTPPreliminaryRepeatabilityStudy",
+  "description": "One bounded preliminary repeatability study: a single instrument, a single measurement point, repeated captures, and the descriptive spread of the valid ones. Reports repeatability only. Agreement with a reference method is not established here and cannot be inferred from these numbers.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "study_id",
+    "generated_at",
+    "evidence_origin",
+    "experiment_definition",
+    "runs",
+    "metrics",
+    "valid_run_count",
+    "rejected_run_count",
+    "rejection_counts",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "ttp_preliminary_repeatability_study_v1"
+    },
+    "study_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "evidence_origin": {
+      "type": "string",
+      "enum": ["HARDWARE", "FIXTURE", "SYNTHETIC"],
+      "description": "Only HARDWARE may be described as hardware evidence. FIXTURE and SYNTHETIC prove the contract and analysis path, not instrument behavior."
+    },
+    "experiment_definition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "experiment_id",
+        "instrument_id",
+        "measurement_point_id",
+        "operator_id",
+        "planned_repeat_count",
+        "created_at",
+        "analysis_profile",
+        "excitation",
+        "environmental_context"
+      ],
+      "properties": {
+        "experiment_id": { "type": "string", "minLength": 1 },
+        "instrument_id": { "type": "string", "minLength": 1 },
+        "measurement_point_id": { "type": "string", "minLength": 1 },
+        "operator_id": { "type": "string", "minLength": 1 },
+        "planned_repeat_count": { "type": "integer", "minimum": 2 },
+        "created_at": { "type": "string", "format": "date-time" },
+        "analysis_profile": { "type": "string", "minLength": 1 },
+        "sensor_position": { "type": ["string", "null"], "minLength": 1 },
+        "support_condition": { "type": ["string", "null"], "minLength": 1 },
+        "excitation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["excitation_method"],
+          "description": "The mechanical excitation arrangement. manual_tap is one permitted method, not the canonical one; the field is open so a future excitation architecture is recordable without a schema change.",
+          "properties": {
+            "excitation_method": { "type": "string", "minLength": 1 },
+            "excitation_device_id": { "type": ["string", "null"], "minLength": 1 },
+            "excitation_point": { "type": ["string", "null"], "minLength": 1 },
+            "contact_condition": { "type": ["string", "null"], "minLength": 1 },
+            "fixture_id": { "type": ["string", "null"], "minLength": 1 },
+            "excitation_contract_id": {
+              "type": ["string", "null"],
+              "minLength": 1,
+              "description": "Links to an ExcitationContractV1 when a driven source is used"
+            }
+          }
+        },
+        "environmental_context": { "$ref": "#/$defs/environment" }
+      }
+    },
+    "runs": {
+      "type": "array",
+      "description": "Every capture attempt, valid and rejected. Rejected runs are accounted for here and excluded from the metrics.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "run_id",
+          "experiment_id",
+          "captured_at",
+          "evidence_origin",
+          "valid",
+          "source_artifact_ids",
+          "observed_features",
+          "conditions"
+        ],
+        "properties": {
+          "run_id": { "type": "string", "minLength": 1 },
+          "experiment_id": { "type": "string", "minLength": 1 },
+          "captured_at": { "type": "string", "format": "date-time" },
+          "evidence_origin": {
+            "type": "string",
+            "enum": ["HARDWARE", "FIXTURE", "SYNTHETIC"]
+          },
+          "valid": { "type": "boolean" },
+          "source_artifact_ids": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "measurement_result_id": { "type": ["string", "null"], "minLength": 1 },
+          "rejection_reason": {
+            "type": ["string", "null"],
+            "enum": [
+              "CLIPPING",
+              "INSUFFICIENT_SIGNAL",
+              "ANALYSIS_FAILURE",
+              "MISSING_ARTIFACT",
+              "INVALID_METADATA",
+              "QUALITY_GATE_REJECTED",
+              null
+            ]
+          },
+          "observed_features": {
+            "type": "array",
+            "description": "Spectral feature candidates and derived quantities. Not identified structural modes.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["quantity", "unit", "value"],
+              "properties": {
+                "quantity": { "type": "string", "minLength": 1 },
+                "unit": { "type": "string", "minLength": 1 },
+                "value": { "type": "number" }
+              }
+            }
+          },
+          "conditions": { "$ref": "#/$defs/environment" }
+        }
+      }
+    },
+    "metrics": {
+      "type": "array",
+      "description": "Descriptive spread of each summarized quantity across the valid runs. No acceptance flag, threshold, or verdict field exists here by design.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "metric_id",
+          "quantity",
+          "unit",
+          "sample_count",
+          "mean",
+          "median",
+          "standard_deviation",
+          "coefficient_of_variation_pct",
+          "minimum",
+          "maximum",
+          "range_value",
+          "median_absolute_deviation",
+          "source_run_ids"
+        ],
+        "properties": {
+          "metric_id": { "type": "string", "minLength": 1 },
+          "quantity": { "type": "string", "minLength": 1 },
+          "unit": { "type": "string", "minLength": 1 },
+          "sample_count": { "type": "integer", "minimum": 2 },
+          "mean": { "type": "number" },
+          "median": { "type": "number" },
+          "standard_deviation": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Sample standard deviation, Bessel-corrected (n-1)"
+          },
+          "coefficient_of_variation_pct": { "type": "number", "minimum": 0 },
+          "minimum": { "type": "number" },
+          "maximum": { "type": "number" },
+          "range_value": { "type": "number", "minimum": 0 },
+          "median_absolute_deviation": { "type": "number", "minimum": 0 },
+          "source_run_ids": {
+            "type": "array",
+            "minItems": 2,
+            "items": { "type": "string", "minLength": 1 },
+            "description": "Every valid run contributing to this statistic, so the number is traceable to its source evidence"
+          }
+        }
+      }
+    },
+    "valid_run_count": { "type": "integer", "minimum": 0 },
+    "rejected_run_count": { "type": "integer", "minimum": 0 },
+    "rejection_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "CLIPPING",
+        "INSUFFICIENT_SIGNAL",
+        "ANALYSIS_FAILURE",
+        "MISSING_ARTIFACT",
+        "INVALID_METADATA",
+        "QUALITY_GATE_REJECTED"
+      ],
+      "properties": {
+        "CLIPPING": { "type": "integer", "minimum": 0 },
+        "INSUFFICIENT_SIGNAL": { "type": "integer", "minimum": 0 },
+        "ANALYSIS_FAILURE": { "type": "integer", "minimum": 0 },
+        "MISSING_ARTIFACT": { "type": "integer", "minimum": 0 },
+        "INVALID_METADATA": { "type": "integer", "minimum": 0 },
+        "QUALITY_GATE_REJECTED": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "What this study does not establish. Required whenever metrics are reported."
+    },
+    "referenced_repeatability_evidence_ids": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Cross-reference to any DO-085 repeatability_evidence_v1 record covering the same runs. Informational: this study does not inherit that record's acceptance gate and validates without it."
+    }
+  },
+  "$defs": {
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Recorded conditions. null means unknown and stays unknown; no temperature or humidity normalization is applied anywhere.",
+      "properties": {
+        "temp_c": { "type": ["number", "null"] },
+        "rh_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "specimen_moisture_pct": { "type": ["number", "null"], "minimum": 0 },
+        "ambient_noise_note": { "type": ["string", "null"], "minLength": 1 }
+      }
+    }
+  }
+}
