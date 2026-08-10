@@ -135,6 +135,59 @@ docstring, **not** here.
   both with explicit roles), plus migration notes so empirical contracts can
   reference a stable budget identity without a third implementation.
 
+### B-006 — Preliminary hardware campaign (deferred execution gate)
+- **Status:** open · **Priority:** P1 (blocked on hardware) · **Area:**
+  `tap_tone_pi/grant_readiness`, measurement
+- **Origin:** DO-102 Stage 9, deferred by ruling rather than by oversight.
+- **Context:** DO-102 built the contracts, the audit, the analysis path, and the
+  reporting, and proved all of it against deterministic non-hardware fixtures.
+  No hardware campaign was executed, so every hardware-dependent capability is
+  recorded `NOT_VERIFIED_ON_HARDWARE` and every study the repository can
+  currently produce is labelled `FIXTURE` or `SYNTHETIC`.
+- **Trigger:** the Pi, microphone, and contact-drive setup are physically
+  available together.
+- **Acceptance:** the bounded experiment in
+  `docs/NSF_TTP_PRELIMINARY_EXPERIMENT.md` executed and witnessed; every WAV,
+  run record, failed run, and analysis result preserved; a study written with
+  `--evidence-origin HARDWARE`; and the affected capabilities moved off
+  `NOT_VERIFIED_ON_HARDWARE`. Synthetic or fixture data may not be substituted.
+
+### B-007 — Reconcile the duplicated Chladni implementation
+- **Status:** open · **Priority:** P2 · **Area:** `tap_tone_pi/chladni`,
+  `modes/chladni`
+- **Origin:** DO-102 capability audit, which recorded
+  `chladni_pattern_indexing` PARTIAL for this reason.
+- **Context:** `CLAUDE.md` and the capability inventory name
+  `tap_tone_pi.chladni` as canonical, but `tests/test_chladni_policy.py` and
+  `tests/test_chladni_pipeline_integration.py` exercise the legacy
+  `modes/chladni` copy. Two implementations exist and the tested one is not the
+  one documented as canonical. The same split affects WAV reading, where the
+  reader under test is `modes/_shared/wav_io.py`.
+- **Trigger:** any substantive change to Chladni indexing, or a decision to
+  retire `modes/`.
+- **Acceptance:** one canonical implementation, tests pointing at it, and the
+  capability status revisited.
+
+### B-008 — Dedicated coverage for damping/Q and multi-tap statistics
+- **Status:** open · **Priority:** P2 · **Area:** `tap_tone_pi/damping`,
+  `tap_tone_pi/multitap`
+- **Origin:** DO-102 capability audit (`damping_q_estimation` EXPERIMENTAL,
+  `multitap_statistics` PARTIAL).
+- **Context:** both are covered only indirectly, through
+  `tests/test_production_physics.py`. Neither has a dedicated test module, and
+  no workflow drives repeated taps end to end. Damping is one of the quantities
+  a luthier would most want, and its current status does not support reporting
+  it as a measurement (risk R7).
+- **Trigger:** either capability entering an NSF claim, or the hardware campaign
+  producing repeated-tap data.
+- **Acceptance:** dedicated test modules, and the statuses revisited against the
+  new evidence.
+
+**Not pre-authorized.** Formal Gage R&R, environmental characterization, a
+reference-laboratory campaign, and standardized excitation hardware are all
+named in DO-102 as out of scope. They become backlog items only if measured
+evidence calls for them — not because a grant narrative would like to cite them.
+
 ---
 
 ## Not backlog — recorded here only so they aren't mistaken for open items

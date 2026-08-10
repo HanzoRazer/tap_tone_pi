@@ -103,10 +103,38 @@ class TestShippedInventory:
         for limitation in INVENTORY_LIMITATIONS:
             assert limitation.strip()
 
-    def test_limitations_separate_implementation_from_accuracy(self):
+    def test_limitations_separate_implementation_from_hardware_and_accuracy(self):
         text = " ".join(INVENTORY_LIMITATIONS).lower()
-        assert "not a statement about measurement accuracy" in text
+        # The ratified framing: IMPLEMENTED is a statement about the repository,
+        # not about hardware, accuracy, or external validation.
+        assert (
+            "does not imply intended-hardware verification, calibrated "
+            "accuracy, or external validation" in text
+        )
+        assert (
+            "software implementation status and hardware verification are "
+            "tracked independently" in text
+        )
         assert "no traceability is claimed" in text
+
+    def test_ratified_status_counts(self):
+        counts = build().status_counts
+        assert counts == {
+            "IMPLEMENTED": 19,
+            "EXPERIMENTAL": 2,
+            "PARTIAL": 4,
+            "PLANNED": 0,
+        }
+
+    def test_acquisition_and_excitation_are_not_claimed_implemented(self):
+        # Both would read to a reviewer as a delivered hardware capability.
+        by_id = {c.capability_id: c for c in TTP_CAPABILITY_INVENTORY}
+        assert by_id["audio_capture"].status is CapabilityStatus.PARTIAL
+        assert by_id["controlled_excitation"].status is CapabilityStatus.PARTIAL
+
+    def test_desktop_analyzer_notes_software_only(self):
+        by_id = {c.capability_id: c for c in TTP_CAPABILITY_INVENTORY}
+        assert "Software UI only" in by_id["desktop_analyzer"].notes
 
 
 # ---------------------------------------------------------------------------

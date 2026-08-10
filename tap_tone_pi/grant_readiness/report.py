@@ -152,11 +152,18 @@ def render_audit_report(audit: GrantReadinessAuditV1) -> str:
         if c.hardware_verified is HardwareVerification.NOT_VERIFIED_ON_HARDWARE
     ]
     lines.append(
-        f"{len(unwitnessed)} capability(ies) are recorded "
-        "NOT_VERIFIED_ON_HARDWARE: code exists, but execution on the intended "
-        "Raspberry Pi and microphone configuration has not been witnessed. The "
-        "preliminary hardware campaign is a deferred execution gate that has "
-        "not run."
+        f"**Hardware verification status:** None of the {len(audit.capabilities)} "
+        "audited capabilities has been witnessed end-to-end on the intended TTP "
+        "hardware configuration during DO-102. Software implementation status "
+        "and hardware verification are tracked independently."
+    )
+    lines.append("")
+    lines.append(
+        f"{len(unwitnessed)} capability(ies) carry NOT_VERIFIED_ON_HARDWARE: "
+        "code exists and a hardware dependency exists, but execution on the "
+        "intended Raspberry Pi and microphone configuration has not been "
+        "witnessed. The preliminary hardware campaign is a deferred execution "
+        "gate that has not run."
     )
     lines.append("")
     for capability in unwitnessed:

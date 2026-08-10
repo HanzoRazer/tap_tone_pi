@@ -1,7 +1,14 @@
 # Active Dev Order
 
-**Current:** _(none — awaiting DO-101B promotion)_
+**Current:** DO-102 — NSF TTP Grant-Readiness Evidence Foundation (IN PROGRESS)
+**Queued:** DO-101B — Empirical Registry and Inspection Surface (NOT STARTED)
 **Previous:** DO-101A — Empirical Model Framework Foundation (COMPLETE)
+
+DO-101B was the anticipated next order and has not started. It is **queued, not
+displaced or cancelled**, and resumes after DO-102 unless separately
+reprioritized. DO-102 takes Current because NSF readiness is time-sensitive on
+the August path and DO-102 is authorized and actively in implementation; the
+ledger records what is happening rather than what was anticipated.
 
 > **DO-101A — Empirical Model Framework Foundation (COMPLETE)**
 >
@@ -31,6 +38,159 @@
 > DO-101A **COMPLETE**. Full DO-101 is **not** complete until DO-101B also
 > lands. DO-101B is **not** promoted in this closure — promotion belongs to
 > DO-101B's first docs/status commit.
+
+> **DO-102 — NSF TTP Grant-Readiness Evidence Foundation (IN PROGRESS)**
+>
+> **Implementation branch:** `feat/do-102-nsf-ttp-grant-readiness`, rebased onto
+> `main` at `9d58dd1` (base SHA) after DO-101A (PR #19/#20) and BR-045 (PR #21)
+> landed. **Predecessor:** DO-101A (COMPLETE). **Queued behind this order:**
+> DO-101B.
+>
+> The series was originally cut from `e2247a9` plus a local DO-100 closure
+> commit. That closure was redundant — DO-100 had already been closed upstream
+> by **PR #18** — so it was dropped in the rebase and PR #18 is authoritative.
+> This branch carries eight commits and no lifecycle work but its own.
+>
+> **Objective:** convert the repository into a defensible evidence base for one
+> focused R&D question — whether an affordable, portable measurement system can
+> produce repeatable, uncertainty-qualified, reference-valid structural-acoustic
+> measurements under realistic shop conditions. Grant-readiness *evidence*, not
+> grant prose and not a feature sprint. **NSF submission is not part of this
+> order.**
+>
+> ### Revised hardware clause
+>
+> DO-102 establishes the contracts, audit tooling, repeatability-analysis path,
+> and grant-readiness reporting needed for the preliminary experiment. Because
+> no hardware campaign is executed in this order, the repository must record the
+> relevant capability as `NOT_VERIFIED_ON_HARDWARE`, and all tests using fixture
+> or synthetic data must identify that data as non-hardware evidence. The
+> physical repeatability campaign remains a separately witnessed execution
+> stage.
+>
+> ### Corrected acceptance criteria
+>
+> Acceptance Criterion 5 of the original handoff — "At least one real
+> experimental dataset can be represented by the new contract" — is **replaced**
+> by:
+>
+> > The contract and analysis path are proven against deterministic
+> > non-hardware fixtures, and the system can ingest a real hardware dataset
+> > without schema or architecture changes once the campaign is executed.
+>
+> And a criterion is **added**:
+>
+> > No generated report may represent fixture or synthetic data as hardware
+> > evidence.
+>
+> Stage 9 moves from "required in this sprint" to a **deferred execution gate —
+> Preliminary Hardware Campaign**: it begins only when the Pi, microphone, and
+> contact-drive setup are physically available, produces the first witnessed
+> hardware dataset, and updates the grant-readiness evidence from
+> `NOT_VERIFIED_ON_HARDWARE` to observed status.
+>
+> ### Delivered
+>
+> `tap_tone_pi/grant_readiness/` — contracts, `NSF-*` error vocabulary, pure
+> validation, descriptive statistics, the declared capability inventory, the
+> repository audit, the Phase 1 repeatability analysis path, deterministic
+> reporting, the risk register, and the Project Pitch source builder.
+> `contracts/nsf_grant_readiness_audit_v1.schema.json` and
+> `contracts/ttp_preliminary_repeatability_study_v1.schema.json`, registered
+> under a new `grant-readiness-team` owner without reorganizing the registry.
+> Three scripts under `scripts/`; no `ttp nsf` CLI namespace. Five documents
+> under `docs/NSF_TTP_*.md`. Generated artifacts go to `out/nsf/`, which is
+> already gitignored.
+>
+> **Structural guarantees, not documented intentions:**
+> - `RepeatabilityMetricV1` has no acceptance flag, threshold, or verdict field.
+>   The DO-085 gate stays in `core.repeatability`; a study cross-references that
+>   evidence by identifier and never inherits it.
+> - Every run and study carries an `EvidenceOrigin` with no default. Only
+>   `HARDWARE` answers `is_hardware_evidence`, both report builders refuse to
+>   render a mislabelled study (`NSF-305`), and a result marked `demo: true`
+>   cannot be recorded as `HARDWARE`.
+> - `ExcitationContextV1` records the mechanical arrangement generically.
+>   `manual_tap` is one value among `instrumented_hammer`, `shaker_stinger`, and
+>   `acoustic_drive`; the default is `unspecified`; an unlisted method is
+>   recorded verbatim. Compatible with the grounded shaker/stinger architecture
+>   without implementing it.
+> - Statistics delegate mean, sample SD (Bessel, n−1), CV, and range to
+>   `core.statistics.compute_repeatability`. The zero-mean CV sentinel of `0.0`
+>   is refused (`NSF-304`) rather than published.
+> - Rejected runs are counted, never summarized. Rejection reasons come from the
+>   quality gate's own rule identifiers, not from inference.
+> - `tests/test_nsf_capability_baseline.py` was written before the package
+>   existed and the production inventory must match it entry for entry, so the
+>   audit cannot be rewritten to agree with itself.
+> - The capability denominator stays at **25**. The empirical model framework
+>   (DO-101A) and the tonewood radiation-ratio contract (BR-045) landed after
+>   the inventory was bounded. Both are recorded in the technical baseline under
+>   *Supporting Scientific Infrastructure Landed After Initial Audit* and added
+>   to the regression scope, but neither is counted as an instrument capability:
+>   counting shared contract infrastructure would drift the baseline from "what
+>   can the analyzer presently do" toward "what infrastructure exists anywhere in
+>   the repository", which is the weaker claim.
+> - The deferred hardware campaign is tracked as `SPRINTS.md` **B-006**; the
+>   Chladni duplication as **B-007**; damping and multi-tap coverage as **B-008**.
+>
+> ### Ratified capability inventory
+>
+> 25 instrument-level capabilities: **19 IMPLEMENTED, 2 EXPERIMENTAL, 4 PARTIAL,
+> 0 PLANNED, 0 hardware-verified.**
+>
+> `audio_capture` and `controlled_excitation` are recorded PARTIAL by human
+> ratification. The audio path is exercised only with simulated input, and
+> `ExcitationContractV1` describes driven electrical excitation through an
+> output device — the speaker-air approach since superseded — while the grounded
+> shaker and stinger contact drive is not built. `desktop_analyzer` stays
+> IMPLEMENTED with an explicit *software UI only; intended hardware workflow not
+> witnessed* note.
+>
+> **Hardware verification status:** none of the 25 audited capabilities has been
+> witnessed end-to-end on the intended TTP hardware configuration during DO-102.
+> Software implementation status and hardware verification are tracked
+> independently.
+>
+> ### Deviations from the handoff, all deliberate
+>
+> `RejectionReason` adds `QUALITY_GATE_REJECTED`, because the Phase 1 contract
+> emits a bare `fail` verdict and inferring clipping or a low signal from it
+> would invent a cause the evidence does not support. The metric field the
+> handoff calls `range` is `range_value`, matching
+> `core.statistics.RepeatabilityMetrics` rather than shadowing a builtin. Six
+> error codes the handoff requires rejections for but names no code for are
+> added: `NSF-104` (duplicate capability ID), `NSF-105` (unresolved evidence
+> path), `NSF-106` (invalid hardware verification), `NSF-206` (experiment ID
+> mismatch), `NSF-207` (non-UTC timestamp), `NSF-305` (evidence origin
+> misrepresented). `EvidenceOrigin`, `ExcitationContextV1`, and `inventory.py`
+> are additions the handoff does not name; each exists to make a DO-102 rule
+> structural rather than documented.
+>
+> ### Baseline test failures
+>
+> Two reproduce against `main` at `9d58dd1` and are unrelated to this work:
+> `test_validate_viewer_pack_v1_real_sessions` on
+> `runs_phase2/session_20260101T234237Z` and `…235209Z`, both failing on
+> `manifest.contents missing required keys: ['bending']`. Both live in
+> `scripts/phase2/tests/`, outside `tests/`, so `pytest tests/` does not collect
+> them.
+>
+> The third entry the ledger carried, `test_advisory_in_calibration_is_error`,
+> **passes** — re-verified against the rebased tree. It is stale and is not
+> carried forward; the "Pre-existing test failures (baseline)" section below is
+> corrected accordingly. PR #18 closed DO-100 but did not touch that list, so
+> this correction is DO-102's and not a duplicate of upstream work.
+>
+> ### Not done, deliberately
+>
+> No hardware campaign. No capture mode on any DO-102 script. No Phase 2
+> coherence in the first study — that would create a second measurement
+> architecture before the first is characterized. No Gage R&R, no environmental
+> correction, no reference-laboratory contact, no customer discovery, no budget,
+> no submission.
+>
+> PR and merge SHA to be recorded on completion.
 
 > **DO-100 — Guided Digital Laboratory Foundation (COMPLETE)**
 >
@@ -202,12 +362,19 @@ DO-001 through DO-008, and DO-084 through DO-089 completed. The tap_tone_pi moda
 
 ## Pre-existing test failures (baseline)
 
-3 failures unrelated to this dev order:
+2 failures, both in `scripts/phase2/tests/`, verified reproducing against
+`main` at `9d58dd1`:
 - `test_validate_viewer_pack_v1_real_sessions[runs_phase2/session_20260101T234237Z]` — missing 'bending' key
 - `test_validate_viewer_pack_v1_real_sessions[runs_phase2/session_20260101T235209Z]` — missing 'bending' key
-- `test_advisory_in_calibration_is_error` — advisory boundary test
 
-These are documented baseline failures, not introduced by this sprint.
+These are documented baseline failures, not introduced by any current sprint.
+They live outside `tests/`, so `pytest tests/` does not collect them; reproduce
+with `pytest scripts/phase2/tests/`.
+
+**Corrected at DO-102:** a third entry, `test_advisory_in_calibration_is_error`,
+was listed here as a baseline failure. It passes, re-verified against the
+rebased tree. The entry is stale and has been removed rather than carried
+forward into the NSF documentation.
 
 ## Daily log
 

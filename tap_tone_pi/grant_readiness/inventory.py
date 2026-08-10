@@ -40,7 +40,7 @@ TTP_CAPABILITY_INVENTORY: tuple[CapabilityEvidenceV1, ...] = (
     CapabilityEvidenceV1(
         capability_id="audio_capture",
         name="Audio capture (single and multi-channel)",
-        status=_IMPLEMENTED,
+        status=_PARTIAL,
         implementation_paths=(
             "tap_tone_pi/capture/__init__.py",
             "tap_tone_pi/core/auto_trigger.py",
@@ -48,10 +48,12 @@ TTP_CAPABILITY_INVENTORY: tuple[CapabilityEvidenceV1, ...] = (
         test_paths=("tests/test_cli_record_qc.py", "tests/test_auto_trigger.py"),
         hardware_verified=_UNWITNESSED,
         notes=(
-            "Device enumeration and streaming go through sounddevice. Tests "
-            "exercise the surrounding logic with simulated input; no witnessed "
-            "capture on the intended Pi configuration is recorded in this "
-            "repository."
+            "Software path implemented and exercised with simulated input; the "
+            "intended Pi and microphone acquisition chain has not been "
+            "witnessed. Device enumeration and streaming go through "
+            "sounddevice. Recorded PARTIAL rather than IMPLEMENTED because "
+            "IMPLEMENTED would read as 'the system can currently capture real "
+            "measurements', which this repository cannot show."
         ),
     ),
     CapabilityEvidenceV1(
@@ -153,7 +155,7 @@ TTP_CAPABILITY_INVENTORY: tuple[CapabilityEvidenceV1, ...] = (
     CapabilityEvidenceV1(
         capability_id="controlled_excitation",
         name="Controlled excitation contracts and signal generation",
-        status=_IMPLEMENTED,
+        status=_PARTIAL,
         implementation_paths=(
             "tap_tone_pi/excitation/contracts.py",
             "tap_tone_pi/excitation/stepped_sweep.py",
@@ -168,10 +170,13 @@ TTP_CAPABILITY_INVENTORY: tuple[CapabilityEvidenceV1, ...] = (
         hardware_verified=_UNWITNESSED,
         notes=(
             "ExcitationContractV1 describes driven electrical excitation (tone, "
-            "stepped, sweep). It does not describe the mechanical arrangement — "
-            "contact condition, fixture, drive point — which DO-102 records "
-            "separately and links back to this contract when a driven source is "
-            "used."
+            "stepped, sweep) through an output device — the speaker-air "
+            "approach the excitation architecture has since moved away from. "
+            "The grounded shaker and stinger contact drive is not implemented; "
+            "DO-102 can record that arrangement but recording a method is not "
+            "building it. Recorded PARTIAL so a software abstraction is not "
+            "read as the proposed excitation architecture having been "
+            "delivered."
         ),
     ),
     CapabilityEvidenceV1(
@@ -191,9 +196,11 @@ TTP_CAPABILITY_INVENTORY: tuple[CapabilityEvidenceV1, ...] = (
         ),
         hardware_verified=_UNWITNESSED,
         notes=(
-            "Establishes internal signal-chain consistency. It does not "
-            "establish traceability to a calibrated acoustic reference, and no "
-            "such traceability is claimed anywhere in this repository."
+            "Limited to internal signal-chain consistency: loopback, reference "
+            "tone, and frequency-response compensation. This is not traceable "
+            "calibration and is not evidence of external metrological "
+            "validity. No traceability to a calibrated acoustic reference is "
+            "claimed anywhere in this repository."
         ),
     ),
     CapabilityEvidenceV1(
@@ -232,9 +239,9 @@ TTP_CAPABILITY_INVENTORY: tuple[CapabilityEvidenceV1, ...] = (
         ),
         hardware_verified=_NO_HARDWARE,
         notes=(
-            "GUM-conformant machinery exists and is exercised. A populated, "
-            "reviewed uncertainty budget for the acoustic measurement chain "
-            "does not exist; that gap is a DO-102 technical risk."
+            "GUM-conformant uncertainty machinery exists and is exercised. A "
+            "populated and reviewed acoustic-chain uncertainty budget does not "
+            "yet exist; that gap is a DO-102 technical risk."
         ),
     ),
     CapabilityEvidenceV1(
@@ -328,8 +335,8 @@ TTP_CAPABILITY_INVENTORY: tuple[CapabilityEvidenceV1, ...] = (
         test_paths=("tests/test_rayleigh_ritz.py",),
         hardware_verified=_NO_HARDWARE,
         notes=(
-            "Solver and mode-shape evaluation are covered. Agreement between "
-            "predicted and measured modes has not been established on hardware."
+            "Solver and mode-shape evaluation exist and are covered by tests. "
+            "Predicted-versus-measured agreement remains unestablished."
         ),
     ),
     CapabilityEvidenceV1(
@@ -430,7 +437,11 @@ TTP_CAPABILITY_INVENTORY: tuple[CapabilityEvidenceV1, ...] = (
         implementation_paths=("analyzer/main_window.py",),
         test_paths=("tests/test_gui_widgets.py",),
         hardware_verified=_NO_HARDWARE,
-        notes="Loads measurement outputs for visualization. Unchanged by DO-102.",
+        notes=(
+            "Software UI only; the intended hardware workflow has not been "
+            "witnessed. Loads measurement outputs for visualization. Unchanged "
+            "by DO-102."
+        ),
     ),
     CapabilityEvidenceV1(
         capability_id="http_api_server",
@@ -456,12 +467,14 @@ TTP_CAPABILITY_INVENTORY: tuple[CapabilityEvidenceV1, ...] = (
 # What this audit does not establish. These travel with every generated audit so
 # a reader cannot take the capability list for a performance claim.
 INVENTORY_LIMITATIONS: tuple[str, ...] = (
-    "No capability has been witnessed executing on the intended Raspberry Pi "
-    "and microphone configuration. Every hardware-dependent capability is "
-    "recorded NOT_VERIFIED_ON_HARDWARE.",
-    "An IMPLEMENTED status means code exists and is exercised by tests. It is "
-    "not a statement about measurement accuracy, precision, or agreement with "
-    "any reference method.",
+    "None of the audited capabilities has been witnessed end-to-end on the "
+    "intended TTP hardware configuration during DO-102. Software "
+    "implementation status and hardware verification are tracked "
+    "independently.",
+    "IMPLEMENTED means the capability exists in the repository and is "
+    "exercised by automated tests. It does not imply intended-hardware "
+    "verification, calibrated accuracy, or external validation unless "
+    "separately stated.",
     "No comparison against a calibrated reference instrument or an accredited "
     "laboratory has been performed, so no traceability is claimed.",
     "Extracted spectral peaks are feature candidates. No evidence in this "
