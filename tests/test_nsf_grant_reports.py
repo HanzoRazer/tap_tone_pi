@@ -306,6 +306,37 @@ class TestNonHardwareLabelling:
         with pytest.raises(RepeatabilityStatisticsError):
             build_study_report(mislabelled)
 
+    def _understated_study(self) -> RepeatabilityStudyV1:
+        # The reverse mismatch: a non-hardware label over a hardware run. The
+        # validator rejects this (both directions); the renderer must enforce
+        # the identical invariant, not just the overstated direction.
+        hardware_run = PreliminaryExperimentRunV1(
+            run_id="run-hw",
+            experiment_id="exp-001",
+            captured_at=UTC_NOW,
+            evidence_origin=EvidenceOrigin.HARDWARE,
+            valid=True,
+            rejection_reason=None,
+            source_artifact_ids=("analysis-run-hw.json",),
+            observed_features=(ObservedFeatureV1("dominant_frequency", "Hz", 244.0),),
+        )
+        return RepeatabilityStudyV1(
+            study_id="s",
+            experiment_definition=make_definition(),
+            generated_at=UTC_NOW,
+            evidence_origin=EvidenceOrigin.FIXTURE,
+            runs=(hardware_run,),
+        )
+
+    def test_rendering_an_understated_study_is_refused(self):
+        with pytest.raises(RepeatabilityStatisticsError) as exc:
+            render_study_report(self._understated_study())
+        assert exc.value.code is GrantReadinessErrorCode.EVIDENCE_ORIGIN_MISREPRESENTED
+
+    def test_json_report_of_an_understated_study_is_refused(self):
+        with pytest.raises(RepeatabilityStatisticsError):
+            build_study_report(self._understated_study())
+
 
 class TestEmptyStudyReport:
     def test_no_metrics_is_reported_as_a_result(self):

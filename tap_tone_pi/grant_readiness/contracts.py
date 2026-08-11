@@ -1108,7 +1108,7 @@ class RepeatabilityStudyV1:
         for name, raw in (("runs", raw_runs), ("metrics", raw_metrics)):
             if isinstance(raw, (str, bytes)) or not isinstance(raw, Sequence):
                 raise err(code, f"{record}.{name} must be an array", {"record": record})
-        return cls(
+        study = cls(
             study_id=_require_text(
                 payload, "study_id", record=record, error=err, code=code
             ),
@@ -1139,6 +1139,26 @@ class RepeatabilityStudyV1:
                 code=code,
             ),
         )
+        # The run counts are derived from ``runs`` and emitted by ``to_dict`` for
+        # readers. They round-trip trivially, but if a persisted payload carries
+        # values that contradict its own runs the document is internally
+        # inconsistent and must not deserialize silently into an object whose
+        # counts disagree with the source it was read from.
+        for name, derived in (
+            ("valid_run_count", study.valid_run_count),
+            ("rejected_run_count", study.rejected_run_count),
+            ("rejection_counts", study.rejection_counts),
+        ):
+            if name in payload and payload[name] != derived:
+                raise err(
+                    code,
+                    (
+                        f"{record}.{name} {payload[name]!r} disagrees with the "
+                        f"runs (derived {derived!r})"
+                    ),
+                    {"record": record, "field": name},
+                )
+        return study
 
 
 # ---------------------------------------------------------------------------

@@ -8,8 +8,12 @@ The reports are constrained in what they may say. A study built from anything
 but ``HARDWARE`` data is labelled as such in its title, its summary line, and
 its first limitation, and :func:`render_study_report` raises ``NSF-305`` rather
 than emit a document that would let fixture data read as a hardware result.
-Nothing here writes the words "calibrated", "accurate to", or "validated
-against"; the vocabulary the reports do use is asserted by the test suite.
+The prose this module *generates* never writes the words "calibrated",
+"accurate to", or "validated against"; that generated vocabulary is asserted by
+the test suite. Caller-supplied free text — a study's ``limitations`` and the
+identifiers and notes carried on its records — is rendered verbatim and is not
+sanitised here; keeping such fields free of overclaim language is the
+responsibility of whatever constructs the study, not of this renderer.
 
 No market language belongs in this module.
 """
@@ -29,10 +33,12 @@ from tap_tone_pi.grant_readiness.contracts import (
     TechnicalRiskV1,
 )
 from tap_tone_pi.grant_readiness.errors import (
-    GrantReadinessErrorCode,
     RepeatabilityStatisticsError,
 )
-from tap_tone_pi.grant_readiness.validation import evidence_digest
+from tap_tone_pi.grant_readiness.validation import (
+    evidence_digest,
+    validate_study_evidence_origin,
+)
 
 # The standard-deviation convention every report states, so a reader never has
 # to guess which one produced the number.
@@ -197,20 +203,22 @@ def _metric_row(metric: RepeatabilityMetricV1) -> str:
 
 
 def _guard_origin(study: RepeatabilityStudyV1) -> None:
-    """Refuse to render a study whose label disagrees with its runs."""
-    if not study.runs:
-        return
-    origins = {run.evidence_origin for run in study.runs}
-    if study.evidence_origin is EvidenceOrigin.HARDWARE and origins != {
-        EvidenceOrigin.HARDWARE
-    }:
+    """Refuse to render a study whose label disagrees with its runs.
+
+    Delegates to :func:`validate_study_evidence_origin` so the renderer enforces
+    the *exact same* invariant as the validator — in both directions. A study
+    that overstates its origin (``HARDWARE`` label over non-hardware runs) and
+    one that understates it (a non-``HARDWARE`` label over hardware runs) are
+    both refused, so the renderer can never emit a document the validator would
+    reject.
+    """
+    findings = validate_study_evidence_origin(study)
+    if findings:
+        finding = findings[0]
         raise RepeatabilityStatisticsError(
-            GrantReadinessErrorCode.EVIDENCE_ORIGIN_MISREPRESENTED,
-            (
-                "refusing to render a report describing non-hardware runs as "
-                "hardware evidence"
-            ),
-            {"study_id": study.study_id},
+            finding.code,
+            f"refusing to render a mislabelled study: {finding.message}",
+            finding.context,
         )
 
 

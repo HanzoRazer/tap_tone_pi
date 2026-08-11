@@ -548,6 +548,29 @@ class TestStudySerialization:
         with pytest.raises(ExperimentRecordError):
             RepeatabilityStudyV1.from_dict(payload)
 
+    def test_contradictory_valid_run_count_rejected(self):
+        # The derived counts round-trip, but a persisted count that disagrees
+        # with the runs is an internally inconsistent document and must fail
+        # rather than deserialize silently into an object whose count differs.
+        payload = self._study().to_dict()
+        assert payload["valid_run_count"] == 2
+        payload["valid_run_count"] = 99
+        with pytest.raises(ExperimentRecordError):
+            RepeatabilityStudyV1.from_dict(payload)
+
+    def test_contradictory_rejection_counts_rejected(self):
+        payload = self._study().to_dict()
+        payload["rejection_counts"] = dict(payload["rejection_counts"])
+        payload["rejection_counts"]["CLIPPING"] += 5
+        with pytest.raises(ExperimentRecordError):
+            RepeatabilityStudyV1.from_dict(payload)
+
+    def test_consistent_counts_still_round_trip(self):
+        # The consistency check must not reject the canonical to_dict payload.
+        study = self._study()
+        payload = study.to_dict()
+        assert RepeatabilityStudyV1.from_dict(payload) == study
+
 
 class TestDefinitionSerialization:
     def test_round_trip_with_full_context(self):
