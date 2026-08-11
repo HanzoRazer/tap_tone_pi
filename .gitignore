@@ -37,7 +37,11 @@ env/
 captures/
 out/
 runs_phase2/
+exports/
 *.wav
+
+# AI assistant local config (machine-specific; not shared project state)
+.claude/
 
 # OS
 .DS_Store
