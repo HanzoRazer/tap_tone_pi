@@ -1,14 +1,17 @@
 # Active Dev Order
 
-**Current:** DO-102 — NSF TTP Grant-Readiness Evidence Foundation (IN PROGRESS)
+**Current:** _(none — awaiting the next authorized Dev Order)_
 **Queued:** DO-101B — Empirical Registry and Inspection Surface (NOT STARTED)
-**Previous:** DO-101A — Empirical Model Framework Foundation (COMPLETE)
+**Previous:** DO-102 — NSF TTP Grant-Readiness Evidence Foundation (COMPLETE)
+**Deferred evidence gate:** `SPRINTS.md` B-006 — witnessed hardware measurement
+campaign
 
-DO-101B was the anticipated next order and has not started. It is **queued, not
-displaced or cancelled**, and resumes after DO-102 unless separately
-reprioritized. DO-102 takes Current because NSF readiness is time-sensitive on
-the August path and DO-102 is authorized and actively in implementation; the
-ledger records what is happening rather than what was anticipated.
+Nothing is promoted by this closure. DO-101B remains **queued, not displaced or
+cancelled** — it was deferred behind DO-102 because NSF readiness was
+time-sensitive on the August path, not because it was deprioritized on the
+merits — and it has not been resumed, so promotion belongs to its own first
+docs/status commit. B-006 is a backlog gate, not a Dev Order; it becomes Current
+only if and when a hardware-campaign order is formally defined and authorized.
 
 > **DO-101A — Empirical Model Framework Foundation (COMPLETE)**
 >
@@ -39,7 +42,34 @@ ledger records what is happening rather than what was anticipated.
 > lands. DO-101B is **not** promoted in this closure — promotion belongs to
 > DO-101B's first docs/status commit.
 
-> **DO-102 — NSF TTP Grant-Readiness Evidence Foundation (IN PROGRESS)**
+> **DO-102 — NSF TTP Grant-Readiness Evidence Foundation (COMPLETE)**
+>
+> **Merged as PR #22** → `main` merge commit `3d2eb69`, carrying the eight-commit
+> series `0f29691`…`8d0036d` plus one review-fix commit `16ac80d`. Branch
+> `feat/do-102-nsf-ttp-grant-readiness`, base `9d58dd1`. DO-102 **COMPLETE**.
+>
+> **Review findings, both real and both fixed before merge** (`16ac80d`):
+> - `report._guard_origin` reimplemented the evidence-origin invariant instead of
+>   delegating to `validate_study_evidence_origin`, and the duplicate had already
+>   drifted from the original *within the same PR*: the renderer refused a
+>   HARDWARE label over non-hardware runs but let a FIXTURE label over a hardware
+>   run through, which the validator rejected. The renderer now delegates, so
+>   both directions are refused by one rule rather than two copies of it.
+> - `RepeatabilityStudyV1.from_dict` silently ignored the persisted derived
+>   counts (`valid_run_count`, `rejected_run_count`, `rejection_counts`) rather
+>   than checking them, so a payload whose counts contradicted its runs loaded
+>   without complaint. It now rejects the contradiction; canonical `to_dict`
+>   payloads still round-trip.
+> - The `report.py` docstring overclaimed. Its wording guarantee covers the
+>   module's own generated prose; caller-supplied free text — limitations,
+>   identifiers — is rendered verbatim. No prohibited-phrase filter was added,
+>   deliberately: a legitimate limitation such as "not validated against a
+>   reference" must stay expressible.
+>
+> **Verification at merge:** full suite 4517 passed / 2 failed (both documented
+> baseline, in `scripts/phase2/tests/`, reproducing on base); NSF focused suite
+> 660 passed on merged `main`; capability audit clean; advisory boundary clean
+> in `--strict`.
 >
 > **Implementation branch:** `feat/do-102-nsf-ttp-grant-readiness`, rebased onto
 > `main` at `9d58dd1` (base SHA) after DO-101A (PR #19/#20) and BR-045 (PR #21)
@@ -190,7 +220,11 @@ ledger records what is happening rather than what was anticipated.
 > correction, no reference-laboratory contact, no customer discovery, no budget,
 > no submission.
 >
-> PR and merge SHA to be recorded on completion.
+> **Next, and not part of this order:** the preliminary hardware campaign
+> (`SPRINTS.md` B-006) is the deferred execution gate that turns this evidence
+> layer into hardware evidence. Until it runs and is witnessed, every capability
+> stays `NOT_VERIFIED_ON_HARDWARE` and every study this repository can produce is
+> labelled `FIXTURE` or `SYNTHETIC`.
 
 > **DO-100 — Guided Digital Laboratory Foundation (COMPLETE)**
 >
@@ -377,6 +411,14 @@ rebased tree. The entry is stale and has been removed rather than carried
 forward into the NSF documentation.
 
 ## Daily log
+
+### 2026-08-11 (DO-102 closure)
+- Recorded PR #22 merge (`3d2eb69`) and closed DO-102 as Previous/Complete
+- Recorded the two review defects fixed in `16ac80d` before merge
+- Left Current empty; promoted nothing
+- DO-101B stays queued and unresumed; promotion belongs to its own commit
+- Preliminary hardware campaign remains deferred as `SPRINTS.md` B-006, a
+  backlog gate rather than an authorized order
 
 ### 2026-08-04 (DO-101A closure)
 - Recorded PR #19 merge (`5793309`) and closed DO-101A as Previous/Complete
