@@ -1,0 +1,287 @@
+"""Grant-readiness boundary guards (DO-102, §8).
+
+Proves by inspection of the source tree that ``tap_tone_pi.grant_readiness``
+stays an evidence-support layer: it consumes what the measurement pipeline
+produced and adds no signal processing, no capture, no advisory logic, and no
+dependency on a downstream system.
+
+These are structural tests. They read the package's own imports and call sites
+rather than trusting a docstring.
+"""
+
+from __future__ import annotations
+
+import ast
+from pathlib import Path
+
+import pytest
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+PACKAGE_DIR = REPO_ROOT / "tap_tone_pi" / "grant_readiness"
+SCRIPTS = (
+    REPO_ROOT / "scripts" / "nsf_ttp_audit.py",
+    REPO_ROOT / "scripts" / "nsf_ttp_repeatability.py",
+    REPO_ROOT / "scripts" / "nsf_ttp_build_pitch_source.py",
+)
+
+PACKAGE_FILES = sorted(PACKAGE_DIR.glob("*.py"))
+ALL_FILES = [*PACKAGE_FILES, *SCRIPTS]
+
+# inventory.py exists to *name* other parts of the repository — module paths,
+# test paths, schema filenames. Textual checks that look for those names would
+# fire on it by design, so it is excluded from them and covered instead by
+# TestInventoryIsDeclarationOnly, which is the stronger claim: it names things
+# and does nothing else.
+NAMING_ONLY = {"inventory.py"}
+CODE_FILES = [p for p in PACKAGE_FILES if p.name not in NAMING_ONLY]
+CODE_AND_SCRIPTS = [*CODE_FILES, *SCRIPTS]
+
+# Modules the grant layer may not reach for. Signal processing and capture are
+# excluded because DO-102 authorizes no new DSP; the downstream systems are
+# excluded because evidence must not depend on an interpreter of it.
+FORBIDDEN_IMPORT_PREFIXES = (
+    "numpy",
+    "scipy",
+    "sounddevice",
+    "matplotlib",
+    "PyQt6",
+    "tap_tone_pi.capture",
+    "tap_tone_pi.signal_gen",
+    "tap_tone_pi.transfer_function",
+    "tap_tone_pi.phase2",
+    "tap_tone_pi.wolf",
+    "tap_tone_pi.agent",
+    "tap_tone_pi.agentic",
+    "tap_tone_pi.server",
+    "tap_tone_pi.gui",
+    "analyzer",
+    "luthiers_toolbox",
+    "mb_sound",
+)
+
+# The only tap_tone_pi module outside the package the grant layer reads. It is
+# the DO-085 delegation and nothing else.
+PERMITTED_EXTERNAL_IMPORTS = {"tap_tone_pi.core.statistics"}
+
+
+def module_imports(path: Path) -> set[str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            names.add(node.module)
+    return names
+
+
+def source_of(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+class TestPackageIsPopulated:
+    def test_package_files_were_found(self):
+        # Guards the rest of this module against silently testing nothing.
+        assert len(PACKAGE_FILES) >= 8
+        assert all(path.exists() for path in SCRIPTS)
+
+
+@pytest.mark.parametrize("path", ALL_FILES, ids=lambda p: p.name)
+class TestForbiddenImports:
+    def test_no_forbidden_import(self, path):
+        for imported in module_imports(path):
+            for forbidden in FORBIDDEN_IMPORT_PREFIXES:
+                assert not (
+                    imported == forbidden or imported.startswith(forbidden + ".")
+                ), f"{path.name} imports {imported}"
+
+    def test_declares_instrument_class(self, path):
+        head = "\n".join(source_of(path).splitlines()[:5])
+        assert "# INSTRUMENT CLASS: MEASUREMENT" in head
+
+
+class TestNoSignalProcessing:
+    """DO-102 authorizes no new signal-processing utilities."""
+
+    @pytest.mark.parametrize("path", CODE_AND_SCRIPTS, ids=lambda p: p.name)
+    def test_no_dsp_call_sites(self, path):
+        source = source_of(path).lower()
+        for marker in (
+            "np.fft",
+            "rfft",
+            "find_peaks",
+            "welch",
+            "windows.hann",
+            "spectrogram",
+            "coherence(",
+        ):
+            assert marker not in source, f"{path.name} contains {marker}"
+
+    @pytest.mark.parametrize("path", ALL_FILES, ids=lambda p: p.name)
+    def test_no_capture_call_sites(self, path):
+        source = source_of(path).lower()
+        for marker in (
+            "inputstream",
+            "sd.rec",
+            "query_devices",
+            "read_wav",
+            "write_wav",
+        ):
+            assert marker not in source, f"{path.name} contains {marker}"
+
+
+class TestDelegationIsNarrow:
+    def test_only_do085_statistics_is_imported_from_elsewhere(self):
+        external: set[str] = set()
+        for path in PACKAGE_FILES:
+            for imported in module_imports(path):
+                if imported.startswith("tap_tone_pi.") and not imported.startswith(
+                    "tap_tone_pi.grant_readiness"
+                ):
+                    external.add(imported)
+        assert external == PERMITTED_EXTERNAL_IMPORTS
+
+    def test_statistics_module_delegates_rather_than_recomputes(self):
+        source = source_of(PACKAGE_DIR / "statistics.py")
+        assert "from tap_tone_pi.core.statistics import compute_repeatability" in source
+        assert "compute_repeatability(numbers)" in source
+
+    def test_do085_gate_is_not_imported(self):
+        # The study cross-references DO-085 evidence by identifier. It does not
+        # import the record, and so cannot inherit its acceptance gate.
+        for path in PACKAGE_FILES:
+            assert "tap_tone_pi.core.repeatability" not in module_imports(path)
+
+
+class TestNoAdvisoryLogic:
+    @pytest.mark.parametrize("path", PACKAGE_FILES, ids=lambda p: p.name)
+    def test_no_recommendation_vocabulary(self, path):
+        source = source_of(path).lower()
+        for marker in (
+            "def recommend",
+            "def advise",
+            "def suggest",
+            "recommendation",
+            "should_adjust",
+            "tone_quality",
+            "grade(",
+        ):
+            assert marker not in source, f"{path.name} contains {marker}"
+
+    def test_no_acceptance_threshold_is_defined(self):
+        # DO-102 §4.11 sets no target repeatability. A threshold constant in
+        # this package would be one, whatever it was called.
+        for path in PACKAGE_FILES:
+            source = source_of(path)
+            for marker in (
+                "ACCEPTANCE_THRESHOLD",
+                "MAX_CV_PCT",
+                "TARGET_CV",
+                "PASS_THRESHOLD",
+            ):
+                assert marker not in source, f"{path.name} defines {marker}"
+
+
+class TestDoesNotAlterMeasurement:
+    def test_package_writes_nothing_under_measurement_directories(self):
+        for path in PACKAGE_FILES:
+            source = source_of(path)
+            # The package builds records and strings; only the scripts write
+            # files, and only under an explicit output directory.
+            assert "write_text(" not in source
+            assert "open(" not in source
+
+    def test_scripts_write_only_under_an_output_directory(self):
+        for path in SCRIPTS:
+            source = source_of(path)
+            if "write_text(" in source:
+                assert "output_dir" in source
+
+    def test_no_code_module_names_a_measurement_output_directory(self):
+        for path in CODE_FILES:
+            assert "runs_phase2" not in source_of(path)
+
+
+class TestInventoryIsDeclarationOnly:
+    """inventory.py may name anything; it may not *do* anything."""
+
+    @pytest.fixture(scope="class")
+    def tree(self) -> ast.Module:
+        path = PACKAGE_DIR / "inventory.py"
+        return ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+
+    def test_defines_no_functions_or_classes(self, tree):
+        for node in tree.body:
+            assert not isinstance(
+                node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+            )
+
+    def test_imports_only_the_contract_vocabulary(self, tree):
+        assert module_imports(PACKAGE_DIR / "inventory.py") == {
+            "__future__",
+            "tap_tone_pi.grant_readiness.contracts",
+        }
+
+    def test_the_module_body_is_only_declarations(self, tree):
+        # Docstring, imports, and assignments — nothing that executes. This is
+        # the claim the earlier substring check was reaching for; asked of the
+        # AST it cannot be tripped by the word "imports" inside a prose note.
+        for node in tree.body:
+            assert isinstance(
+                node,
+                (ast.Expr, ast.Import, ast.ImportFrom, ast.Assign, ast.AnnAssign),
+            ), type(node).__name__
+            if isinstance(node, ast.Expr):
+                assert isinstance(node.value, ast.Constant)
+
+    def test_it_names_other_subsystems_as_evidence_strings(self, tree):
+        # The names it carries are data. A path like the viewer-pack schema
+        # appears as a string constant, never as an import or a call.
+        constants = {
+            node.value
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Constant) and isinstance(node.value, str)
+        }
+        assert "contracts/viewer_pack_v1.schema.json" in constants
+
+        # The only calls in the module are constructions of the evidence
+        # record itself. Nothing is invoked, resolved, or read.
+        called = {
+            node.func.id
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+        }
+        assert called == {"CapabilityEvidenceV1"}
+
+
+class TestContractsAreAdditive:
+    def test_existing_schemas_are_untouched_by_this_package(self):
+        for path in CODE_FILES:
+            source = source_of(path)
+            for existing in (
+                "phase2_ods_snapshot",
+                "viewer_pack_v1",
+                "guided_lab_session_v1",
+                "measurement_workflow_contract_v1",
+            ):
+                assert existing not in source
+
+    def test_only_the_two_new_schemas_are_referenced(self):
+        source = source_of(PACKAGE_DIR / "contracts.py")
+        assert 'AUDIT_SCHEMA_VERSION = "nsf_grant_readiness_audit_v1"' in source
+        assert (
+            'STUDY_SCHEMA_VERSION = "ttp_preliminary_repeatability_study_v1"' in source
+        )
+
+
+class TestNoCliNamespace:
+    def test_unified_cli_is_not_modified(self):
+        source = (REPO_ROOT / "tap_tone_pi" / "cli" / "main.py").read_text(
+            encoding="utf-8"
+        )
+        assert "grant_readiness" not in source
+        assert "nsf" not in source.lower().replace("nsf_", "")
+
+    def test_no_entry_point_was_added(self):
+        source = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        assert "nsf" not in source.lower()

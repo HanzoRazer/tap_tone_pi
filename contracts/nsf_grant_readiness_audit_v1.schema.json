@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/nsf_grant_readiness_audit_v1.schema.json",
+  "title": "NSFGrantReadinessAudit",
+  "description": "Capability audit recording what the TTP Analyzer implements, with each claim carrying one of four statuses and the repository evidence supporting it. Records observed capability only; asserts no accuracy, calibration, or laboratory-equivalence claim.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "audit_id",
+    "generated_at",
+    "capability_count",
+    "status_counts",
+    "hardware_verified_count",
+    "capabilities",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "nsf_grant_readiness_audit_v1"
+    },
+    "audit_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC instant the audit was generated"
+    },
+    "repository_commit": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "description": "Commit SHA the audit was generated against, where known"
+    },
+    "capability_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "status_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["IMPLEMENTED", "EXPERIMENTAL", "PARTIAL", "PLANNED"],
+      "properties": {
+        "IMPLEMENTED": { "type": "integer", "minimum": 0 },
+        "EXPERIMENTAL": { "type": "integer", "minimum": 0 },
+        "PARTIAL": { "type": "integer", "minimum": 0 },
+        "PLANNED": { "type": "integer", "minimum": 0 }
+      },
+      "description": "Capability count per status; every status is present, including zero"
+    },
+    "hardware_verified_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Capabilities whose execution on the intended hardware has been witnessed"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "capability_id",
+          "name",
+          "status",
+          "implementation_paths",
+          "test_paths",
+          "evidence_refs",
+          "hardware_verified",
+          "notes"
+        ],
+        "properties": {
+          "capability_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": ["IMPLEMENTED", "EXPERIMENTAL", "PARTIAL", "PLANNED"],
+            "description": "Exactly one of four states. Vague states such as 'mostly done' are not representable."
+          },
+          "implementation_paths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^(?![A-Za-z]:[\\\\/])(?!\\\\\\\\)(?!/).+",
+              "description": "Repository-relative path; absolute host paths are rejected"
+            }
+          },
+          "test_paths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^(?![A-Za-z]:[\\\\/])(?!\\\\\\\\)(?!/).+"
+            }
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Identifiers of supporting evidence artifacts, such as a study or viewer pack"
+          },
+          "hardware_verified": {
+            "type": "string",
+            "enum": [
+              "VERIFIED_ON_HARDWARE",
+              "NOT_VERIFIED_ON_HARDWARE",
+              "NOT_APPLICABLE"
+            ],
+            "description": "NOT_VERIFIED_ON_HARDWARE means code exists but execution on the intended configuration has not been witnessed"
+          },
+          "notes": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Why this capability carries this status. A status with no explanation is not evidence."
+          }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "What this audit does not establish"
+    }
+  }
+}
