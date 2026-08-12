@@ -3,7 +3,11 @@
 ## Status
 
 **QUEUED / NOT STARTED — implementation begins only after this handoff is
-reviewed and authorized, and after the open decisions in §5 are resolved.**
+reviewed, authorized, and merged.**
+
+The five decisions in §5 are **resolved and recorded**. They are settled inputs
+to implementation, not open questions: the measurement architecture does not get
+reopened once work starts.
 
 DO-102 is complete and merged (PR #22 → `3d2eb69`; closure PR #24). It built the
 contracts, the audit, the repeatability analysis path, and the reporting, and
@@ -129,15 +133,22 @@ software's job remains capture, deterministic summary, and structured evidence.
 5. Witnessing records sufficient to justify a hardware-verified claim.
 6. Promotion of specific capability statuses off `NOT_VERIFIED_ON_HARDWARE`,
    limited to what was exercised.
-7. Whatever minimal software is required to ingest the resulting measurements —
-   see the open decision in §5.1.
-8. Honest reporting of which DO-102 risks this campaign touches and which it
+7. A `grant_readiness` ingestion path for the Phase 2 transfer-function result
+   (§5.1), alongside the existing Phase 1 path, which is neither removed nor
+   changed.
+8. Validation tightening so a `HARDWARE` evidence claim is derived from
+   acquisition provenance rather than declared by a caller (§5.4).
+9. Honest reporting of which DO-102 risks this campaign touches and which it
    leaves untouched.
 
 ### Out of scope
 
 - Reference-method comparison of any kind (R10 stays open).
-- Calibrated microphone procurement, unless §5.3 resolves that way.
+- Calibrated-microphone procurement and acoustic traceability. The microphone is
+  the response sensor (§5.3); qualifying it against an acoustic standard is a
+  separate matter and is not attempted here.
+- Any mechanical frequency-response function — mobility, accelerance,
+  receptance. This campaign measures acoustic pressure per unit force (§6.6).
 - Formal Gage R&R.
 - Modal identification or mode-shape attribution.
 - Environmental correction or normalization.
@@ -150,87 +161,120 @@ software's job remains capture, deterministic summary, and structured evidence.
 
 ---
 
-## 5. Open Decisions — resolve before implementation
+## 5. Resolved Decisions
 
-These are genuine forks. Each changes the shape of the order, and none should be
-decided silently during implementation.
+These were genuine forks. Each is now settled. They are recorded here with their
+reasoning so implementation does not relitigate them, and so a later reader can
+see what was chosen and why.
 
-### 5.1 Which ingestion path does a driven measurement use?
+### Measurement architecture, as resolved
 
-DO-102's analysis path is bound to `phase1_tap_analysis_v1` — a single-channel
-impulse result with a dominant frequency, a peak magnitude, an SNR, and a
-confidence. A shaker produces a **driven, continuous** excitation, for which the
-natural product is a transfer function with coherence — which is the Phase 2
-path DO-102 deliberately excluded, on the grounds that it would create a second
-measurement architecture before the first was characterized.
+```text
+Grounded shaker
+      ↓
+measured force            ← §5.2
+      ↓
+light stinger / contact
+      ↓
+structure
+      ↓
+microphone response       ← §5.3
+      ↓
+Phase 2 transfer function + coherence   ← §5.1
+      ↓
+repeatability / reciprocity / perturbation evidence
+      ↓
+DO-102 evidence contracts
+```
 
-Three options:
+### 5.1 Ingestion path — **RESOLVED: Phase 2**
 
-- **(a) Extend Phase 1.** Drive with a swept or stepped excitation, reduce each
-  run to the same scalar features, and reuse the DO-102 ingestion unchanged.
-  Cheapest, keeps one architecture, discards coherence — the very quantity that
-  would tell you whether the driven measurement is trustworthy.
-- **(b) Bring Phase 2 in.** Use the existing transfer-function and coherence
-  layer, and add an ingestion path for it in `grant_readiness`. Scientifically
-  the right instrument for a driven measurement. Costs a second ingestion path
-  and re-opens the architecture question DO-102 closed.
-- **(c) A new driven-measurement contract.** Most honest about the fact that
-  this is a different measurement; most work; risks a third architecture.
+**Ruling.** Phase 2 is brought into scope. The contact-driver architecture is
+fundamentally a driven input/output measurement, so the transfer function and
+its coherence belong in the evidence chain rather than being reduced to Phase 1
+peak scalars.
 
-**Recommendation: (b).** The reason DO-102 excluded Phase 2 was sequencing — do
-not characterize two architectures at once. That reason expires here, because a
-driven excitation *is* the case Phase 2 exists for, and coherence is the
-per-frequency trust metric that makes E1 and E4 interpretable. Option (a) would
-throw away the measurement's own quality indicator at exactly the moment the rig
-is least trusted.
+DO-102 excluded Phase 2 for sequencing — do not characterize two measurement
+architectures at once. That reason expires here: a driven excitation is the case
+Phase 2 exists for, and coherence is the per-frequency trust metric that makes
+E1 and E4 interpretable. Reducing a driven measurement to scalar peaks would
+discard the measurement's own quality indicator at exactly the moment the rig is
+least trusted.
 
-This is the decision that most shapes the order.
+**Consequence.** `grant_readiness` gains an ingestion path for the Phase 2
+transfer-function result alongside the existing `phase1_tap_analysis_v1` path.
+The Phase 1 path is not removed and not changed.
 
-### 5.2 Is the input force measured, or only made repeatable?
+### 5.2 Input force — **RESOLVED: measure it**
 
-A shaker without a force transducer is a *more repeatable* unknown input. A
-shaker with an impedance head or in-line force sensor is a *measured* input.
+**Ruling.** Force is measured. A repeatable drive voltage alone is insufficient.
 
-DO-102 risk **R1** states that excitation variability bounds every other
-repeatability figure the project can produce. Only a measured force actually
-closes R1; an unmeasured but repeatable drive narrows it without resolving it.
+This is what lets E1 **address** R1 rather than merely narrowing it. An
+unmeasured but repeatable drive reduces variability without ever quantifying the
+input; a measured force makes the input a known quantity, which is the
+precondition for a defensible transfer function.
 
-Decision needed: procure force sensing now, or run the campaign with drive-signal
-provenance only and record R1 as narrowed-but-open. The honest reporting
-consequence differs sharply between the two, and the handoff should not assume
-either.
+**Consequence.** Force sensing at the drive point — an impedance head or in-line
+force transducer — is a prerequisite of the campaign, not an optional
+enhancement. The force channel is recorded as a measurement channel with its own
+provenance.
 
-### 5.3 What measures the response?
+### 5.3 Response sensor — **RESOLVED: microphone**
 
-- **Microphone** — the current path, non-contact, but measures the radiated
-  field rather than the structure, and is subject to room effects.
-- **Accelerometer** — direct, but mass-loads a thin plate, which is precisely
-  what E5 is designed to detect.
-- **Laser vibrometry** — non-contact and direct; no access arranged.
+**Ruling.** The microphone is the primary response sensor.
 
-The mass-loading tension between an accelerometer and E5 is real and should be
-resolved deliberately, not discovered mid-campaign.
+An accelerometer would add mass to the plate while E5 is explicitly
+investigating mass-loading sensitivity — the instrument would be perturbing the
+exact quantity the experiment is designed to detect. The microphone is
+non-contact and is the path the repository already has.
 
-### 5.4 What makes a measurement "witnessed"?
+**Consequence — and this must not be blurred.** See §6.7. A microphone response
+divided by a measured force is **not** mechanical mobility.
 
-`VERIFIED_ON_HARDWARE` is a claim this repository currently refuses to let
-anything make. This order is the thing that earns it, so the criterion must be
-written down first: who witnesses, what record constitutes evidence (session
-log, photograph, timestamped artifact set, a second person), and what happens to
-a run captured outside the witnessed session.
+### 5.4 What makes a measurement witnessed — **RESOLVED: derived, not declared**
 
-### 5.5 Reciprocity and mass-loading: reported, not graded
+**Ruling.** A witnessed hardware acquisition requires an actual physical session
+whose provenance is sufficient to distinguish it from fixture or synthetic data:
 
-DO-102 §4.11 forbids inventing success thresholds, and this order inherits that.
+- hardware identifiers (shaker, force transducer, microphone, interface);
+- acquisition configuration (sample rate, channel map, gain, drive parameters);
+- experiment, session, and run identifiers;
+- UTC timestamps;
+- excitation and response channel identification;
+- environmental observations where available, unknown where not;
+- raw measurements retained, including from rejected runs;
+- `evidence_origin` explicitly `HARDWARE`.
 
-E4 and E5 produce a *discrepancy* and a *shift*. This order should **report**
-both with their conditions and their sample sizes. It should **not** invent a
-"reciprocity passes if within X%" or "mass loading is detected if the shift
-exceeds Y Hz" criterion, because the baseline observations that would justify a
-threshold are what this campaign is producing.
+**The software derives the claim from the evidence record.** An operator must
+not be able to turn fixture data into hardware evidence by choosing a label.
 
-Confirm this reading. If a threshold is wanted, it needs its own justification
-and should not be smuggled in as an acceptance criterion here.
+This is a real change from DO-102, and it should be stated as such. Today
+`EvidenceOrigin` is caller-supplied, guarded only by refusing `HARDWARE` for a
+result marked `demo: true` and by requiring a study's runs to agree with its
+label. That is necessary but not sufficient: nothing currently stops a caller
+asserting `HARDWARE` over data that simply lacks a demo flag. DO-103 tightens
+this so a `HARDWARE` claim fails validation unless the required acquisition
+provenance is present. The tightening is additive and does not change what any
+existing field means.
+
+### 5.5 Reciprocity and mass loading — **RESOLVED: threshold-free**
+
+**Ruling.** Both stay threshold-free in DO-103. No pass/fail boundary is
+invented merely to close the campaign.
+
+What is recorded instead:
+
+- residuals;
+- distributions;
+- effect sizes;
+- frequency-dependent behavior;
+- coherence over the compared band;
+- full experimental conditions and sample sizes.
+
+Thresholds can be established later from observed measurement capability or from
+an external requirement. Establishing one now would mean inventing the very
+figure this campaign exists to produce the evidence for — the failure mode
+DO-102 §4.11 was written to prevent.
 
 ---
 
@@ -292,7 +336,58 @@ The frozen-baseline drift test in `tests/test_nsf_capability_baseline.py` means
 any status change must be made in both the inventory and the baseline, and will
 fail loudly if made in only one. That is intended.
 
-### 6.6 Failed and abandoned runs stay
+### 6.6 The measured quantity is acoustic, not mechanical mobility
+
+This is the most important naming decision in the order, and getting it wrong
+would quietly poison every later comparison.
+
+With a measured force input and a **microphone** response, the transfer function
+is:
+
+```text
+H(f) = p(f) / F(f)        acoustic pressure per unit input force,  Pa/N
+```
+
+That is an **acoustic-response transfer function relative to a measured force**.
+DO-103 therefore initially characterizes the **coupled structural-acoustic
+response** of the instrument in its measurement environment — the structure, its
+radiation, and the room together.
+
+It is **not** mechanical mobility. Mobility, and its relatives, require the
+response quantity to be a mechanical motion of the structure:
+
+| Name | Response quantity | Ratio |
+| --- | --- | --- |
+| Receptance / compliance | displacement | `x/F` (m/N) |
+| Mobility | velocity | `v/F` (m·s⁻¹/N) |
+| Accelerance / inertance | acceleration | `a/F` (m·s⁻²/N) |
+| **This campaign** | **acoustic pressure** | **`p/F` (Pa/N)** |
+
+**Rules that follow, and they are binding:**
+
+1. No output of this order calls `p/F` mobility, accelerance, receptance, or
+   any other mechanical frequency-response function.
+2. The quantity is labelled with its units (`Pa/N`) wherever it is reported, and
+   named as an acoustic-response transfer function relative to measured force.
+3. Any observed feature is a feature of the **coupled** system. Attributing it
+   to the structure alone requires evidence this order does not produce — the
+   room and the radiation are inside the measurement.
+4. This distinction is carried into the evidence records, not only the prose, so
+   a later reader cannot lose it by reading the data instead of the document.
+
+**Why it matters later.** Laboratory modal analysis reports mechanical FRFs.
+When TTP is eventually compared against such a method (R10), comparing `p/F`
+against `v/F` without stating the difference would be a category error that
+makes agreement or disagreement equally meaningless. Recording the distinction
+now is what keeps that future comparison honest.
+
+It also sharpens what E5 tests: a mass added to the plate perturbs the
+structure, and the microphone observes that perturbation *through* the radiation
+and the room. A null result in E5 is therefore ambiguous between "the structure
+did not change" and "the change did not reach the microphone" — and the order
+must report it that way rather than resolving the ambiguity by assertion.
+
+### 6.7 Failed and abandoned runs stay
 
 DO-102's rejection accounting applies unchanged. A run lost to a detached
 stinger, an overdriven amplifier, or a clipped channel is recorded with its
@@ -397,12 +492,12 @@ part of the deliverable, not a summary of it.
 
 | Risk | Effect of this campaign |
 | --- | --- |
-| R1 excitation variability | **Substantially addressed** by E1+E2+E3 — **fully only if §5.2 resolves toward measured force.** Otherwise narrowed, not closed. |
+| R1 excitation variability | **Addressed** by E1+E2+E3 with a **measured** force input (§5.2). The input becomes a known quantity rather than a repeatable unknown. Residual exposure is the force transducer's own qualification, which this order does not establish. |
 | R2 sensor positioning | **Not addressed.** Sensor position is held fixed, not varied. |
 | R3 support-condition variability | **Partially** — E3 covers the attachment. Specimen support is not varied. |
 | R4 environmental influence | **Not addressed.** Conditions recorded, never corrected. |
 | R5 spectral-feature persistence | **Addressed** by E2 across repeats. |
-| R6 mode-identification uncertainty | **Weakly and indirectly** by E5. Not identification. |
+| R6 mode-identification uncertainty | **Weakly and indirectly** by E5, and weakened further by §6.6: the response is acoustic, so an observed feature belongs to the coupled structural-acoustic system rather than to the structure alone. Not identification. |
 | R7 decay / Q stability | **Addressed** by E2, if Q is extracted. |
 | R8 operator variability | **Not addressed.** Single operator by design. |
 | R9 between-session repeatability | **Partially** by E3. Full between-session needs separated sessions with teardown. |
@@ -496,30 +591,34 @@ DO-103 is complete only when:
 7. Capability promotions are limited to what was witnessed, made in both the
    inventory and the frozen baseline, and reflected in a regenerated audit.
 8. No accuracy, calibration, laboratory-equivalence, or mode-identification
-   claim appears anywhere in the outputs.
-9. `NSF_TTP_PRELIMINARY_EXPERIMENT.md`'s execution-status section is updated to
-   describe what was run.
-10. Governance, schema, and full-suite gates pass; baseline failures are
+   claim appears anywhere in the outputs, and no output names the measured
+   quantity as mobility, accelerance, or receptance (§6.6).
+9. Every reported transfer function carries its units (`Pa/N`) and is identified
+   as an acoustic response relative to measured force.
+10. `NSF_TTP_PRELIMINARY_EXPERIMENT.md`'s execution-status section is updated to
+    describe what was run.
+11. Governance, schema, and full-suite gates pass; baseline failures are
     reclassified against the then-current `main`.
-11. A reviewer can trace every numerical claim to source artifacts and to a
+12. A reviewer can trace every numerical claim to source artifacts and to a
     witnessed session.
 
 ---
 
 ## 13. Rollout Order
 
-**Stage 0 — Resolve §5.** No implementation begins before the five open
-decisions are recorded. §5.1 in particular determines the shape of everything
-after it.
+**Stage 0 — Complete.** The five decisions in §5 are resolved and recorded in
+this handoff. The measurement architecture is settled and is not reopened during
+implementation.
 
-**Stage 1 — Build and ground the rig.** Physical. No measurement claims.
+**Stage 1 — Build and ground the rig.** Physical: shaker mount, ground path,
+stinger, and force transducer at the drive point. No measurement claims.
 
 **Stage 2 — E1, rig characterization.** Gates everything downstream. A rig with
 no usable band stops the campaign.
 
-**Stage 3 — Ingestion path.** Whatever §5.1 chose, with its tests, before any
-instrument data is collected — so the campaign is not analyzed by software
-written to fit the data it produced.
+**Stage 3 — Phase 2 ingestion path and the provenance-derived HARDWARE claim.**
+Both written and tested **before** any instrument data is collected, so the
+campaign is not analyzed by software written to fit the data it produced.
 
 **Stage 4 — E2, fixed-point repeatability.** The first hardware study.
 
@@ -549,8 +648,16 @@ until it passes is the single largest scientific-integrity risk in this order.
 Control: report it; do not increase the mass until something moves and then
 report only that.
 
-**Force is not measured and R1 is reported as closed anyway.** Control: §5.2 is
-an explicit decision, and §8 states the conditional plainly.
+**The acoustic transfer function gets called mobility.** The single likeliest
+documentation failure, because `response/force` reads like an FRF and the
+vocabulary is close at hand. Control: §6.6 states the rule, the units `Pa/N`
+travel with the quantity, and the distinction is carried in the evidence records
+rather than only the prose.
+
+**Force is measured but the transducer is unqualified.** Measuring force makes
+the input known relative to that transducer; it does not make it traceable.
+Control: §8's R1 row states the residual exposure rather than reporting R1 as
+fully closed.
 
 **Scope creep into modal identification.** A shaker rig makes modal analysis
 feel close. It is not in scope and cannot be, without a reference.
@@ -567,8 +674,8 @@ baseline drift test.
 **Public API:** additive at most
 **Schema:** additive at most; no existing field changes meaning
 **Measurement:** new acquisition architecture; existing calculations unchanged
-**Signal processing:** unchanged unless §5.1 selects the Phase 2 path, which
-uses the existing transfer-function layer as-is
+**Signal processing:** unchanged — the Phase 2 path (§5.1) uses the existing
+transfer-function and coherence layer as-is; no new DSP is authorized
 **Interpretation:** unchanged
 **Advisory behavior:** unchanged
 **Uncertainty:** observed variation extended to hardware; no budget claimed
