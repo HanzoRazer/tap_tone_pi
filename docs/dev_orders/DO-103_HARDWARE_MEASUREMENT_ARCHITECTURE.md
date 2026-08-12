@@ -205,6 +205,12 @@ least trusted.
 transfer-function result alongside the existing `phase1_tap_analysis_v1` path.
 The Phase 1 path is not removed and not changed.
 
+**The change is to ingestion and evidence plumbing, not to the underlying Phase 2
+DSP.** "Phase 2 is in scope" means the grant-readiness layer learns to *read* a
+transfer-function result; the transfer-function and coherence layer itself is
+used as it stands. No new signal processing is authorized by this order — see
+§15, which says the same thing from the other direction.
+
 ### 5.2 Input force — **RESOLVED: measure it**
 
 **Ruling.** Force is measured. A repeatable drive voltage alone is insufficient.
@@ -228,7 +234,7 @@ investigating mass-loading sensitivity — the instrument would be perturbing th
 exact quantity the experiment is designed to detect. The microphone is
 non-contact and is the path the repository already has.
 
-**Consequence — and this must not be blurred.** See §6.7. A microphone response
+**Consequence — and this must not be blurred.** See §6.6. A microphone response
 divided by a measured force is **not** mechanical mobility.
 
 ### 5.4 What makes a measurement witnessed — **RESOLVED: derived, not declared**
@@ -247,6 +253,16 @@ whose provenance is sufficient to distinguish it from fixture or synthetic data:
 
 **The software derives the claim from the evidence record.** An operator must
 not be able to turn fixture data into hardware evidence by choosing a label.
+
+**Hardware origin and witnessed status are not the same thing, and the document
+uses them as two different standards.** `EvidenceOrigin.HARDWARE` is an
+*acquisition-origin classification*: this data came off physical instruments
+rather than a fixture or a generator. A *witnessed session* is the stronger
+governance condition — the provenance above, recorded, retained, and attributable
+— and it is what §10 requires before a capability may be promoted. Every
+witnessed run is hardware-origin; not every hardware-origin run is necessarily
+part of a witnessed session. Where the two diverge, promotion follows the
+stricter one.
 
 This is a real change from DO-102, and it should be stated as such. Today
 `EvidenceOrigin` is caller-supplied, guarded only by refusing `HARDWARE` for a
@@ -374,6 +390,11 @@ response quantity to be a mechanical motion of the structure:
    room and the radiation are inside the measurement.
 4. This distinction is carried into the evidence records, not only the prose, so
    a later reader cannot lose it by reading the data instead of the document.
+5. **Reported units do not imply traceable calibration.** `Pa/N` states what the
+   quantity *is*, not that either channel is qualified against a standard. The
+   microphone is not a calibrated reference and the force transducer's own
+   qualification is not established by this order (§8, R1). A number with units
+   is not a traceable number.
 
 **Why it matters later.** Laboratory modal analysis reports mechanical FRFs.
 When TTP is eventually compared against such a method (R10), comparing `p/F`
@@ -518,8 +539,40 @@ Every experiment produces:
   support, and environmental context;
 - one `PreliminaryExperimentRunV1` per attempt, valid or rejected, with
   `evidence_origin=EvidenceOrigin.HARDWARE`;
-- one `RepeatabilityStudyV1` with metrics, run accounting, and limitations;
+- one study record in the DO-102 evidence model, with metrics, run accounting,
+  and limitations;
 - a witnessing record per §5.4.
+
+### The evidence contracts were shaped for E2, and E1, E4, E5 do not fit cleanly
+
+This needs saying plainly, because an implementer will hit it on day one and
+should not have to decide it alone.
+
+`RepeatabilityStudyV1` is the DO-102 evidence container, and it was shaped for
+exactly one experiment design: **one instrument, one measurement point, repeated
+captures**. That is E2. The other three strain the shape:
+
+- **E1 characterizes the rig, not an instrument.** There is no instrument and no
+  measurement point on the specimen. `PreliminaryExperimentDefinitionV1`
+  requires both `instrument_id` and `measurement_point_id` as non-empty, so E1
+  either records the rig as its own "instrument" — defensible, since that is
+  literally what is under test — or needs a different record.
+- **E4 compares a point *pair*.** `measurement_point_id` is singular. A
+  reciprocity run is drive-at-A/measure-at-B, which is not one point.
+- **E4 and E5 are not repeatability studies in plain English.** They are a
+  symmetry check and a perturbation check. The container's name implies
+  semantics they do not have.
+
+**Ruling for implementation.** Use the DO-102 evidence model as the container
+for all five experiments — a second parallel evidence model would be worse than
+a slightly over-general name. Where a field genuinely cannot carry the meaning,
+add an additive field with its own justification per §6.4; do **not** overload an
+existing field to mean something new, and do **not** silently record E1's rig as
+though it were the specimen without saying so in the record.
+
+Whether the container should eventually be renamed or generalized is a real
+question and is explicitly **deferred**, not answered here. Renaming a published
+contract is a schema-versioning decision that belongs to its own order.
 
 Reports are generated with the existing DO-102 builders. Because
 `EvidenceOrigin.HARDWARE` is claimed, `validate_study_evidence_origin` and the
@@ -549,7 +602,7 @@ Not candidates on any outcome of this campaign: `desktop_analyzer`,
 `http_api_server`, `unified_cli`, `plate_dynamics_prediction`,
 `uncertainty_quantification`, and the other `NOT_APPLICABLE` entries. Those have
 no hardware dependency to witness, and promoting them would be the exact
-category error §5 is written to prevent.
+category error §6.5 is written to prevent.
 
 ---
 
@@ -580,16 +633,28 @@ Baseline at authorship: two documented failures in `scripts/phase2/tests/`
 DO-103 is complete only when:
 
 1. The rig exists, is grounded, and its band of validity is stated (E1).
-2. All five experiments are executed or explicitly and justifiably not executed.
+2. All five experiments are executed, or downstream experiments are explicitly
+   and justifiably not executed because an earlier campaign gate failed. A
+   failed E1 is a legitimate experimental result and stops downstream work
+   rather than being engineered around — but see criterion 4: it does not by
+   itself satisfy completion.
 3. Every run — valid, rejected, abandoned — is recorded with its reason.
 4. At least one `RepeatabilityStudyV1` carries
-   `evidence_origin=EvidenceOrigin.HARDWARE` and validates.
+   `evidence_origin=EvidenceOrigin.HARDWARE` and validates. This is deliberate
+   and interacts with criterion 2: a campaign that stops at a failed E1 has
+   produced a real and reportable finding — the rig is unusable as built — but
+   it has produced no hardware measurement evidence, so DO-103 is **not**
+   complete. Such a campaign closes by revising this order or issuing a
+   successor, not by declaring done.
 5. Reciprocity and mass-loading results are reported with conditions and sample
    sizes, and **without** invented thresholds.
 6. The risk-coverage table in §8 is filled in against what actually happened,
    including the risks left untouched.
-7. Capability promotions are limited to what was witnessed, made in both the
-   inventory and the frozen baseline, and reflected in a regenerated audit.
+7. Capability promotions satisfy every condition in §10, not a subset: exercised
+   end to end in a witnessed session; artifacts preserved and referenced from
+   the capability's `evidence_refs`; the exercising experiment named in the
+   capability's `notes`; the change made in **both** `inventory.py` and the
+   frozen baseline; and the audit and technical baseline regenerated.
 8. No accuracy, calibration, laboratory-equivalence, or mode-identification
    claim appears anywhere in the outputs, and no output names the measured
    quantity as mobility, accelerance, or receptance (§6.6).
@@ -628,10 +693,17 @@ campaign is not analyzed by software written to fit the data it produced.
 
 **Stage 7 — E5, mass-loading challenge.**
 
-**Stage 8 — Evidence, promotion, and reporting.** Regenerate the audit and the
-baseline; promote only what was witnessed; fill in §8 against what happened.
+**Stage 8 — Evidence, promotion, and reporting.** Promote only what was
+witnessed, and only through the full §10 rule: attach preserved artifacts to
+`evidence_refs`, name the exercising experiment in the capability's `notes`,
+change `inventory.py` and the frozen baseline together, and regenerate the audit
+and the technical baseline. Fill in §8 against what actually happened, including
+the risks left untouched.
 
-**Stage 9 — Verification and PR.**
+**Stage 9 — Verification and PR.** Governance gates (advisory boundary,
+guidance language), schema validation, the DO-102 and empirical/radiation-ratio
+suites, the full repository suite, and reclassification of baseline failures
+against the then-current `main`.
 
 ---
 
