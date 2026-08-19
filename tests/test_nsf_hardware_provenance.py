@@ -41,7 +41,11 @@ from tap_tone_pi.grant_readiness import (
     RejectionReason,
     RepeatabilityStudyV1,
 )
-from tap_tone_pi.grant_readiness.errors import ExperimentRecordError
+from tap_tone_pi.grant_readiness.errors import (
+    ExperimentRecordError,
+    RepeatabilityStatisticsError,
+)
+from tap_tone_pi.grant_readiness.report import build_study_report, render_study_report
 from tap_tone_pi.grant_readiness.validation import (
     validate_experiment_runs,
     validate_repeatability_study,
@@ -485,6 +489,54 @@ class TestStudyValidationRefusesUnbackedHardware:
             )
         )
         assert codes(validate_repeatability_study(study)) == ["NSF-306", "NSF-306"]
+
+
+class TestTheRendererRefusesWhatTheValidatorWould:
+    """The renderer may never emit a document the validator would reject.
+
+    A study can be assembled with ``strict=False``, so the renderer is the one
+    place an unbacked hardware claim could otherwise reach a published document.
+    It delegates to the same validators rather than re-deriving the rule, which
+    is the lesson DO-102's own review recorded.
+    """
+
+    def test_an_unbacked_hardware_study_is_not_rendered(self):
+        study = make_study(
+            runs=(
+                make_hardware_run("run-001", acquisition=None),
+                make_hardware_run("run-002", acquisition=None),
+            )
+        )
+        with pytest.raises(RepeatabilityStatisticsError) as exc:
+            render_study_report(study)
+        assert exc.value.code is GrantReadinessErrorCode.HARDWARE_PROVENANCE_INCOMPLETE
+
+    def test_an_unbacked_hardware_study_is_not_serialized(self):
+        study = make_study(runs=(make_hardware_run("run-001", acquisition=None),))
+        with pytest.raises(RepeatabilityStatisticsError):
+            build_study_report(study)
+
+    def test_a_backed_hardware_study_renders(self):
+        study = make_study()
+        assert "HARDWARE" in render_study_report(study)
+        assert build_study_report(study)["is_hardware_evidence"] is True
+
+    def test_the_existing_mislabelling_guard_still_fires(self):
+        # Regression on DO-102's own invariant: the new check is additional, not
+        # a replacement.
+        mixed = make_study(
+            runs=(
+                make_hardware_run("run-001"),
+                dataclasses.replace(
+                    make_hardware_run("run-002"),
+                    evidence_origin=EvidenceOrigin.FIXTURE,
+                    acquisition=None,
+                ),
+            )
+        )
+        with pytest.raises(RepeatabilityStatisticsError) as exc:
+            render_study_report(mixed)
+        assert exc.value.code is GrantReadinessErrorCode.EVIDENCE_ORIGIN_MISREPRESENTED
 
 
 # ---------------------------------------------------------------------------

@@ -37,6 +37,7 @@ from tap_tone_pi.grant_readiness.errors import (
 )
 from tap_tone_pi.grant_readiness.validation import (
     evidence_digest,
+    validate_run_acquisition_provenance,
     validate_study_evidence_origin,
 )
 
@@ -203,21 +204,28 @@ def _metric_row(metric: RepeatabilityMetricV1) -> str:
 
 
 def _guard_origin(study: RepeatabilityStudyV1) -> None:
-    """Refuse to render a study whose label disagrees with its runs.
+    """Refuse to render a study whose origin claim the validator would reject.
 
-    Delegates to :func:`validate_study_evidence_origin` so the renderer enforces
-    the *exact same* invariant as the validator — in both directions. A study
-    that overstates its origin (``HARDWARE`` label over non-hardware runs) and
-    one that understates it (a non-``HARDWARE`` label over hardware runs) are
-    both refused, so the renderer can never emit a document the validator would
-    reject.
+    Delegates to :func:`validate_study_evidence_origin` and
+    :func:`validate_run_acquisition_provenance` so the renderer enforces the
+    *exact same* invariants as the validator rather than a second copy of them.
+    Two directions of mislabelling are refused — a ``HARDWARE`` label over
+    non-hardware runs, and a non-``HARDWARE`` label over hardware runs — and so
+    is a ``HARDWARE`` claim that no acquisition provenance backs (DO-103 §5.4).
+
+    That last one matters here specifically. A study can be assembled with
+    ``strict=False``, so without this the renderer would be the one place a
+    hardware claim could reach a document without the evidence that makes it
+    derivable. The renderer must never emit what the validator would reject.
     """
     findings = validate_study_evidence_origin(study)
+    for run in study.runs:
+        findings.extend(validate_run_acquisition_provenance(run))
     if findings:
         finding = findings[0]
         raise RepeatabilityStatisticsError(
             finding.code,
-            f"refusing to render a mislabelled study: {finding.message}",
+            f"refusing to render an unsupported origin claim: {finding.message}",
             finding.context,
         )
 
