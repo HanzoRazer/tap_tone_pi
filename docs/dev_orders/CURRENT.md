@@ -1,7 +1,9 @@
 # Active Dev Order
 
 **Current:** DO-103 Stage 3 — Phase 2 ingestion and provenance-derived
-HARDWARE claim (IN PROGRESS)
+HARDWARE claim (COMPLETE, frozen ahead of the physical campaign)
+**Next:** DO-101B — Empirical Registry and Inspection Surface, then the hardware
+stages of DO-103 when the shaker, stinger, and force transducer exist
 **Queued:** DO-101B — Empirical Registry and Inspection Surface (NOT STARTED)
 **Previous:** DO-102 — NSF TTP Grant-Readiness Evidence Foundation (COMPLETE)
 **Deferred evidence gate:** `SPRINTS.md` B-006 — witnessed hardware measurement
@@ -31,6 +33,28 @@ below are settled.
   from it rather than accepted as a caller's label (§5.4);
 - negative tests that a false `HARDWARE` claim cannot be made to validate;
 - freezing both before the physical campaign begins.
+
+### Stage 3 outcome
+
+All four in-scope items landed. `tap_tone_pi/grant_readiness/phase2_experiment.py`
+reads the persisted Phase 2 transfer document as a document — no DSP, no import
+of the Phase 2 package or of anything under `scripts/`. `AcquisitionProvenanceV1`
+carries what a physical session can attest and a fixture cannot, and `NSF-306`
+refuses a `HARDWARE` origin nothing backs, which closes the gap DO-102 left:
+until now a caller could assert `HARDWARE` over any data that merely lacked a
+demo flag. `NSF-307` keeps *witnessed* as the stricter standard §10 promotes on,
+and `NSF-308` refuses a mechanical frequency-response name over an acoustic
+pressure response (§6.6). 104 new tests, most of them negative.
+
+The study schema gained an additive optional `acquisition` block on runs and its
+registry entry moved to 1.1.0. No existing field changed meaning; the Phase 1
+path is untouched.
+
+One boundary test was rewritten with justification: DO-102's "the package never
+mentions `phase2_ods_snapshot`" was a proxy for "authors no existing measurement
+schema", and §5.1 made the proxy wrong while leaving the claim true. It is now
+asserted directly, and the substantive guards — forbidden imports, no DSP, no
+capture — are unchanged.
 
 **Not in scope for Stage 3, and not started by it:** Stages 1, 2, and 4–8 —
 building and grounding the rig, E1–E5, capability promotion off
@@ -428,7 +452,8 @@ DO-001 through DO-008, and DO-084 through DO-089 completed. The tap_tone_pi moda
 ## Pre-existing test failures (baseline)
 
 2 failures, both in `scripts/phase2/tests/`, verified reproducing against
-`main` at `9d58dd1`:
+`main` at `9d58dd1` and re-verified against `main` at `b0adc53` during DO-103
+Stage 3:
 - `test_validate_viewer_pack_v1_real_sessions[runs_phase2/session_20260101T234237Z]` — missing 'bending' key
 - `test_validate_viewer_pack_v1_real_sessions[runs_phase2/session_20260101T235209Z]` — missing 'bending' key
 
@@ -442,6 +467,22 @@ rebased tree. The entry is stale and has been removed rather than carried
 forward into the NSF documentation.
 
 ## Daily log
+
+### 2026-08-19 (DO-103 Stage 3)
+- Promoted DO-103 Stage 3 as Current in its own docs/status commit; DO-101B
+  stays queued, deferred on sequencing rather than merit
+- Added `AcquisitionProvenanceV1` / `AcquisitionChannelV1` and derived the
+  `HARDWARE` claim from them (`NSF-306`), with witnessed held separate as the
+  stricter §10 standard (`NSF-307`) and `p/F` refused a mechanical FRF name
+  (`NSF-308`)
+- Added the Phase 2 transfer-function ingestion path alongside — not in place
+  of — the Phase 1 path
+- Study schema additive-only (`acquisition` on runs); registry entry 1.1.0
+- Rewrote one boundary test whose "never mentions the schema" proxy stopped
+  matching its own claim once §5.1 authorized ingestion
+- 104 new tests; full suite green apart from the two documented baseline
+  failures, re-verified reproducing on `main` at `b0adc53`
+- Promoted no capability, produced no hardware evidence, changed no status
 
 ### 2026-08-11 (DO-102 closure)
 - Recorded PR #22 merge (`3d2eb69`) and closed DO-102 as Previous/Complete

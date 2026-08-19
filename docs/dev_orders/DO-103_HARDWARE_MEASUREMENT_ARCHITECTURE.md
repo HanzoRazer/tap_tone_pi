@@ -2,8 +2,29 @@
 
 ## Status
 
-**QUEUED / NOT STARTED — implementation begins only after this handoff is
-reviewed, authorized, and merged.**
+**IN PROGRESS — Stage 3 complete and frozen. Stages 1, 2, and 4–8 not
+started; they require hardware that does not yet exist.**
+
+The handoff was reviewed, authorized, and merged as PR #25, which satisfies the
+condition this section previously named. Stage 3 was then promoted on its own
+(§13), ahead of DO-101B, because it is the one part of this order that is
+time-order sensitive: it must exist before any instrument data is collected.
+
+**What Stage 3 delivered.** The Phase 2 transfer-function ingestion path of
+§5.1, and the provenance-derived `HARDWARE` claim of §5.4 —
+`AcquisitionProvenanceV1` on every run, `NSF-306` refusing a hardware origin
+that nothing backs, `NSF-307` holding *witnessed* apart from *hardware-origin*
+as §5.4 requires, and `NSF-308` refusing a mechanical frequency-response name
+over an acoustic pressure response per §6.6. The study schema gained an
+additive optional `acquisition` block; the registry entry moved to 1.1.0. No
+existing field changed meaning, and the Phase 1 path is untouched.
+
+**What Stage 3 deliberately did not do.** It promoted no capability, changed no
+capability status, produced no hardware evidence, and filled in no part of the
+§8 risk table. Every hardware-dependent capability remains
+`NOT_VERIFIED_ON_HARDWARE` and every study this repository can produce is still
+`FIXTURE` or `SYNTHETIC`. Nothing in this order's acceptance criteria (§12) is
+satisfied by Stage 3 alone.
 
 The five decisions in §5 are **resolved and recorded**. They are settled inputs
 to implementation, not open questions: the measurement architecture does not get
@@ -681,9 +702,40 @@ stinger, and force transducer at the drive point. No measurement claims.
 **Stage 2 — E1, rig characterization.** Gates everything downstream. A rig with
 no usable band stops the campaign.
 
-**Stage 3 — Phase 2 ingestion path and the provenance-derived HARDWARE claim.**
-Both written and tested **before** any instrument data is collected, so the
-campaign is not analyzed by software written to fit the data it produced.
+**Stage 3 — Complete and frozen.** The Phase 2 ingestion path and the
+provenance-derived HARDWARE claim, both written and tested **before** any
+instrument data is collected, so the campaign is not analyzed by software
+written to fit the data it produced.
+
+Delivered as `tap_tone_pi/grant_readiness/phase2_experiment.py`,
+`AcquisitionProvenanceV1` and `AcquisitionChannelV1` in `contracts.py`, the
+`NSF-306` / `NSF-307` / `NSF-308` validators, and 104 tests across
+`tests/test_nsf_hardware_provenance.py` and `tests/test_nsf_phase2_ingestion.py`.
+
+Three implementation rulings were made and are recorded with the code rather
+than left for the campaign to decide under pressure:
+
+- **`captured_at` comes from the caller.** A Phase 2 document records when the
+  analysis ran, not when the capture happened. Reusing one as the other would
+  fabricate provenance.
+- **Coherence must be present.** §5.1 chose Phase 2 because coherence travels
+  with the transfer function. This is a presence requirement, not a threshold —
+  no coherence value is compared against anything, per §5.5.
+- **An out-of-range evaluation frequency is a rejected run.** Snapping to an
+  edge bin would report a number from a frequency nobody asked about.
+
+One boundary test changed with it. DO-102 asserted that `grant_readiness` never
+mentions `phase2_ods_snapshot`; that was a proxy for "authors no existing
+measurement schema", and the proxy stopped being right once §5.1 authorized
+ingestion. The claim is now made directly — the contract is named only where it
+is read, exactly once, as the identity a document is matched against — and the
+substantive guards are unchanged: `tap_tone_pi.phase2` is still a forbidden
+import and no DSP or capture call site is permitted.
+
+**Deferred out of Stage 3, deliberately.** No capability entry was added for the
+Phase 2 evidence path. Adding one would touch `inventory.py` and the frozen
+baseline, which belongs with the §10 promotion work in Stage 8 rather than with
+plumbing built before any campaign exists.
 
 **Stage 4 — E2, fixed-point repeatability.** The first hardware study.
 
