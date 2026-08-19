@@ -1,17 +1,48 @@
 # Active Dev Order
 
-**Current:** _(none — awaiting the next authorized Dev Order)_
+**Current:** DO-103 Stage 3 — Phase 2 ingestion and provenance-derived
+HARDWARE claim (IN PROGRESS)
 **Queued:** DO-101B — Empirical Registry and Inspection Surface (NOT STARTED)
 **Previous:** DO-102 — NSF TTP Grant-Readiness Evidence Foundation (COMPLETE)
 **Deferred evidence gate:** `SPRINTS.md` B-006 — witnessed hardware measurement
-campaign
+campaign, now formally defined as DO-103
 
-Nothing is promoted by this closure. DO-101B remains **queued, not displaced or
-cancelled** — it was deferred behind DO-102 because NSF readiness was
-time-sensitive on the August path, not because it was deprioritized on the
-merits — and it has not been resumed, so promotion belongs to its own first
-docs/status commit. B-006 is a backlog gate, not a Dev Order; it becomes Current
-only if and when a hardware-campaign order is formally defined and authorized.
+## DO-103 Stage 3 — promoted, and only Stage 3
+
+`docs/dev_orders/DO-103_HARDWARE_MEASUREMENT_ARCHITECTURE.md` is merged and
+authorized, which satisfies the condition its Status section names and makes
+B-006 a defined Dev Order rather than a backlog gate. **What is promoted is
+Stage 3 alone**, not the order as a whole.
+
+Stage 3 is promoted ahead of DO-101B on sequencing, not merit. It is
+time-order sensitive in a way DO-101B is not: DO-103 §13 requires the ingestion
+path and the provenance-derived HARDWARE claim to be written and tested
+**before** any instrument data is collected, so the campaign is not analyzed by
+software written to fit the data it produced. DO-101B improves discoverability
+of empirical models and is unblocked whenever it is resumed; nothing about it
+degrades by waiting, and it is better defined once the provenance semantics
+below are settled.
+
+**In scope for Stage 3:**
+
+- a Phase 2 transfer-function ingestion path in `tap_tone_pi/grant_readiness/`,
+  alongside — not replacing — the existing `phase1_tap_analysis_v1` path (§5.1);
+- acquisition provenance recorded per run, and the `HARDWARE` claim **derived**
+  from it rather than accepted as a caller's label (§5.4);
+- negative tests that a false `HARDWARE` claim cannot be made to validate;
+- freezing both before the physical campaign begins.
+
+**Not in scope for Stage 3, and not started by it:** Stages 1, 2, and 4–8 —
+building and grounding the rig, E1–E5, capability promotion off
+`NOT_VERIFIED_ON_HARDWARE`, and the §8 risk-coverage fill-in. Those need
+hardware that does not yet exist. No capability status changes in Stage 3, and
+no study in this repository becomes hardware evidence by it.
+
+DO-101B remains **queued, not displaced or cancelled** — it was deferred behind
+DO-102 because NSF readiness was time-sensitive on the August path, not because
+it was deprioritized on the merits, and it is deferred again here for the
+ordering reason above. It has not been resumed, so its promotion still belongs
+to its own first docs/status commit.
 
 > **DO-101A — Empirical Model Framework Foundation (COMPLETE)**
 >
