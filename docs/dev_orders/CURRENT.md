@@ -44,7 +44,7 @@ refuses a `HARDWARE` origin nothing backs, which closes the gap DO-102 left:
 until now a caller could assert `HARDWARE` over any data that merely lacked a
 demo flag. `NSF-307` keeps *witnessed* as the stricter standard §10 promotes on,
 and `NSF-308` refuses a mechanical frequency-response name over an acoustic
-pressure response (§6.6). 104 new tests, most of them negative.
+pressure response (§6.6). 108 new tests, most of them negative.
 
 The study schema gained an additive optional `acquisition` block on runs and its
 registry entry moved to 1.1.0. No existing field changed meaning; the Phase 1
@@ -480,7 +480,7 @@ forward into the NSF documentation.
 - Study schema additive-only (`acquisition` on runs); registry entry 1.1.0
 - Rewrote one boundary test whose "never mentions the schema" proxy stopped
   matching its own claim once §5.1 authorized ingestion
-- 104 new tests; full suite green apart from the two documented baseline
+- 108 new tests; full suite green apart from the two documented baseline
   failures, re-verified reproducing on `main` at `b0adc53`
 - Promoted no capability, produced no hardware evidence, changed no status
 

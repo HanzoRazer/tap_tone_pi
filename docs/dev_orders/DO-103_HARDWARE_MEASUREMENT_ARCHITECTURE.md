@@ -709,7 +709,7 @@ written to fit the data it produced.
 
 Delivered as `tap_tone_pi/grant_readiness/phase2_experiment.py`,
 `AcquisitionProvenanceV1` and `AcquisitionChannelV1` in `contracts.py`, the
-`NSF-306` / `NSF-307` / `NSF-308` validators, and 104 tests across
+`NSF-306` / `NSF-307` / `NSF-308` validators, and 108 tests across
 `tests/test_nsf_hardware_provenance.py` and `tests/test_nsf_phase2_ingestion.py`.
 
 Three implementation rulings were made and are recorded with the code rather
