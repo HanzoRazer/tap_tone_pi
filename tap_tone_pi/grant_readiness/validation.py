@@ -20,6 +20,8 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 from tap_tone_pi.grant_readiness.contracts import (
+    MECHANICAL_FRF_NAMES,
+    AcquisitionRole,
     CapabilityEvidenceV1,
     CapabilityStatus,
     EvidenceOrigin,
@@ -27,6 +29,7 @@ from tap_tone_pi.grant_readiness.contracts import (
     PreliminaryExperimentDefinitionV1,
     PreliminaryExperimentRunV1,
     ReferenceValidationPlanV1,
+    RejectionReason,
     RepeatabilityStudyV1,
     TechnicalRiskV1,
 )
@@ -354,6 +357,9 @@ def validate_experiment_runs(
                 )
             )
 
+        findings.extend(validate_run_acquisition_provenance(run))
+        findings.extend(validate_transfer_quantity_naming(run))
+
         # A rejected run may legitimately have lost its artifact — that is one
         # of the rejection reasons — so only valid runs must name their source.
         if run.valid:
@@ -372,6 +378,199 @@ def validate_experiment_runs(
                 )
 
     return findings
+
+
+# ---------------------------------------------------------------------------
+# Acquisition provenance (DO-103 §5.4)
+# ---------------------------------------------------------------------------
+
+
+def validate_run_acquisition_provenance(
+    run: PreliminaryExperimentRunV1,
+) -> list[ValidationFinding]:
+    """A ``HARDWARE`` claim must be backed by acquisition provenance.
+
+    DO-102 guarded this claim two ways: it refused ``HARDWARE`` for a result
+    marked ``demo: true``, and it required a study's runs to agree with its
+    label. Both are necessary and neither is sufficient — nothing stopped a
+    caller asserting ``HARDWARE`` over data that simply lacked a demo flag.
+
+    DO-103 §5.4 closes that by deriving the claim from the evidence: a run is
+    hardware-origin only if it carries what a physical session can attest and a
+    fixture or a generator cannot. The tightening is additive. A ``FIXTURE`` or
+    ``SYNTHETIC`` run is unaffected and means exactly what it meant before.
+
+    Every condition below is *presence*, not quality. Nothing here judges
+    whether a rate was high enough or a sensor good enough; DO-103 §5.5 forbids
+    inventing a threshold this campaign exists to produce the evidence for.
+    """
+    if run.evidence_origin is not EvidenceOrigin.HARDWARE:
+        return []
+
+    context = {"run_id": run.run_id}
+    acquisition = run.acquisition
+    if acquisition is None:
+        return [
+            ValidationFinding(
+                GrantReadinessErrorCode.HARDWARE_PROVENANCE_INCOMPLETE,
+                (
+                    f"run {run.run_id} claims HARDWARE origin but records no "
+                    "acquisition provenance"
+                ),
+                context,
+            )
+        ]
+
+    findings: list[ValidationFinding] = []
+    missing = [
+        name
+        for name, value in (
+            ("session_id", acquisition.session_id),
+            ("acquisition_id", acquisition.acquisition_id),
+            ("interface_id", acquisition.interface_id),
+        )
+        if not str(value).strip()
+    ]
+    if missing:
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.HARDWARE_PROVENANCE_INCOMPLETE,
+                (
+                    f"run {run.run_id} claims HARDWARE origin but its acquisition "
+                    f"provenance is missing: {', '.join(missing)}"
+                ),
+                {**context, "missing_fields": missing},
+            )
+        )
+
+    if acquisition.sample_rate_hz <= 0:
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.HARDWARE_PROVENANCE_INCOMPLETE,
+                (
+                    f"run {run.run_id} claims HARDWARE origin but records no "
+                    "acquisition sample rate"
+                ),
+                context,
+            )
+        )
+
+    for role in (AcquisitionRole.EXCITATION, AcquisitionRole.RESPONSE):
+        if not acquisition.channels_for(role):
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.HARDWARE_PROVENANCE_INCOMPLETE,
+                    (
+                        f"run {run.run_id} claims HARDWARE origin but identifies no "
+                        f"{role.value.lower()} channel"
+                    ),
+                    {**context, "role": role.value},
+                )
+            )
+
+    # Raw measurements are retained for rejected runs too (DO-103 §6.7). The one
+    # exception is the run whose artifact never arrived: MISSING_ARTIFACT is the
+    # reason for exactly that, and demanding an artifact here would make an
+    # honest rejection unrecordable and reward dropping the run instead.
+    retained = acquisition.raw_artifact_ids or run.source_artifact_ids
+    if not retained and run.rejection_reason is not RejectionReason.MISSING_ARTIFACT:
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.HARDWARE_PROVENANCE_INCOMPLETE,
+                (
+                    f"run {run.run_id} claims HARDWARE origin but retains no raw "
+                    "measurement"
+                ),
+                context,
+            )
+        )
+
+    return findings
+
+
+def validate_transfer_quantity_naming(
+    run: PreliminaryExperimentRunV1,
+) -> list[ValidationFinding]:
+    """An acoustic response over a measured force is not a mechanical FRF.
+
+    DO-103 §6.6: with a microphone response and a measured force input the
+    transfer function is acoustic pressure per unit force, ``Pa/N``. Mobility,
+    accelerance, and receptance all require the response to be a mechanical
+    motion of the structure. Carrying the distinction in the record — not only
+    in the prose — is what stops a later reader losing it by reading the data.
+    """
+    acquisition = run.acquisition
+    if acquisition is None:
+        return []
+    response = acquisition.response_channel
+    if response is None or response.quantity != "acoustic_pressure":
+        return []
+
+    findings: list[ValidationFinding] = []
+    for feature in run.observed_features:
+        lowered = feature.quantity.lower()
+        named = sorted(name for name in MECHANICAL_FRF_NAMES if name in lowered)
+        if named:
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.MECHANICAL_FRF_MISNAMED,
+                    (
+                        f"run {run.run_id} names {feature.quantity!r} over an "
+                        "acoustic pressure response; a mechanical frequency "
+                        "response requires a mechanical response quantity"
+                    ),
+                    {
+                        "run_id": run.run_id,
+                        "quantity": feature.quantity,
+                        "mechanical_names": named,
+                    },
+                )
+            )
+    return findings
+
+
+def validate_witnessed_hardware_session(
+    study: RepeatabilityStudyV1,
+) -> list[ValidationFinding]:
+    """The stricter of DO-103 §5.4's two standards, used by §10 promotion.
+
+    Hardware origin is an acquisition classification: this data came off
+    physical instruments. A witnessed session is a governance condition: the
+    provenance is recorded, retained, and *attributable*. Every witnessed run is
+    hardware-origin; the reverse does not hold.
+
+    This is deliberately not part of :func:`validate_repeatability_study`. A
+    hardware study with unattributed runs is valid evidence of what it observed;
+    it is simply not enough to promote a capability off
+    ``NOT_VERIFIED_ON_HARDWARE``, which is a separate decision that calls this.
+    """
+    if study.evidence_origin is not EvidenceOrigin.HARDWARE:
+        return [
+            ValidationFinding(
+                GrantReadinessErrorCode.HARDWARE_SESSION_NOT_WITNESSED,
+                (
+                    f"study {study.study_id} is {study.evidence_origin.value} data "
+                    "and cannot be a witnessed hardware session"
+                ),
+                {"study_id": study.study_id},
+            )
+        ]
+
+    unwitnessed = sorted(
+        run.run_id for run in study.runs if not run.is_witnessed_hardware
+    )
+    if unwitnessed:
+        return [
+            ValidationFinding(
+                GrantReadinessErrorCode.HARDWARE_SESSION_NOT_WITNESSED,
+                (
+                    f"study {study.study_id} contains runs with no attributable "
+                    f"acquisition: {', '.join(unwitnessed)}"
+                ),
+                {"study_id": study.study_id, "unwitnessed_run_ids": unwitnessed},
+            )
+        ]
+    return []
 
 
 # ---------------------------------------------------------------------------

@@ -64,6 +64,22 @@ class GrantReadinessErrorCode(str, Enum):
     # the code behind DO-102's acceptance criterion that no generated report may
     # represent fixture or synthetic data as hardware evidence.
     EVIDENCE_ORIGIN_MISREPRESENTED = "NSF-305"
+    # A HARDWARE origin claimed without the acquisition provenance DO-103 §5.4
+    # requires. Distinct from NSF-305, which fires when a label contradicts the
+    # contents it describes: this one fires when the label has nothing behind
+    # it at all. Keeping them apart is what lets a reviewer tell a mislabelled
+    # study from an unsubstantiated one.
+    HARDWARE_PROVENANCE_INCOMPLETE = "NSF-306"
+    # Hardware-origin data that is not part of a witnessed session. DO-103 §5.4
+    # holds these as two different standards — every witnessed run is
+    # hardware-origin, not every hardware-origin run is witnessed — and §10
+    # promotes a capability only on the stricter one.
+    HARDWARE_SESSION_NOT_WITNESSED = "NSF-307"
+    # An acoustic-response transfer function named as a mechanical frequency
+    # response. DO-103 §6.6: p/F is not mobility, accelerance, or receptance,
+    # and the distinction is carried in the records rather than only the prose
+    # so a later reader cannot lose it by reading the data instead.
+    MECHANICAL_FRF_MISNAMED = "NSF-308"
 
     # -- Evidence linkage --------------------------------------------------
     UNRESOLVED_EVIDENCE_REFERENCE = "NSF-401"

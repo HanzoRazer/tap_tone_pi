@@ -236,13 +236,13 @@
       "version": "1.0.0"
     },
     "ttp_preliminary_repeatability_study": {
-      "description": "Bounded preliminary repeatability study with run accounting, descriptive metrics, evidence origin, and stated limitations",
+      "description": "Bounded preliminary repeatability study with run accounting, descriptive metrics, evidence origin, per-run acquisition provenance, and stated limitations",
       "file": "ttp_preliminary_repeatability_study_v1.schema.json",
       "owner": "grant-readiness-team",
       "path": "contracts/ttp_preliminary_repeatability_study_v1.schema.json",
       "schema_version_const": "ttp_preliminary_repeatability_study_v1",
       "status": "stable",
-      "version": "1.0.0"
+      "version": "1.1.0"
     }
   },
   "title": "tap_tone_pi Schema Registry",

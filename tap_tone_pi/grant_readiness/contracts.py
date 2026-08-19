@@ -95,6 +95,19 @@ class EvidenceOrigin(str, Enum):
         return self is EvidenceOrigin.HARDWARE
 
 
+class AcquisitionRole(str, Enum):
+    """What one recorded channel carries (DO-103 §5.4).
+
+    ``EXCITATION`` is the input the structure is driven with; ``RESPONSE`` is
+    what the structure is observed by. A transfer function is response over
+    excitation, so the pair is what gives the ratio its units — see
+    :attr:`AcquisitionProvenanceV1.transfer_unit`.
+    """
+
+    EXCITATION = "EXCITATION"
+    RESPONSE = "RESPONSE"
+
+
 class RejectionReason(str, Enum):
     """Why a run was excluded from the numerical summary.
 
@@ -133,6 +146,35 @@ KNOWN_EXCITATION_METHODS: tuple[str, ...] = (
     "shaker_stinger",
     "acoustic_drive",
     "unspecified",
+)
+
+# Physical quantities a recorded channel may carry. Like
+# ``KNOWN_EXCITATION_METHODS`` this is a known-values list, not a closed one: an
+# unlisted quantity is recorded and flagged as unrecognised rather than refused,
+# because refusing it would lose the record of what was actually measured.
+KNOWN_ACQUISITION_QUANTITIES: tuple[str, ...] = (
+    "force",
+    "acoustic_pressure",
+    "velocity",
+    "acceleration",
+    "displacement",
+    "voltage",
+    "unspecified",
+)
+
+# Names of mechanical frequency-response functions. DO-103 §6.6 forbids every one
+# of them for an acoustic pressure response over a measured force: p/F is an
+# acoustic-response transfer function relative to measured force, and calling it
+# mobility would make a future comparison against a laboratory modal method a
+# category error rather than a disagreement.
+MECHANICAL_FRF_NAMES: frozenset[str] = frozenset(
+    {
+        "mobility",
+        "accelerance",
+        "inertance",
+        "receptance",
+        "compliance",
+    }
 )
 
 
@@ -730,6 +772,235 @@ class PreliminaryExperimentDefinitionV1:
 
 
 # ---------------------------------------------------------------------------
+# Acquisition provenance (DO-103 §5.4)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class AcquisitionChannelV1:
+    """One recorded channel: what it carried, and what sensed it.
+
+    The channel's ``quantity`` and ``unit`` are what make a transfer function's
+    own units derivable rather than assumed. A microphone response over a
+    measured force is ``Pa/N``; the same arithmetic over two microphones is a
+    ratio and nothing more. Recording the pair keeps that difference in the data
+    instead of only in the prose (DO-103 §6.6).
+    """
+
+    channel_index: int
+    role: AcquisitionRole
+    quantity: str
+    unit: str
+    sensor_id: str
+    gain_setting: str | None = None
+
+    @property
+    def is_known_quantity(self) -> bool:
+        return self.quantity in KNOWN_ACQUISITION_QUANTITIES
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "channel_index": self.channel_index,
+            "role": self.role.value,
+            "quantity": self.quantity,
+            "unit": self.unit,
+            "sensor_id": self.sensor_id,
+            "gain_setting": self.gain_setting,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> AcquisitionChannelV1:
+        record = "AcquisitionChannelV1"
+        err = ExperimentRecordError
+        code = GrantReadinessErrorCode.INVALID_EXPERIMENT_DEFINITION
+        _reject_unknown_keys(
+            payload,
+            (
+                "channel_index",
+                "role",
+                "quantity",
+                "unit",
+                "sensor_id",
+                "gain_setting",
+            ),
+            record=record,
+            error=err,
+            code=code,
+        )
+        index = payload.get("channel_index")
+        if isinstance(index, bool) or not isinstance(index, int) or index < 0:
+            raise err(
+                code,
+                f"{record}.channel_index must be a non-negative integer",
+                {"record": record},
+            )
+        return cls(
+            channel_index=index,
+            role=_require_enum(
+                payload,
+                "role",
+                AcquisitionRole,
+                record=record,
+                error=err,
+                code=code,
+            ),
+            quantity=_require_text(
+                payload, "quantity", record=record, error=err, code=code
+            ),
+            unit=_require_text(payload, "unit", record=record, error=err, code=code),
+            sensor_id=_require_text(
+                payload, "sensor_id", record=record, error=err, code=code
+            ),
+            gain_setting=_optional_text(
+                payload, "gain_setting", record=record, error=err, code=code
+            ),
+        )
+
+
+@dataclass(frozen=True)
+class AcquisitionProvenanceV1:
+    """What a physical acquisition session recorded about itself.
+
+    DO-103 §5.4 makes the ``HARDWARE`` claim *derived* rather than declared: a
+    run may not become hardware evidence because a caller chose the label. This
+    record carries what a physical session can attest that a fixture or a
+    generator cannot — the instruments, the acquisition configuration, the
+    session identity, and the channel roles — and
+    :func:`~.validation.validate_run_acquisition_provenance` refuses a
+    ``HARDWARE`` origin that is not backed by it.
+
+    ``witnessed_by`` is the stricter of the two standards DO-103 §5.4 defines.
+    Hardware origin says the data came off physical instruments. A witnessed
+    session says the provenance is recorded, retained, and attributable to
+    someone. Every witnessed run is hardware-origin; the reverse does not hold,
+    and §10 promotes a capability only on the stricter one.
+    """
+
+    session_id: str
+    acquisition_id: str
+    interface_id: str
+    sample_rate_hz: int
+    channels: tuple[AcquisitionChannelV1, ...] = ()
+    excitation_device_id: str | None = None
+    drive_parameters: str | None = None
+    raw_artifact_ids: tuple[str, ...] = ()
+    witnessed_by: str | None = None
+
+    def channels_for(self, role: AcquisitionRole) -> tuple[AcquisitionChannelV1, ...]:
+        return tuple(channel for channel in self.channels if channel.role is role)
+
+    @property
+    def excitation_channel(self) -> AcquisitionChannelV1 | None:
+        """The single excitation channel, or ``None`` if there is not exactly one."""
+        found = self.channels_for(AcquisitionRole.EXCITATION)
+        return found[0] if len(found) == 1 else None
+
+    @property
+    def response_channel(self) -> AcquisitionChannelV1 | None:
+        """The single response channel, or ``None`` if there is not exactly one."""
+        found = self.channels_for(AcquisitionRole.RESPONSE)
+        return found[0] if len(found) == 1 else None
+
+    @property
+    def transfer_unit(self) -> str | None:
+        """Units of response over excitation, derived from the channels.
+
+        ``None`` when the pair is not unambiguous. The unit is never assumed: a
+        microphone over a force transducer yields ``Pa/N`` because that is what
+        the two channels say they carried, not because this campaign expects it.
+        """
+        excitation = self.excitation_channel
+        response = self.response_channel
+        if excitation is None or response is None:
+            return None
+        return f"{response.unit}/{excitation.unit}"
+
+    @property
+    def is_witnessed(self) -> bool:
+        """Whether this acquisition is attributable to a witness."""
+        return bool(self.witnessed_by)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "session_id": self.session_id,
+            "acquisition_id": self.acquisition_id,
+            "interface_id": self.interface_id,
+            "sample_rate_hz": self.sample_rate_hz,
+            "channels": [channel.to_dict() for channel in self.channels],
+            "excitation_device_id": self.excitation_device_id,
+            "drive_parameters": self.drive_parameters,
+            "raw_artifact_ids": list(self.raw_artifact_ids),
+            "witnessed_by": self.witnessed_by,
+        }
+
+    @classmethod
+    def from_dict(
+        cls, payload: Mapping[str, Any] | None
+    ) -> AcquisitionProvenanceV1 | None:
+        if payload is None:
+            return None
+        record = "AcquisitionProvenanceV1"
+        err = ExperimentRecordError
+        code = GrantReadinessErrorCode.INVALID_EXPERIMENT_DEFINITION
+        _reject_unknown_keys(
+            payload,
+            (
+                "session_id",
+                "acquisition_id",
+                "interface_id",
+                "sample_rate_hz",
+                "channels",
+                "excitation_device_id",
+                "drive_parameters",
+                "raw_artifact_ids",
+                "witnessed_by",
+            ),
+            record=record,
+            error=err,
+            code=code,
+        )
+        rate = payload.get("sample_rate_hz")
+        if isinstance(rate, bool) or not isinstance(rate, int) or rate <= 0:
+            raise err(
+                code,
+                f"{record}.sample_rate_hz must be a positive integer",
+                {"record": record},
+            )
+        raw_channels = payload.get("channels", ())
+        if isinstance(raw_channels, (str, bytes)) or not isinstance(
+            raw_channels, Sequence
+        ):
+            raise err(code, f"{record}.channels must be an array", {"record": record})
+        return cls(
+            session_id=_require_text(
+                payload, "session_id", record=record, error=err, code=code
+            ),
+            acquisition_id=_require_text(
+                payload, "acquisition_id", record=record, error=err, code=code
+            ),
+            interface_id=_require_text(
+                payload, "interface_id", record=record, error=err, code=code
+            ),
+            sample_rate_hz=rate,
+            channels=tuple(
+                AcquisitionChannelV1.from_dict(item) for item in raw_channels
+            ),
+            excitation_device_id=_optional_text(
+                payload, "excitation_device_id", record=record, error=err, code=code
+            ),
+            drive_parameters=_optional_text(
+                payload, "drive_parameters", record=record, error=err, code=code
+            ),
+            raw_artifact_ids=_text_tuple(
+                payload, "raw_artifact_ids", record=record, error=err, code=code
+            ),
+            witnessed_by=_optional_text(
+                payload, "witnessed_by", record=record, error=err, code=code
+            ),
+        )
+
+
+# ---------------------------------------------------------------------------
 # Runs
 # ---------------------------------------------------------------------------
 
@@ -792,6 +1063,21 @@ class PreliminaryExperimentRunV1:
     rejection_reason: RejectionReason | None = None
     observed_features: tuple[ObservedFeatureV1, ...] = ()
     conditions: EnvironmentalContextV1 = field(default_factory=EnvironmentalContextV1)
+    acquisition: AcquisitionProvenanceV1 | None = None
+
+    @property
+    def is_witnessed_hardware(self) -> bool:
+        """Hardware origin *and* an attributable acquisition (DO-103 §5.4).
+
+        The two standards are deliberately separate. This property answers the
+        stricter one, which is what §10 requires before a capability may be
+        promoted off ``NOT_VERIFIED_ON_HARDWARE``.
+        """
+        return (
+            self.evidence_origin is EvidenceOrigin.HARDWARE
+            and self.acquisition is not None
+            and self.acquisition.is_witnessed
+        )
 
     def feature(self, quantity: str) -> ObservedFeatureV1 | None:
         """Return the observed feature for ``quantity``, or ``None``."""
@@ -814,6 +1100,9 @@ class PreliminaryExperimentRunV1:
             ),
             "observed_features": [f.to_dict() for f in self.observed_features],
             "conditions": self.conditions.to_dict(),
+            "acquisition": (
+                self.acquisition.to_dict() if self.acquisition is not None else None
+            ),
         }
 
     @classmethod
@@ -834,6 +1123,7 @@ class PreliminaryExperimentRunV1:
                 "rejection_reason",
                 "observed_features",
                 "conditions",
+                "acquisition",
             ),
             record=record,
             error=err,
@@ -896,6 +1186,7 @@ class PreliminaryExperimentRunV1:
                 ObservedFeatureV1.from_dict(item) for item in raw_features
             ),
             conditions=EnvironmentalContextV1.from_dict(payload.get("conditions")),
+            acquisition=AcquisitionProvenanceV1.from_dict(payload.get("acquisition")),
         )
 
 

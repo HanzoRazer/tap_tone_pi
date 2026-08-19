@@ -19,11 +19,14 @@ accuracy, calibration, or laboratory-equivalence claim. Agreement with a
 reference method has not been established and cannot be inferred from repeated
 observations of the same instrument by the same instrument.
 
-**Fixture data is not hardware evidence.** DO-102 executes no hardware campaign.
-Every run and study carries its :class:`~.contracts.EvidenceOrigin`, and the
-report builders refuse to describe anything but ``HARDWARE`` as hardware
-evidence. The physical repeatability campaign is a separately witnessed
-execution gate that has not run.
+**Fixture data is not hardware evidence.** Every run and study carries its
+:class:`~.contracts.EvidenceOrigin`, and the report builders refuse to describe
+anything but ``HARDWARE`` as hardware evidence. DO-103 §5.4 makes that claim
+*derived* rather than declared: a ``HARDWARE`` run must carry the acquisition
+provenance in :class:`~.contracts.AcquisitionProvenanceV1`, so an operator
+cannot turn fixture data into hardware evidence by choosing a label. The
+physical campaign is a separately witnessed execution gate that has not run,
+and no study in this repository is hardware evidence today.
 
 The public surface is the evidence vocabulary plus the ``audit``, ``experiment``,
 ``statistics``, ``validation``, ``report``, and ``pitch_source`` modules.
@@ -31,8 +34,13 @@ The public surface is the evidence vocabulary plus the ``audit``, ``experiment``
 
 from tap_tone_pi.grant_readiness.contracts import (
     AUDIT_SCHEMA_VERSION,
+    KNOWN_ACQUISITION_QUANTITIES,
     KNOWN_EXCITATION_METHODS,
+    MECHANICAL_FRF_NAMES,
     STUDY_SCHEMA_VERSION,
+    AcquisitionChannelV1,
+    AcquisitionProvenanceV1,
+    AcquisitionRole,
     CapabilityEvidenceV1,
     CapabilityStatus,
     EnvironmentalContextV1,
@@ -65,10 +73,13 @@ __all__ = [
     "AUDIT_SCHEMA_VERSION",
     "STUDY_SCHEMA_VERSION",
     "KNOWN_EXCITATION_METHODS",
+    "KNOWN_ACQUISITION_QUANTITIES",
+    "MECHANICAL_FRF_NAMES",
     # Vocabularies
     "CapabilityStatus",
     "HardwareVerification",
     "EvidenceOrigin",
+    "AcquisitionRole",
     "RejectionReason",
     "RiskStatus",
     # Evidence records
@@ -78,6 +89,8 @@ __all__ = [
     "ExcitationContextV1",
     "PreliminaryExperimentDefinitionV1",
     "ObservedFeatureV1",
+    "AcquisitionChannelV1",
+    "AcquisitionProvenanceV1",
     "PreliminaryExperimentRunV1",
     "RepeatabilityMetricV1",
     "RepeatabilityStudyV1",
