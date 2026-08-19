@@ -255,16 +255,54 @@ class TestInventoryIsDeclarationOnly:
 
 
 class TestContractsAreAdditive:
+    """The grant layer authors its own contracts and alters nobody else's.
+
+    DO-102 proved that by asserting the package never mentioned an existing
+    measurement schema. DO-103 §5.1 brings the Phase 2 transfer-function result
+    into the evidence chain, so the package now *reads* that contract and names
+    it in order to recognise a document. The claim below is unchanged in
+    substance — no existing schema is authored, emitted, or altered here — but
+    "never mentions it" was a proxy for that claim, and it stopped being the
+    right one once ingestion was authorized. The substantive guards are
+    untouched: ``tap_tone_pi.phase2`` remains a forbidden import, and no DSP or
+    capture call site is permitted.
+    """
+
     def test_existing_schemas_are_untouched_by_this_package(self):
         for path in CODE_FILES:
             source = source_of(path)
             for existing in (
-                "phase2_ods_snapshot",
                 "viewer_pack_v1",
                 "guided_lab_session_v1",
                 "measurement_workflow_contract_v1",
             ):
                 assert existing not in source
+
+    def test_the_phase2_contract_is_named_only_where_it_is_read(self):
+        for path in CODE_FILES:
+            if path.name == "phase2_experiment.py":
+                continue
+            assert "phase2_ods_snapshot" not in source_of(path), path.name
+
+    def test_the_phase2_contract_is_recognised_not_authored(self):
+        # It appears exactly once, as the identity the ingestion path matches a
+        # document against. A second occurrence would most likely be this
+        # package emitting the contract, which is the thing being ruled out.
+        source = source_of(PACKAGE_DIR / "phase2_experiment.py")
+        assert 'PHASE2_SCHEMA_VERSION = "phase2_ods_snapshot_v2"' in source, (
+            "the Phase 2 contract identity is not declared where it is read"
+        )
+        assert source.count("phase2_ods_snapshot") == 1
+
+    def test_the_phase2_path_reads_and_does_not_reanalyze(self):
+        source = source_of(PACKAGE_DIR / "phase2_experiment.py")
+        for marker in (
+            "import numpy",
+            "import scipy",
+            "tap_tone_pi.phase2",
+            "scripts.",
+        ):
+            assert marker not in source, f"phase2_experiment.py reaches for {marker}"
 
     def test_only_the_two_new_schemas_are_referenced(self):
         source = source_of(PACKAGE_DIR / "contracts.py")
