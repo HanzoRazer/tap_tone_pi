@@ -1,7 +1,8 @@
 # Active Dev Order
 
-**Current:** DO-103 Stage 3 — Phase 2 ingestion and provenance-derived
-HARDWARE claim (COMPLETE, frozen ahead of the physical campaign)
+**Current:** DO-103 Stages 3 and 3b — Phase 2 ingestion, the
+provenance-derived HARDWARE claim, and the campaign software for E1–E5
+(COMPLETE, frozen ahead of the physical campaign)
 **Next:** DO-101B — Empirical Registry and Inspection Surface, then the hardware
 stages of DO-103 when the shaker, stinger, and force transducer exist
 **Queued:** DO-101B — Empirical Registry and Inspection Surface (NOT STARTED)
@@ -61,6 +62,48 @@ building and grounding the rig, E1–E5, capability promotion off
 `NOT_VERIFIED_ON_HARDWARE`, and the §8 risk-coverage fill-in. Those need
 hardware that does not yet exist. No capability status changes in Stage 3, and
 no study in this repository becomes hardware evidence by it.
+
+## DO-103 Stage 3b — the rest of the pre-hardware software
+
+Stage 3b finishes the software the campaign needs, on Stage 3's rule and for
+Stage 3's reason: it exists before the rig, so no part of the campaign is
+analyzed by code shaped to fit what the campaign produced.
+
+**In scope for Stage 3b:**
+
+- additive rig identity, channel sensitivity and calibration traceability, and a
+  per-run `CampaignConditionV1` — the three meanings §9 says the DO-102
+  container cannot carry (an attachment, a point pair, a measured mass);
+- `hardware_campaign.py`: the E2–E5 groupings, reciprocity pairing and
+  residuals, mass-loading deltas, and the campaign record;
+- `contracts/ttp_hardware_campaign_v1.schema.json` and the study schema's
+  additive bump to registry 1.2.0;
+- `scripts/ttp_hardware_campaign.py` and the read-only
+  `scripts/ttp_hardware_campaign_check.py`;
+- `docs/NSF_TTP_HARDWARE_CAMPAIGN_PROTOCOL.md`, and a results document that says
+  `NOT EXECUTED` because it is.
+
+### Stage 3b outcome
+
+247 new tests across five files, plus structural guards added to the
+boundary suite, weighted toward the negative cases: an unmeasured mass, a
+reciprocity direction with no transpose, a host path offered as an artifact
+identity, a traceability claim with nothing behind it, a campaign that says
+executed with nothing executed. The `NSF-5xx` family carries them and every code
+in it is exercised.
+
+Two things it deliberately does not contain. There is **no acceptance threshold
+anywhere** — not for reciprocity, not for mass loading — which a boundary test
+now asserts structurally against the module's own definitions rather than its
+prose. And **no capability is promoted**: the campaign report states what its
+evidence would support and says plainly that promotion is a separate,
+per-capability decision it does not make. The repository's campaign document is
+`NOT_EXECUTED`, every study it can produce is still `FIXTURE` or `SYNTHETIC`,
+and R10 remains open.
+
+**Not in scope for Stage 3b, and not started by it:** the physical stages. No
+rig was built, no experiment was run, no capability status changed, and no line
+of the §8 risk table was filled in.
 
 DO-101B remains **queued, not displaced or cancelled** — it was deferred behind
 DO-102 because NSF readiness was time-sensitive on the August path, not because

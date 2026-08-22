@@ -2,8 +2,8 @@
 
 ## Status
 
-**IN PROGRESS — Stage 3 complete and frozen. Stages 1, 2, and 4–8 not
-started; they require hardware that does not yet exist.**
+**IN PROGRESS — Stage 3 and Stage 3b complete and frozen. Stages 1, 2, and
+4–8 not started; they require hardware that does not yet exist.**
 
 The handoff was reviewed, authorized, and merged as PR #25, which satisfies the
 condition this section previously named. Stage 3 was then promoted on its own
@@ -19,12 +19,26 @@ over an acoustic pressure response per §6.6. The study schema gained an
 additive optional `acquisition` block; the registry entry moved to 1.1.0. No
 existing field changed meaning, and the Phase 1 path is untouched.
 
-**What Stage 3 deliberately did not do.** It promoted no capability, changed no
-capability status, produced no hardware evidence, and filled in no part of the
-§8 risk table. Every hardware-dependent capability remains
+**What Stage 3b delivered.** The rest of the software the campaign needs,
+written for the same reason and under the same rule: it exists before the rig,
+so the campaign is not analyzed by code shaped to fit its results. Additive rig
+identity on `ExcitationContextV1`, sensitivity and calibration-traceability
+metadata on `AcquisitionChannelV1`, and `CampaignConditionV1` on every run —
+which is how §9's ruling is honoured, since attachment identity, a reciprocity
+point pair, and a measured added mass are exactly the meanings the DO-102
+container cannot carry. On top of them, `hardware_campaign.py` groups the same
+runs five different ways, `contracts/ttp_hardware_campaign_v1.schema.json`
+persists the campaign accounting the studies cannot hold, and two scripts
+assemble and then re-check the result. The study schema moved to registry 1.2.0;
+no existing field changed meaning.
+
+**What Stages 3 and 3b deliberately did not do.** They promoted no capability,
+changed no capability status, produced no hardware evidence, and filled in no
+part of the §8 risk table. Every hardware-dependent capability remains
 `NOT_VERIFIED_ON_HARDWARE` and every study this repository can produce is still
 `FIXTURE` or `SYNTHETIC`. Nothing in this order's acceptance criteria (§12) is
-satisfied by Stage 3 alone.
+satisfied by the software alone: §12 criterion 4 requires a witnessed hardware
+study, and there is none.
 
 The five decisions in §5 are **resolved and recorded**. They are settled inputs
 to implementation, not open questions: the measurement architecture does not get
@@ -736,6 +750,44 @@ import and no DSP or capture call site is permitted.
 Phase 2 evidence path. Adding one would touch `inventory.py` and the frozen
 baseline, which belongs with the §10 promotion work in Stage 8 rather than with
 plumbing built before any campaign exists.
+
+**Stage 3b — Complete and frozen.** The pre-hardware campaign software, on the
+same rule as Stage 3: it lands before the rig so the campaign cannot be analyzed
+by code written to fit it.
+
+Delivered as additive fields on the DO-102 records — rig identity
+(`stinger_id`, `contact_tip_id`, `rig_configuration_id`), channel sensitivity
+and `CalibrationTraceability`, and `CampaignConditionV1` per run — plus
+`tap_tone_pi/grant_readiness/hardware_campaign.py` for the E2–E5 groupings,
+`GroupSpreadV1` / `AttachmentVariationV1` / `ReciprocityObservationV1` /
+`MassLoadingObservationV1` for the comparisons no study record can hold, the
+`NSF-5xx` error family, `contracts/ttp_hardware_campaign_v1.schema.json`,
+`scripts/ttp_hardware_campaign.py`, the read-only
+`scripts/ttp_hardware_campaign_check.py`, and
+`docs/NSF_TTP_HARDWARE_CAMPAIGN_PROTOCOL.md`.
+
+Four rulings are recorded with the code:
+
+- **Between-attachment spread does not reuse the run-level metric.** Its samples
+  are attachments, not runs, so it is a `GroupSpreadV1` that says so rather than
+  a `RepeatabilityMetricV1` whose `source_run_ids` would name things that are
+  not runs. That is §9's "add a field, do not overload one" applied to the
+  statistics rather than to the records.
+- **Every mass comparison needs at least two captures per group.** A delta
+  between two single captures cannot be separated from the spread it sits in.
+  This is a property of what can be computed, not a quality bar.
+- **The artifact digest is the identity.** Raw audio stays outside the
+  repository, so a locator that is an absolute host path is refused: the
+  reference has to survive the file moving.
+- **Traceability is claimed, never defaulted.** `CalibrationTraceability`
+  defaults to `UNKNOWN`, and a `TRACEABLE` claim without a calibration reference
+  is `NSF-510`. No sensor sensitivity or unit is assumed ahead of choosing a
+  transducer.
+
+The campaign record carries `CampaignExecutionStatus`, so §12 criterion 11 —
+an experiment not executed because an earlier gate failed — is representable
+rather than an absence a reader has to interpret. The repository's own campaign
+document is `NOT_EXECUTED`.
 
 **Stage 4 — E2, fixed-point repeatability.** The first hardware study.
 
