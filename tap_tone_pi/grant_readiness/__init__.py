@@ -28,12 +28,20 @@ cannot turn fixture data into hardware evidence by choosing a label. The
 physical campaign is a separately witnessed execution gate that has not run,
 and no study in this repository is hardware evidence today.
 
+DO-103 extends the same layer to a contact-driven hardware campaign. The
+``hardware_campaign`` module groups and compares runs the DO-102 records already
+describe — by attachment, by point pair, by added mass — and adds no signal
+processing and no acceptance figure of its own. Its campaign is
+``NOT_EXECUTED`` until a rig exists.
+
 The public surface is the evidence vocabulary plus the ``audit``, ``experiment``,
-``statistics``, ``validation``, ``report``, and ``pitch_source`` modules.
+``phase2_experiment``, ``statistics``, ``validation``, ``hardware_campaign``,
+``report``, and ``pitch_source`` modules.
 """
 
 from tap_tone_pi.grant_readiness.contracts import (
     AUDIT_SCHEMA_VERSION,
+    CAMPAIGN_SCHEMA_VERSION,
     KNOWN_ACQUISITION_QUANTITIES,
     KNOWN_EXCITATION_METHODS,
     MECHANICAL_FRF_NAMES,
@@ -41,16 +49,29 @@ from tap_tone_pi.grant_readiness.contracts import (
     AcquisitionChannelV1,
     AcquisitionProvenanceV1,
     AcquisitionRole,
+    AttachmentVariationV1,
+    CalibrationTraceability,
+    CampaignConditionV1,
+    CampaignExecutionStatus,
+    CampaignExperimentOutcomeV1,
+    CampaignExperimentPlanV1,
     CapabilityEvidenceV1,
     CapabilityStatus,
     EnvironmentalContextV1,
     EvidenceOrigin,
     ExcitationContextV1,
+    ExperimentKind,
+    ExternalArtifactV1,
     GrantReadinessAuditV1,
+    GroupSpreadV1,
+    HardwareCampaignConfigV1,
+    HardwareCampaignRecordV1,
     HardwareVerification,
+    MassLoadingObservationV1,
     ObservedFeatureV1,
     PreliminaryExperimentDefinitionV1,
     PreliminaryExperimentRunV1,
+    ReciprocityObservationV1,
     ReferenceMethodV1,
     ReferenceValidationPlanV1,
     RejectionReason,
@@ -65,6 +86,7 @@ from tap_tone_pi.grant_readiness.errors import (
     ExperimentRecordError,
     GrantReadinessError,
     GrantReadinessErrorCode,
+    HardwareCampaignError,
     RepeatabilityStatisticsError,
 )
 
@@ -72,6 +94,7 @@ __all__ = [
     # Schema identities
     "AUDIT_SCHEMA_VERSION",
     "STUDY_SCHEMA_VERSION",
+    "CAMPAIGN_SCHEMA_VERSION",
     "KNOWN_EXCITATION_METHODS",
     "KNOWN_ACQUISITION_QUANTITIES",
     "MECHANICAL_FRF_NAMES",
@@ -82,6 +105,9 @@ __all__ = [
     "AcquisitionRole",
     "RejectionReason",
     "RiskStatus",
+    "CalibrationTraceability",
+    "ExperimentKind",
+    "CampaignExecutionStatus",
     # Evidence records
     "CapabilityEvidenceV1",
     "GrantReadinessAuditV1",
@@ -97,6 +123,17 @@ __all__ = [
     "TechnicalRiskV1",
     "ReferenceMethodV1",
     "ReferenceValidationPlanV1",
+    # Hardware campaign records (DO-103)
+    "CampaignConditionV1",
+    "GroupSpreadV1",
+    "AttachmentVariationV1",
+    "ReciprocityObservationV1",
+    "MassLoadingObservationV1",
+    "ExternalArtifactV1",
+    "CampaignExperimentPlanV1",
+    "HardwareCampaignConfigV1",
+    "CampaignExperimentOutcomeV1",
+    "HardwareCampaignRecordV1",
     # Errors
     "GrantReadinessErrorCode",
     "GrantReadinessError",
@@ -104,4 +141,5 @@ __all__ = [
     "ExperimentRecordError",
     "RepeatabilityStatisticsError",
     "EvidenceLinkageError",
+    "HardwareCampaignError",
 ]

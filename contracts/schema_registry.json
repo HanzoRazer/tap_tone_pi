@@ -48,7 +48,8 @@
       "description": "Capability audit and preliminary repeatability evidence for grant readiness",
       "schemas": [
         "nsf_grant_readiness_audit",
-        "ttp_preliminary_repeatability_study"
+        "ttp_preliminary_repeatability_study",
+        "ttp_hardware_campaign"
       ]
     }
   },
@@ -235,16 +236,25 @@
       "status": "stable",
       "version": "1.0.0"
     },
+    "ttp_hardware_campaign": {
+      "description": "Hardware characterization campaign for a contact-drive measurement architecture: stated configuration, per-experiment outcome accounting, external raw-artifact manifest, and the between-attachment, reciprocity, and mass-loading comparisons no single study can hold. Carries no acceptance threshold and no calibration claim.",
+      "file": "ttp_hardware_campaign_v1.schema.json",
+      "owner": "grant-readiness-team",
+      "path": "contracts/ttp_hardware_campaign_v1.schema.json",
+      "schema_version_const": "ttp_hardware_campaign_v1",
+      "status": "stable",
+      "version": "1.0.0"
+    },
     "ttp_preliminary_repeatability_study": {
-      "description": "Bounded preliminary repeatability study with run accounting, descriptive metrics, evidence origin, per-run acquisition provenance, and stated limitations",
+      "description": "Bounded preliminary repeatability study with run accounting, descriptive metrics, evidence origin, per-run acquisition provenance, per-run hardware-campaign condition, and stated limitations",
       "file": "ttp_preliminary_repeatability_study_v1.schema.json",
       "owner": "grant-readiness-team",
       "path": "contracts/ttp_preliminary_repeatability_study_v1.schema.json",
       "schema_version_const": "ttp_preliminary_repeatability_study_v1",
       "status": "stable",
-      "version": "1.1.0"
+      "version": "1.2.0"
     }
   },
   "title": "tap_tone_pi Schema Registry",
-  "updated": "2026-08-04T00:00:00Z"
+  "updated": "2026-08-22T00:00:00Z"
 }

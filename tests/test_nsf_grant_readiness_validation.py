@@ -775,7 +775,11 @@ class TestSchemaRegistry:
 
     @pytest.mark.parametrize(
         "key",
-        ["nsf_grant_readiness_audit", "ttp_preliminary_repeatability_study"],
+        [
+            "nsf_grant_readiness_audit",
+            "ttp_preliminary_repeatability_study",
+            "ttp_hardware_campaign",
+        ],
     )
     def test_schema_is_registered(self, registry, key):
         entry = registry["schemas"][key]
@@ -787,6 +791,7 @@ class TestSchemaRegistry:
         assert set(owner["schemas"]) == {
             "nsf_grant_readiness_audit",
             "ttp_preliminary_repeatability_study",
+            "ttp_hardware_campaign",
         }
 
     def test_existing_entries_untouched(self, registry):
@@ -795,7 +800,11 @@ class TestSchemaRegistry:
             assert key in registry["schemas"]
 
     def test_every_registered_schema_version_const_matches_its_file(self, registry):
-        for key in ("nsf_grant_readiness_audit", "ttp_preliminary_repeatability_study"):
+        for key in (
+            "nsf_grant_readiness_audit",
+            "ttp_preliminary_repeatability_study",
+            "ttp_hardware_campaign",
+        ):
             entry = registry["schemas"][key]
             schema = json.loads((REPO_ROOT / entry["path"]).read_text(encoding="utf-8"))
             assert (

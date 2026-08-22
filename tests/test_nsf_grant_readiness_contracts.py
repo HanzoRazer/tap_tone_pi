@@ -678,7 +678,11 @@ class TestErrorVocabulary:
     def test_codes_are_grouped_by_layer(self):
         for code in GrantReadinessErrorCode:
             assert code.value.startswith("NSF-")
-            assert code.value[4] in {"1", "2", "3", "4"}
+            # 5xx is the DO-103 hardware-campaign family. It is a new layer
+            # rather than an extension of 3xx, whose codes are statistics and
+            # reporting; overloading that family would make the grouping the
+            # errors module documents stop describing anything.
+            assert code.value[4] in {"1", "2", "3", "4", "5"}
 
     def test_codes_are_unique(self):
         values = [code.value for code in GrantReadinessErrorCode]

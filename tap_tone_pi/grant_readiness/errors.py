@@ -9,6 +9,7 @@ layer that raises them:
   ``NSF-2xx``  experiment definitions and experimental runs
   ``NSF-3xx``  descriptive statistics and reporting
   ``NSF-4xx``  evidence linkage and digests
+  ``NSF-5xx``  hardware characterization campaign (DO-103)
 
 Error context is always JSON-serializable and never contains a host path.
 Repository-relative paths are permitted — they are evidence — but an absolute
@@ -82,6 +83,40 @@ class GrantReadinessErrorCode(str, Enum):
     MECHANICAL_FRF_MISNAMED = "NSF-308"
 
     # -- Evidence linkage --------------------------------------------------
+    # -- Hardware characterization campaign (DO-103) -----------------------
+    # A campaign describes a physical arrangement and a plan; these codes fire
+    # on what that description cannot support. None of them is a measurement
+    # verdict: DO-103 §5.5 forbids inventing the acceptance figures this
+    # campaign exists to produce evidence for, so nothing below compares an
+    # observed value against a limit.
+    CAMPAIGN_CONFIGURATION_INVALID = "NSF-501"
+    # A run's campaign condition does not carry what its experiment kind needs
+    # to be grouped: an attachment identity for E3, a point pair for E4, a
+    # measured mass for E5.
+    CAMPAIGN_CONDITION_INCOMPLETE = "NSF-502"
+    # A reciprocity direction with no counterpart. One direction alone is a
+    # measurement, not a reciprocity observation.
+    RECIPROCITY_PAIR_INCOMPLETE = "NSF-503"
+    # Two runs offered as a reciprocity pair that are not transposes of each
+    # other. Distinct from NSF-503 so a mispaired run is not reported as a
+    # missing one.
+    RECIPROCITY_POINTS_MISMATCHED = "NSF-504"
+    # A mass challenge carrying only its intended mass. DO-103 §4.7: the
+    # nominal value may not stand in for the measured one.
+    MASS_CHALLENGE_UNMEASURED = "NSF-505"
+    # One challenge identifier used for two different measured masses, which
+    # would make the grouping ambiguous and the delta meaningless.
+    DUPLICATE_MASS_CHALLENGE = "NSF-506"
+    # Loaded runs with no unloaded baseline to compare them against.
+    MASS_BASELINE_MISSING = "NSF-507"
+    # An external artifact reference that cannot identify what it points at.
+    ARTIFACT_IDENTITY_INCOMPLETE = "NSF-508"
+    # An artifact whose durable identity is a path on the machine that captured
+    # it. The digest is the identity; a path is where a copy happened to sit.
+    ARTIFACT_IDENTITY_NOT_PORTABLE = "NSF-509"
+    # A channel claiming traceable calibration with nothing to trace it to.
+    CALIBRATION_TRACEABILITY_UNSUPPORTED = "NSF-510"
+
     UNRESOLVED_EVIDENCE_REFERENCE = "NSF-401"
     EVIDENCE_DIGEST_MISMATCH = "NSF-402"
 
@@ -133,6 +168,10 @@ class EvidenceLinkageError(GrantReadinessError):
     """An evidence reference does not resolve, or its digest disagrees."""
 
 
+class HardwareCampaignError(GrantReadinessError):
+    """A hardware campaign's configuration or grouping is unusable."""
+
+
 __all__ = [
     "GrantReadinessErrorCode",
     "GrantReadinessError",
@@ -140,4 +179,5 @@ __all__ = [
     "ExperimentRecordError",
     "RepeatabilityStatisticsError",
     "EvidenceLinkageError",
+    "HardwareCampaignError",
 ]
