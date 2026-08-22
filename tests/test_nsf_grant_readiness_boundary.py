@@ -22,6 +22,8 @@ SCRIPTS = (
     REPO_ROOT / "scripts" / "nsf_ttp_audit.py",
     REPO_ROOT / "scripts" / "nsf_ttp_repeatability.py",
     REPO_ROOT / "scripts" / "nsf_ttp_build_pitch_source.py",
+    REPO_ROOT / "scripts" / "ttp_hardware_campaign.py",
+    REPO_ROOT / "scripts" / "ttp_hardware_campaign_check.py",
 )
 
 PACKAGE_FILES = sorted(PACKAGE_DIR.glob("*.py"))
@@ -151,6 +153,72 @@ class TestDelegationIsNarrow:
         # import the record, and so cannot inherit its acceptance gate.
         for path in PACKAGE_FILES:
             assert "tap_tone_pi.core.repeatability" not in module_imports(path)
+
+
+class TestCampaignAddsNoSignalProcessing:
+    """DO-103 §15 authorizes no new DSP, and the campaign layer adds none.
+
+    The campaign groups and compares runs that the Phase 2 path already
+    produced. It reaches those results through the Stage 3 ingestion module,
+    which reads the persisted document as a document — so the strongest
+    structural claim available is that the campaign module never reaches the
+    Phase 2 package or any array library at all, and these tests assert it
+    directly rather than trusting the docstring that says so.
+    """
+
+    @pytest.fixture(scope="class")
+    def campaign_source(self) -> str:
+        return source_of(PACKAGE_DIR / "hardware_campaign.py")
+
+    def test_the_campaign_module_exists(self):
+        assert (PACKAGE_DIR / "hardware_campaign.py").exists()
+
+    def test_it_reads_phase2_results_through_the_ingestion_module(self):
+        imports = module_imports(PACKAGE_DIR / "hardware_campaign.py")
+        assert "tap_tone_pi.grant_readiness.phase2_experiment" in imports
+
+    def test_it_reaches_no_measurement_package(self, campaign_source):
+        imports = module_imports(PACKAGE_DIR / "hardware_campaign.py")
+        for imported in imports:
+            assert imported.startswith(
+                ("tap_tone_pi.grant_readiness", "typing", "hashlib", "__future__")
+            ), f"hardware_campaign imports {imported}"
+
+    def test_it_computes_no_transfer_function(self, campaign_source):
+        lowered = campaign_source.lower()
+        for marker in ("h_mag", "h_phase", "freqs_hz", "fft", "window"):
+            assert marker not in lowered, f"hardware_campaign contains {marker}"
+
+    def test_it_defines_no_acceptance_figure(self):
+        # DO-103 §4.6 and §4.7 forbid a reciprocity tolerance and a mass-response
+        # threshold. Prose that rules one out is fine and is what the module is
+        # full of; a *binding* named for one is not, so this reads the module's
+        # own definitions rather than its words.
+        tree = ast.parse(
+            (PACKAGE_DIR / "hardware_campaign.py").read_text(encoding="utf-8")
+        )
+        # "limitation" is deliberately absent from this list: stating what the
+        # evidence cannot support is the opposite of an acceptance figure.
+        forbidden = ("threshold", "tolerance", "acceptable", "verdict", "passes")
+        defined: list[str] = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+                defined.append(node.id)
+            elif isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+                defined.append(node.name)
+            elif isinstance(node, ast.arg):
+                defined.append(node.arg)
+        for name in defined:
+            assert not any(marker in name.lower() for marker in forbidden), (
+                f"hardware_campaign defines {name}"
+            )
+
+    def test_the_check_script_writes_nothing(self):
+        # It reports a failing campaign; it never repairs one, because an
+        # automatic fix would change evidence to match a claim.
+        source = source_of(REPO_ROOT / "scripts" / "ttp_hardware_campaign_check.py")
+        assert "write_text(" not in source
+        assert "mkdir(" not in source
 
 
 class TestNoAdvisoryLogic:
