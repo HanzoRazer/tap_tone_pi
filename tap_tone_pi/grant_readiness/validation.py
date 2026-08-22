@@ -21,13 +21,21 @@ from typing import Any, Iterable, Sequence
 
 from tap_tone_pi.grant_readiness.contracts import (
     MECHANICAL_FRF_NAMES,
+    AcquisitionChannelV1,
     AcquisitionRole,
+    CampaignExecutionStatus,
     CapabilityEvidenceV1,
     CapabilityStatus,
     EvidenceOrigin,
+    ExperimentKind,
+    ExternalArtifactV1,
+    HardwareCampaignConfigV1,
+    HardwareCampaignRecordV1,
     HardwareVerification,
+    MassLoadingObservationV1,
     PreliminaryExperimentDefinitionV1,
     PreliminaryExperimentRunV1,
+    ReciprocityObservationV1,
     ReferenceValidationPlanV1,
     RejectionReason,
     RepeatabilityStudyV1,
@@ -359,6 +367,12 @@ def validate_experiment_runs(
 
         findings.extend(validate_run_acquisition_provenance(run))
         findings.extend(validate_transfer_quantity_naming(run))
+        findings.extend(validate_run_campaign_condition(run))
+        if run.acquisition is not None:
+            for channel in run.acquisition.channels:
+                findings.extend(
+                    validate_channel_calibration(channel, record=f"run {run.run_id}")
+                )
 
         # A rejected run may legitimately have lost its artifact — that is one
         # of the rejection reasons — so only valid runs must name their source.
@@ -700,6 +714,596 @@ def validate_study_evidence_origin(
 
 
 # ---------------------------------------------------------------------------
+# Hardware campaign (DO-103 §7, §9)
+# ---------------------------------------------------------------------------
+
+# Coherence is defined on [0, 1] by construction. Refusing a value outside that
+# interval is a check that a record is a record, not an acceptance threshold:
+# DO-103 §4.6 forbids comparing an observed coherence against a limit, and
+# nothing here does.
+COHERENCE_BOUNDS = (0.0, 1.0)
+
+# What each experiment kind must record before its runs can be grouped at all.
+# These are structural requirements of the comparison, not quality bars.
+_CONDITION_REQUIREMENTS: dict[ExperimentKind, tuple[str, ...]] = {
+    ExperimentKind.DETACH_REATTACH: ("contact_configuration_id",),
+    ExperimentKind.RECIPROCITY: ("drive_point_id", "response_point_id"),
+    ExperimentKind.MASS_LOADING: ("mass_challenge_id", "added_mass_g"),
+}
+
+_SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+
+
+def validate_channel_calibration(
+    channel: AcquisitionChannelV1, *, record: str = "channel"
+) -> list[ValidationFinding]:
+    """A calibration claim must carry what would let someone check it.
+
+    DO-103 §4.2 separates measured from traceable. A channel may say its
+    scaling is traceable, and if it does it must name the reference that makes
+    the claim checkable; otherwise the strongest thing the record supports is
+    that a number was recorded. This is a check on the claim, never on the
+    sensor: an ``UNKNOWN`` calibration is a perfectly valid state and produces
+    no finding.
+    """
+    findings: list[ValidationFinding] = []
+    context = {"record": record, "sensor_id": channel.sensor_id}
+
+    if channel.claims_traceability and not channel.calibration_reference:
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.CALIBRATION_TRACEABILITY_UNSUPPORTED,
+                (
+                    f"channel {channel.sensor_id} claims traceable calibration but "
+                    "names no calibration reference"
+                ),
+                context,
+            )
+        )
+
+    if (channel.sensitivity_value is None) != (channel.sensitivity_unit is None):
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
+                (
+                    f"channel {channel.sensor_id} records a sensitivity without "
+                    "both a value and its unit; neither is meaningful alone"
+                ),
+                context,
+            )
+        )
+
+    return findings
+
+
+def validate_run_campaign_condition(
+    run: PreliminaryExperimentRunV1,
+) -> list[ValidationFinding]:
+    """A campaign run must record what its own experiment needs to be grouped.
+
+    E3 cannot separate within-attachment from between-attachment variation
+    unless every run says which attachment it belongs to; E4 cannot pair a
+    direction with its transpose unless both points are named; E5 cannot compare
+    against a baseline unless the mass is measured. Each missing field would not
+    produce a wrong number — it would produce a comparison that silently drops
+    the run, which is worse.
+
+    A run with no campaign condition is a DO-102 run and is not judged here.
+    """
+    condition = run.campaign_condition
+    if condition is None:
+        return []
+
+    findings: list[ValidationFinding] = []
+    context = {"run_id": run.run_id, "experiment_kind": condition.experiment_kind.value}
+
+    missing = [
+        name
+        for name in _CONDITION_REQUIREMENTS.get(condition.experiment_kind, ())
+        if getattr(condition, name) is None
+    ]
+    if missing:
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.CAMPAIGN_CONDITION_INCOMPLETE,
+                (
+                    f"run {run.run_id} is a "
+                    f"{condition.experiment_kind.value} run but records no "
+                    f"{', '.join(missing)}"
+                ),
+                {**context, "missing_fields": missing},
+            )
+        )
+
+    if condition.nominal_added_mass_g is not None and condition.added_mass_g is None:
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.MASS_CHALLENGE_UNMEASURED,
+                (
+                    f"run {run.run_id} records an intended added mass with no "
+                    "measured mass; the nominal value may not stand in for it"
+                ),
+                context,
+            )
+        )
+
+    if condition.added_mass_g is not None and condition.added_mass_g < 0:
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.MASS_CHALLENGE_UNMEASURED,
+                f"run {run.run_id} records a negative added mass",
+                context,
+            )
+        )
+
+    pair = condition.point_pair
+    if pair is not None and pair[0] == pair[1]:
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.RECIPROCITY_POINTS_MISMATCHED,
+                (
+                    f"run {run.run_id} drives and measures at the same point "
+                    f"{pair[0]!r}, which has no transpose"
+                ),
+                context,
+            )
+        )
+
+    return findings
+
+
+def validate_external_artifact(
+    artifact: ExternalArtifactV1,
+) -> list[ValidationFinding]:
+    """An artifact reference must identify bytes, not a location.
+
+    Raw audio is not committed to this repository, so the reference has to
+    survive the file moving. The digest is therefore the identity and is
+    required to look like one; the locator says where a copy may currently be
+    found, and an absolute path from the acquiring workstation is refused as an
+    identity because it stops meaning anything on any other machine.
+    """
+    findings: list[ValidationFinding] = []
+    context = {"artifact_id": artifact.artifact_id}
+
+    if not _SHA256_PATTERN.match(artifact.sha256):
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.ARTIFACT_IDENTITY_INCOMPLETE,
+                (
+                    f"artifact {artifact.artifact_id} does not carry a SHA-256 "
+                    "digest as its identity"
+                ),
+                context,
+            )
+        )
+
+    if artifact.byte_count < 0:
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.ARTIFACT_IDENTITY_INCOMPLETE,
+                f"artifact {artifact.artifact_id} reports a negative size",
+                context,
+            )
+        )
+
+    if is_host_path(artifact.storage_locator):
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.ARTIFACT_IDENTITY_NOT_PORTABLE,
+                (
+                    f"artifact {artifact.artifact_id} uses an absolute host path as "
+                    "its storage locator; a path on the acquiring machine is not a "
+                    "durable identity"
+                ),
+                context,
+            )
+        )
+
+    return findings
+
+
+def validate_artifact_manifest(
+    artifacts: Sequence[ExternalArtifactV1],
+    *,
+    runs: Sequence[PreliminaryExperimentRunV1] = (),
+) -> list[ValidationFinding]:
+    """Check an artifact manifest and, where runs are given, its coverage.
+
+    A run that names a raw artifact the manifest does not carry has an evidence
+    reference nobody can resolve, which is the failure DO-103 §12 criterion 12
+    is written against: every number must lead back to the bytes it came from.
+    """
+    findings: list[ValidationFinding] = []
+    seen: set[str] = set()
+    for artifact in artifacts:
+        if artifact.artifact_id in seen:
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.ARTIFACT_IDENTITY_INCOMPLETE,
+                    f"artifact {artifact.artifact_id} appears more than once",
+                    {"artifact_id": artifact.artifact_id},
+                )
+            )
+        seen.add(artifact.artifact_id)
+        findings.extend(validate_external_artifact(artifact))
+
+    for run in runs:
+        if run.acquisition is None:
+            continue
+        unresolved = sorted(set(run.acquisition.raw_artifact_ids) - seen)
+        if unresolved:
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.UNRESOLVED_EVIDENCE_REFERENCE,
+                    (
+                        f"run {run.run_id} retains raw artifacts the manifest does "
+                        f"not carry: {', '.join(unresolved)}"
+                    ),
+                    {"run_id": run.run_id, "artifact_ids": unresolved},
+                )
+            )
+
+    return findings
+
+
+def validate_campaign_config(
+    config: HardwareCampaignConfigV1,
+) -> list[ValidationFinding]:
+    """Check a campaign's stated configuration before anything is captured.
+
+    Two of these are worth stating. The rig must be identified, because DO-103
+    §4.8 makes it part of the measurement instrument and a campaign that cannot
+    say which rig it used cannot be repeated. And exactly one excitation and one
+    response channel must be named, because the transfer function's own units
+    are derived from that pair — an ambiguous pair makes the recorded unit
+    unknowable rather than merely unrecorded.
+    """
+    findings: list[ValidationFinding] = []
+    context = {"campaign_id": config.campaign_id}
+
+    if not config.excitation.rig_configuration_id:
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
+                "campaign identifies no rig configuration",
+                context,
+            )
+        )
+
+    for role in (AcquisitionRole.EXCITATION, AcquisitionRole.RESPONSE):
+        found = config.channels_for(role)
+        if len(found) != 1:
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
+                    (
+                        f"campaign names {len(found)} {role.value.lower()} channels; "
+                        "the transfer quantity is derived from exactly one of each"
+                    ),
+                    {**context, "role": role.value},
+                )
+            )
+
+    indices: set[int] = set()
+    for channel in config.channels:
+        if channel.channel_index in indices:
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
+                    f"campaign reuses channel index {channel.channel_index}",
+                    context,
+                )
+            )
+        indices.add(channel.channel_index)
+        findings.extend(
+            validate_channel_calibration(
+                channel, record=f"campaign {config.campaign_id}"
+            )
+        )
+
+    if config.force_channel is None:
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
+                (
+                    "campaign records no measured force channel; DO-103 requires "
+                    "the excitation to be measured rather than commanded"
+                ),
+                context,
+            )
+        )
+
+    seen_experiments: set[str] = set()
+    for plan in config.experiments:
+        plan_context = {**context, "experiment_id": plan.experiment_id}
+        if plan.experiment_id in seen_experiments:
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
+                    f"campaign plans experiment {plan.experiment_id} twice",
+                    plan_context,
+                )
+            )
+        seen_experiments.add(plan.experiment_id)
+
+        if plan.planned_repeat_count < MINIMUM_REPEAT_COUNT:
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.INSUFFICIENT_REPEAT_COUNT,
+                    (
+                        f"experiment {plan.experiment_id} plans "
+                        f"{plan.planned_repeat_count} repeats, fewer than the "
+                        f"{MINIMUM_REPEAT_COUNT} a spread can be described from"
+                    ),
+                    plan_context,
+                )
+            )
+
+        is_rig_experiment = plan.kind is ExperimentKind.RIG_CHARACTERIZATION
+        if is_rig_experiment and not plan.subject_is_rig:
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
+                    (
+                        f"experiment {plan.experiment_id} characterizes the rig but "
+                        "does not declare the rig as its subject; recording the rig "
+                        "in instrument_id is permitted only where the record says so"
+                    ),
+                    plan_context,
+                )
+            )
+        if plan.subject_is_rig and not is_rig_experiment:
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
+                    (
+                        f"experiment {plan.experiment_id} declares the rig as its "
+                        f"subject but is a {plan.kind.value} experiment"
+                    ),
+                    plan_context,
+                )
+            )
+
+    return findings
+
+
+def validate_reciprocity_observation(
+    observation: ReciprocityObservationV1,
+) -> list[ValidationFinding]:
+    """Check a reciprocity observation describes a transpose of two directions.
+
+    There is no residual limit here and there will not be one in this order: a
+    large residual is what E4 exists to detect. What is checked is that the
+    record is coherent as a record — two distinct runs, two distinct points, a
+    residual that is a magnitude, and coherences inside the interval coherence
+    is defined on.
+    """
+    findings: list[ValidationFinding] = []
+    context = {"observation_id": observation.observation_id}
+
+    if observation.forward_run_id == observation.reverse_run_id:
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.RECIPROCITY_PAIR_INCOMPLETE,
+                (
+                    f"observation {observation.observation_id} pairs run "
+                    f"{observation.forward_run_id} with itself"
+                ),
+                context,
+            )
+        )
+
+    if observation.forward_drive_point_id == observation.forward_response_point_id:
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.RECIPROCITY_POINTS_MISMATCHED,
+                (
+                    f"observation {observation.observation_id} drives and measures "
+                    "at the same point"
+                ),
+                context,
+            )
+        )
+
+    if observation.absolute_residual < 0:
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.NON_FINITE_STATISTIC,
+                (
+                    f"observation {observation.observation_id} reports a negative "
+                    "absolute residual"
+                ),
+                context,
+            )
+        )
+
+    low, high = COHERENCE_BOUNDS
+    for name, value in (
+        ("forward_coherence", observation.forward_coherence),
+        ("reverse_coherence", observation.reverse_coherence),
+    ):
+        if value is not None and not low <= value <= high:
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.NON_FINITE_STATISTIC,
+                    (
+                        f"observation {observation.observation_id} reports "
+                        f"{name} of {value}, outside the interval coherence is "
+                        "defined on"
+                    ),
+                    {**context, "field": name},
+                )
+            )
+
+    return findings
+
+
+def validate_mass_loading_observation(
+    observation: MassLoadingObservationV1,
+) -> list[ValidationFinding]:
+    """Check a mass-loading observation compares a load against a baseline.
+
+    No response size is judged. A challenge that moved nothing is a finding
+    about the measurement architecture, and DO-103 §4.7 forbids this order from
+    deciding how much movement would have been enough.
+    """
+    findings: list[ValidationFinding] = []
+    context = {"observation_id": observation.observation_id}
+
+    if observation.added_mass_g <= 0:
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.MASS_CHALLENGE_UNMEASURED,
+                (
+                    f"observation {observation.observation_id} compares a challenge "
+                    f"of {observation.added_mass_g} g, which adds no mass"
+                ),
+                context,
+            )
+        )
+
+    for name, metric in (
+        ("baseline_metric", observation.baseline_metric),
+        ("loaded_metric", observation.loaded_metric),
+    ):
+        if metric.sample_count < MINIMUM_REPEAT_COUNT:
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.INSUFFICIENT_VALID_MEASUREMENTS,
+                    (
+                        f"observation {observation.observation_id} summarizes "
+                        f"{name} from {metric.sample_count} run(s); a delta cannot "
+                        "be read against a spread that was never observed"
+                    ),
+                    {**context, "field": name},
+                )
+            )
+        if metric.unit != observation.unit:
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.INCOMPATIBLE_MEASUREMENT_UNITS,
+                    (
+                        f"observation {observation.observation_id} reports "
+                        f"{observation.unit} but its {name} is in {metric.unit}"
+                    ),
+                    {**context, "field": name},
+                )
+            )
+
+    return findings
+
+
+def validate_campaign_record(
+    record: HardwareCampaignRecordV1,
+) -> list[ValidationFinding]:
+    """Validate a whole campaign: configuration, accounting, and observations.
+
+    The accounting rules exist because DO-103 §12 criterion 11 requires an
+    experiment that did not run to say why. An executed experiment names the
+    study it produced; one stopped by an earlier gate names the gate; and a
+    campaign that claims execution has to have executed something.
+    """
+    findings: list[ValidationFinding] = list(validate_campaign_config(record.config))
+    findings.extend(validate_artifact_manifest(record.artifacts))
+
+    planned = {plan.experiment_id for plan in record.config.experiments}
+    accounted: set[str] = set()
+    for outcome in record.outcomes:
+        context = {
+            "campaign_id": record.campaign_id,
+            "experiment_id": outcome.experiment_id,
+        }
+        if outcome.experiment_id not in planned:
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
+                    (
+                        f"campaign records an outcome for {outcome.experiment_id}, "
+                        "which it never planned"
+                    ),
+                    context,
+                )
+            )
+        if outcome.experiment_id in accounted:
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
+                    f"campaign accounts for {outcome.experiment_id} twice",
+                    context,
+                )
+            )
+        accounted.add(outcome.experiment_id)
+
+        if outcome.status is CampaignExecutionStatus.EXECUTED and not outcome.study_id:
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
+                    (
+                        f"experiment {outcome.experiment_id} is recorded as executed "
+                        "but names no study"
+                    ),
+                    context,
+                )
+            )
+        if (
+            outcome.status is CampaignExecutionStatus.BLOCKED_BY_GATE
+            and not outcome.blocked_by_experiment_id
+        ):
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
+                    (
+                        f"experiment {outcome.experiment_id} is recorded as blocked "
+                        "but names no gate that blocked it"
+                    ),
+                    context,
+                )
+            )
+
+    unaccounted = sorted(planned - accounted)
+    if unaccounted:
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
+                (
+                    "campaign plans experiments it does not account for: "
+                    f"{', '.join(unaccounted)}"
+                ),
+                {"campaign_id": record.campaign_id, "experiment_ids": unaccounted},
+            )
+        )
+
+    executed = record.executed_experiment_ids
+    if record.execution_status is CampaignExecutionStatus.NOT_EXECUTED and executed:
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
+                (
+                    "campaign is recorded as not executed but accounts for executed "
+                    f"experiments: {', '.join(executed)}"
+                ),
+                {"campaign_id": record.campaign_id},
+            )
+        )
+    if record.execution_status is CampaignExecutionStatus.EXECUTED and not executed:
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
+                "campaign is recorded as executed but no experiment executed",
+                {"campaign_id": record.campaign_id},
+            )
+        )
+
+    for observation in record.reciprocity:
+        findings.extend(validate_reciprocity_observation(observation))
+    for loading in record.mass_loading:
+        findings.extend(validate_mass_loading_observation(loading))
+
+    return findings
+
+
+# ---------------------------------------------------------------------------
 # Risks and reference plan
 # ---------------------------------------------------------------------------
 
@@ -754,6 +1358,15 @@ __all__ = [
     "validate_experiment_runs",
     "validate_repeatability_study",
     "validate_study_evidence_origin",
+    "COHERENCE_BOUNDS",
+    "validate_channel_calibration",
+    "validate_run_campaign_condition",
+    "validate_external_artifact",
+    "validate_artifact_manifest",
+    "validate_campaign_config",
+    "validate_reciprocity_observation",
+    "validate_mass_loading_observation",
+    "validate_campaign_record",
     "validate_technical_risk",
     "validate_reference_validation_plan",
     "CapabilityAuditError",

@@ -34,6 +34,7 @@ from typing import Sequence
 
 from tap_tone_pi.core.statistics import compute_repeatability
 from tap_tone_pi.grant_readiness.contracts import (
+    GroupSpreadV1,
     PreliminaryExperimentRunV1,
     RepeatabilityMetricV1,
 )
@@ -263,6 +264,113 @@ def summarize_runs(
     )
 
 
+def summarize_group_spread(
+    values: Sequence[float],
+    *,
+    group_kind: str,
+    group_ids: Sequence[str],
+    quantity: str,
+    unit: str,
+) -> GroupSpreadV1:
+    """Summarize one quantity across groups, where each sample is a group.
+
+    Between-attachment variation (DO-103 E3) is the spread of per-attachment
+    means, not of runs. The arithmetic is identical to
+    :func:`summarize_repeatability` and is delegated to the same DO-085 helper;
+    what differs is what a sample *is*, and the returned record says so rather
+    than leaving ``source_run_ids`` naming things that are not runs.
+
+    Args:
+        values: One value per group, in the same order as ``group_ids``.
+            Typically each is that group's own mean.
+        group_kind: What the groups are, e.g. ``attachment``.
+        group_ids: The group identifiers the values came from.
+        quantity: What was observed, e.g. ``acoustic_transfer_magnitude``.
+        unit: The unit of ``values``.
+
+    Returns:
+        A :class:`GroupSpreadV1`. Like every other record in this package it
+        carries no acceptance flag: it reports how much the groups differed and
+        says nothing about whether that difference is tolerable.
+
+    Raises:
+        RepeatabilityStatisticsError: ``NSF-301`` for fewer than two groups, a
+            group-count mismatch, or a repeated group identifier, ``NSF-302``
+            for a blank unit, ``NSF-303`` for a non-finite value, ``NSF-304``
+            for a mean of zero.
+    """
+    numbers = _require_finite(values, quantity=quantity)
+    ids = tuple(group_ids)
+
+    if len(numbers) < MINIMUM_SAMPLE_COUNT:
+        raise RepeatabilityStatisticsError(
+            GrantReadinessErrorCode.INSUFFICIENT_VALID_MEASUREMENTS,
+            (
+                f"{quantity} needs at least {MINIMUM_SAMPLE_COUNT} {group_kind} "
+                f"groups to summarize, got {len(numbers)}"
+            ),
+            {
+                "quantity": quantity,
+                "group_kind": group_kind,
+                "group_count": len(numbers),
+            },
+        )
+
+    if len(ids) != len(numbers):
+        raise RepeatabilityStatisticsError(
+            GrantReadinessErrorCode.INSUFFICIENT_VALID_MEASUREMENTS,
+            (
+                f"{quantity} has {len(numbers)} group values but {len(ids)} "
+                f"{group_kind} identifiers; every number must name its group"
+            ),
+            {"quantity": quantity, "values": len(numbers), "groups": len(ids)},
+        )
+
+    if len(set(ids)) != len(ids):
+        raise RepeatabilityStatisticsError(
+            GrantReadinessErrorCode.INSUFFICIENT_VALID_MEASUREMENTS,
+            f"{quantity} cites the same {group_kind} more than once",
+            {"quantity": quantity, "group_kind": group_kind},
+        )
+
+    if not unit or not unit.strip():
+        raise RepeatabilityStatisticsError(
+            GrantReadinessErrorCode.INCOMPATIBLE_MEASUREMENT_UNITS,
+            f"{quantity} must declare a unit",
+            {"quantity": quantity},
+        )
+
+    mean = sum(numbers) / len(numbers)
+    if abs(mean) < ZERO_MEAN_EPSILON:
+        raise RepeatabilityStatisticsError(
+            GrantReadinessErrorCode.UNDEFINED_COEFFICIENT_OF_VARIATION,
+            (
+                f"{quantity} has a mean of zero across {group_kind} groups, so "
+                "its coefficient of variation is undefined and cannot be reported"
+            ),
+            {"quantity": quantity, "mean": mean},
+        )
+
+    delegated = compute_repeatability(numbers)
+
+    return GroupSpreadV1(
+        group_kind=group_kind,
+        quantity=quantity,
+        unit=unit,
+        group_count=delegated.n_measurements,
+        group_ids=ids,
+        group_values=tuple(numbers),
+        mean=delegated.mean,
+        median=calculate_median(numbers),
+        standard_deviation=delegated.repeatability_std_dev,
+        coefficient_of_variation_pct=delegated.coefficient_of_variation_pct,
+        minimum=min(numbers),
+        maximum=max(numbers),
+        range_value=delegated.range_value,
+        median_absolute_deviation=calculate_median_absolute_deviation(numbers),
+    )
+
+
 __all__ = [
     "ZERO_MEAN_EPSILON",
     "MINIMUM_SAMPLE_COUNT",
@@ -271,4 +379,5 @@ __all__ = [
     "calculate_coefficient_of_variation",
     "summarize_repeatability",
     "summarize_runs",
+    "summarize_group_spread",
 ]
