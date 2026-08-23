@@ -75,6 +75,21 @@
               "type": ["string", "null"],
               "minLength": 1,
               "description": "Links to an ExcitationContractV1 when a driven source is used"
+            },
+            "stinger_id": {
+              "type": ["string", "null"],
+              "minLength": 1,
+              "description": "The stinger between the driver and the specimen. It is part of the measurement instrument: swapping it changes the mechanical path in and is a configuration change, not a repeat."
+            },
+            "contact_tip_id": {
+              "type": ["string", "null"],
+              "minLength": 1,
+              "description": "The tip in contact with the specimen, identified separately from the stinger for the same reason."
+            },
+            "rig_configuration_id": {
+              "type": ["string", "null"],
+              "minLength": 1,
+              "description": "The assembled combination of driver, stinger, tip, fixture, and support. Names one configuration so two runs can be told apart."
             }
           }
         },
@@ -137,7 +152,9 @@
               }
             }
           },
-          "conditions": { "$ref": "#/$defs/environment" }
+          "conditions": { "$ref": "#/$defs/environment" },
+          "acquisition": { "$ref": "#/$defs/acquisition_provenance" },
+          "campaign_condition": { "$ref": "#/$defs/campaign_condition" }
         }
       }
     },
@@ -231,6 +248,98 @@
         "rh_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
         "specimen_moisture_pct": { "type": ["number", "null"], "minimum": 0 },
         "ambient_noise_note": { "type": ["string", "null"], "minLength": 1 }
+      }
+    },
+    "acquisition_channel": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One recorded acquisition channel. The quantity and unit are what make a transfer function's own units derivable rather than assumed: an acoustic pressure response over a measured force is Pa/N, and the same arithmetic over two microphones is a ratio and nothing more.",
+      "required": ["channel_index", "role", "quantity", "unit", "sensor_id"],
+      "properties": {
+        "channel_index": { "type": "integer", "minimum": 0 },
+        "role": { "type": "string", "enum": ["EXCITATION", "RESPONSE"] },
+        "quantity": { "type": "string", "minLength": 1 },
+        "unit": { "type": "string", "minLength": 1 },
+        "sensor_id": { "type": "string", "minLength": 1 },
+        "gain_setting": { "type": ["string", "null"], "minLength": 1 },
+        "sensitivity_value": {
+          "type": ["number", "null"],
+          "description": "The sensor's stated sensitivity. Recorded with its own unit and never assumed: no sensitivity or unit is fixed in advance of choosing a transducer."
+        },
+        "sensitivity_unit": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "description": "The unit sensitivity_value is expressed in, as the device states it."
+        },
+        "calibration_traceability": {
+          "type": "string",
+          "enum": ["TRACEABLE", "NOMINAL", "UNKNOWN"],
+          "default": "UNKNOWN",
+          "description": "How far the scaling to engineering units can be defended. Measured is not traceable: NOMINAL is a specification value taken on trust, TRACEABLE is an unbroken chain to a reference and requires calibration_reference, and UNKNOWN is the default because a sensor whose calibration nobody recorded has none this repository can attest to."
+        },
+        "calibration_reference": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "description": "The certificate or record a TRACEABLE claim rests on."
+        }
+      }
+    },
+    "campaign_condition": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "The physical state one hardware-campaign run was captured under: which characterization experiment it belongs to, whether contact was broken since the last run, which pair of points a reciprocity direction used, and what mass was actually on the specimen. State only — it carries no measurement and no judgement, and it exists because the singular measurement_point_id and the repeated-capture shape of this study cannot express a point pair, an attachment, or a mass challenge.",
+      "required": ["experiment_kind"],
+      "properties": {
+        "experiment_kind": {
+          "type": "string",
+          "enum": [
+            "RIG_CHARACTERIZATION",
+            "FIXED_POINT",
+            "DETACH_REATTACH",
+            "RECIPROCITY",
+            "MASS_LOADING"
+          ]
+        },
+        "contact_configuration_id": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "description": "One uninterrupted attachment. Runs sharing it were captured without breaking contact; different values mean the contact was remade."
+        },
+        "drive_point_id": { "type": ["string", "null"], "minLength": 1 },
+        "response_point_id": { "type": ["string", "null"], "minLength": 1 },
+        "mass_challenge_id": { "type": ["string", "null"], "minLength": 1 },
+        "added_mass_g": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "The measured added mass. A nominal value may not stand in for it, which is why the intended figure is a separate field."
+        },
+        "nominal_added_mass_g": { "type": ["number", "null"], "minimum": 0 },
+        "mass_location_id": { "type": ["string", "null"], "minLength": 1 },
+        "note": { "type": ["string", "null"], "minLength": 1 }
+      }
+    },
+    "acquisition_provenance": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "What a physical acquisition session recorded about itself. Present on a HARDWARE run and absent otherwise: the hardware claim is derived from this record rather than accepted as a caller's label. witnessed_by is the stricter standard — hardware origin says the data came off physical instruments, a witnessed session says the provenance is attributable — and capability promotion follows the stricter one.",
+      "required": ["session_id", "acquisition_id", "interface_id", "sample_rate_hz"],
+      "properties": {
+        "session_id": { "type": "string", "minLength": 1 },
+        "acquisition_id": { "type": "string", "minLength": 1 },
+        "interface_id": { "type": "string", "minLength": 1 },
+        "sample_rate_hz": { "type": "integer", "minimum": 1 },
+        "channels": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/acquisition_channel" }
+        },
+        "excitation_device_id": { "type": ["string", "null"], "minLength": 1 },
+        "drive_parameters": { "type": ["string", "null"], "minLength": 1 },
+        "raw_artifact_ids": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Raw measurements retained for this run, including where the run was rejected."
+        },
+        "witnessed_by": { "type": ["string", "null"], "minLength": 1 }
       }
     }
   }

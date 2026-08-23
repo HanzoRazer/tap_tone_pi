@@ -138,6 +138,13 @@ docstring, **not** here.
 ### B-006 — Preliminary hardware campaign (deferred execution gate)
 - **Status:** open · **Priority:** P1 (blocked on hardware) · **Area:**
   `tap_tone_pi/grant_readiness`, measurement
+- **Now defined as DO-103.** The handoff at
+  `docs/dev_orders/DO-103_HARDWARE_MEASUREMENT_ARCHITECTURE.md` is merged and
+  authorized, so this gate is a Dev Order rather than a backlog item. DO-103
+  Stage 3 — the Phase 2 ingestion path and the provenance-derived `HARDWARE`
+  claim — is complete and frozen ahead of the campaign. The gate itself stays
+  **open**: Stage 3 built the path that will carry the evidence and produced
+  none of it.
 - **Origin:** DO-102 Stage 9, deferred by ruling rather than by oversight.
 - **Context:** DO-102 built the contracts, the audit, the analysis path, and the
   reporting, and proved all of it against deterministic non-hardware fixtures.

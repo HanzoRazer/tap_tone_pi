@@ -15,6 +15,11 @@ identifiers and notes carried on its records — is rendered verbatim and is not
 sanitised here; keeping such fields free of overclaim language is the
 responsibility of whatever constructs the study, not of this renderer.
 
+DO-103 adds the campaign report. It follows the same rules and one more: every
+value it shows is marked observed, derived, assumed, or unknown, and a campaign
+that has not been executed says so in its title, its banner, and its
+limitations rather than reading as an empty result.
+
 No market language belongs in this module.
 """
 
@@ -24,9 +29,12 @@ import json
 from typing import Any, Sequence
 
 from tap_tone_pi.grant_readiness.contracts import (
+    AcquisitionRole,
+    CampaignExecutionStatus,
     CapabilityStatus,
     EvidenceOrigin,
     GrantReadinessAuditV1,
+    HardwareCampaignRecordV1,
     HardwareVerification,
     RepeatabilityMetricV1,
     RepeatabilityStudyV1,
@@ -37,7 +45,9 @@ from tap_tone_pi.grant_readiness.errors import (
 )
 from tap_tone_pi.grant_readiness.validation import (
     evidence_digest,
+    validate_run_acquisition_provenance,
     validate_study_evidence_origin,
+    validate_witnessed_hardware_session,
 )
 
 # The standard-deviation convention every report states, so a reader never has
@@ -203,21 +213,28 @@ def _metric_row(metric: RepeatabilityMetricV1) -> str:
 
 
 def _guard_origin(study: RepeatabilityStudyV1) -> None:
-    """Refuse to render a study whose label disagrees with its runs.
+    """Refuse to render a study whose origin claim the validator would reject.
 
-    Delegates to :func:`validate_study_evidence_origin` so the renderer enforces
-    the *exact same* invariant as the validator — in both directions. A study
-    that overstates its origin (``HARDWARE`` label over non-hardware runs) and
-    one that understates it (a non-``HARDWARE`` label over hardware runs) are
-    both refused, so the renderer can never emit a document the validator would
-    reject.
+    Delegates to :func:`validate_study_evidence_origin` and
+    :func:`validate_run_acquisition_provenance` so the renderer enforces the
+    *exact same* invariants as the validator rather than a second copy of them.
+    Two directions of mislabelling are refused — a ``HARDWARE`` label over
+    non-hardware runs, and a non-``HARDWARE`` label over hardware runs — and so
+    is a ``HARDWARE`` claim that no acquisition provenance backs (DO-103 §5.4).
+
+    That last one matters here specifically. A study can be assembled with
+    ``strict=False``, so without this the renderer would be the one place a
+    hardware claim could reach a document without the evidence that makes it
+    derivable. The renderer must never emit what the validator would reject.
     """
     findings = validate_study_evidence_origin(study)
+    for run in study.runs:
+        findings.extend(validate_run_acquisition_provenance(run))
     if findings:
         finding = findings[0]
         raise RepeatabilityStatisticsError(
             finding.code,
-            f"refusing to render a mislabelled study: {finding.message}",
+            f"refusing to render an unsupported origin claim: {finding.message}",
             finding.context,
         )
 
@@ -371,6 +388,640 @@ def render_study_report(study: RepeatabilityStudyV1) -> str:
 
     lines += ["## Limitations", ""]
     for limitation in study.limitations:
+        lines.append(f"- {limitation}")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Hardware campaign (DO-103)
+# ---------------------------------------------------------------------------
+
+# Every value in a campaign report is one of four things, and a reader should
+# never have to work out which. DO-103 §5 requires the distinction to be carried
+# in the document rather than left to the prose around it.
+EVIDENCE_STATUS_LEGEND = (
+    "Each value below is marked **observed** (read from a recorded "
+    "measurement), **derived** (computed from observed values by a stated "
+    "rule), **assumed** (taken from a specification rather than measured), or "
+    "**unknown** (not recorded). An unknown is never filled in from a default."
+)
+
+# The one risk this campaign structurally cannot touch, stated in every report
+# so it is never quietly dropped from the evidence package.
+REFERENCE_AGREEMENT_REMAINS_OPEN = (
+    "R10 reference-method agreement remains entirely open. Every figure in this "
+    "campaign compares this instrument against itself; no external reference "
+    "method has been used, so no statement about agreement with one is "
+    "supported."
+)
+
+# What p/F is, and what it is not, in every campaign document (DO-103 §6.6).
+ACOUSTIC_TRANSFER_NOTE = (
+    "The transfer quantity is acoustic pressure per unit measured force. It is "
+    "not mobility, accelerance, or receptance: each of those requires the "
+    "response to be a mechanical motion of the structure, and the response here "
+    "is a microphone."
+)
+
+
+# What a campaign's title says about itself, so the distinction between
+# rehearsing the analysis path and running the rig survives being read alone.
+CAMPAIGN_TITLE_SUFFIX = {
+    CampaignExecutionStatus.PREPARED: " (Not Executed)",
+    CampaignExecutionStatus.FIXTURE_EXECUTED: " (Fixture Rehearsal — Not Hardware)",
+    CampaignExecutionStatus.HARDWARE_EXECUTED: "",
+    CampaignExecutionStatus.HALTED_AT_GATE: " (Halted at a Campaign Gate)",
+    CampaignExecutionStatus.ABORTED: " (Abandoned)",
+}
+
+CAMPAIGN_BANNER = {
+    CampaignExecutionStatus.PREPARED: (
+        "> **This campaign has not been executed.** The document below describes "
+        "a planned configuration and the structure results will be reported in. "
+        "It contains no hardware measurement, no witnessed session, and no "
+        "repeatability, reciprocity, or mass-loading result, and it supports no "
+        "hardware claim of any kind."
+    ),
+    CampaignExecutionStatus.FIXTURE_EXECUTED: (
+        "> **No hardware evidence.** The experiments below were executed against "
+        "fixture or synthetic data. That demonstrates the campaign path end to "
+        "end and says nothing about how the rig behaves: no study here is "
+        "hardware evidence, and no capability may be promoted on it."
+    ),
+    CampaignExecutionStatus.HALTED_AT_GATE: (
+        "> **This campaign was halted at a gate.** An experiment that gates the "
+        "ones after it did not produce usable evidence, so the downstream "
+        "experiments were not run. That is a result about the measurement "
+        "architecture, and the questions those experiments ask remain open."
+    ),
+    CampaignExecutionStatus.ABORTED: (
+        "> **This campaign was abandoned before completion**, for a reason that "
+        "was not a campaign gate. Whatever it recorded is partial."
+    ),
+}
+
+
+def _shown(value: Any, status: str = "observed") -> str:
+    """Render one field with its evidence status, or as unknown."""
+    if value is None or value == "":
+        return "unknown"
+    return f"{value} ({status})"
+
+
+def _campaign_studies(
+    record: HardwareCampaignRecordV1, studies: Sequence[RepeatabilityStudyV1]
+) -> dict[str, RepeatabilityStudyV1]:
+    """Index supplied studies by identity, refusing any the validator would."""
+    indexed: dict[str, RepeatabilityStudyV1] = {}
+    for study in studies:
+        _guard_origin(study)
+        indexed[study.study_id] = study
+    return indexed
+
+
+def build_campaign_report(
+    record: HardwareCampaignRecordV1,
+    studies: Sequence[RepeatabilityStudyV1] = (),
+) -> dict[str, Any]:
+    """Return the campaign as a JSON-ready report payload with its digest.
+
+    Studies are referenced by identity and digest rather than copied, so the
+    campaign document stays an index over evidence instead of a second copy of
+    it that could drift from the first.
+    """
+    indexed = _campaign_studies(record, studies)
+    payload = record.to_dict()
+    return {
+        "report_type": "ttp_hardware_measurement_campaign",
+        "generated_at": record.generated_at,
+        "campaign_id": record.campaign_id,
+        "execution_status": record.execution_status.value,
+        "is_executed": record.is_executed,
+        "is_hardware_evidence": record.is_hardware_evidence,
+        "witnessed_experiment_ids": list(record.witnessed_experiment_ids),
+        "acoustic_transfer_note": ACOUSTIC_TRANSFER_NOTE,
+        "reference_agreement_remains_open": REFERENCE_AGREEMENT_REMAINS_OPEN,
+        "repeatability_is_not_accuracy": REPEATABILITY_IS_NOT_ACCURACY,
+        "standard_deviation_convention": SD_CONVENTION,
+        "campaign_digest": evidence_digest(payload),
+        "study_digests": {
+            study_id: evidence_digest(study.to_dict())
+            for study_id, study in sorted(indexed.items())
+        },
+        "campaign": payload,
+    }
+
+
+def _rig_section(record: HardwareCampaignRecordV1) -> list[str]:
+    excitation = record.config.excitation
+    lines = [
+        "## Rig configuration",
+        "",
+        "The rig is part of the measurement instrument. Changing any part named "
+        "here is a configuration change, not a repeat.",
+        "",
+        "| Part | Identity |",
+        "| --- | --- |",
+    ]
+    labels = {
+        "rig_configuration_id": "Rig configuration",
+        "excitation_device_id": "Shaker",
+        "stinger_id": "Stinger",
+        "contact_tip_id": "Contact tip",
+        "fixture_id": "Fixture",
+    }
+    for field_name, label in labels.items():
+        lines.append(f"| {label} | {_shown(excitation.rig_identity[field_name])} |")
+    lines += [
+        f"| Excitation method | {_shown(excitation.excitation_method)} |",
+        f"| Drive point | {_shown(excitation.excitation_point)} |",
+        f"| Contact condition | {_shown(excitation.contact_condition)} |",
+        f"| Support condition | {_shown(record.config.support_condition)} |",
+        "",
+    ]
+    return lines
+
+
+def _channel_rows(channel) -> list[str]:
+    traceability = channel.calibration_traceability.value
+    sensitivity = (
+        f"{channel.sensitivity_value} {channel.sensitivity_unit}"
+        if channel.sensitivity_is_recorded
+        else None
+    )
+    return [
+        f"| Sensor | {_shown(channel.sensor_id)} |",
+        f"| Channel index | {_shown(channel.channel_index)} |",
+        f"| Quantity | {_shown(channel.quantity)} |",
+        f"| Unit | {_shown(channel.unit)} |",
+        f"| Sensitivity | {_shown(sensitivity, 'assumed')} |",
+        f"| Calibration traceability | {_shown(traceability)} |",
+        f"| Calibration reference | {_shown(channel.calibration_reference)} |",
+        f"| Gain setting | {_shown(channel.gain_setting)} |",
+    ]
+
+
+def _channels_section(record: HardwareCampaignRecordV1) -> list[str]:
+    config = record.config
+    force = config.force_channel
+    response = next(iter(config.channels_for(AcquisitionRole.RESPONSE)), None)
+
+    lines = ["## Force input and acoustic response", "", ACOUSTIC_TRANSFER_NOTE, ""]
+
+    if force is None:
+        lines += [
+            "No channel records a measured force. The excitation is commanded "
+            "rather than observed, and no transfer function from this "
+            "configuration has a measured input.",
+            "",
+        ]
+    else:
+        lines += ["### Force input (reference channel)", "", "| Field | Value |"]
+        lines += ["| --- | --- |"]
+        lines += _channel_rows(force)
+        lines += [
+            "",
+            "Force is measured here. Measured is not traceable: a sensitivity "
+            "taken from a specification supports the relative behaviour of the "
+            "recorded values and does not establish the newton they are scaled "
+            "to against any standard.",
+            "",
+        ]
+
+    if response is None:
+        lines += ["No response channel is recorded.", ""]
+    else:
+        lines += ["### Acoustic response", "", "| Field | Value |", "| --- | --- |"]
+        lines += _channel_rows(response)
+        lines.append("")
+
+    if force is not None and response is not None:
+        lines += [
+            f"Derived transfer unit: **{response.unit}/{force.unit}** (derived "
+            "from the recorded channel pair, not assumed).",
+            "",
+        ]
+    return lines
+
+
+def _accounting_section(record: HardwareCampaignRecordV1) -> list[str]:
+    lines = [
+        "## Experiment accounting",
+        "",
+        "Every planned experiment appears here. An experiment that did not run "
+        "because an earlier gate failed names the gate that stopped it; that is "
+        "a result, not a gap. An experiment that did run names what it ran "
+        "against, so *executed* is never read without *against what*.",
+        "",
+        "| Experiment | Kind | Status | Evidence origin | Witnessed | Study | "
+        "Blocked by |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for outcome in record.outcomes:
+        study = f"`{outcome.study_id}`" if outcome.study_id else "—"
+        blocked = (
+            f"`{outcome.blocked_by_experiment_id}`"
+            if outcome.blocked_by_experiment_id
+            else "—"
+        )
+        origin = outcome.evidence_origin.value if outcome.evidence_origin else "—"
+        lines.append(
+            f"| `{outcome.experiment_id}` | {outcome.kind.value} | "
+            f"{outcome.status.value} | {origin} | "
+            f"{'yes' if outcome.witnessed else 'no'} | {study} | {blocked} |"
+        )
+    lines.append("")
+    return lines
+
+
+def _study_sections(
+    record: HardwareCampaignRecordV1, indexed: dict[str, RepeatabilityStudyV1]
+) -> list[str]:
+    lines = ["## Repeatability by experiment", ""]
+    if not indexed:
+        lines += [
+            "No study accompanies this campaign, so no repeatability figure is "
+            "reported. Nothing is inferred from the absence.",
+            "",
+        ]
+        return lines
+
+    lines += [REPEATABILITY_IS_NOT_ACCURACY, "", SD_CONVENTION, ""]
+    for outcome in record.outcomes:
+        study = indexed.get(outcome.study_id or "")
+        if study is None:
+            continue
+        lines += [
+            f"### {outcome.experiment_id} — {outcome.kind.value}",
+            "",
+            f"- Study: `{study.study_id}`",
+            f"- Study digest: `{evidence_digest(study.to_dict())}`",
+            f"- Evidence origin: **{study.evidence_origin.value}**",
+            f"- Runs: {len(study.runs)} recorded, {study.valid_run_count} valid, "
+            f"{study.rejected_run_count} rejected",
+            "",
+        ]
+        if study.metrics:
+            lines += [
+                "| Quantity | Unit | n | Mean | Median | SD | CV% | Min | Max | "
+                "Range | MAD |",
+                "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+            ]
+            lines += [_metric_row(metric) for metric in study.metrics]
+        else:
+            lines.append(
+                "No quantity had two or more valid observations, so no statistic "
+                "is reported. This is a result, not an omission."
+            )
+        lines.append("")
+    return lines
+
+
+def _attachment_section(record: HardwareCampaignRecordV1) -> list[str]:
+    lines = [
+        "## Detach and re-attach variation",
+        "",
+        "Repeats that never broke contact are summarized per attachment. The "
+        "spread *between* attachments is taken over each attachment's own mean, "
+        "and the two are never combined.",
+        "",
+    ]
+    if not record.attachment_variation:
+        lines += ["Not observed: no run records an attachment identity.", ""]
+        return lines
+
+    for variation in record.attachment_variation:
+        lines += [
+            f"### {variation.quantity} ({variation.unit})",
+            "",
+            f"- Attachments: {variation.attachment_count} "
+            f"({', '.join(f'`{a}`' for a in variation.attachment_ids)})",
+            "",
+        ]
+        if variation.within_attachment_metrics:
+            lines += [
+                "| Attachment | n | Mean | SD | CV% |",
+                "| --- | --- | --- | --- | --- |",
+            ]
+            for metric in variation.within_attachment_metrics:
+                lines.append(
+                    f"| `{metric.metric_id}` | {metric.sample_count} | "
+                    f"{_number(metric.mean)} | {_number(metric.standard_deviation)} | "
+                    f"{_number(metric.coefficient_of_variation_pct)} |"
+                )
+            lines.append("")
+        spread = variation.between_attachment_spread
+        if spread is None:
+            lines += [
+                "Between-attachment spread is not observable: fewer than two "
+                "attachments produced a value.",
+                "",
+            ]
+        else:
+            lines += [
+                f"Between-attachment spread (derived over {spread.group_count} "
+                "attachment means):",
+                "",
+                f"- Mean: {_number(spread.mean)} {spread.unit}",
+                f"- SD: {_number(spread.standard_deviation)} {spread.unit}",
+                f"- CV: {_number(spread.coefficient_of_variation_pct)}%",
+                f"- Range: {_number(spread.range_value)} {spread.unit}",
+                "",
+            ]
+        if variation.unsummarized_attachment_ids:
+            joined = ", ".join(f"`{a}`" for a in variation.unsummarized_attachment_ids)
+            lines += [
+                f"Attachments with fewer than two valid observations: {joined}. "
+                "They contribute a mean to the between-attachment spread and no "
+                "within-attachment statistic.",
+                "",
+            ]
+    return lines
+
+
+def _reciprocity_section(record: HardwareCampaignRecordV1) -> list[str]:
+    lines = [
+        "## Reciprocity",
+        "",
+        "Reported without a threshold. DO-103 sets no acceptance figure for "
+        "reciprocity, and a large residual is a finding about the measurement "
+        "architecture rather than a failed run.",
+        "",
+    ]
+    if not record.reciprocity:
+        lines += ["Not executed: no reciprocity pair was recorded.", ""]
+        return lines
+
+    lines += [
+        "| Pair | Forward run | Reverse run | Forward | Reverse | Residual | "
+        "Relative | Coh. fwd | Coh. rev | Freq fwd (Hz) | Freq rev (Hz) | "
+        "Freq gap (Hz) |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for observation in record.reciprocity:
+        relative = (
+            _number(observation.relative_residual)
+            if observation.relative_residual is not None
+            else "unknown"
+        )
+        forward_coh = (
+            _number(observation.forward_coherence)
+            if observation.forward_coherence is not None
+            else "unknown"
+        )
+        reverse_coh = (
+            _number(observation.reverse_coherence)
+            if observation.reverse_coherence is not None
+            else "unknown"
+        )
+        forward_hz = (
+            _number(observation.forward_evaluation_frequency_hz)
+            if observation.forward_evaluation_frequency_hz is not None
+            else "unknown"
+        )
+        reverse_hz = (
+            _number(observation.reverse_evaluation_frequency_hz)
+            if observation.reverse_evaluation_frequency_hz is not None
+            else "unknown"
+        )
+        mismatch = (
+            _number(observation.frequency_mismatch_hz)
+            if observation.frequency_mismatch_hz is not None
+            else "unknown"
+        )
+        lines.append(
+            f"| {observation.forward_drive_point_id}→"
+            f"{observation.forward_response_point_id} | "
+            f"`{observation.forward_run_id}` | `{observation.reverse_run_id}` | "
+            f"{_number(observation.forward_value)} | "
+            f"{_number(observation.reverse_value)} | "
+            f"{_number(observation.absolute_residual)} | {relative} | "
+            f"{forward_coh} | {reverse_coh} | {forward_hz} | {reverse_hz} | "
+            f"{mismatch} |"
+        )
+    lines += [
+        "",
+        "Residuals are in the quantity's own unit; the relative residual is the "
+        "residual over the mean magnitude of the two directions (derived). Each "
+        "direction keeps its own coherence: a residual observed where one "
+        "direction was poorly coherent is not the same finding as the same "
+        "residual where both were strong.",
+        "",
+        "Each direction also keeps its own evaluation frequency, and the gap "
+        "between them is derived. Where that gap is non-zero the residual spans "
+        "two slightly different frequencies, which is a property of the "
+        "comparison a reader should see before reading the residual. No limit is "
+        "placed on it here.",
+        "",
+    ]
+    return lines
+
+
+def _mass_loading_section(record: HardwareCampaignRecordV1) -> list[str]:
+    lines = [
+        "## Mass-loading challenge",
+        "",
+        "Reported without a threshold. The measured mass is what every delta is "
+        "computed from; an intended mass is recorded beside it and never "
+        "substituted for it.",
+        "",
+    ]
+    if not record.mass_loading:
+        lines += ["Not executed: no mass challenge was recorded.", ""]
+        return lines
+
+    lines += [
+        "| Challenge | Added mass (g) | Intended (g) | Location | Baseline mean "
+        "(n) | Loaded mean (n) | Delta | Relative % |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for observation in record.mass_loading:
+        nominal = (
+            _number(observation.nominal_added_mass_g)
+            if observation.nominal_added_mass_g is not None
+            else "unknown"
+        )
+        relative = (
+            _number(observation.relative_delta_pct)
+            if observation.relative_delta_pct is not None
+            else "unknown"
+        )
+        baseline = observation.baseline_metric
+        loaded = observation.loaded_metric
+        lines.append(
+            f"| `{observation.mass_challenge_id}` | "
+            f"{_number(observation.added_mass_g)} | {nominal} | "
+            f"{observation.mass_location_id or 'unknown'} | "
+            f"{_number(baseline.mean)} ({baseline.sample_count}) | "
+            f"{_number(loaded.mean)} ({loaded.sample_count}) | "
+            f"{_number(observation.absolute_delta)} | {relative} |"
+        )
+    lines += [
+        "",
+        "The delta keeps its sign: which way the quantity moved under added "
+        "mass is physical information. Read each delta against the spread of "
+        "the groups it was computed from — a difference smaller than that "
+        "spread is not a detection.",
+        "",
+    ]
+    return lines
+
+
+def _rejected_runs_section(indexed: dict[str, RepeatabilityStudyV1]) -> list[str]:
+    lines = [
+        "## Failed and abandoned runs",
+        "",
+        "Rejected runs stay in the evidence. They are excluded from the "
+        "statistics and included in the accounting, and none of them is deleted "
+        "because of what it showed.",
+        "",
+    ]
+    rows: list[str] = []
+    for study_id in sorted(indexed):
+        for run in indexed[study_id].runs:
+            if run.valid:
+                continue
+            reason = run.rejection_reason.value if run.rejection_reason else "unknown"
+            rows.append(
+                f"| `{study_id}` | `{run.run_id}` | {reason} | {run.captured_at} |"
+            )
+    if not rows:
+        lines += ["No run in the supplied studies was rejected.", ""]
+        return lines
+    lines += ["| Study | Run | Reason | Captured |", "| --- | --- | --- | --- |"]
+    lines += rows
+    lines.append("")
+    return lines
+
+
+def _artifact_section(record: HardwareCampaignRecordV1) -> list[str]:
+    lines = [
+        "## Retained raw artifacts",
+        "",
+        "Raw measurements are retained outside this repository. The digest is "
+        "the durable identity; the locator is where a copy may currently be "
+        "found and is not what identifies it.",
+        "",
+    ]
+    if not record.artifacts:
+        lines += ["No raw artifact is registered for this campaign.", ""]
+        return lines
+    lines += [
+        "| Artifact | Kind | SHA-256 | Bytes | Run | Locator |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+    for artifact in record.artifacts:
+        lines.append(
+            f"| `{artifact.artifact_id}` | {artifact.kind} | `{artifact.sha256}` | "
+            f"{artifact.byte_count} | `{artifact.capture_run_id or 'unknown'}` | "
+            f"`{artifact.storage_locator}` |"
+        )
+    lines.append("")
+    return lines
+
+
+def _promotion_section(
+    record: HardwareCampaignRecordV1, indexed: dict[str, RepeatabilityStudyV1]
+) -> list[str]:
+    lines = [
+        "## Capability promotion evidence",
+        "",
+        "This report promotes nothing. It states what the campaign's evidence "
+        "would support, and promotion remains a separate, per-capability "
+        "decision requiring a witnessed session, preserved artifacts, evidence "
+        "references, the exercising experiment named in the capability's notes, "
+        "and the inventory and frozen baseline changed together.",
+        "",
+    ]
+    witnessed = sorted(
+        study_id
+        for study_id, study in indexed.items()
+        if not validate_witnessed_hardware_session(study)
+    )
+    if witnessed:
+        joined = ", ".join(f"`{study_id}`" for study_id in witnessed)
+        lines += [
+            f"Studies meeting the witnessed-session standard: {joined}.",
+            "",
+        ]
+    else:
+        lines += [
+            "No study in this campaign meets the witnessed-session standard, so "
+            "no capability is eligible for promotion off "
+            "`NOT_VERIFIED_ON_HARDWARE` on this evidence.",
+            "",
+        ]
+    return lines
+
+
+def _risk_section(record: HardwareCampaignRecordV1) -> list[str]:
+    lines = ["## Technical risks", "", REFERENCE_AGREEMENT_REMAINS_OPEN, ""]
+    if not record.is_hardware_evidence:
+        lines += [
+            "No risk is narrowed by this campaign: no experiment in it ran "
+            "against hardware. Excitation variability, contact variability, "
+            "sensor positioning, environment, operator variability, and "
+            "between-session repeatability all remain exactly as open as they "
+            "were.",
+            "",
+        ]
+    else:
+        lines += [
+            "Only the risks an executed experiment actually addressed may be "
+            "narrowed, and only in the risk register itself. This section does "
+            "not alter risk states.",
+            "",
+        ]
+    return lines
+
+
+def render_campaign_report(
+    record: HardwareCampaignRecordV1,
+    studies: Sequence[RepeatabilityStudyV1] = (),
+) -> str:
+    """Render the hardware characterization campaign as Markdown.
+
+    The document reports what happened and refuses to imply more. A campaign
+    that has not been executed says so in its title and its first paragraph; an
+    experiment that was blocked names the gate that blocked it; and no section
+    compares any observed value against a limit.
+    """
+    indexed = _campaign_studies(record, studies)
+    suffix = CAMPAIGN_TITLE_SUFFIX[record.execution_status]
+
+    lines: list[str] = [
+        f"# Hardware Measurement Campaign{suffix}",
+        "",
+        f"- Campaign: `{record.campaign_id}`",
+        f"- Generated: {record.generated_at}",
+        f"- Execution status: **{record.execution_status.value}**",
+        f"- Operator: `{record.config.operator_id}`",
+        f"- Campaign digest: `{evidence_digest(record.to_dict())}`",
+        "",
+        EVIDENCE_STATUS_LEGEND,
+        "",
+    ]
+
+    banner = CAMPAIGN_BANNER.get(record.execution_status)
+    if banner is not None:
+        lines += [banner, ""]
+
+    lines += _rig_section(record)
+    lines += _channels_section(record)
+    lines += _accounting_section(record)
+    lines += _study_sections(record, indexed)
+    lines += _attachment_section(record)
+    lines += _reciprocity_section(record)
+    lines += _mass_loading_section(record)
+    lines += _rejected_runs_section(indexed)
+    lines += _artifact_section(record)
+    lines += _promotion_section(record, indexed)
+    lines += _risk_section(record)
+
+    lines += ["## Limitations", ""]
+    for limitation in record.limitations:
         lines.append(f"- {limitation}")
     lines.append("")
 

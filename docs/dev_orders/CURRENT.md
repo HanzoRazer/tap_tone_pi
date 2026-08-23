@@ -1,17 +1,125 @@
 # Active Dev Order
 
-**Current:** _(none — awaiting the next authorized Dev Order)_
+**Current:** DO-103 Stages 3 and 3b — Phase 2 ingestion, the
+provenance-derived HARDWARE claim, and the campaign software for E1–E5
+(COMPLETE, frozen ahead of the physical campaign)
+**Next:** DO-101B — Empirical Registry and Inspection Surface, then the hardware
+stages of DO-103 when the shaker, stinger, and force transducer exist
 **Queued:** DO-101B — Empirical Registry and Inspection Surface (NOT STARTED)
 **Previous:** DO-102 — NSF TTP Grant-Readiness Evidence Foundation (COMPLETE)
 **Deferred evidence gate:** `SPRINTS.md` B-006 — witnessed hardware measurement
-campaign
+campaign, now formally defined as DO-103
 
-Nothing is promoted by this closure. DO-101B remains **queued, not displaced or
-cancelled** — it was deferred behind DO-102 because NSF readiness was
-time-sensitive on the August path, not because it was deprioritized on the
-merits — and it has not been resumed, so promotion belongs to its own first
-docs/status commit. B-006 is a backlog gate, not a Dev Order; it becomes Current
-only if and when a hardware-campaign order is formally defined and authorized.
+## DO-103 Stage 3 — promoted, and only Stage 3
+
+`docs/dev_orders/DO-103_HARDWARE_MEASUREMENT_ARCHITECTURE.md` is merged and
+authorized, which satisfies the condition its Status section names and makes
+B-006 a defined Dev Order rather than a backlog gate. **What is promoted is
+Stage 3 alone**, not the order as a whole.
+
+Stage 3 is promoted ahead of DO-101B on sequencing, not merit. It is
+time-order sensitive in a way DO-101B is not: DO-103 §13 requires the ingestion
+path and the provenance-derived HARDWARE claim to be written and tested
+**before** any instrument data is collected, so the campaign is not analyzed by
+software written to fit the data it produced. DO-101B improves discoverability
+of empirical models and is unblocked whenever it is resumed; nothing about it
+degrades by waiting, and it is better defined once the provenance semantics
+below are settled.
+
+**In scope for Stage 3:**
+
+- a Phase 2 transfer-function ingestion path in `tap_tone_pi/grant_readiness/`,
+  alongside — not replacing — the existing `phase1_tap_analysis_v1` path (§5.1);
+- acquisition provenance recorded per run, and the `HARDWARE` claim **derived**
+  from it rather than accepted as a caller's label (§5.4);
+- negative tests that a false `HARDWARE` claim cannot be made to validate;
+- freezing both before the physical campaign begins.
+
+### Stage 3 outcome
+
+All four in-scope items landed. `tap_tone_pi/grant_readiness/phase2_experiment.py`
+reads the persisted Phase 2 transfer document as a document — no DSP, no import
+of the Phase 2 package or of anything under `scripts/`. `AcquisitionProvenanceV1`
+carries what a physical session can attest and a fixture cannot, and `NSF-306`
+refuses a `HARDWARE` origin nothing backs, which closes the gap DO-102 left:
+until now a caller could assert `HARDWARE` over any data that merely lacked a
+demo flag. `NSF-307` keeps *witnessed* as the stricter standard §10 promotes on,
+and `NSF-308` refuses a mechanical frequency-response name over an acoustic
+pressure response (§6.6). 108 new tests, most of them negative.
+
+The study schema gained an additive optional `acquisition` block on runs and its
+registry entry moved to 1.1.0. No existing field changed meaning; the Phase 1
+path is untouched.
+
+One boundary test was rewritten with justification: DO-102's "the package never
+mentions `phase2_ods_snapshot`" was a proxy for "authors no existing measurement
+schema", and §5.1 made the proxy wrong while leaving the claim true. It is now
+asserted directly, and the substantive guards — forbidden imports, no DSP, no
+capture — are unchanged.
+
+**Not in scope for Stage 3, and not started by it:** Stages 1, 2, and 4–8 —
+building and grounding the rig, E1–E5, capability promotion off
+`NOT_VERIFIED_ON_HARDWARE`, and the §8 risk-coverage fill-in. Those need
+hardware that does not yet exist. No capability status changes in Stage 3, and
+no study in this repository becomes hardware evidence by it.
+
+## DO-103 Stage 3b — the rest of the pre-hardware software
+
+Stage 3b finishes the software the campaign needs, on Stage 3's rule and for
+Stage 3's reason: it exists before the rig, so no part of the campaign is
+analyzed by code shaped to fit what the campaign produced.
+
+**In scope for Stage 3b:**
+
+- additive rig identity, channel sensitivity and calibration traceability, and a
+  per-run `CampaignConditionV1` — the three meanings §9 says the DO-102
+  container cannot carry (an attachment, a point pair, a measured mass);
+- `hardware_campaign.py`: the E2–E5 groupings, reciprocity pairing and
+  residuals, mass-loading deltas, and the campaign record;
+- `contracts/ttp_hardware_campaign_v1.schema.json` and the study schema's
+  additive bump to registry 1.2.0;
+- `scripts/ttp_hardware_campaign.py` and the read-only
+  `scripts/ttp_hardware_campaign_check.py`;
+- `docs/NSF_TTP_HARDWARE_CAMPAIGN_PROTOCOL.md`, and a results document that says
+  `NOT EXECUTED` because it is.
+
+### Stage 3b outcome
+
+247 new tests across five files, plus structural guards added to the
+boundary suite, weighted toward the negative cases: an unmeasured mass, a
+reciprocity direction with no transpose, a host path offered as an artifact
+identity, a traceability claim with nothing behind it, a campaign that says
+executed with nothing executed. The `NSF-5xx` family carries them and every code
+in it is exercised.
+
+Review added two changes before the software was called done, both of the
+"cannot be fixed after data exists" kind. A reciprocity pair now records **both**
+directions' evaluation frequencies and derives the gap, so an asymmetry is
+visible in the pair rather than only inside the two runs. And the campaign status
+no longer uses one word for two situations: `FIXTURE_EXECUTED` and
+`HARDWARE_EXECUTED` are separate states, per-experiment outcomes have their own
+vocabulary, each executed outcome summarizes its study's origin and witnessed
+status, and the checker re-derives both from the studies and reports any
+disagreement.
+
+Two things it deliberately does not contain. There is **no acceptance threshold
+anywhere** — not for reciprocity, not for mass loading — which a boundary test
+now asserts structurally against the module's own definitions rather than its
+prose. And **no capability is promoted**: the campaign report states what its
+evidence would support and says plainly that promotion is a separate,
+per-capability decision it does not make. The repository's campaign document is
+`NOT_EXECUTED`, every study it can produce is still `FIXTURE` or `SYNTHETIC`,
+and R10 remains open.
+
+**Not in scope for Stage 3b, and not started by it:** the physical stages. No
+rig was built, no experiment was run, no capability status changed, and no line
+of the §8 risk table was filled in.
+
+DO-101B remains **queued, not displaced or cancelled** — it was deferred behind
+DO-102 because NSF readiness was time-sensitive on the August path, not because
+it was deprioritized on the merits, and it is deferred again here for the
+ordering reason above. It has not been resumed, so its promotion still belongs
+to its own first docs/status commit.
 
 > **DO-101A — Empirical Model Framework Foundation (COMPLETE)**
 >
@@ -397,7 +505,8 @@ DO-001 through DO-008, and DO-084 through DO-089 completed. The tap_tone_pi moda
 ## Pre-existing test failures (baseline)
 
 2 failures, both in `scripts/phase2/tests/`, verified reproducing against
-`main` at `9d58dd1`:
+`main` at `9d58dd1` and re-verified against `main` at `b0adc53` during DO-103
+Stage 3:
 - `test_validate_viewer_pack_v1_real_sessions[runs_phase2/session_20260101T234237Z]` — missing 'bending' key
 - `test_validate_viewer_pack_v1_real_sessions[runs_phase2/session_20260101T235209Z]` — missing 'bending' key
 
@@ -411,6 +520,22 @@ rebased tree. The entry is stale and has been removed rather than carried
 forward into the NSF documentation.
 
 ## Daily log
+
+### 2026-08-19 (DO-103 Stage 3)
+- Promoted DO-103 Stage 3 as Current in its own docs/status commit; DO-101B
+  stays queued, deferred on sequencing rather than merit
+- Added `AcquisitionProvenanceV1` / `AcquisitionChannelV1` and derived the
+  `HARDWARE` claim from them (`NSF-306`), with witnessed held separate as the
+  stricter §10 standard (`NSF-307`) and `p/F` refused a mechanical FRF name
+  (`NSF-308`)
+- Added the Phase 2 transfer-function ingestion path alongside — not in place
+  of — the Phase 1 path
+- Study schema additive-only (`acquisition` on runs); registry entry 1.1.0
+- Rewrote one boundary test whose "never mentions the schema" proxy stopped
+  matching its own claim once §5.1 authorized ingestion
+- 108 new tests; full suite green apart from the two documented baseline
+  failures, re-verified reproducing on `main` at `b0adc53`
+- Promoted no capability, produced no hardware evidence, changed no status
 
 ### 2026-08-11 (DO-102 closure)
 - Recorded PR #22 merge (`3d2eb69`) and closed DO-102 as Previous/Complete

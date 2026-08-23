@@ -1,0 +1,897 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/ttp_hardware_campaign_v1.schema.json",
+  "title": "TTPHardwareMeasurementCampaign",
+  "description": "One hardware characterization campaign for a contact-drive measurement architecture: the configuration it was executed under, what became of each planned experiment, the raw artifacts retained outside this repository, and the comparisons no single repeatability study can hold — between-attachment variation, reciprocity residuals, and mass-loading deltas. The measurements themselves stay in ttp_preliminary_repeatability_study documents, which this record names by identity and digest rather than copying. Nothing here carries an acceptance threshold, a verdict, or a calibration claim: the campaign reports what was observed under stated conditions, and a campaign that has not been executed says so.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "campaign_id",
+    "generated_at",
+    "execution_status",
+    "config",
+    "outcomes",
+    "artifacts",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "ttp_hardware_campaign_v1"
+    },
+    "campaign_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "execution_status": {
+      "type": "string",
+      "enum": [
+        "PREPARED",
+        "FIXTURE_EXECUTED",
+        "HARDWARE_EXECUTED",
+        "HALTED_AT_GATE",
+        "ABORTED"
+      ],
+      "description": "What the campaign as a whole is, read cold. A campaign rehearsed against fixture data and one driven by a physical rig are different states and are never given the same word: FIXTURE_EXECUTED proves the path works and is not hardware evidence, and HARDWARE_EXECUTED requires an executed experiment carrying hardware-origin evidence."
+    },
+    "is_hardware_evidence": {
+      "type": "boolean",
+      "description": "Derived: whether any executed experiment carries hardware-origin evidence. Emitted for readers and must agree with the outcomes."
+    },
+    "config": {
+      "$ref": "#/$defs/campaign_config"
+    },
+    "outcomes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/campaign_experiment_outcome"
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/external_artifact"
+      }
+    },
+    "attachment_variation": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/attachment_variation"
+      }
+    },
+    "reciprocity": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/reciprocity_observation"
+      }
+    },
+    "mass_loading": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/mass_loading_observation"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "$defs": {
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Recorded conditions. null means unknown and stays unknown; no temperature or humidity normalization is applied anywhere.",
+      "properties": {
+        "temp_c": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "rh_pct": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "specimen_moisture_pct": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "ambient_noise_note": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      }
+    },
+    "excitation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The mechanical excitation arrangement, including the rig parts that can be swapped without touching the driver. The rig is part of the measurement instrument: changing any of these is a configuration change, not a repeat.",
+      "required": [
+        "excitation_method"
+      ],
+      "properties": {
+        "excitation_method": {
+          "type": "string",
+          "minLength": 1
+        },
+        "excitation_device_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "excitation_point": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "contact_condition": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "fixture_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "excitation_contract_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "stinger_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "contact_tip_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "rig_configuration_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      }
+    },
+    "acquisition_channel": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One acquisition channel of the two-channel model. The force transducer is the excitation channel and the microphone the response channel; the pair is what makes the transfer quantity's unit derivable rather than assumed.",
+      "required": [
+        "channel_index",
+        "role",
+        "quantity",
+        "unit",
+        "sensor_id"
+      ],
+      "properties": {
+        "channel_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "EXCITATION",
+            "RESPONSE"
+          ]
+        },
+        "quantity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sensor_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gain_setting": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "sensitivity_value": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "sensitivity_unit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "calibration_traceability": {
+          "type": "string",
+          "enum": [
+            "TRACEABLE",
+            "NOMINAL",
+            "UNKNOWN"
+          ],
+          "default": "UNKNOWN",
+          "description": "Measured is not traceable. NOMINAL is a specification value taken on trust; TRACEABLE requires calibration_reference; UNKNOWN is the default."
+        },
+        "calibration_reference": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      }
+    },
+    "campaign_experiment_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One planned experiment. subject_is_rig marks the case where the instrument identifier names the measurement rig rather than a specimen, which is permitted only where the record says so.",
+      "required": [
+        "experiment_id",
+        "kind",
+        "instrument_id",
+        "measurement_point_id",
+        "planned_repeat_count"
+      ],
+      "properties": {
+        "experiment_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "RIG_CHARACTERIZATION",
+            "FIXED_POINT",
+            "DETACH_REATTACH",
+            "RECIPROCITY",
+            "MASS_LOADING"
+          ]
+        },
+        "instrument_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "measurement_point_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "planned_repeat_count": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "evaluation_frequency_hz": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "subject_is_rig": {
+          "type": "boolean",
+          "default": false
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      }
+    },
+    "campaign_config": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The stated configuration a campaign is executed under. An input specification, not evidence: it exists so that no acquisition runs from undocumented defaults.",
+      "required": [
+        "campaign_id",
+        "created_at",
+        "operator_id",
+        "interface_id",
+        "sample_rate_hz",
+        "excitation",
+        "channels",
+        "environmental_context",
+        "experiments"
+      ],
+      "properties": {
+        "campaign_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "operator_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "interface_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sample_rate_hz": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "excitation": {
+          "$ref": "#/$defs/excitation"
+        },
+        "support_condition": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/acquisition_channel"
+          }
+        },
+        "environmental_context": {
+          "$ref": "#/$defs/environment"
+        },
+        "experiments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/campaign_experiment_plan"
+          }
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "campaign_experiment_outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "What became of one planned experiment. An experiment stopped by an earlier gate names that gate, because a gap in the results would otherwise be indistinguishable from an omission.",
+      "required": [
+        "experiment_id",
+        "kind",
+        "status"
+      ],
+      "properties": {
+        "experiment_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "RIG_CHARACTERIZATION",
+            "FIXED_POINT",
+            "DETACH_REATTACH",
+            "RECIPROCITY",
+            "MASS_LOADING"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "NOT_EXECUTED",
+            "EXECUTED",
+            "HALTED_AT_GATE",
+            "BLOCKED_BY_GATE"
+          ]
+        },
+        "study_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "study_digest": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "evidence_origin": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "HARDWARE",
+            "FIXTURE",
+            "SYNTHETIC",
+            null
+          ],
+          "description": "The origin of the study this outcome names. Required in practice on an executed outcome: without it the campaign cannot say what kind of evidence it holds."
+        },
+        "witnessed": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the named study met the stricter witnessed standard. Only hardware-origin evidence can carry it."
+        },
+        "blocked_by_experiment_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      }
+    },
+    "external_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One retained raw measurement held outside this repository. The digest is the durable identity; the locator is where a copy may currently be found, and local_path_hint is explicitly ephemeral.",
+      "required": [
+        "artifact_id",
+        "kind",
+        "sha256",
+        "byte_count",
+        "media_type",
+        "storage_locator",
+        "repository_tracked"
+      ],
+      "properties": {
+        "artifact_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "byte_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "storage_locator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capture_run_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "repository_tracked": {
+          "type": "boolean"
+        },
+        "local_path_hint": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      }
+    },
+    "repeatability_metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Descriptive spread of one quantity across the valid runs that produced it. No acceptance flag, threshold, or verdict field exists here by design.",
+      "required": [
+        "metric_id",
+        "quantity",
+        "unit",
+        "sample_count",
+        "mean",
+        "median",
+        "standard_deviation",
+        "coefficient_of_variation_pct",
+        "minimum",
+        "maximum",
+        "range_value",
+        "median_absolute_deviation"
+      ],
+      "properties": {
+        "metric_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "quantity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sample_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_run_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "mean": {
+          "type": "number"
+        },
+        "median": {
+          "type": "number"
+        },
+        "standard_deviation": {
+          "type": "number"
+        },
+        "coefficient_of_variation_pct": {
+          "type": "number"
+        },
+        "minimum": {
+          "type": "number"
+        },
+        "maximum": {
+          "type": "number"
+        },
+        "range_value": {
+          "type": "number"
+        },
+        "median_absolute_deviation": {
+          "type": "number"
+        }
+      }
+    },
+    "group_spread": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "description": "Descriptive spread where each sample is a group rather than a run — the between-attachment case, whose samples are attachment means. The record says what its samples are so that no run-level field is left naming things that are not runs.",
+      "required": [
+        "group_kind",
+        "quantity",
+        "unit",
+        "group_count",
+        "group_ids",
+        "group_values",
+        "mean",
+        "median",
+        "standard_deviation",
+        "coefficient_of_variation_pct",
+        "minimum",
+        "maximum",
+        "range_value",
+        "median_absolute_deviation"
+      ],
+      "properties": {
+        "group_kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "quantity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "group_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "group_values": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "mean": {
+          "type": "number"
+        },
+        "median": {
+          "type": "number"
+        },
+        "standard_deviation": {
+          "type": "number"
+        },
+        "coefficient_of_variation_pct": {
+          "type": "number"
+        },
+        "minimum": {
+          "type": "number"
+        },
+        "maximum": {
+          "type": "number"
+        },
+        "range_value": {
+          "type": "number"
+        },
+        "median_absolute_deviation": {
+          "type": "number"
+        }
+      }
+    },
+    "attachment_variation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How one quantity moved within attachments and between them. The two are reported separately and never combined into a single figure.",
+      "required": [
+        "variation_id",
+        "quantity",
+        "unit",
+        "attachment_ids"
+      ],
+      "properties": {
+        "variation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "quantity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attachment_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "attachment_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "within_attachment_metrics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/repeatability_metric"
+          }
+        },
+        "between_attachment_spread": {
+          "$ref": "#/$defs/group_spread"
+        },
+        "unsummarized_attachment_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "reciprocity_observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One forward/reverse pair and the residual between them. There is no pass field and no tolerance: a large residual is a finding about the measurement architecture, and the acceptance figure it might one day be read against is exactly what this campaign exists to gather evidence for.",
+      "required": [
+        "observation_id",
+        "quantity",
+        "unit",
+        "forward_run_id",
+        "reverse_run_id",
+        "forward_drive_point_id",
+        "forward_response_point_id",
+        "forward_value",
+        "reverse_value",
+        "absolute_residual"
+      ],
+      "properties": {
+        "observation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "quantity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "forward_run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reverse_run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "forward_drive_point_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "forward_response_point_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "forward_value": {
+          "type": "number"
+        },
+        "reverse_value": {
+          "type": "number"
+        },
+        "absolute_residual": {
+          "type": "number",
+          "minimum": 0
+        },
+        "relative_residual": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "forward_evaluation_frequency_hz": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "reverse_evaluation_frequency_hz": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "frequency_mismatch_hz": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Derived: how far apart the two directions' frequency bins fell. Recorded so the asymmetry is visible in the pair rather than only inside the two runs. No limit is placed on it."
+        },
+        "forward_coherence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "reverse_coherence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "mass_loading_observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How one quantity responded to a known mass deliberately added. The measured mass is what the delta is computed from; the intended mass is recorded beside it and never substituted for it. The delta keeps its sign, and carries no threshold.",
+      "required": [
+        "observation_id",
+        "quantity",
+        "unit",
+        "mass_challenge_id",
+        "added_mass_g",
+        "baseline_metric",
+        "loaded_metric",
+        "absolute_delta"
+      ],
+      "properties": {
+        "observation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "quantity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mass_challenge_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "added_mass_g": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "nominal_added_mass_g": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "mass_location_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "baseline_metric": {
+          "$ref": "#/$defs/repeatability_metric"
+        },
+        "loaded_metric": {
+          "$ref": "#/$defs/repeatability_metric"
+        },
+        "absolute_delta": {
+          "type": "number"
+        },
+        "relative_delta_pct": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}
