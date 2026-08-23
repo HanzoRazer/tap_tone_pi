@@ -187,6 +187,29 @@
             "null"
           ],
           "minLength": 1
+        },
+        "stinger_mass_g": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Measured stinger mass. Measured rather than estimated, and never compared against a limit."
+        },
+        "contact_tip_mass_g": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "combined_contact_mass_g": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "A separate measurement of what moves with the specimen, not the sum of the two parts above."
         }
       }
     },

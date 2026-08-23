@@ -60,6 +60,11 @@
         "analysis_profile": { "type": "string", "minLength": 1 },
         "sensor_position": { "type": ["string", "null"], "minLength": 1 },
         "support_condition": { "type": ["string", "null"], "minLength": 1 },
+        "reference_structure_id": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "description": "What the rig was driving. A rig-characterization experiment records the rig in instrument_id, so the body under the stinger is named here instead."
+        },
         "excitation": {
           "type": "object",
           "additionalProperties": false,
@@ -90,6 +95,17 @@
               "type": ["string", "null"],
               "minLength": 1,
               "description": "The assembled combination of driver, stinger, tip, fixture, and support. Names one configuration so two runs can be told apart."
+            },
+            "stinger_mass_g": {
+              "type": ["number", "null"],
+              "minimum": 0,
+              "description": "Measured stinger mass. Measured rather than estimated, and never compared against a limit."
+            },
+            "contact_tip_mass_g": { "type": ["number", "null"], "minimum": 0 },
+            "combined_contact_mass_g": {
+              "type": ["number", "null"],
+              "minimum": 0,
+              "description": "A separate measurement of what moves with the specimen, not the sum of the two parts above: what moves is not always the whole stinger."
             }
           }
         },
@@ -154,7 +170,12 @@
           },
           "conditions": { "$ref": "#/$defs/environment" },
           "acquisition": { "$ref": "#/$defs/acquisition_provenance" },
-          "campaign_condition": { "$ref": "#/$defs/campaign_condition" }
+          "campaign_condition": { "$ref": "#/$defs/campaign_condition" },
+          "sequence_index": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Where this run sat in the acquisition order, as the acquisition recorded it. Warm-up, contact creep, and transducer drift are only visible in sequence, and reconstructing that order later by sorting timestamps is a guess."
+          }
         }
       }
     },

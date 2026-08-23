@@ -39,6 +39,8 @@ from tap_tone_pi.grant_readiness.experiment import (
 )
 from tap_tone_pi.grant_readiness.phase2_experiment import (
     COHERENCE,
+    FREQUENCY_OFFSET,
+    NOMINAL_EVALUATION_FREQUENCY,
     DEFAULT_TRANSFER_UNIT,
     EVALUATION_FREQUENCY,
     PHASE2_SCHEMA_VERSION,
@@ -179,16 +181,60 @@ class TestLoadPhase2Transfer:
 
 
 class TestValidRun:
-    def test_records_the_four_quantities(self):
+    def test_records_the_quantities_the_document_supports(self):
         run = record(make_document())
         assert run.valid
         assert run.rejection_reason is None
         assert [feature.quantity for feature in run.observed_features] == [
             EVALUATION_FREQUENCY,
+            NOMINAL_EVALUATION_FREQUENCY,
+            FREQUENCY_OFFSET,
             TRANSFER_MAGNITUDE,
             TRANSFER_PHASE,
             COHERENCE,
         ]
+
+    def test_the_frequency_asked_for_survives_beside_the_bin_that_answered(self):
+        # DO-105 §4.7: a study of repeated runs must be able to show that they
+        # all asked the same question and were answered at slightly different
+        # frequencies. Discarding the request made that unshowable.
+        run = record(make_document(), evaluation_frequency_hz=205.0)
+        assert run.feature(NOMINAL_EVALUATION_FREQUENCY).value == 205.0
+        assert run.feature(EVALUATION_FREQUENCY).value == 200.0
+        assert run.feature(FREQUENCY_OFFSET).value == pytest.approx(-5.0)
+
+    def test_the_offset_is_signed(self):
+        # Which side of the request the bin fell on is information.
+        run = record(make_document(), evaluation_frequency_hz=195.0)
+        assert run.feature(FREQUENCY_OFFSET).value == pytest.approx(5.0)
+
+    def test_an_exact_hit_records_a_zero_offset_not_a_missing_one(self):
+        run = record(make_document(), evaluation_frequency_hz=200.0)
+        assert run.feature(FREQUENCY_OFFSET).value == 0.0
+
+    def test_the_acquisition_order_survives_ingestion(self):
+        # The valid path and the rejected path both carry it. A field the
+        # ingestion silently drops is worse than no field: the manifest would
+        # record an order that never reaches the evidence.
+        assert record(make_document(), sequence_index=4).sequence_index == 4
+
+    def test_a_rejected_run_keeps_its_place_in_the_order(self):
+        rejected = record(
+            make_document(schema_version="phase2_ods_snapshot_v1"), sequence_index=4
+        )
+        assert not rejected.valid
+        assert rejected.sequence_index == 4
+
+    def test_an_unordered_acquisition_stays_unordered(self):
+        assert record(make_document()).sequence_index is None
+
+    def test_the_offset_is_not_summarized(self):
+        # Its mean is zero whenever every run landed on its requested bin, and a
+        # coefficient of variation over a zero mean is undefined — summarizing it
+        # would turn the best possible outcome into an error.
+        assert FREQUENCY_OFFSET not in {
+            quantity for quantity, _ in summarized_phase2_quantities()
+        }
 
     def test_reads_the_values_at_the_evaluation_frequency(self):
         run = record(make_document())
@@ -445,6 +491,7 @@ class TestStudyFromPhase2Runs:
         assert validate_repeatability_study(study) == []
         assert {metric.quantity for metric in study.metrics} == {
             EVALUATION_FREQUENCY,
+            NOMINAL_EVALUATION_FREQUENCY,
             TRANSFER_MAGNITUDE,
             TRANSFER_PHASE,
             COHERENCE,

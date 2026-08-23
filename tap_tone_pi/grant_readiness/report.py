@@ -43,6 +43,7 @@ from tap_tone_pi.grant_readiness.contracts import (
 from tap_tone_pi.grant_readiness.errors import (
     RepeatabilityStatisticsError,
 )
+from tap_tone_pi.grant_readiness.hardware_campaign import elapsed_seconds_from_first
 from tap_tone_pi.grant_readiness.validation import (
     evidence_digest,
     validate_run_acquisition_provenance,
@@ -386,12 +387,50 @@ def render_study_report(study: RepeatabilityStudyV1) -> str:
             lines.append(f"- `{reference}`")
         lines.append("")
 
+    lines += _sequence_section(study)
+
     lines += ["## Limitations", ""]
     for limitation in study.limitations:
         lines.append(f"- {limitation}")
     lines.append("")
 
     return "\n".join(lines)
+
+
+def _sequence_section(study: RepeatabilityStudyV1) -> list[str]:
+    """The acquisition order, where the acquisition recorded one.
+
+    Omitted entirely when no run carries a sequence index, so a Phase 1 study
+    that never had one renders exactly as it did before.
+    """
+    if not any(run.sequence_index is not None for run in study.runs):
+        return []
+
+    elapsed = elapsed_seconds_from_first(study.runs)
+    ordered = sorted(
+        study.runs,
+        key=lambda run: (run.sequence_index is None, run.sequence_index or 0),
+    )
+    lines = [
+        "## Acquisition sequence",
+        "",
+        "Recorded at acquisition, not reconstructed from timestamps. Elapsed "
+        "time is derived from the earliest recorded capture. Read drift down "
+        "this table rather than across the metrics above.",
+        "",
+        "| Seq | Run | Valid | Captured | Elapsed (s) |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    for run in ordered:
+        index = "—" if run.sequence_index is None else str(run.sequence_index)
+        seconds = elapsed.get(run.run_id)
+        lines.append(
+            f"| {index} | `{run.run_id}` | {'yes' if run.valid else 'no'} | "
+            f"{run.captured_at} | "
+            f"{_number(seconds) if seconds is not None else 'unknown'} |"
+        )
+    lines.append("")
+    return lines
 
 
 # ---------------------------------------------------------------------------

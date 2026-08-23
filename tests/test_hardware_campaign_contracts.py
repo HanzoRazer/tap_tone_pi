@@ -797,7 +797,7 @@ class TestPersistedForm:
             )
         )
         entry = registry["schemas"]["ttp_preliminary_repeatability_study"]
-        assert entry["version"] == "1.2.0"
+        assert entry["version"] == "1.3.0"
         assert entry["schema_version_const"] == "ttp_preliminary_repeatability_study_v1"
 
 

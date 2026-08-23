@@ -62,6 +62,9 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from tap_tone_pi.grant_readiness.contracts import (
+    EVALUATION_FREQUENCY,
+    FREQUENCY_OFFSET,
+    NOMINAL_EVALUATION_FREQUENCY,
     AcquisitionProvenanceV1,
     EnvironmentalContextV1,
     EvidenceOrigin,
@@ -87,7 +90,15 @@ DEFAULT_TRANSFER_UNIT = "ratio"
 TRANSFER_MAGNITUDE = "acoustic_transfer_magnitude"
 TRANSFER_PHASE = "acoustic_transfer_phase"
 COHERENCE = "coherence"
-EVALUATION_FREQUENCY = "evaluation_frequency"
+
+# The frequency quantity names are the record layer's, re-exported here because
+# this module writes them. What the caller asked for is kept beside the bin that
+# answered: the nearest-bin rule was always recorded through
+# EVALUATION_FREQUENCY, but the request itself was discarded once used, so a
+# study of ten runs could not show that all ten asked the same question and were
+# answered at ten slightly different frequencies. The offset is signed because
+# which side of the request a bin fell on is information, and it is verified
+# against its own two sources whenever a run is read back.
 
 
 def summarized_phase2_quantities(
@@ -101,8 +112,14 @@ def summarized_phase2_quantities(
     :func:`~.statistics.summarize_runs` refuses to mix units rather than
     silently averaging across them.
     """
+    # ``frequency_offset`` is deliberately absent. Its mean is zero whenever
+    # every run landed on its requested bin, and a coefficient of variation over
+    # a zero mean is undefined — summarizing it would turn the best possible
+    # outcome into an error. The offsets stay visible per run instead, and the
+    # spread of the *actual* frequencies is what the summary reports.
     return (
         (EVALUATION_FREQUENCY, "Hz"),
+        (NOMINAL_EVALUATION_FREQUENCY, "Hz"),
         (TRANSFER_MAGNITUDE, transfer_unit),
         (TRANSFER_PHASE, "deg"),
         (COHERENCE, "unitless"),
@@ -221,8 +238,14 @@ def _rejected(
     measurement_result_id: str | None,
     conditions: EnvironmentalContextV1,
     acquisition: AcquisitionProvenanceV1 | None,
+    sequence_index: int | None = None,
 ) -> PreliminaryExperimentRunV1:
-    """A rejected attempt keeps its identity, artifacts, and provenance."""
+    """A rejected attempt keeps its identity, artifacts, provenance, and place.
+
+    Its place in the acquisition order included: a failed attempt still happened,
+    and it happened somewhere in the sequence. Dropping the index would leave a
+    gap that reads as a run nobody recorded.
+    """
     return PreliminaryExperimentRunV1(
         run_id=run_id,
         experiment_id=experiment_id,
@@ -234,6 +257,7 @@ def _rejected(
         measurement_result_id=measurement_result_id,
         conditions=conditions,
         acquisition=acquisition,
+        sequence_index=sequence_index,
     )
 
 
@@ -250,6 +274,7 @@ def record_phase2_run(
     measurement_result_id: str | None = None,
     conditions: EnvironmentalContextV1 | None = None,
     acquisition: AcquisitionProvenanceV1 | None = None,
+    sequence_index: int | None = None,
 ) -> PreliminaryExperimentRunV1:
     """Record one driven capture from a Phase 2 transfer-function document.
 
@@ -280,6 +305,7 @@ def record_phase2_run(
             measurement_result_id=measurement_result_id,
             conditions=recorded_conditions,
             acquisition=acquisition,
+            sequence_index=sequence_index,
         )
 
     if payload.get("schema_version") != PHASE2_SCHEMA_VERSION:
@@ -332,19 +358,29 @@ def record_phase2_run(
         measurement_result_id=measurement_result_id,
         observed_features=(
             # The bin's own frequency, so a reader sees where the value was read
-            # rather than trusting that it matched what was asked for.
+            # rather than trusting that it matched what was asked for — beside
+            # the frequency that was asked for, and the signed gap between them.
             ObservedFeatureV1(EVALUATION_FREQUENCY, "Hz", frequencies[index]),
+            ObservedFeatureV1(
+                NOMINAL_EVALUATION_FREQUENCY, "Hz", evaluation_frequency_hz
+            ),
+            ObservedFeatureV1(
+                FREQUENCY_OFFSET, "Hz", frequencies[index] - evaluation_frequency_hz
+            ),
             ObservedFeatureV1(TRANSFER_MAGNITUDE, unit, magnitude[index]),
             ObservedFeatureV1(TRANSFER_PHASE, "deg", phase[index]),
             ObservedFeatureV1(COHERENCE, "unitless", coherence[index]),
         ),
         conditions=recorded_conditions,
         acquisition=acquisition,
+        sequence_index=sequence_index,
     )
 
 
 __all__ = [
     "PHASE2_SCHEMA_VERSION",
+    "NOMINAL_EVALUATION_FREQUENCY",
+    "FREQUENCY_OFFSET",
     "DEFAULT_TRANSFER_UNIT",
     "TRANSFER_MAGNITUDE",
     "TRANSFER_PHASE",

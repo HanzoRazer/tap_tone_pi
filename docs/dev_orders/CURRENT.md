@@ -1,11 +1,69 @@
 # Active Dev Order
 
-**Current:** DO-103 Stages 3 and 3b — Phase 2 ingestion, the
+**Current:** DO-104 — E1 Hardware Bring-Up and Rig Characterization
+(PRE-EXECUTION — evidence hardening and protocol landed; the rig does not exist)
+**Next:** build the rig, then execute E1
+**Queued:** DO-105 — E2 Fixed-Point Repeatability (BLOCKED on the E1 gate);
+DO-101B — Empirical Registry and Inspection Surface (NOT STARTED)
+**Previous:** DO-103 Stages 3 and 3b — Phase 2 ingestion, the
 provenance-derived HARDWARE claim, and the campaign software for E1–E5
-(COMPLETE, frozen ahead of the physical campaign)
-**Next:** DO-101B — Empirical Registry and Inspection Surface, then the hardware
-stages of DO-103 when the shaker, stinger, and force transducer exist
-**Queued:** DO-101B — Empirical Registry and Inspection Surface (NOT STARTED)
+(COMPLETE, merged as PR #26)
+
+## DO-104 — E1 bring-up, pre-execution
+
+The rig does not exist. No shaker, amplifier, force transducer, interface,
+microphone, stinger stock, or tip has been selected, and none is specified in
+code or documentation: an invented specification would be invented evidence.
+
+**What landed before the bench work**, on the rule that an evidence-loss defect
+must be fixed before the data exists:
+
+- `stinger_mass_g`, `contact_tip_mass_g`, and a separately measured
+  `combined_contact_mass_g` on the rig's excitation record. DO-103 §4.9 asked
+  for these to be *measured* rather than estimated, and until now there was
+  nowhere numeric to put them;
+- `reference_structure_id` on the experiment definition. E1 records the rig in
+  `instrument_id`, so the body under the stinger had no field at all;
+- `sequence_index` on every run, with elapsed-from-first derived. Warm-up,
+  contact creep, and transducer drift are only visible in sequence, and
+  reconstructing that order later by sorting timestamps is a guess;
+- the nominal frequency each run asked for, kept beside the bin that answered
+  with the signed offset derived — the same defect that was fixed for
+  reciprocity, in the other experiment.
+
+The study schema moved to registry 1.3.0 and the campaign schema to 1.1.0. Both
+additive; no existing field changed meaning.
+
+**Deliberately deferred to DO-105:** per-run configuration-constancy
+enforcement. During E1 the rig is *supposed* to change — stingers, tips, and
+preload are the variables under characterization — so a validator demanding that
+every run share one configuration would fight E1's purpose. It belongs to E2,
+where the configuration is frozen by definition, and it lands before E2's first
+capture.
+
+**Two rules locked rather than left to be reopened:**
+
+- `stinger_mass_g` and `contact_tip_mass_g` are physical component masses;
+  `combined_contact_mass_g` is the measured or estimated effective mass
+  participating at the specimen interface and is **not** required to equal their
+  arithmetic sum. It may legitimately be lower. The only invariant is that all
+  three, when present, are finite and non-negative — the software will not check
+  one against the others.
+- Acquisition order is authoritative as explicitly recorded by
+  `sequence_index`; `captured_at` remains separately preserved evidence. A
+  disagreement is **reported, not silently repaired** — neither is sorted into
+  agreement with the other, because the disagreement may itself be the finding.
+
+**A process change came out of this too.** An end-to-end evidence-path run is
+now a mandatory pre-merge gate for every hardware-facing increment, held by
+`tests/test_hardware_campaign_evidence_path.py`:
+`manifest → ingestion → run → study → campaign → report → checker`, with at
+least one rejected run traversing it. Unit tests missed a dropped
+`sequence_index` twice; the dry run caught it both times. CLAUDE.md rule 11
+records it.
+
+**Not started:** the rig, E1 itself, any capability promotion, and any line of
+the risk table.
 **Previous:** DO-102 — NSF TTP Grant-Readiness Evidence Foundation (COMPLETE)
 **Deferred evidence gate:** `SPRINTS.md` B-006 — witnessed hardware measurement
 campaign, now formally defined as DO-103
