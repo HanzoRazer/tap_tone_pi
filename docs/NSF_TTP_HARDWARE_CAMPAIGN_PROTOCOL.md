@@ -130,6 +130,15 @@ usable rig.
 
 ### E1 — Rig and stinger characterization *(gate)*
 
+**E1 is the mandatory first gate of this campaign, and it has its own bench
+procedure: `docs/NSF_TTP_E1_RIG_CHARACTERIZATION_PROTOCOL.md` (DO-104). Follow
+that document to run it.** What follows is the summary of where E1 sits in the
+campaign; it does not repeat the procedure.
+
+E2 through E5 inherit E1's usable frequency band **by reference to its witnessed
+evidence**, not by copying a range into their own configuration — a copied range
+can drift out of agreement with the evidence it came from.
+
 Characterize the excitation path before trusting anything measured through it:
 stinger and contact-assembly mass, the usable frequency band, the force channel,
 the response channel, and any obvious stinger or fixture resonance.
