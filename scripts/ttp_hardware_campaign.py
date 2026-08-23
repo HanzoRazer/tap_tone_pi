@@ -37,6 +37,7 @@ input specification, not evidence:
       "runs": [
         {
           "run_id": "e2-001",
+          "sequence_index": 0,
           "transfer": "runs/e2/001/transfer.json",
           "captured_at": "2026-09-01T14:05:00+00:00",
           "measurement_point_id": "P1",
@@ -50,6 +51,10 @@ input specification, not evidence:
         }
       ]
     }
+
+``sequence_index`` records where a capture sat in the acquisition order. It is
+recorded rather than inferred: reconstructing the order later by sorting
+timestamps is a guess, and drift is only readable in sequence.
 
 ``rejected`` is optional and records an operator's own verdict on a capture the
 Phase 2 document cannot speak to. A rejected run keeps its identity, its
@@ -188,6 +193,7 @@ def _rejected_run(
         conditions=EnvironmentalContextV1.from_dict(entry.get("conditions")),
         acquisition=acquisition,
         campaign_condition=condition,
+        sequence_index=entry.get("sequence_index"),
     )
 
 
@@ -240,6 +246,7 @@ def build_runs(
             measurement_result_id=entry.get("measurement_result_id"),
             conditions=EnvironmentalContextV1.from_dict(entry.get("conditions")),
             acquisition=acquisition,
+            sequence_index=entry.get("sequence_index"),
         )
         # record_phase2_run returns a rejected run where the document cannot
         # answer for the point or the frequency. The campaign condition is

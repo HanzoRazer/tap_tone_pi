@@ -593,7 +593,8 @@ class TestStudySchemaCarriesAcquisition:
         )
         entry = registry["schemas"]["ttp_preliminary_repeatability_study"]
         # 1.1.0 added the acquisition block in Stage 3; 1.2.0 added the
-        # per-run campaign condition. Both are additive and neither changed the
-        # meaning of an existing field, so the contract stays v1.
-        assert entry["version"] == "1.2.0"
+        # per-run campaign condition; 1.3.0 added acquisition sequence and the
+        # contact-assembly masses. All additive, none changed the meaning of an
+        # existing field, so the contract stays v1.
+        assert entry["version"] == "1.3.0"
         assert entry["schema_version_const"] == "ttp_preliminary_repeatability_study_v1"

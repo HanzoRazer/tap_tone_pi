@@ -817,6 +817,9 @@ class ExcitationContextV1:
     stinger_id: str | None = None
     contact_tip_id: str | None = None
     rig_configuration_id: str | None = None
+    stinger_mass_g: float | None = None
+    contact_tip_mass_g: float | None = None
+    combined_contact_mass_g: float | None = None
 
     @property
     def is_known_method(self) -> bool:
@@ -840,6 +843,30 @@ class ExcitationContextV1:
             "fixture_id": self.fixture_id,
         }
 
+    @property
+    def contact_assembly_masses_g(self) -> dict[str, float | None]:
+        """The measured masses of what the drive point actually has to move.
+
+        DO-103 §4.9 refused to inherit an approximate 2 g acceptance figure and
+        said the campaign should *measure* the stinger and contact assembly
+        instead. These are those measurements: recorded, never estimated, and
+        never compared against a limit this order has no evidence for.
+
+        **These are two different physical ideas** (DO-104 rule).
+        ``stinger_mass_g`` and ``contact_tip_mass_g`` are physical component
+        masses. ``combined_contact_mass_g`` is the measured or estimated
+        effective mass participating at the specimen interface and is *not*
+        required to equal their arithmetic sum — it may legitimately be lower
+        than the sum of the physical parts, because not all of a component
+        participates in loading the specimen. The only invariant is that all
+        three, when present, are finite and non-negative.
+        """
+        return {
+            "stinger_mass_g": self.stinger_mass_g,
+            "contact_tip_mass_g": self.contact_tip_mass_g,
+            "combined_contact_mass_g": self.combined_contact_mass_g,
+        }
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "excitation_method": self.excitation_method,
@@ -851,6 +878,9 @@ class ExcitationContextV1:
             "stinger_id": self.stinger_id,
             "contact_tip_id": self.contact_tip_id,
             "rig_configuration_id": self.rig_configuration_id,
+            "stinger_mass_g": self.stinger_mass_g,
+            "contact_tip_mass_g": self.contact_tip_mass_g,
+            "combined_contact_mass_g": self.combined_contact_mass_g,
         }
 
     @classmethod
@@ -872,6 +902,9 @@ class ExcitationContextV1:
                 "stinger_id",
                 "contact_tip_id",
                 "rig_configuration_id",
+                "stinger_mass_g",
+                "contact_tip_mass_g",
+                "combined_contact_mass_g",
             ),
             record=record,
             error=err,
@@ -905,6 +938,15 @@ class ExcitationContextV1:
             rig_configuration_id=_optional_text(
                 payload, "rig_configuration_id", record=record, error=err, code=code
             ),
+            stinger_mass_g=_optional_number(
+                payload, "stinger_mass_g", record=record, error=err, code=code
+            ),
+            contact_tip_mass_g=_optional_number(
+                payload, "contact_tip_mass_g", record=record, error=err, code=code
+            ),
+            combined_contact_mass_g=_optional_number(
+                payload, "combined_contact_mass_g", record=record, error=err, code=code
+            ),
         )
 
 
@@ -922,6 +964,11 @@ class PreliminaryExperimentDefinitionV1:
     excitation: ExcitationContextV1 = field(default_factory=ExcitationContextV1)
     sensor_position: str | None = None
     support_condition: str | None = None
+    # What the rig was driving. DO-104 §4.10 puts a controlled reference body
+    # under the stinger before any instrument, and E1 records the *rig* in
+    # ``instrument_id`` — so without this field the body being driven would have
+    # nowhere to be named at all.
+    reference_structure_id: str | None = None
     environmental_context: EnvironmentalContextV1 = field(
         default_factory=EnvironmentalContextV1
     )
@@ -938,6 +985,7 @@ class PreliminaryExperimentDefinitionV1:
             "excitation": self.excitation.to_dict(),
             "sensor_position": self.sensor_position,
             "support_condition": self.support_condition,
+            "reference_structure_id": self.reference_structure_id,
             "environmental_context": self.environmental_context.to_dict(),
         }
 
@@ -959,6 +1007,7 @@ class PreliminaryExperimentDefinitionV1:
                 "excitation",
                 "sensor_position",
                 "support_condition",
+                "reference_structure_id",
                 "environmental_context",
             ),
             record=record,
@@ -998,6 +1047,9 @@ class PreliminaryExperimentDefinitionV1:
             ),
             support_condition=_optional_text(
                 payload, "support_condition", record=record, error=err, code=code
+            ),
+            reference_structure_id=_optional_text(
+                payload, "reference_structure_id", record=record, error=err, code=code
             ),
             environmental_context=EnvironmentalContextV1.from_dict(
                 payload.get("environmental_context")
@@ -1495,6 +1547,16 @@ class PreliminaryExperimentRunV1:
     conditions: EnvironmentalContextV1 = field(default_factory=EnvironmentalContextV1)
     acquisition: AcquisitionProvenanceV1 | None = None
     campaign_condition: CampaignConditionV1 | None = None
+    # Where this run sat in the acquisition order, as the acquisition recorded
+    # it. Warm-up, contact creep, and transducer drift are only visible in
+    # sequence, and reconstructing that order later by sorting timestamps is a
+    # guess: two captures a second apart can be logged out of order, and a
+    # re-run keeps its original clock time. The order is recorded, not inferred.
+    #
+    # DO-104 rule: this is authoritative for order, and ``captured_at`` remains
+    # separately preserved evidence. Where they disagree the contradiction is
+    # surfaced by validation and left standing, never repaired.
+    sequence_index: int | None = None
 
     @property
     def experiment_kind(self) -> ExperimentKind | None:
@@ -1546,6 +1608,7 @@ class PreliminaryExperimentRunV1:
                 if self.campaign_condition is not None
                 else None
             ),
+            "sequence_index": self.sequence_index,
         }
 
     @classmethod
@@ -1568,6 +1631,7 @@ class PreliminaryExperimentRunV1:
                 "conditions",
                 "acquisition",
                 "campaign_condition",
+                "sequence_index",
             ),
             record=record,
             error=err,
@@ -1576,6 +1640,18 @@ class PreliminaryExperimentRunV1:
         valid = payload.get("valid", True)
         if not isinstance(valid, bool):
             raise err(code, f"{record}.valid must be a boolean", {"record": record})
+
+        sequence_index = payload.get("sequence_index")
+        if sequence_index is not None and (
+            isinstance(sequence_index, bool)
+            or not isinstance(sequence_index, int)
+            or sequence_index < 0
+        ):
+            raise err(
+                GrantReadinessErrorCode.INVALID_RUN_SEQUENCE,
+                f"{record}.sequence_index must be a non-negative integer",
+                {"record": record},
+            )
 
         raw_reason = payload.get("rejection_reason")
         reason: RejectionReason | None = None
@@ -1634,6 +1710,7 @@ class PreliminaryExperimentRunV1:
             campaign_condition=CampaignConditionV1.from_dict(
                 payload.get("campaign_condition")
             ),
+            sequence_index=sequence_index,
         )
 
 

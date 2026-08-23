@@ -16,12 +16,14 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 from tap_tone_pi.grant_readiness.contracts import (
     MECHANICAL_FRF_NAMES,
     AcquisitionChannelV1,
+    ExcitationContextV1,
     AcquisitionRole,
     CampaignExecutionStatus,
     CapabilityEvidenceV1,
@@ -275,12 +277,48 @@ def validate_no_unwitnessed_hardware_claim(
 # ---------------------------------------------------------------------------
 
 
+def validate_contact_assembly_masses(
+    excitation: ExcitationContextV1, *, record: str
+) -> list[ValidationFinding]:
+    """A recorded mass must be a mass.
+
+    DO-103 §4.9 replaced an inherited approximate mass-loading figure with the
+    instruction to *measure* the stinger and contact assembly, and DO-104 makes
+    those measurements part of E1. This checks only that a recorded value could
+    be one: it is finite (already enforced on read) and not negative. Nothing
+    here compares a mass against a limit, because no evidence for one exists —
+    that is what E5 is for.
+
+    It also, deliberately, does **not** check the combined mass against the sum
+    of the components. They are different physical ideas: the components are
+    hardware masses, the combined figure is the effective mass participating at
+    the specimen interface, and it may legitimately be lower than the sum. A
+    validator enforcing the arithmetic would reject a correct measurement.
+    """
+    findings: list[ValidationFinding] = []
+    for name, value in excitation.contact_assembly_masses_g.items():
+        if value is not None and value < 0:
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.INVALID_CONTACT_ASSEMBLY_MASS,
+                    f"{record} records a negative {name.replace('_', ' ')}",
+                    {"record": record, "field": name},
+                )
+            )
+    return findings
+
+
 def validate_experiment_definition(
     definition: PreliminaryExperimentDefinitionV1,
 ) -> list[ValidationFinding]:
     """Validate one bounded experiment definition."""
     findings: list[ValidationFinding] = []
     context = {"experiment_id": definition.experiment_id}
+    findings.extend(
+        validate_contact_assembly_masses(
+            definition.excitation, record=f"experiment {definition.experiment_id}"
+        )
+    )
 
     required = {
         "experiment_id": definition.experiment_id,
@@ -391,6 +429,8 @@ def validate_experiment_runs(
                         context,
                     )
                 )
+
+    findings.extend(validate_run_sequence(runs))
 
     return findings
 
@@ -853,6 +893,86 @@ def validate_run_campaign_condition(
     return findings
 
 
+def _parsed_utc(value: str) -> datetime | None:
+    """Parse a recorded UTC timestamp, or ``None`` if it will not parse.
+
+    Deserialization already refuses a non-UTC timestamp, so this is a guard for
+    records assembled in memory rather than read from disk.
+    """
+    text = value.replace("Z", "+00:00") if value.endswith("Z") else value
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def validate_run_sequence(
+    runs: Sequence[PreliminaryExperimentRunV1],
+) -> list[ValidationFinding]:
+    """The recorded acquisition order must be able to order the runs.
+
+    Warm-up, contact creep, and transducer drift are only visible in sequence,
+    so the order is recorded at acquisition rather than reconstructed later by
+    sorting timestamps. Two failures make that record useless: an index used
+    twice orders nothing, and an index that contradicts the clock means one of
+    the two is wrong and a reader cannot tell which.
+
+    The DO-104 invariant: **acquisition order is authoritative as explicitly
+    recorded by ``sequence_index``; timestamps remain separately preserved
+    evidence, and a disagreement is reported, not silently repaired.** The two
+    are independent evidence about the same acquisition, so neither is sorted
+    into agreement with the other and neither is treated as the truth the other
+    must match. A disagreement may itself be the finding — a capture, clock,
+    import, or operator problem — and resolving it here would destroy it.
+
+    Runs without a sequence index are not judged: the field is optional, and a
+    DO-102 study that never had one is unaffected.
+    """
+    findings: list[ValidationFinding] = []
+    indexed = [run for run in runs if run.sequence_index is not None]
+
+    seen: dict[int, str] = {}
+    for run in indexed:
+        first = seen.get(run.sequence_index)
+        if first is not None:
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.INVALID_RUN_SEQUENCE,
+                    (
+                        f"runs {first} and {run.run_id} share sequence index "
+                        f"{run.sequence_index}"
+                    ),
+                    {
+                        "sequence_index": run.sequence_index,
+                        "run_ids": [first, run.run_id],
+                    },
+                )
+            )
+        else:
+            seen[run.sequence_index] = run.run_id
+
+    ordered = sorted(indexed, key=lambda run: run.sequence_index)
+    previous = None
+    for run in ordered:
+        stamp = _parsed_utc(run.captured_at)
+        if stamp is None:
+            continue
+        if previous is not None and stamp < previous[1]:
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.INVALID_RUN_SEQUENCE,
+                    (
+                        f"run {run.run_id} follows {previous[0]} in acquisition "
+                        "order but was captured before it"
+                    ),
+                    {"run_ids": [previous[0], run.run_id]},
+                )
+            )
+        previous = (run.run_id, stamp)
+
+    return findings
+
+
 def validate_external_artifact(
     artifact: ExternalArtifactV1,
 ) -> list[ValidationFinding]:
@@ -962,6 +1082,12 @@ def validate_campaign_config(
     """
     findings: list[ValidationFinding] = []
     context = {"campaign_id": config.campaign_id}
+
+    findings.extend(
+        validate_contact_assembly_masses(
+            config.excitation, record=f"campaign {config.campaign_id}"
+        )
+    )
 
     if not config.excitation.rig_configuration_id:
         findings.append(
@@ -1458,7 +1584,9 @@ __all__ = [
     "validate_study_evidence_origin",
     "COHERENCE_BOUNDS",
     "validate_channel_calibration",
+    "validate_contact_assembly_masses",
     "validate_run_campaign_condition",
+    "validate_run_sequence",
     "validate_external_artifact",
     "validate_artifact_manifest",
     "validate_campaign_config",

@@ -31,6 +31,7 @@ produce a number that looks like evidence and is not.
 from __future__ import annotations
 
 import hashlib
+from datetime import datetime
 from typing import Iterable, Mapping, Sequence
 
 from tap_tone_pi.grant_readiness.contracts import (
@@ -249,6 +250,36 @@ def build_campaign_acquisition(
         raw_artifact_ids=tuple(raw_artifact_ids),
         witnessed_by=witnessed_by,
     )
+
+
+def elapsed_seconds_from_first(
+    runs: Sequence[PreliminaryExperimentRunV1],
+) -> dict[str, float]:
+    """Seconds from the first acquisition to each run, by run id.
+
+    Derived rather than stored: it is a property of a run *collection*, not of a
+    run, and a stored copy could disagree with the timestamps it was taken over.
+    The zero point is the earliest recorded capture, so a run that predates the
+    one indexed first still reports a negative elapsed rather than being
+    silently reordered — the disagreement belongs to
+    :func:`~.validation.validate_run_sequence`, not to arithmetic.
+
+    Runs whose timestamp will not parse are omitted rather than defaulted.
+    """
+    stamps: dict[str, datetime] = {}
+    for run in runs:
+        text = run.captured_at
+        text = text.replace("Z", "+00:00") if text.endswith("Z") else text
+        try:
+            stamps[run.run_id] = datetime.fromisoformat(text)
+        except ValueError:
+            continue
+    if not stamps:
+        return {}
+    origin = min(stamps.values())
+    return {
+        run_id: (stamp - origin).total_seconds() for run_id, stamp in stamps.items()
+    }
 
 
 def artifact_digest(data: bytes) -> str:
@@ -1012,6 +1043,7 @@ __all__ = [
     "build_campaign_definition",
     "build_campaign_acquisition",
     "build_campaign_outcome",
+    "elapsed_seconds_from_first",
     "campaign_status_for",
     "artifact_digest",
     "build_external_artifact",

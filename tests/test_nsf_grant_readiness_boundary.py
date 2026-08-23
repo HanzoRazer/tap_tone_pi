@@ -181,7 +181,13 @@ class TestCampaignAddsNoSignalProcessing:
         imports = module_imports(PACKAGE_DIR / "hardware_campaign.py")
         for imported in imports:
             assert imported.startswith(
-                ("tap_tone_pi.grant_readiness", "typing", "hashlib", "__future__")
+                (
+                    "tap_tone_pi.grant_readiness",
+                    "typing",
+                    "hashlib",
+                    "datetime",
+                    "__future__",
+                )
             ), f"hardware_campaign imports {imported}"
 
     def test_it_computes_no_transfer_function(self, campaign_source):

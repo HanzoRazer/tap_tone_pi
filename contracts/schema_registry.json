@@ -243,18 +243,18 @@
       "path": "contracts/ttp_hardware_campaign_v1.schema.json",
       "schema_version_const": "ttp_hardware_campaign_v1",
       "status": "stable",
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     "ttp_preliminary_repeatability_study": {
-      "description": "Bounded preliminary repeatability study with run accounting, descriptive metrics, evidence origin, per-run acquisition provenance, per-run hardware-campaign condition, and stated limitations",
+      "description": "Bounded preliminary repeatability study with run accounting, descriptive metrics, evidence origin, per-run acquisition provenance, per-run hardware-campaign condition, acquisition sequence, contact-assembly masses, and stated limitations",
       "file": "ttp_preliminary_repeatability_study_v1.schema.json",
       "owner": "grant-readiness-team",
       "path": "contracts/ttp_preliminary_repeatability_study_v1.schema.json",
       "schema_version_const": "ttp_preliminary_repeatability_study_v1",
       "status": "stable",
-      "version": "1.2.0"
+      "version": "1.3.0"
     }
   },
   "title": "tap_tone_pi Schema Registry",
-  "updated": "2026-08-22T00:00:00Z"
+  "updated": "2026-08-23T00:00:00Z"
 }
