@@ -193,7 +193,11 @@ Every run records:
   match. That disagreement may itself be the finding: a capture, clock, import,
   or operator problem.
 - the nominal frequency asked for, and the actual bin that answered — both are
-  recorded, with the signed offset between them derived
+  recorded, with the signed offset between them derived. The offset is
+  **verified against those two frequencies whenever a run is read back**: a
+  document claiming an offset its own frequencies do not produce is refused,
+  and an offset recorded without both sources is refused rather than read as
+  zero
 - force and response channel identities
 - session and acquisition ids
 - retained raw artifact ids

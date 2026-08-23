@@ -245,6 +245,24 @@ KNOWN_ACQUISITION_QUANTITIES: tuple[str, ...] = (
     "unspecified",
 )
 
+# Evidence quantity names whose values stand in a derivable relationship, so
+# the record layer can verify it on read. They live here rather than in the
+# ingestion module because the check belongs at deserialization: a document
+# assembled by hand, edited after the fact, or produced by another tool reaches
+# the records without passing through ingestion at all.
+EVALUATION_FREQUENCY = "evaluation_frequency"
+NOMINAL_EVALUATION_FREQUENCY = "nominal_evaluation_frequency"
+FREQUENCY_OFFSET = "frequency_offset"
+
+# Declared numeric slack for the derived-offset check, in Hz.
+#
+# This is *float-comparison* slack and emphatically not an acceptance
+# threshold: it exists because ``100.4 - 100.0`` is not exactly ``0.4`` in
+# binary floating point, and nothing anywhere compares a measured offset
+# against it to decide whether an offset is tolerable. DO-103 §4.6 forbids that
+# and this constant does not do it.
+FREQUENCY_OFFSET_EPSILON_HZ = 1e-9
+
 # Names of mechanical frequency-response functions. DO-103 §6.6 forbids every one
 # of them for an acoustic pressure response over a measured force: p/F is an
 # acoustic-response transfer function relative to measured force, and calling it
@@ -464,6 +482,61 @@ def _required_numbers(
             )
         numbers[name] = value
     return numbers
+
+
+def _reject_underived_frequency_offset(
+    features: Sequence[ObservedFeatureV1],
+    *,
+    record: str,
+    error: type[ExperimentRecordError] | type[CapabilityAuditError],
+) -> None:
+    """Refuse a recorded frequency offset its own frequencies do not produce.
+
+    The offset is derived — ``actual - nominal`` — so a persisted copy can
+    disagree with the values it was taken over, whether by a hand edit, a
+    partial merge, or another tool writing the document. A derived value that
+    can contradict its sources is worse than no derived value at all: it reads
+    as corroboration while the evidence underneath it says otherwise.
+
+    An offset recorded where either source is unknown is refused for the same
+    reason rather than being read as zero. Unknown is not zero, and a
+    zero-looking offset would claim the bin answered exactly what was asked.
+
+    A run carrying none of the three — every Phase 1 tap run, for instance — is
+    not judged.
+    """
+    values = {
+        feature.quantity: feature.value
+        for feature in features
+        if feature.quantity
+        in (EVALUATION_FREQUENCY, NOMINAL_EVALUATION_FREQUENCY, FREQUENCY_OFFSET)
+    }
+    if FREQUENCY_OFFSET not in values:
+        return
+
+    actual = values.get(EVALUATION_FREQUENCY)
+    nominal = values.get(NOMINAL_EVALUATION_FREQUENCY)
+    if actual is None or nominal is None:
+        raise error(
+            GrantReadinessErrorCode.FREQUENCY_OFFSET_NOT_DERIVED,
+            (
+                f"{record} records a frequency offset without both the nominal "
+                "and actual frequencies it is derived from"
+            ),
+            {"record": record},
+        )
+
+    derived = actual - nominal
+    if abs(values[FREQUENCY_OFFSET] - derived) > FREQUENCY_OFFSET_EPSILON_HZ:
+        raise error(
+            GrantReadinessErrorCode.FREQUENCY_OFFSET_NOT_DERIVED,
+            (
+                f"{record} records a frequency offset of "
+                f"{values[FREQUENCY_OFFSET]} Hz that its own frequencies do not "
+                f"produce (derived {derived} Hz)"
+            ),
+            {"record": record},
+        )
 
 
 def _reject_derived_disagreement(
@@ -1676,7 +1749,7 @@ class PreliminaryExperimentRunV1:
                 code, f"{record}.observed_features must be an array", {"record": record}
             )
 
-        return cls(
+        run = cls(
             run_id=_require_text(
                 payload, "run_id", record=record, error=err, code=code
             ),
@@ -1712,6 +1785,10 @@ class PreliminaryExperimentRunV1:
             ),
             sequence_index=sequence_index,
         )
+        _reject_underived_frequency_offset(
+            run.observed_features, record=record, error=err
+        )
+        return run
 
 
 # ---------------------------------------------------------------------------

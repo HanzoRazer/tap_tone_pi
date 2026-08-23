@@ -31,6 +31,12 @@ from tap_tone_pi.grant_readiness import (
     PreliminaryExperimentRunV1,
     RepeatabilityStudyV1,
 )
+from tap_tone_pi.grant_readiness.contracts import (
+    EVALUATION_FREQUENCY,
+    FREQUENCY_OFFSET,
+    FREQUENCY_OFFSET_EPSILON_HZ,
+    NOMINAL_EVALUATION_FREQUENCY,
+)
 from tap_tone_pi.grant_readiness.errors import ExperimentRecordError
 from tap_tone_pi.grant_readiness.hardware_campaign import (
     build_rig_excitation_context,
@@ -278,6 +284,113 @@ class TestAcquisitionOrder:
             make_run("r2", sequence_index=0, captured_at=at(1)),
         ]
         assert "NSF-512" in codes(validate_experiment_runs(runs))
+
+
+class TestFrequencyOffsetIsVerifiedOnRead:
+    """A derived value that can contradict its sources is worse than none.
+
+    The offset reads as corroboration — it says how far the answering bin fell
+    from the request — so a document whose offset disagrees with its own two
+    frequencies would mislead precisely where a reader is looking for
+    reassurance. The check is at deserialization because a document can be
+    hand-edited, partially merged, or written by another tool and reach the
+    records without passing through ingestion at all.
+    """
+
+    def make_run(self, actual=100.4, nominal=100.0, offset=None, drop=()):
+        features = []
+        if EVALUATION_FREQUENCY not in drop:
+            features.append(ObservedFeatureV1(EVALUATION_FREQUENCY, "Hz", actual))
+        if NOMINAL_EVALUATION_FREQUENCY not in drop:
+            features.append(
+                ObservedFeatureV1(NOMINAL_EVALUATION_FREQUENCY, "Hz", nominal)
+            )
+        if FREQUENCY_OFFSET not in drop:
+            features.append(
+                ObservedFeatureV1(
+                    FREQUENCY_OFFSET,
+                    "Hz",
+                    actual - nominal if offset is None else offset,
+                )
+            )
+        return PreliminaryExperimentRunV1(
+            run_id="r1",
+            experiment_id="e1-rig",
+            captured_at=UTC_NOW,
+            evidence_origin=EvidenceOrigin.FIXTURE,
+            source_artifact_ids=("fixtures/r1.json",),
+            observed_features=tuple(features),
+        )
+
+    def test_an_honest_offset_round_trips(self):
+        run = self.make_run()
+        assert PreliminaryExperimentRunV1.from_dict(run.to_dict()) == run
+
+    def test_a_tampered_offset_is_refused(self):
+        payload = self.make_run().to_dict()
+        payload["observed_features"][2]["value"] = 7.0
+        with pytest.raises(ExperimentRecordError) as excinfo:
+            PreliminaryExperimentRunV1.from_dict(payload)
+        assert excinfo.value.code.value == "NSF-513"
+
+    @pytest.mark.parametrize("sign", [1, -1])
+    def test_an_offset_of_the_wrong_sign_is_refused(self, sign):
+        # Which side of the request the bin fell on is the information the
+        # offset carries, so a flipped sign is a contradiction, not a detail.
+        payload = self.make_run(actual=100.0 + sign * 0.4).to_dict()
+        payload["observed_features"][2]["value"] = -sign * 0.4
+        with pytest.raises(ExperimentRecordError):
+            PreliminaryExperimentRunV1.from_dict(payload)
+
+    def test_float_slack_is_allowed(self):
+        # 100.4 - 100.0 is not exactly 0.4 in binary floating point. The check
+        # must not reject a document for being written in decimal.
+        payload = self.make_run().to_dict()
+        payload["observed_features"][2]["value"] = 0.4
+        assert PreliminaryExperimentRunV1.from_dict(payload) is not None
+
+    def test_slack_beyond_the_declared_epsilon_is_refused(self):
+        payload = self.make_run().to_dict()
+        payload["observed_features"][2]["value"] = (
+            payload["observed_features"][2]["value"] + FREQUENCY_OFFSET_EPSILON_HZ * 100
+        )
+        with pytest.raises(ExperimentRecordError):
+            PreliminaryExperimentRunV1.from_dict(payload)
+
+    @pytest.mark.parametrize(
+        "missing", [EVALUATION_FREQUENCY, NOMINAL_EVALUATION_FREQUENCY]
+    )
+    def test_an_offset_without_its_sources_is_refused(self, missing):
+        # Unknown is not zero. An offset standing alone would claim the bin
+        # answered exactly what was asked, which nothing here observed.
+        payload = self.make_run().to_dict()
+        payload["observed_features"] = [
+            f for f in payload["observed_features"] if f["quantity"] != missing
+        ]
+        with pytest.raises(ExperimentRecordError) as excinfo:
+            PreliminaryExperimentRunV1.from_dict(payload)
+        assert excinfo.value.code.value == "NSF-513"
+
+    def test_unknown_frequencies_with_no_offset_are_fine(self):
+        # The offset stays unknown rather than silently becoming zero.
+        run = self.make_run(drop=(FREQUENCY_OFFSET,))
+        assert PreliminaryExperimentRunV1.from_dict(run.to_dict()) == run
+
+    def test_a_zero_offset_is_a_real_observation(self):
+        run = self.make_run(actual=200.0, nominal=200.0)
+        restored = PreliminaryExperimentRunV1.from_dict(run.to_dict())
+        assert restored.feature(FREQUENCY_OFFSET).value == 0.0
+
+    def test_a_phase1_run_is_not_judged(self):
+        run = PreliminaryExperimentRunV1(
+            run_id="r1",
+            experiment_id="phase1",
+            captured_at=UTC_NOW,
+            evidence_origin=EvidenceOrigin.FIXTURE,
+            source_artifact_ids=("fixtures/tap.json",),
+            observed_features=(ObservedFeatureV1("dominant_frequency", "Hz", 245.0),),
+        )
+        assert PreliminaryExperimentRunV1.from_dict(run.to_dict()) == run
 
 
 class TestElapsedIsDerived:

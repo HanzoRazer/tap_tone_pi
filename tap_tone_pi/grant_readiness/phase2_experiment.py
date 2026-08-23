@@ -62,6 +62,9 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from tap_tone_pi.grant_readiness.contracts import (
+    EVALUATION_FREQUENCY,
+    FREQUENCY_OFFSET,
+    NOMINAL_EVALUATION_FREQUENCY,
     AcquisitionProvenanceV1,
     EnvironmentalContextV1,
     EvidenceOrigin,
@@ -87,16 +90,15 @@ DEFAULT_TRANSFER_UNIT = "ratio"
 TRANSFER_MAGNITUDE = "acoustic_transfer_magnitude"
 TRANSFER_PHASE = "acoustic_transfer_phase"
 COHERENCE = "coherence"
-EVALUATION_FREQUENCY = "evaluation_frequency"
 
-# What the caller asked for, and how far the answering bin fell from it. The
-# nearest-bin rule was always recorded through EVALUATION_FREQUENCY, but the
-# request itself was discarded once used — so a study of ten runs could not show
-# that all ten asked the same question and were answered at ten slightly
-# different frequencies. Both are kept now, and the offset is signed because
-# which side of the request a bin fell on is information.
-NOMINAL_EVALUATION_FREQUENCY = "nominal_evaluation_frequency"
-FREQUENCY_OFFSET = "frequency_offset"
+# The frequency quantity names are the record layer's, re-exported here because
+# this module writes them. What the caller asked for is kept beside the bin that
+# answered: the nearest-bin rule was always recorded through
+# EVALUATION_FREQUENCY, but the request itself was discarded once used, so a
+# study of ten runs could not show that all ten asked the same question and were
+# answered at ten slightly different frequencies. The offset is signed because
+# which side of the request a bin fell on is information, and it is verified
+# against its own two sources whenever a run is read back.
 
 
 def summarized_phase2_quantities(

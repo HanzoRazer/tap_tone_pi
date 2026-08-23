@@ -307,6 +307,21 @@ class TestThePathCannotOverstate:
 
 
 class TestTheCheckerStillCatchesTampering:
+    def test_a_tampered_frequency_offset_is_refused(self, campaign):
+        # The offset is derived, so a document can be edited to claim an offset
+        # its own frequencies do not produce. The checker must not read that
+        # study back as evidence.
+        path = campaign["dir"] / "study-e2-path.json"
+        document = json.loads(path.read_text(encoding="utf-8"))
+        for run in document["study"]["runs"]:
+            for feature in run["observed_features"]:
+                if feature["quantity"] == "frequency_offset":
+                    feature["value"] = 0.0
+        path.write_text(json.dumps(document), encoding="utf-8")
+
+        checker = load_script("ttp_hardware_campaign_check")
+        assert checker.main([str(campaign["dir"])]) == 1
+
     def test_a_relabelled_campaign_is_refused(self, campaign):
         # The path being green must not mean the checker stopped looking.
         path = campaign["dir"] / "ttp_hardware_campaign.json"

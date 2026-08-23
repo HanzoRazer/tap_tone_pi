@@ -123,6 +123,11 @@ class GrantReadinessErrorCode(str, Enum):
     # An acquisition order that cannot order anything: a repeated index, or one
     # that contradicts the clock. Either makes a drift observation unreadable.
     INVALID_RUN_SEQUENCE = "NSF-512"
+    # A recorded frequency offset that its own nominal and actual frequencies do
+    # not produce, or one recorded where they are unknown. A derived value that
+    # can disagree with its sources is worse than no derived value: it reads as
+    # corroboration while contradicting the evidence underneath it.
+    FREQUENCY_OFFSET_NOT_DERIVED = "NSF-513"
 
     UNRESOLVED_EVIDENCE_REFERENCE = "NSF-401"
     EVIDENCE_DIGEST_MISMATCH = "NSF-402"
