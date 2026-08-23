@@ -784,10 +784,28 @@ Four rulings are recorded with the code:
   is `NSF-510`. No sensor sensitivity or unit is assumed ahead of choosing a
   transducer.
 
-The campaign record carries `CampaignExecutionStatus`, so §12 criterion 11 —
-an experiment not executed because an earlier gate failed — is representable
-rather than an absence a reader has to interpret. The repository's own campaign
-document is `NOT_EXECUTED`.
+Two further rulings came out of review, and both had to land before any data was
+collected because neither is fixable afterwards:
+
+- **A reciprocity pair records both directions' evaluation frequencies**, and
+  derives the gap between them. Each direction is its own capture and can land on
+  its own bin, so a residual can span two slightly different frequencies; leaving
+  only the forward bin on the pair would have forced a reviewer to open both runs
+  to notice. No limit is placed on the gap.
+- **The campaign status distinguishes rehearsing the path from running the rig.**
+  A bare `EXECUTED` would have carried the same word for a fixture dry run and a
+  physical campaign, which is the one distinction a cold reader is most likely to
+  lose. `CampaignExecutionStatus` is now `PREPARED` / `FIXTURE_EXECUTED` /
+  `HARDWARE_EXECUTED` / `HALTED_AT_GATE` / `ABORTED`, per-experiment outcomes
+  carry their own `ExperimentOutcomeStatus`, and each executed outcome summarizes
+  its study's evidence origin and witnessed status. Those summaries are derived
+  from the study, never asserted, and the checker re-derives them from the studies
+  on disk and reports disagreement.
+
+Together with `ExperimentOutcomeStatus`, §12 criterion 11 — an experiment not
+executed because an earlier gate failed — is representable rather than an
+absence a reader has to interpret. The repository's own campaign document is
+`PREPARED`.
 
 **Stage 4 — E2, fixed-point repeatability.** The first hardware study.
 

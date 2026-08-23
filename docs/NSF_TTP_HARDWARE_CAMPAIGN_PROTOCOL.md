@@ -190,6 +190,11 @@ than reported as half a result.
 python scripts/ttp_hardware_campaign.py reciprocity --config ... --write
 ```
 
+Each direction is its own capture and lands on its own frequency bin. The pair
+record keeps both and derives the gap between them, so a reviewer can see
+whether a residual spans two slightly different frequencies before reading the
+residual itself. No limit is placed on that gap.
+
 Report the residual. Do not grade it.
 
 ### E5 — Deliberate mass-loading challenge
@@ -275,10 +280,30 @@ python scripts/ttp_hardware_campaign.py report \
     --config campaigns/<id>/campaign.json \
     --studies out/nsf/campaign \
     --artifacts campaigns/<id>/artifacts.json \
-    --execution-status EXECUTED --write
+    --write
 
 python scripts/ttp_hardware_campaign_check.py out/nsf/campaign
 ```
+
+The campaign's status is derived from what actually ran rather than stated:
+
+| Status | Means |
+| --- | --- |
+| `PREPARED` | A configuration exists and nothing has been run against it |
+| `FIXTURE_EXECUTED` | The path was rehearsed against fixture or synthetic data |
+| `HARDWARE_EXECUTED` | At least one experiment ran against hardware-origin evidence |
+| `HALTED_AT_GATE` | A gating experiment stopped the campaign |
+| `ABORTED` | The campaign was abandoned for a reason that was not a gate |
+
+`FIXTURE_EXECUTED` and `HARDWARE_EXECUTED` are deliberately different words. A
+rehearsal proves the path works and is not a hardware campaign, and nothing lets
+one be recorded as the other: `--execution-status` may state one, and a stated
+status the outcomes contradict is refused.
+
+Each executed experiment also records the origin of the study it produced and
+whether that study met the witnessed standard. Both are read off the study, and
+the checker re-derives both from the studies on disk — a summary that could
+drift from what it summarizes would be worse than no summary at all.
 
 The checker is read-only. It reports a failing campaign and never repairs one:
 an automatic fix would change evidence to match a claim, which is the failure

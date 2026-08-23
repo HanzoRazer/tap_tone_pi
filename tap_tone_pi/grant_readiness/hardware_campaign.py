@@ -39,13 +39,12 @@ from tap_tone_pi.grant_readiness.contracts import (
     AcquisitionRole,
     AttachmentVariationV1,
     CalibrationTraceability,
-    CampaignConditionV1,
     CampaignExecutionStatus,
     CampaignExperimentOutcomeV1,
     CampaignExperimentPlanV1,
-    EnvironmentalContextV1,
     ExcitationContextV1,
     ExperimentKind,
+    ExperimentOutcomeStatus,
     ExternalArtifactV1,
     HardwareCampaignConfigV1,
     HardwareCampaignRecordV1,
@@ -54,6 +53,7 @@ from tap_tone_pi.grant_readiness.contracts import (
     PreliminaryExperimentRunV1,
     ReciprocityObservationV1,
     RepeatabilityMetricV1,
+    RepeatabilityStudyV1,
     require_utc_timestamp,
 )
 from tap_tone_pi.grant_readiness.errors import (
@@ -70,6 +70,10 @@ from tap_tone_pi.grant_readiness.statistics import (
     ZERO_MEAN_EPSILON,
     summarize_group_spread,
     summarize_runs,
+)
+from tap_tone_pi.grant_readiness.validation import (
+    evidence_digest,
+    validate_witnessed_hardware_session,
 )
 
 # The excitation method a contact-drive rig uses. It is one of the values the
@@ -520,7 +524,8 @@ def pair_reciprocity_runs(
                 ),
                 {"run_id": run.run_id, "point_id": pair[0]},
             )
-        key = tuple(sorted(pair))
+        # Canonical, so the same data always pairs the same way round.
+        key = pair if pair[0] < pair[1] else (pair[1], pair[0])
         directions.setdefault(key, {}).setdefault(pair, []).append(run)
 
     paired: list[tuple[PreliminaryExperimentRunV1, PreliminaryExperimentRunV1]] = []
@@ -590,6 +595,12 @@ def summarize_reciprocity(
     coherent means something different from the same residual where both were
     strong.
 
+    Each direction also keeps its own evaluation frequency. The two are separate
+    captures and can land on different bins, in which case the residual spans two
+    slightly different frequencies; the observation records both and derives the
+    gap, so the asymmetry is visible in the pair record instead of only inside
+    the two runs. No limit is placed on that gap.
+
     No verdict is produced. DO-103 §4.6 forbids an acceptance threshold here,
     and a large residual is a finding about the measurement architecture rather
     than a failure of the run that revealed it.
@@ -635,9 +646,12 @@ def summarize_reciprocity(
                 reverse_value=reverse_value,
                 absolute_residual=absolute,
                 relative_residual=relative,
-                # The forward direction's own bin. Each direction is a separate
-                # capture and records its own evaluation frequency in its run.
-                evaluation_frequency_hz=_feature_value(forward, EVALUATION_FREQUENCY),
+                forward_evaluation_frequency_hz=_feature_value(
+                    forward, EVALUATION_FREQUENCY
+                ),
+                reverse_evaluation_frequency_hz=_feature_value(
+                    reverse, EVALUATION_FREQUENCY
+                ),
                 forward_coherence=_feature_value(forward, COHERENCE),
                 reverse_coherence=_feature_value(reverse, COHERENCE),
             )
@@ -765,6 +779,62 @@ def summarize_mass_loading(
 # ---------------------------------------------------------------------------
 
 
+def build_campaign_outcome(
+    plan: CampaignExperimentPlanV1,
+    study: RepeatabilityStudyV1,
+    *,
+    note: str | None = None,
+) -> CampaignExperimentOutcomeV1:
+    """Record an executed experiment, summarizing the study it produced.
+
+    The evidence origin and the witnessed flag are read *off the study*, never
+    supplied. DO-103 §5.4 makes the hardware claim derived rather than declared,
+    and a campaign-level summary that a caller could assert independently would
+    reopen exactly the gap Stage 3 closed. The digest is recorded with them so a
+    reader can check the summary against the study it summarizes, and
+    ``ttp_hardware_campaign_check.py`` does check it.
+    """
+    return CampaignExperimentOutcomeV1(
+        experiment_id=plan.experiment_id,
+        kind=plan.kind,
+        status=ExperimentOutcomeStatus.EXECUTED,
+        study_id=study.study_id,
+        study_digest=evidence_digest(study.to_dict()),
+        evidence_origin=study.evidence_origin,
+        witnessed=not validate_witnessed_hardware_session(study),
+        note=note,
+    )
+
+
+def campaign_status_for(
+    outcomes: Sequence[CampaignExperimentOutcomeV1],
+) -> CampaignExecutionStatus:
+    """The campaign status the outcomes support, without a caller's opinion.
+
+    A campaign that ran only against fixture data is ``FIXTURE_EXECUTED`` and
+    not ``EXECUTED``: rehearsing the analysis path end to end is a real and
+    useful thing to have done, and it is not the physical campaign. Keeping the
+    two under one word is the misreading this function exists to prevent.
+
+    ``HALTED_AT_GATE`` wins over an execution status, because a campaign stopped
+    by E1 is defined by having stopped, not by what ran before it did.
+    """
+    executed = [
+        outcome
+        for outcome in outcomes
+        if outcome.status is ExperimentOutcomeStatus.EXECUTED
+    ]
+    if any(
+        outcome.status is ExperimentOutcomeStatus.HALTED_AT_GATE for outcome in outcomes
+    ):
+        return CampaignExecutionStatus.HALTED_AT_GATE
+    if not executed:
+        return CampaignExecutionStatus.PREPARED
+    if any(outcome.is_hardware_evidence for outcome in executed):
+        return CampaignExecutionStatus.HARDWARE_EXECUTED
+    return CampaignExecutionStatus.FIXTURE_EXECUTED
+
+
 def default_campaign_limitations(
     config: HardwareCampaignConfigV1,
     execution_status: CampaignExecutionStatus,
@@ -816,17 +886,32 @@ def default_campaign_limitations(
             "pressure."
         )
 
-    if execution_status is CampaignExecutionStatus.NOT_EXECUTED:
+    if execution_status is CampaignExecutionStatus.PREPARED:
         limitations.append(
             "This campaign has not been executed. The record describes the "
             "planned configuration only, contains no hardware measurement, and "
             "supports no hardware claim."
         )
 
+    if execution_status is CampaignExecutionStatus.FIXTURE_EXECUTED:
+        limitations.append(
+            "This campaign was executed against fixture data, not hardware. It "
+            "demonstrates that the capture-to-report path works end to end and "
+            "says nothing about how the rig behaves. No study in it is hardware "
+            "evidence and no capability may be promoted on it."
+        )
+
+    if execution_status is CampaignExecutionStatus.ABORTED:
+        limitations.append(
+            "This campaign was abandoned before completion for a reason that "
+            "was not a campaign gate. Whatever it recorded is partial, and the "
+            "questions its unexecuted experiments ask remain open."
+        )
+
     blocked = sorted(
         outcome.experiment_id
         for outcome in outcomes
-        if outcome.status is CampaignExecutionStatus.BLOCKED_BY_GATE
+        if outcome.status is ExperimentOutcomeStatus.BLOCKED_BY_GATE
     )
     if blocked:
         limitations.append(
@@ -850,7 +935,7 @@ def build_campaign_record(
     *,
     config: HardwareCampaignConfigV1,
     generated_at: str,
-    execution_status: CampaignExecutionStatus,
+    execution_status: CampaignExecutionStatus | None = None,
     outcomes: Sequence[CampaignExperimentOutcomeV1] = (),
     artifacts: Sequence[ExternalArtifactV1] = (),
     attachment_variation: Sequence[AttachmentVariationV1] = (),
@@ -863,6 +948,13 @@ def build_campaign_record(
     Experiments the caller did not account for are recorded as
     ``NOT_EXECUTED`` rather than omitted, so the record always accounts for
     every experiment its own configuration planned (DO-103 §12 criterion 11).
+
+    ``execution_status`` defaults to what the outcomes support — see
+    :func:`campaign_status_for`. A caller may state one instead, for the cases
+    the outcomes cannot express on their own (an abandoned campaign, most
+    obviously), and :func:`~.validation.validate_campaign_record` refuses one the
+    outcomes contradict. A fixture rehearsal cannot be called a hardware
+    campaign by choosing the word.
     """
     accounted = {outcome.experiment_id for outcome in outcomes}
     filled = list(outcomes)
@@ -872,16 +964,20 @@ def build_campaign_record(
                 CampaignExperimentOutcomeV1(
                     experiment_id=plan.experiment_id,
                     kind=plan.kind,
-                    status=CampaignExecutionStatus.NOT_EXECUTED,
+                    status=ExperimentOutcomeStatus.NOT_EXECUTED,
                 )
             )
+
+    status = (
+        campaign_status_for(filled) if execution_status is None else execution_status
+    )
 
     return HardwareCampaignRecordV1(
         campaign_id=config.campaign_id,
         generated_at=require_utc_timestamp(
             generated_at, record="HardwareCampaignRecordV1", field_name="generated_at"
         ),
-        execution_status=execution_status,
+        execution_status=status,
         config=config,
         outcomes=tuple(filled),
         artifacts=tuple(artifacts),
@@ -889,7 +985,7 @@ def build_campaign_record(
         reciprocity=tuple(reciprocity),
         mass_loading=tuple(mass_loading),
         limitations=tuple(
-            default_campaign_limitations(config, execution_status, tuple(filled))
+            default_campaign_limitations(config, status, tuple(filled))
             if limitations is None
             else limitations
         ),
@@ -915,6 +1011,8 @@ __all__ = [
     "build_response_channel",
     "build_campaign_definition",
     "build_campaign_acquisition",
+    "build_campaign_outcome",
+    "campaign_status_for",
     "artifact_digest",
     "build_external_artifact",
     "group_runs_by_attachment",

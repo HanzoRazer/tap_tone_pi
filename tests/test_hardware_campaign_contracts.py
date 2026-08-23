@@ -33,6 +33,7 @@ from tap_tone_pi.grant_readiness import (
     EvidenceOrigin,
     ExcitationContextV1,
     ExperimentKind,
+    ExperimentOutcomeStatus,
     ExternalArtifactV1,
     GrantReadinessErrorCode,
     GroupSpreadV1,
@@ -460,7 +461,8 @@ class TestObservationRecordsCarryNoVerdict:
     def test_reciprocity_round_trip(self):
         observation = make_reciprocity(
             relative_residual=0.105,
-            evaluation_frequency_hz=220.0,
+            forward_evaluation_frequency_hz=220.0,
+            reverse_evaluation_frequency_hz=220.5,
             forward_coherence=0.97,
             reverse_coherence=0.81,
         )
@@ -585,7 +587,7 @@ class TestCampaignRecord:
         record = build_campaign_record(
             config=make_config(),
             generated_at=UTC_NOW,
-            execution_status=CampaignExecutionStatus.NOT_EXECUTED,
+            execution_status=CampaignExecutionStatus.PREPARED,
         )
         assert HardwareCampaignRecordV1.from_dict(record.to_dict()) == record
 
@@ -594,7 +596,7 @@ class TestCampaignRecord:
             HardwareCampaignRecordV1(
                 campaign_id="c",
                 generated_at=UTC_NOW,
-                execution_status=CampaignExecutionStatus.NOT_EXECUTED,
+                execution_status=CampaignExecutionStatus.PREPARED,
                 config=make_config(),
                 schema_version="something-else",
             )
@@ -603,7 +605,7 @@ class TestCampaignRecord:
         payload = build_campaign_record(
             config=make_config(),
             generated_at=UTC_NOW,
-            execution_status=CampaignExecutionStatus.NOT_EXECUTED,
+            execution_status=CampaignExecutionStatus.PREPARED,
         ).to_dict()
         payload["schema_version"] = "ttp_hardware_campaign_v2"
         with pytest.raises(ExperimentRecordError):
@@ -615,10 +617,10 @@ class TestCampaignRecord:
         record = build_campaign_record(
             config=make_config(),
             generated_at=UTC_NOW,
-            execution_status=CampaignExecutionStatus.NOT_EXECUTED,
+            execution_status=CampaignExecutionStatus.PREPARED,
         )
         assert [outcome.experiment_id for outcome in record.outcomes] == ["e2"]
-        assert record.outcomes[0].status is CampaignExecutionStatus.NOT_EXECUTED
+        assert record.outcomes[0].status is ExperimentOutcomeStatus.NOT_EXECUTED
 
     def test_a_supplied_outcome_is_not_overwritten(self):
         record = build_campaign_record(
@@ -629,18 +631,18 @@ class TestCampaignRecord:
                 CampaignExperimentOutcomeV1(
                     experiment_id="e2",
                     kind=ExperimentKind.FIXED_POINT,
-                    status=CampaignExecutionStatus.BLOCKED_BY_GATE,
+                    status=ExperimentOutcomeStatus.BLOCKED_BY_GATE,
                     blocked_by_experiment_id="e1",
                 ),
             ),
         )
-        assert record.outcomes[0].status is CampaignExecutionStatus.BLOCKED_BY_GATE
+        assert record.outcomes[0].status is ExperimentOutcomeStatus.BLOCKED_BY_GATE
 
     def test_is_executed_follows_the_outcomes(self):
         record = build_campaign_record(
             config=make_config(),
             generated_at=UTC_NOW,
-            execution_status=CampaignExecutionStatus.NOT_EXECUTED,
+            execution_status=CampaignExecutionStatus.PREPARED,
         )
         assert not record.is_executed
         assert record.executed_experiment_ids == ()
@@ -649,7 +651,7 @@ class TestCampaignRecord:
         record = build_campaign_record(
             config=make_config(),
             generated_at=UTC_NOW,
-            execution_status=CampaignExecutionStatus.NOT_EXECUTED,
+            execution_status=CampaignExecutionStatus.PREPARED,
         )
         assert any("has not been executed" in text for text in record.limitations)
 
@@ -657,7 +659,7 @@ class TestCampaignRecord:
         record = build_campaign_record(
             config=make_config(),
             generated_at=UTC_NOW,
-            execution_status=CampaignExecutionStatus.NOT_EXECUTED,
+            execution_status=CampaignExecutionStatus.PREPARED,
         )
         assert any("measured but not traceable" in text for text in record.limitations)
 
@@ -665,7 +667,7 @@ class TestCampaignRecord:
         record = build_campaign_record(
             config=make_config(),
             generated_at=UTC_NOW,
-            execution_status=CampaignExecutionStatus.NOT_EXECUTED,
+            execution_status=CampaignExecutionStatus.PREPARED,
         )
         joined = " ".join(record.limitations).lower()
         assert "not mobility, accelerance, or receptance" in joined
@@ -684,7 +686,7 @@ class TestPersistedForm:
         record = build_campaign_record(
             config=make_config(),
             generated_at=UTC_NOW,
-            execution_status=CampaignExecutionStatus.NOT_EXECUTED,
+            execution_status=CampaignExecutionStatus.PREPARED,
         )
         jsonschema.validate(record.to_dict(), campaign_schema)
 
@@ -692,7 +694,7 @@ class TestPersistedForm:
         record = build_campaign_record(
             config=make_config(),
             generated_at=UTC_NOW,
-            execution_status=CampaignExecutionStatus.NOT_EXECUTED,
+            execution_status=CampaignExecutionStatus.PREPARED,
             artifacts=(
                 build_external_artifact(
                     artifact_id="art-1",
@@ -723,7 +725,7 @@ class TestPersistedForm:
         payload = build_campaign_record(
             config=make_config(),
             generated_at=UTC_NOW,
-            execution_status=CampaignExecutionStatus.NOT_EXECUTED,
+            execution_status=CampaignExecutionStatus.PREPARED,
         ).to_dict()
         payload["conclusion"] = "the rig works"
         with pytest.raises(jsonschema.ValidationError):
@@ -733,7 +735,7 @@ class TestPersistedForm:
         payload = build_campaign_record(
             config=make_config(),
             generated_at=UTC_NOW,
-            execution_status=CampaignExecutionStatus.NOT_EXECUTED,
+            execution_status=CampaignExecutionStatus.PREPARED,
             artifacts=(
                 build_external_artifact(
                     artifact_id="art-1",
@@ -754,11 +756,26 @@ class TestPersistedForm:
         payload = build_campaign_record(
             config=make_config(),
             generated_at=UTC_NOW,
-            execution_status=CampaignExecutionStatus.NOT_EXECUTED,
+            execution_status=CampaignExecutionStatus.PREPARED,
             mass_loading=(make_mass_loading(added_mass_g=0.0),),
         ).to_dict()
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(payload, campaign_schema)
+
+    def test_a_campaign_with_a_frequency_gap_validates(self, campaign_schema):
+        payload = build_campaign_record(
+            config=make_config(),
+            generated_at=UTC_NOW,
+            execution_status=CampaignExecutionStatus.PREPARED,
+            reciprocity=(
+                make_reciprocity(
+                    forward_evaluation_frequency_hz=220.0,
+                    reverse_evaluation_frequency_hz=221.5,
+                ),
+            ),
+        ).to_dict()
+        jsonschema.validate(payload, campaign_schema)
+        assert payload["reciprocity"][0]["frequency_mismatch_hz"] == pytest.approx(1.5)
 
     def test_the_registry_records_the_campaign_contract(self):
         registry = json.loads(

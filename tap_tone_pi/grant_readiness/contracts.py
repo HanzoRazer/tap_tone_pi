@@ -143,7 +143,39 @@ class ExperimentKind(str, Enum):
 
 
 class CampaignExecutionStatus(str, Enum):
-    """What actually happened to a campaign or to one of its experiments.
+    """What a campaign as a whole is, read cold and without its contents.
+
+    The distinction a reader is most likely to lose is between running the
+    analysis path and running the rig, and a bare ``EXECUTED`` loses it: a
+    campaign rehearsed end to end against fixture data and a campaign driven by
+    a physical shaker would carry the same word. The status therefore names
+    which of the two happened, so nobody has to open the studies to find out.
+
+    ``PREPARED`` is a configuration with nothing run against it, which is the
+    expected state of this repository's own campaign until a rig exists.
+    ``HALTED_AT_GATE`` is DO-103 §13's E1 gate firing — a real and reportable
+    result. ``ABORTED`` is a campaign stopped for a reason that is not a gate.
+    """
+
+    PREPARED = "PREPARED"
+    FIXTURE_EXECUTED = "FIXTURE_EXECUTED"
+    HARDWARE_EXECUTED = "HARDWARE_EXECUTED"
+    HALTED_AT_GATE = "HALTED_AT_GATE"
+    ABORTED = "ABORTED"
+
+    @property
+    def is_hardware_execution(self) -> bool:
+        return self is CampaignExecutionStatus.HARDWARE_EXECUTED
+
+
+class ExperimentOutcomeStatus(str, Enum):
+    """What became of one planned experiment within a campaign.
+
+    Separate from :class:`CampaignExecutionStatus` because they answer different
+    questions. This one says whether an experiment ran; the campaign's own
+    status says what kind of campaign it was. An outcome that ran names both the
+    study it produced and that study's evidence origin, so ``EXECUTED`` here is
+    never read in isolation either.
 
     ``HALTED_AT_GATE`` and ``BLOCKED_BY_GATE`` exist because DO-103 §13 makes E1
     a real gate: a rig that cannot produce usable evidence stops the downstream
@@ -2198,6 +2230,13 @@ class ReciprocityObservationV1:
     direction had poor coherence means something different from the same
     residual where both were high, and collapsing them into one number would
     destroy exactly that distinction.
+
+    Both evaluation frequencies are retained for the same reason. Each direction
+    is its own capture and lands on its own frequency bin, so a residual can span
+    two slightly different frequencies. ``frequency_mismatch_hz`` makes that
+    visible in the pair record itself rather than leaving a reviewer to open both
+    runs and compare. It is a magnitude and carries no limit: DO-103 §4.6 forbids
+    this order from deciding how far apart is too far.
     """
 
     observation_id: str
@@ -2211,9 +2250,22 @@ class ReciprocityObservationV1:
     reverse_value: float
     absolute_residual: float
     relative_residual: float | None = None
-    evaluation_frequency_hz: float | None = None
+    forward_evaluation_frequency_hz: float | None = None
+    reverse_evaluation_frequency_hz: float | None = None
     forward_coherence: float | None = None
     reverse_coherence: float | None = None
+
+    @property
+    def frequency_mismatch_hz(self) -> float | None:
+        """How far apart the two directions' bins fell, or ``None`` if unknown.
+
+        Derived, so it cannot disagree with the frequencies it is taken over.
+        """
+        forward = self.forward_evaluation_frequency_hz
+        reverse = self.reverse_evaluation_frequency_hz
+        if forward is None or reverse is None:
+            return None
+        return abs(forward - reverse)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -2228,7 +2280,9 @@ class ReciprocityObservationV1:
             "reverse_value": self.reverse_value,
             "absolute_residual": self.absolute_residual,
             "relative_residual": self.relative_residual,
-            "evaluation_frequency_hz": self.evaluation_frequency_hz,
+            "forward_evaluation_frequency_hz": self.forward_evaluation_frequency_hz,
+            "reverse_evaluation_frequency_hz": self.reverse_evaluation_frequency_hz,
+            "frequency_mismatch_hz": self.frequency_mismatch_hz,
             "forward_coherence": self.forward_coherence,
             "reverse_coherence": self.reverse_coherence,
         }
@@ -2252,7 +2306,9 @@ class ReciprocityObservationV1:
                 "reverse_value",
                 "absolute_residual",
                 "relative_residual",
-                "evaluation_frequency_hz",
+                "forward_evaluation_frequency_hz",
+                "reverse_evaluation_frequency_hz",
+                "frequency_mismatch_hz",
                 "forward_coherence",
                 "reverse_coherence",
             ),
@@ -2267,7 +2323,7 @@ class ReciprocityObservationV1:
             error=err,
             code=code,
         )
-        return cls(
+        observation = cls(
             observation_id=_require_text(
                 payload, "observation_id", record=record, error=err, code=code
             ),
@@ -2294,8 +2350,19 @@ class ReciprocityObservationV1:
             relative_residual=_optional_number(
                 payload, "relative_residual", record=record, error=err, code=code
             ),
-            evaluation_frequency_hz=_optional_number(
-                payload, "evaluation_frequency_hz", record=record, error=err, code=code
+            forward_evaluation_frequency_hz=_optional_number(
+                payload,
+                "forward_evaluation_frequency_hz",
+                record=record,
+                error=err,
+                code=code,
+            ),
+            reverse_evaluation_frequency_hz=_optional_number(
+                payload,
+                "reverse_evaluation_frequency_hz",
+                record=record,
+                error=err,
+                code=code,
             ),
             forward_coherence=_optional_number(
                 payload, "forward_coherence", record=record, error=err, code=code
@@ -2303,8 +2370,18 @@ class ReciprocityObservationV1:
             reverse_coherence=_optional_number(
                 payload, "reverse_coherence", record=record, error=err, code=code
             ),
-            **numbers,
+            forward_value=numbers["forward_value"],
+            reverse_value=numbers["reverse_value"],
+            absolute_residual=numbers["absolute_residual"],
         )
+        _reject_derived_disagreement(
+            payload,
+            {"frequency_mismatch_hz": observation.frequency_mismatch_hz},
+            record=record,
+            error=err,
+            code=code,
+        )
+        return observation
 
 
 @dataclass(frozen=True)
@@ -2753,15 +2830,35 @@ class CampaignExperimentOutcomeV1:
     earlier gate failed to be recorded as such. A gap in the results is
     ambiguous — abandoned, forgotten, or never reached — and this record removes
     the ambiguity by naming the gate that stopped it.
+
+    ``evidence_origin`` and ``witnessed`` summarize the study this outcome names,
+    so a campaign document says what kind of evidence it holds without a reader
+    having to open every study to find out. Both are *summaries of a study*, not
+    independent claims: they are derived by
+    :func:`~.hardware_campaign.build_campaign_outcome` from the study itself, and
+    ``scripts/ttp_hardware_campaign_check.py`` re-derives them from the studies
+    on disk and reports any disagreement. A summary that could drift from what it
+    summarizes would be worse than no summary at all.
     """
 
     experiment_id: str
     kind: ExperimentKind
-    status: CampaignExecutionStatus
+    status: ExperimentOutcomeStatus
     study_id: str | None = None
     study_digest: str | None = None
+    evidence_origin: EvidenceOrigin | None = None
+    witnessed: bool = False
     blocked_by_experiment_id: str | None = None
     note: str | None = None
+
+    @property
+    def is_hardware_evidence(self) -> bool:
+        """Whether this outcome's study is hardware-origin.
+
+        Hardware origin is the weaker of DO-103 §5.4's two standards; see
+        ``witnessed`` for the one §10 promotes on.
+        """
+        return self.evidence_origin is EvidenceOrigin.HARDWARE
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -2770,6 +2867,10 @@ class CampaignExperimentOutcomeV1:
             "status": self.status.value,
             "study_id": self.study_id,
             "study_digest": self.study_digest,
+            "evidence_origin": (
+                self.evidence_origin.value if self.evidence_origin else None
+            ),
+            "witnessed": self.witnessed,
             "blocked_by_experiment_id": self.blocked_by_experiment_id,
             "note": self.note,
         }
@@ -2787,6 +2888,8 @@ class CampaignExperimentOutcomeV1:
                 "status",
                 "study_id",
                 "study_digest",
+                "evidence_origin",
+                "witnessed",
                 "blocked_by_experiment_id",
                 "note",
             ),
@@ -2794,6 +2897,10 @@ class CampaignExperimentOutcomeV1:
             error=err,
             code=code,
         )
+        witnessed = payload.get("witnessed", False)
+        if not isinstance(witnessed, bool):
+            raise err(code, f"{record}.witnessed must be a boolean", {"record": record})
+        origin = payload.get("evidence_origin")
         return cls(
             experiment_id=_require_text(
                 payload, "experiment_id", record=record, error=err, code=code
@@ -2804,7 +2911,7 @@ class CampaignExperimentOutcomeV1:
             status=_require_enum(
                 payload,
                 "status",
-                CampaignExecutionStatus,
+                ExperimentOutcomeStatus,
                 record=record,
                 error=err,
                 code=code,
@@ -2815,6 +2922,19 @@ class CampaignExperimentOutcomeV1:
             study_digest=_optional_text(
                 payload, "study_digest", record=record, error=err, code=code
             ),
+            evidence_origin=(
+                _require_enum(
+                    payload,
+                    "evidence_origin",
+                    EvidenceOrigin,
+                    record=record,
+                    error=err,
+                    code=GrantReadinessErrorCode.EVIDENCE_ORIGIN_MISREPRESENTED,
+                )
+                if origin is not None
+                else None
+            ),
+            witnessed=witnessed,
             blocked_by_experiment_id=_optional_text(
                 payload, "blocked_by_experiment_id", record=record, error=err, code=code
             ),
@@ -2852,16 +2972,45 @@ class HardwareCampaignRecordV1:
 
     @property
     def executed_experiment_ids(self) -> tuple[str, ...]:
+        """Experiments that ran, whatever they ran against."""
         return tuple(
             outcome.experiment_id
             for outcome in self.outcomes
-            if outcome.status is CampaignExecutionStatus.EXECUTED
+            if outcome.status is ExperimentOutcomeStatus.EXECUTED
+        )
+
+    @property
+    def hardware_experiment_ids(self) -> tuple[str, ...]:
+        """Experiments that ran against hardware-origin evidence."""
+        return tuple(
+            outcome.experiment_id
+            for outcome in self.outcomes
+            if outcome.status is ExperimentOutcomeStatus.EXECUTED
+            and outcome.is_hardware_evidence
+        )
+
+    @property
+    def witnessed_experiment_ids(self) -> tuple[str, ...]:
+        """Experiments whose study met the stricter witnessed standard (§5.4)."""
+        return tuple(
+            outcome.experiment_id
+            for outcome in self.outcomes
+            if outcome.status is ExperimentOutcomeStatus.EXECUTED and outcome.witnessed
         )
 
     @property
     def is_executed(self) -> bool:
         """Whether any experiment in this campaign actually ran."""
         return bool(self.executed_experiment_ids)
+
+    @property
+    def is_hardware_evidence(self) -> bool:
+        """Whether any experiment ran against hardware.
+
+        Distinct from :attr:`is_executed`, which a fixture rehearsal also
+        satisfies. Nothing downstream may read one for the other.
+        """
+        return bool(self.hardware_experiment_ids)
 
     def outcome_for(self, experiment_id: str) -> CampaignExperimentOutcomeV1 | None:
         for outcome in self.outcomes:
@@ -2875,6 +3024,7 @@ class HardwareCampaignRecordV1:
             "campaign_id": self.campaign_id,
             "generated_at": self.generated_at,
             "execution_status": self.execution_status.value,
+            "is_hardware_evidence": self.is_hardware_evidence,
             "config": self.config.to_dict(),
             "outcomes": [outcome.to_dict() for outcome in self.outcomes],
             "artifacts": [artifact.to_dict() for artifact in self.artifacts],
@@ -2900,6 +3050,7 @@ class HardwareCampaignRecordV1:
                 "campaign_id",
                 "generated_at",
                 "execution_status",
+                "is_hardware_evidence",
                 "config",
                 "outcomes",
                 "artifacts",
@@ -2922,7 +3073,7 @@ class HardwareCampaignRecordV1:
         config = payload.get("config")
         if not isinstance(config, Mapping):
             raise err(code, f"{record}.config must be an object", {"record": record})
-        return cls(
+        record_out = cls(
             campaign_id=_require_text(
                 payload, "campaign_id", record=record, error=err, code=code
             ),
@@ -2972,6 +3123,14 @@ class HardwareCampaignRecordV1:
                 payload, "limitations", record=record, error=err, code=code
             ),
         )
+        _reject_derived_disagreement(
+            payload,
+            {"is_hardware_evidence": record_out.is_hardware_evidence},
+            record=record,
+            error=err,
+            code=code,
+        )
+        return record_out
 
 
 __all__ = [
@@ -2999,6 +3158,7 @@ __all__ = [
     "CalibrationTraceability",
     "ExperimentKind",
     "CampaignExecutionStatus",
+    "ExperimentOutcomeStatus",
     "CampaignConditionV1",
     "GroupSpreadV1",
     "AttachmentVariationV1",

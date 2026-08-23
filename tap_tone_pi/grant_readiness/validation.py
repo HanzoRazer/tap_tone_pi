@@ -28,6 +28,7 @@ from tap_tone_pi.grant_readiness.contracts import (
     CapabilityStatus,
     EvidenceOrigin,
     ExperimentKind,
+    ExperimentOutcomeStatus,
     ExternalArtifactV1,
     HardwareCampaignConfigV1,
     HardwareCampaignRecordV1,
@@ -1235,7 +1236,7 @@ def validate_campaign_record(
             )
         accounted.add(outcome.experiment_id)
 
-        if outcome.status is CampaignExecutionStatus.EXECUTED and not outcome.study_id:
+        if outcome.status is ExperimentOutcomeStatus.EXECUTED and not outcome.study_id:
             findings.append(
                 ValidationFinding(
                     GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
@@ -1247,7 +1248,38 @@ def validate_campaign_record(
                 )
             )
         if (
-            outcome.status is CampaignExecutionStatus.BLOCKED_BY_GATE
+            outcome.status is ExperimentOutcomeStatus.EXECUTED
+            and outcome.evidence_origin is None
+        ):
+            # Without it the campaign cannot say what kind of evidence it holds,
+            # and a reader would have to open every study to find out.
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.EVIDENCE_ORIGIN_MISREPRESENTED,
+                    (
+                        f"experiment {outcome.experiment_id} is recorded as executed "
+                        "but its outcome names no evidence origin"
+                    ),
+                    context,
+                )
+            )
+        if outcome.witnessed and not outcome.is_hardware_evidence:
+            # Witnessed is the stricter of DO-103 §5.4's two standards and is a
+            # property of hardware acquisition. Fixture data cannot carry it,
+            # whatever the summary says.
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.HARDWARE_SESSION_NOT_WITNESSED,
+                    (
+                        f"experiment {outcome.experiment_id} is recorded as witnessed "
+                        f"over {outcome.evidence_origin.value if outcome.evidence_origin else 'unstated'} "
+                        "evidence"
+                    ),
+                    context,
+                )
+            )
+        if (
+            outcome.status is ExperimentOutcomeStatus.BLOCKED_BY_GATE
             and not outcome.blocked_by_experiment_id
         ):
             findings.append(
@@ -1274,31 +1306,97 @@ def validate_campaign_record(
             )
         )
 
-    executed = record.executed_experiment_ids
-    if record.execution_status is CampaignExecutionStatus.NOT_EXECUTED and executed:
-        findings.append(
-            ValidationFinding(
-                GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
-                (
-                    "campaign is recorded as not executed but accounts for executed "
-                    f"experiments: {', '.join(executed)}"
-                ),
-                {"campaign_id": record.campaign_id},
-            )
-        )
-    if record.execution_status is CampaignExecutionStatus.EXECUTED and not executed:
-        findings.append(
-            ValidationFinding(
-                GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
-                "campaign is recorded as executed but no experiment executed",
-                {"campaign_id": record.campaign_id},
-            )
-        )
+    findings.extend(validate_campaign_execution_status(record))
 
     for observation in record.reciprocity:
         findings.extend(validate_reciprocity_observation(observation))
     for loading in record.mass_loading:
         findings.extend(validate_mass_loading_observation(loading))
+
+    return findings
+
+
+def validate_campaign_execution_status(
+    record: HardwareCampaignRecordV1,
+) -> list[ValidationFinding]:
+    """A campaign may not claim an execution its own outcomes do not support.
+
+    The status is what a reader sees first and often alone, so it is the field
+    most worth protecting from a hopeful choice of word. ``HARDWARE_EXECUTED``
+    requires an executed outcome carrying hardware-origin evidence;
+    ``FIXTURE_EXECUTED`` requires that none of them does; ``PREPARED`` requires
+    that nothing ran at all. A rehearsal against fixture data is a real result
+    and is not a hardware campaign, and no arrangement of these fields lets it
+    be recorded as one.
+
+    ``ABORTED`` is deliberately unconstrained beyond the accounting: a campaign
+    can be abandoned at any point, and the reason is not a state machine.
+    """
+    findings: list[ValidationFinding] = []
+    context = {"campaign_id": record.campaign_id}
+    executed = record.executed_experiment_ids
+    hardware = record.hardware_experiment_ids
+    status = record.execution_status
+
+    if status is CampaignExecutionStatus.PREPARED and executed:
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
+                (
+                    "campaign is recorded as prepared but accounts for executed "
+                    f"experiments: {', '.join(executed)}"
+                ),
+                context,
+            )
+        )
+
+    if status is CampaignExecutionStatus.HARDWARE_EXECUTED and not hardware:
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.EVIDENCE_ORIGIN_MISREPRESENTED,
+                (
+                    "campaign is recorded as hardware-executed but no experiment "
+                    "produced hardware-origin evidence"
+                ),
+                context,
+            )
+        )
+
+    if status is CampaignExecutionStatus.FIXTURE_EXECUTED:
+        if not executed:
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
+                    "campaign is recorded as fixture-executed but nothing executed",
+                    context,
+                )
+            )
+        if hardware:
+            findings.append(
+                ValidationFinding(
+                    GrantReadinessErrorCode.EVIDENCE_ORIGIN_MISREPRESENTED,
+                    (
+                        "campaign is recorded as fixture-executed but contains "
+                        f"hardware-origin experiments: {', '.join(hardware)}"
+                    ),
+                    context,
+                )
+            )
+
+    if status is CampaignExecutionStatus.HALTED_AT_GATE and not any(
+        outcome.status is ExperimentOutcomeStatus.HALTED_AT_GATE
+        for outcome in record.outcomes
+    ):
+        findings.append(
+            ValidationFinding(
+                GrantReadinessErrorCode.CAMPAIGN_CONFIGURATION_INVALID,
+                (
+                    "campaign is recorded as halted at a gate but no experiment is "
+                    "recorded as the gate that halted it"
+                ),
+                context,
+            )
+        )
 
     return findings
 
@@ -1364,6 +1462,7 @@ __all__ = [
     "validate_external_artifact",
     "validate_artifact_manifest",
     "validate_campaign_config",
+    "validate_campaign_execution_status",
     "validate_reciprocity_observation",
     "validate_mass_loading_observation",
     "validate_campaign_record",

@@ -92,6 +92,16 @@ identity, a traceability claim with nothing behind it, a campaign that says
 executed with nothing executed. The `NSF-5xx` family carries them and every code
 in it is exercised.
 
+Review added two changes before the software was called done, both of the
+"cannot be fixed after data exists" kind. A reciprocity pair now records **both**
+directions' evaluation frequencies and derives the gap, so an asymmetry is
+visible in the pair rather than only inside the two runs. And the campaign status
+no longer uses one word for two situations: `FIXTURE_EXECUTED` and
+`HARDWARE_EXECUTED` are separate states, per-experiment outcomes have their own
+vocabulary, each executed outcome summarizes its study's origin and witnessed
+status, and the checker re-derives both from the studies and reports any
+disagreement.
+
 Two things it deliberately does not contain. There is **no acceptance threshold
 anywhere** — not for reciprocity, not for mass loading — which a boundary test
 now asserts structurally against the module's own definitions rather than its

@@ -27,6 +27,7 @@ from tap_tone_pi.grant_readiness import (
     CampaignExperimentPlanV1,
     EvidenceOrigin,
     ExperimentKind,
+    ExperimentOutcomeStatus,
     HardwareCampaignConfigV1,
     ObservedFeatureV1,
     PreliminaryExperimentRunV1,
@@ -37,7 +38,9 @@ from tap_tone_pi.grant_readiness.hardware_campaign import (
     artifact_digest,
     build_campaign_acquisition,
     build_campaign_definition,
+    build_campaign_outcome,
     build_campaign_record,
+    campaign_status_for,
     build_external_artifact,
     build_force_channel,
     build_response_channel,
@@ -52,6 +55,7 @@ from tap_tone_pi.grant_readiness.report import (
 from tap_tone_pi.grant_readiness.validation import (
     validate_artifact_manifest,
     validate_campaign_config,
+    validate_campaign_execution_status,
     validate_campaign_record,
     validate_channel_calibration,
     validate_experiment_runs,
@@ -362,7 +366,7 @@ class TestCampaignAccounting:
         kwargs = {
             "config": make_config(),
             "generated_at": UTC_NOW,
-            "execution_status": CampaignExecutionStatus.NOT_EXECUTED,
+            "execution_status": CampaignExecutionStatus.PREPARED,
         }
         kwargs.update(overrides)
         return build_campaign_record(**kwargs)
@@ -372,16 +376,48 @@ class TestCampaignAccounting:
 
     def test_an_executed_experiment_must_name_its_study(self):
         record = self.make_record(
-            execution_status=CampaignExecutionStatus.EXECUTED,
+            execution_status=CampaignExecutionStatus.FIXTURE_EXECUTED,
             outcomes=(
                 CampaignExperimentOutcomeV1(
                     experiment_id="e2",
                     kind=ExperimentKind.FIXED_POINT,
-                    status=CampaignExecutionStatus.EXECUTED,
+                    status=ExperimentOutcomeStatus.EXECUTED,
+                    evidence_origin=EvidenceOrigin.FIXTURE,
                 ),
             ),
         )
         assert "NSF-501" in codes(validate_campaign_record(record))
+
+    def test_an_executed_experiment_must_name_its_evidence_origin(self):
+        # Without it the campaign cannot say what kind of evidence it holds.
+        record = self.make_record(
+            execution_status=CampaignExecutionStatus.FIXTURE_EXECUTED,
+            outcomes=(
+                CampaignExperimentOutcomeV1(
+                    experiment_id="e2",
+                    kind=ExperimentKind.FIXED_POINT,
+                    status=ExperimentOutcomeStatus.EXECUTED,
+                    study_id="study-e2",
+                ),
+            ),
+        )
+        assert "NSF-305" in codes(validate_campaign_record(record))
+
+    def test_fixture_evidence_may_not_be_recorded_as_witnessed(self):
+        record = self.make_record(
+            execution_status=CampaignExecutionStatus.FIXTURE_EXECUTED,
+            outcomes=(
+                CampaignExperimentOutcomeV1(
+                    experiment_id="e2",
+                    kind=ExperimentKind.FIXED_POINT,
+                    status=ExperimentOutcomeStatus.EXECUTED,
+                    study_id="study-e2",
+                    evidence_origin=EvidenceOrigin.FIXTURE,
+                    witnessed=True,
+                ),
+            ),
+        )
+        assert "NSF-307" in codes(validate_campaign_record(record))
 
     def test_a_blocked_experiment_must_name_the_gate(self):
         record = self.make_record(
@@ -389,7 +425,7 @@ class TestCampaignAccounting:
                 CampaignExperimentOutcomeV1(
                     experiment_id="e2",
                     kind=ExperimentKind.FIXED_POINT,
-                    status=CampaignExecutionStatus.BLOCKED_BY_GATE,
+                    status=ExperimentOutcomeStatus.BLOCKED_BY_GATE,
                 ),
             ),
         )
@@ -401,7 +437,7 @@ class TestCampaignAccounting:
                 CampaignExperimentOutcomeV1(
                     experiment_id="e2",
                     kind=ExperimentKind.FIXED_POINT,
-                    status=CampaignExecutionStatus.BLOCKED_BY_GATE,
+                    status=ExperimentOutcomeStatus.BLOCKED_BY_GATE,
                     blocked_by_experiment_id="e1",
                 ),
             ),
@@ -414,7 +450,7 @@ class TestCampaignAccounting:
                 CampaignExperimentOutcomeV1(
                     experiment_id="e2",
                     kind=ExperimentKind.FIXED_POINT,
-                    status=CampaignExecutionStatus.BLOCKED_BY_GATE,
+                    status=ExperimentOutcomeStatus.BLOCKED_BY_GATE,
                     blocked_by_experiment_id="e1",
                 ),
             ),
@@ -427,28 +463,174 @@ class TestCampaignAccounting:
                 CampaignExperimentOutcomeV1(
                     experiment_id="e9",
                     kind=ExperimentKind.RECIPROCITY,
-                    status=CampaignExecutionStatus.NOT_EXECUTED,
+                    status=ExperimentOutcomeStatus.NOT_EXECUTED,
                 ),
             ),
         )
         assert "NSF-501" in codes(validate_campaign_record(record))
 
-    def test_a_not_executed_campaign_may_not_carry_an_executed_experiment(self):
+    def test_a_prepared_campaign_may_not_carry_an_executed_experiment(self):
         record = self.make_record(
             outcomes=(
                 CampaignExperimentOutcomeV1(
                     experiment_id="e2",
                     kind=ExperimentKind.FIXED_POINT,
-                    status=CampaignExecutionStatus.EXECUTED,
+                    status=ExperimentOutcomeStatus.EXECUTED,
                     study_id="study-e2",
+                    evidence_origin=EvidenceOrigin.FIXTURE,
                 ),
             ),
         )
         assert "NSF-501" in codes(validate_campaign_record(record))
 
     def test_an_executed_campaign_must_have_executed_something(self):
-        record = self.make_record(execution_status=CampaignExecutionStatus.EXECUTED)
+        record = self.make_record(
+            execution_status=CampaignExecutionStatus.FIXTURE_EXECUTED
+        )
         assert "NSF-501" in codes(validate_campaign_record(record))
+
+
+class TestExecutionStatusCannotOverstate:
+    """A rehearsal and a hardware campaign may never carry the same word.
+
+    The execution status is what a reader sees first and often alone, so it is
+    the field most worth protecting from a hopeful choice of word. These are the
+    tests that make the distinction structural rather than a matter of the
+    banner someone remembered to read.
+    """
+
+    def make_outcome(self, origin: EvidenceOrigin, **overrides):
+        kwargs = {
+            "experiment_id": "e2",
+            "kind": ExperimentKind.FIXED_POINT,
+            "status": ExperimentOutcomeStatus.EXECUTED,
+            "study_id": "study-e2",
+            "evidence_origin": origin,
+        }
+        kwargs.update(overrides)
+        return CampaignExperimentOutcomeV1(**kwargs)
+
+    def make_record(self, status, outcomes):
+        return build_campaign_record(
+            config=make_config(),
+            generated_at=UTC_NOW,
+            execution_status=status,
+            outcomes=outcomes,
+        )
+
+    def test_a_fixture_campaign_may_not_call_itself_hardware_executed(self):
+        record = self.make_record(
+            CampaignExecutionStatus.HARDWARE_EXECUTED,
+            (self.make_outcome(EvidenceOrigin.FIXTURE),),
+        )
+        assert "NSF-305" in codes(validate_campaign_execution_status(record))
+
+    def test_a_synthetic_campaign_may_not_call_itself_hardware_executed(self):
+        record = self.make_record(
+            CampaignExecutionStatus.HARDWARE_EXECUTED,
+            (self.make_outcome(EvidenceOrigin.SYNTHETIC),),
+        )
+        assert "NSF-305" in codes(validate_campaign_execution_status(record))
+
+    def test_a_hardware_campaign_may_not_call_itself_a_fixture_rehearsal(self):
+        # The understating direction is refused too: the label must describe
+        # the contents, in both directions.
+        record = self.make_record(
+            CampaignExecutionStatus.FIXTURE_EXECUTED,
+            (self.make_outcome(EvidenceOrigin.HARDWARE),),
+        )
+        assert "NSF-305" in codes(validate_campaign_execution_status(record))
+
+    def test_a_hardware_campaign_with_hardware_evidence_validates(self):
+        record = self.make_record(
+            CampaignExecutionStatus.HARDWARE_EXECUTED,
+            (self.make_outcome(EvidenceOrigin.HARDWARE),),
+        )
+        assert validate_campaign_execution_status(record) == []
+
+    def test_a_fixture_campaign_with_fixture_evidence_validates(self):
+        record = self.make_record(
+            CampaignExecutionStatus.FIXTURE_EXECUTED,
+            (self.make_outcome(EvidenceOrigin.FIXTURE),),
+        )
+        assert validate_campaign_execution_status(record) == []
+
+    def test_a_prepared_campaign_that_ran_something_is_refused(self):
+        record = self.make_record(
+            CampaignExecutionStatus.PREPARED,
+            (self.make_outcome(EvidenceOrigin.FIXTURE),),
+        )
+        assert "NSF-501" in codes(validate_campaign_execution_status(record))
+
+    def test_halted_requires_an_experiment_that_halted(self):
+        record = self.make_record(CampaignExecutionStatus.HALTED_AT_GATE, ())
+        assert "NSF-501" in codes(validate_campaign_execution_status(record))
+
+    def test_halted_validates_when_an_experiment_names_the_halt(self):
+        record = self.make_record(
+            CampaignExecutionStatus.HALTED_AT_GATE,
+            (
+                CampaignExperimentOutcomeV1(
+                    experiment_id="e2",
+                    kind=ExperimentKind.FIXED_POINT,
+                    status=ExperimentOutcomeStatus.HALTED_AT_GATE,
+                ),
+            ),
+        )
+        assert validate_campaign_execution_status(record) == []
+
+    def test_the_status_is_derived_from_the_outcomes_by_default(self):
+        record = build_campaign_record(
+            config=make_config(),
+            generated_at=UTC_NOW,
+            outcomes=(self.make_outcome(EvidenceOrigin.FIXTURE),),
+        )
+        assert record.execution_status is CampaignExecutionStatus.FIXTURE_EXECUTED
+
+    def test_hardware_evidence_derives_a_hardware_status(self):
+        record = build_campaign_record(
+            config=make_config(),
+            generated_at=UTC_NOW,
+            outcomes=(self.make_outcome(EvidenceOrigin.HARDWARE),),
+        )
+        assert record.execution_status is CampaignExecutionStatus.HARDWARE_EXECUTED
+
+    def test_nothing_run_derives_prepared(self):
+        record = build_campaign_record(config=make_config(), generated_at=UTC_NOW)
+        assert record.execution_status is CampaignExecutionStatus.PREPARED
+
+    def test_a_halt_outranks_what_ran_before_it(self):
+        status = campaign_status_for(
+            (
+                self.make_outcome(EvidenceOrigin.HARDWARE),
+                CampaignExperimentOutcomeV1(
+                    experiment_id="e3",
+                    kind=ExperimentKind.DETACH_REATTACH,
+                    status=ExperimentOutcomeStatus.HALTED_AT_GATE,
+                ),
+            )
+        )
+        assert status is CampaignExecutionStatus.HALTED_AT_GATE
+
+    def test_a_fixture_campaign_is_not_hardware_evidence(self):
+        record = self.make_record(
+            CampaignExecutionStatus.FIXTURE_EXECUTED,
+            (self.make_outcome(EvidenceOrigin.FIXTURE),),
+        )
+        assert record.is_executed
+        assert not record.is_hardware_evidence
+
+    def test_a_derived_hardware_flag_that_disagrees_is_refused(self):
+        from tap_tone_pi.grant_readiness import HardwareCampaignRecordV1
+        from tap_tone_pi.grant_readiness.errors import ExperimentRecordError
+
+        payload = self.make_record(
+            CampaignExecutionStatus.FIXTURE_EXECUTED,
+            (self.make_outcome(EvidenceOrigin.FIXTURE),),
+        ).to_dict()
+        payload["is_hardware_evidence"] = True
+        with pytest.raises(ExperimentRecordError):
+            HardwareCampaignRecordV1.from_dict(payload)
 
 
 class TestWitnessedSessionsAndPromotion:
@@ -483,15 +665,7 @@ class TestWitnessedSessionsAndPromotion:
         record = build_campaign_record(
             config=make_config(),
             generated_at=UTC_NOW,
-            execution_status=CampaignExecutionStatus.EXECUTED,
-            outcomes=(
-                CampaignExperimentOutcomeV1(
-                    experiment_id="e2",
-                    kind=ExperimentKind.FIXED_POINT,
-                    status=CampaignExecutionStatus.EXECUTED,
-                    study_id=study.study_id,
-                ),
-            ),
+            outcomes=(build_campaign_outcome(make_config().experiments[0], study),),
         )
         markdown = render_campaign_report(record, [study])
         assert "This report promotes nothing" in markdown
@@ -502,15 +676,7 @@ class TestWitnessedSessionsAndPromotion:
         record = build_campaign_record(
             config=make_config(),
             generated_at=UTC_NOW,
-            execution_status=CampaignExecutionStatus.EXECUTED,
-            outcomes=(
-                CampaignExperimentOutcomeV1(
-                    experiment_id="e2",
-                    kind=ExperimentKind.FIXED_POINT,
-                    status=CampaignExecutionStatus.EXECUTED,
-                    study_id=study.study_id,
-                ),
-            ),
+            outcomes=(build_campaign_outcome(make_config().experiments[0], study),),
         )
         markdown = render_campaign_report(record, [study])
         assert "no capability is eligible for promotion" in markdown
@@ -521,13 +687,14 @@ class TestTheRendererRefusesWhatTheValidatorWould:
         return build_campaign_record(
             config=make_config(),
             generated_at=UTC_NOW,
-            execution_status=CampaignExecutionStatus.EXECUTED,
+            execution_status=CampaignExecutionStatus.HARDWARE_EXECUTED,
             outcomes=(
                 CampaignExperimentOutcomeV1(
                     experiment_id="e2",
                     kind=ExperimentKind.FIXED_POINT,
-                    status=CampaignExecutionStatus.EXECUTED,
+                    status=ExperimentOutcomeStatus.EXECUTED,
                     study_id=study_id,
+                    evidence_origin=EvidenceOrigin.HARDWARE,
                 ),
             ),
         )
@@ -566,7 +733,7 @@ class TestCampaignReport:
         return build_campaign_record(
             config=make_config(),
             generated_at=UTC_NOW,
-            execution_status=CampaignExecutionStatus.NOT_EXECUTED,
+            execution_status=CampaignExecutionStatus.PREPARED,
         )
 
     def test_a_not_executed_campaign_says_so_in_its_title(self):
@@ -579,7 +746,7 @@ class TestCampaignReport:
         assert "**This campaign has not been executed.**" in markdown
         assert "supports no hardware claim of any kind" in markdown
 
-    def test_an_executed_fixture_campaign_is_not_read_as_hardware(self):
+    def fixture_campaign(self):
         study = make_study(
             [
                 dataclasses.replace(
@@ -594,19 +761,43 @@ class TestCampaignReport:
         record = build_campaign_record(
             config=make_config(),
             generated_at=UTC_NOW,
-            execution_status=CampaignExecutionStatus.EXECUTED,
-            outcomes=(
-                CampaignExperimentOutcomeV1(
-                    experiment_id="e2",
-                    kind=ExperimentKind.FIXED_POINT,
-                    status=CampaignExecutionStatus.EXECUTED,
-                    study_id=study.study_id,
-                ),
-            ),
+            outcomes=(build_campaign_outcome(make_config().experiments[0], study),),
         )
+        return record, study
+
+    def test_an_executed_fixture_campaign_is_not_read_as_hardware(self):
+        record, study = self.fixture_campaign()
         markdown = render_campaign_report(record, [study])
         assert "**No hardware evidence.**" in markdown
-        assert "FIXTURE data" in markdown
+
+    def test_a_fixture_campaign_says_so_in_its_title(self):
+        # The title is what survives being read in isolation, so the
+        # distinction between rehearsing the path and running the rig lives
+        # there and not only in a banner further down.
+        record, study = self.fixture_campaign()
+        assert render_campaign_report(record, [study]).startswith(
+            "# Hardware Measurement Campaign (Fixture Rehearsal — Not Hardware)"
+        )
+
+    def test_a_fixture_campaign_states_it_in_its_limitations(self):
+        record, _ = self.fixture_campaign()
+        assert any(
+            "executed against fixture data, not hardware" in text
+            for text in record.limitations
+        )
+
+    def test_the_accounting_table_names_what_each_experiment_ran_against(self):
+        record, study = self.fixture_campaign()
+        markdown = render_campaign_report(record, [study])
+        assert (
+            "| Experiment | Kind | Status | Evidence origin | Witnessed |" in markdown
+        )
+        assert "| EXECUTED | FIXTURE | no |" in markdown
+
+    def test_a_fixture_campaign_narrows_no_risk(self):
+        record, study = self.fixture_campaign()
+        markdown = render_campaign_report(record, [study])
+        assert "no experiment in it ran against hardware" in markdown
 
     def test_the_report_states_reference_agreement_remains_open(self):
         assert "R10 reference-method agreement remains entirely open" in (
@@ -659,5 +850,14 @@ class TestCampaignReport:
 
     def test_the_json_report_states_the_execution_status(self):
         payload = build_campaign_report(self.make())
-        assert payload["execution_status"] == "NOT_EXECUTED"
+        assert payload["execution_status"] == "PREPARED"
         assert payload["is_executed"] is False
+        assert payload["is_hardware_evidence"] is False
+        assert payload["witnessed_experiment_ids"] == []
+
+    def test_the_json_report_separates_executed_from_hardware(self):
+        record, study = self.fixture_campaign()
+        payload = build_campaign_report(record, [study])
+        assert payload["execution_status"] == "FIXTURE_EXECUTED"
+        assert payload["is_executed"] is True
+        assert payload["is_hardware_evidence"] is False

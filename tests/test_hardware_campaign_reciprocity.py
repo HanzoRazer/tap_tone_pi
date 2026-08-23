@@ -19,9 +19,11 @@ from tap_tone_pi.grant_readiness import (
     GrantReadinessErrorCode,
     ObservedFeatureV1,
     PreliminaryExperimentRunV1,
+    ReciprocityObservationV1,
     RejectionReason,
 )
 from tap_tone_pi.grant_readiness.errors import (
+    ExperimentRecordError,
     HardwareCampaignError,
     RepeatabilityStatisticsError,
 )
@@ -196,8 +198,43 @@ class TestResiduals:
         assert observation.forward_coherence == 0.95
         assert observation.reverse_coherence is None
 
-    def test_the_forward_evaluation_frequency_is_recorded(self):
-        assert self.observe(1.0, 0.9).evaluation_frequency_hz == 220.0
+    def test_both_evaluation_frequencies_are_recorded(self):
+        observation = self.observe(1.0, 0.9)
+        assert observation.forward_evaluation_frequency_hz == 220.0
+        assert observation.reverse_evaluation_frequency_hz == 220.0
+
+    def test_a_frequency_gap_is_visible_in_the_pair_record(self):
+        # Each direction is its own capture and can land on its own bin. A
+        # reviewer must be able to see that from the pair alone, without opening
+        # both runs to compare.
+        observation = self.observe(1.0, 0.9, reverse_kwargs={"frequency": 222.5})
+        assert observation.forward_evaluation_frequency_hz == 220.0
+        assert observation.reverse_evaluation_frequency_hz == 222.5
+        assert observation.frequency_mismatch_hz == pytest.approx(2.5)
+
+    def test_the_gap_is_a_magnitude_whichever_direction_is_higher(self):
+        higher = self.observe(1.0, 0.9, forward_kwargs={"frequency": 225.0})
+        assert higher.frequency_mismatch_hz == pytest.approx(5.0)
+
+    def test_matched_bins_report_a_zero_gap_not_a_missing_one(self):
+        assert self.observe(1.0, 0.9).frequency_mismatch_hz == 0.0
+
+    def test_an_unknown_frequency_leaves_the_gap_unknown(self):
+        observation = self.observe(1.0, 0.9, reverse_kwargs={"frequency": None})
+        assert observation.reverse_evaluation_frequency_hz is None
+        assert observation.frequency_mismatch_hz is None
+
+    def test_the_gap_carries_no_limit(self):
+        # DO-103 §4.6: nothing here decides how far apart is too far.
+        wide = self.observe(1.0, 0.9, reverse_kwargs={"frequency": 400.0})
+        assert wide.frequency_mismatch_hz == pytest.approx(180.0)
+        assert validate_reciprocity_observation(wide) == []
+
+    def test_a_derived_gap_that_disagrees_with_its_frequencies_is_refused(self):
+        payload = self.observe(1.0, 0.9, reverse_kwargs={"frequency": 222.5}).to_dict()
+        payload["frequency_mismatch_hz"] = 0.0
+        with pytest.raises(ExperimentRecordError):
+            ReciprocityObservationV1.from_dict(payload)
 
     def test_the_points_are_recorded_in_the_forward_direction(self):
         observation = self.observe(1.0, 0.9)

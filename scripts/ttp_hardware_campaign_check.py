@@ -12,6 +12,8 @@ Verifies that a written campaign says what its own evidence supports:
   * run accounting agrees with the runs actually recorded;
   * every raw artifact a run retains appears in the artifact manifest;
   * an origin claim is backed by acquisition provenance;
+  * each outcome's evidence-origin and witnessed summary is re-derived from the
+    study it summarizes, and any disagreement is reported;
   * promotion eligibility is reported, and never granted.
 
 This tool writes nothing and repairs nothing. A campaign that fails here is
@@ -173,6 +175,25 @@ def check_campaign(directory: Path) -> tuple[list[str], list[str]]:
                 "study itself does not produce"
             )
 
+        # The campaign's own summary of a study is only useful if it cannot
+        # drift from the study. Re-derive both halves and say so when they part.
+        if outcome.evidence_origin is not None and (
+            outcome.evidence_origin is not study.evidence_origin
+        ):
+            problems.append(
+                f"campaign records study {study.study_id} as "
+                f"{outcome.evidence_origin.value} evidence; the study says "
+                f"{study.evidence_origin.value}"
+            )
+        derived_witness = not validate_witnessed_hardware_session(study)
+        if outcome.witnessed != derived_witness:
+            problems.append(
+                f"campaign records study {study.study_id} as "
+                f"{'witnessed' if outcome.witnessed else 'unwitnessed'}; the "
+                f"study's provenance derives "
+                f"{'witnessed' if derived_witness else 'unwitnessed'}"
+            )
+
     all_runs = [run for study in studies for run in study.runs]
     problems.extend(
         describe(validate_artifact_manifest(record.artifacts, runs=all_runs))
@@ -184,6 +205,7 @@ def check_campaign(directory: Path) -> tuple[list[str], list[str]]:
     witnessed = [
         study for study in hardware if not validate_witnessed_hardware_session(study)
     ]
+    notes.append(f"campaign status: {record.execution_status.value}")
     notes.append(f"studies: {len(studies)} ({len(hardware)} hardware-origin)")
     notes.append(f"runs: {len(all_runs)}")
     notes.append(f"artifacts: {len(record.artifacts)}")

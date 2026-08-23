@@ -61,6 +61,7 @@ from tap_tone_pi.grant_readiness.contracts import (
     EvidenceOrigin,
     ExcitationContextV1,
     ExperimentKind,
+    ExperimentOutcomeStatus,
     ExternalArtifactV1,
     GrantReadinessAuditV1,
     GroupSpreadV1,
@@ -108,6 +109,7 @@ __all__ = [
     "CalibrationTraceability",
     "ExperimentKind",
     "CampaignExecutionStatus",
+    "ExperimentOutcomeStatus",
     # Evidence records
     "CapabilityEvidenceV1",
     "GrantReadinessAuditV1",

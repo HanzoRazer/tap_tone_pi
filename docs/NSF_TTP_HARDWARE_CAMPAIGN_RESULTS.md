@@ -32,10 +32,15 @@ python scripts/ttp_hardware_campaign.py report \
     --config campaigns/<id>/campaign.json \
     --studies out/nsf/campaign \
     --artifacts campaigns/<id>/artifacts.json \
-    --execution-status <status> --write
+    --write
 
 python scripts/ttp_hardware_campaign_check.py out/nsf/campaign
 ```
+
+The campaign status is derived from what ran. `HARDWARE_EXECUTED` requires an
+experiment carrying hardware-origin evidence; a rehearsal against fixture data
+is `FIXTURE_EXECUTED` and is not a hardware campaign. This repository's campaign
+is `PREPARED`.
 
 No number in this document may be hand-entered, and no summary may be more
 favourable than what `out/nsf/campaign/ttp_hardware_campaign.md` says. Every
@@ -84,7 +89,8 @@ separately and never combined.
 ## 7. E4 — Reciprocity
 
 *Not executed.* Residuals will be reported with their conditions, sample sizes,
-and per-direction coherence, and **without** an acceptance threshold.
+per-direction coherence, and both directions' evaluation frequencies with the
+gap between them — and **without** an acceptance threshold on any of them.
 
 ## 8. E5 — Deliberate mass-loading challenge
 

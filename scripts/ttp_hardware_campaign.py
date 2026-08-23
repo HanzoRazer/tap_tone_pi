@@ -91,6 +91,7 @@ from tap_tone_pi.grant_readiness.experiment import (  # noqa: E402
 from tap_tone_pi.grant_readiness.hardware_campaign import (  # noqa: E402
     build_campaign_acquisition,
     build_campaign_definition,
+    build_campaign_outcome,
     build_campaign_record,
     load_campaign_config,
     pair_reciprocity_runs,
@@ -357,15 +358,10 @@ def run_report(args: argparse.Namespace) -> int:
         study = by_experiment.get(plan.experiment_id)
         if study is None:
             continue
-        outcomes.append(
-            CampaignExperimentOutcomeV1(
-                experiment_id=plan.experiment_id,
-                kind=plan.kind,
-                status=CampaignExecutionStatus.EXECUTED,
-                study_id=study.study_id,
-                study_digest=build_study_report(study)["study_digest"],
-            )
-        )
+        # The origin and the witnessed flag are read off the study, never
+        # supplied: a campaign summary a caller could assert independently would
+        # reopen the gap DO-103 §5.4 closed.
+        outcomes.append(build_campaign_outcome(plan, study))
 
     unit = None
     for study in studies:
@@ -404,7 +400,11 @@ def run_report(args: argparse.Namespace) -> int:
     record = build_campaign_record(
         config=config,
         generated_at=utc_now(),
-        execution_status=CampaignExecutionStatus(args.execution_status),
+        execution_status=(
+            CampaignExecutionStatus(args.execution_status)
+            if args.execution_status
+            else None
+        ),
         outcomes=tuple(outcomes),
         artifacts=artifacts,
         attachment_variation=attachment,
@@ -416,13 +416,20 @@ def run_report(args: argparse.Namespace) -> int:
     print(f"Campaign: {record.campaign_id}")
     print(f"Execution status: {record.execution_status.value}")
     for outcome in record.outcomes:
-        print(f"  {outcome.experiment_id}: {outcome.status.value}")
+        origin = outcome.evidence_origin.value if outcome.evidence_origin else "-"
+        print(f"  {outcome.experiment_id}: {outcome.status.value} ({origin})")
     print(f"Reciprocity observations: {len(record.reciprocity)}")
     print(f"Mass-loading observations: {len(record.mass_loading)}")
     if not record.is_executed:
         print(
             "NOTE: no experiment in this campaign has been executed. The record "
             "describes a planned configuration and supports no hardware claim."
+        )
+    elif not record.is_hardware_evidence:
+        print(
+            "NOTE: this campaign ran against non-hardware evidence. It shows the "
+            "path works and is not a hardware campaign; no capability may be "
+            "promoted on it."
         )
 
     if not args.write:
@@ -484,9 +491,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     report.add_argument(
         "--execution-status",
-        required=True,
         choices=[member.value for member in CampaignExecutionStatus],
-        help="what actually happened to this campaign; stated, never inferred",
+        help=(
+            "what this campaign is. Derived from the outcomes when omitted, "
+            "which is the safer default: a fixture rehearsal cannot become a "
+            "hardware campaign by being called one, and a stated status the "
+            "outcomes contradict is refused"
+        ),
     )
     report.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     report.add_argument("--write", action="store_true")

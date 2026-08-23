@@ -31,11 +31,17 @@
     "execution_status": {
       "type": "string",
       "enum": [
-        "NOT_EXECUTED",
-        "EXECUTED",
+        "PREPARED",
+        "FIXTURE_EXECUTED",
+        "HARDWARE_EXECUTED",
         "HALTED_AT_GATE",
-        "BLOCKED_BY_GATE"
-      ]
+        "ABORTED"
+      ],
+      "description": "What the campaign as a whole is, read cold. A campaign rehearsed against fixture data and one driven by a physical rig are different states and are never given the same word: FIXTURE_EXECUTED proves the path works and is not hardware evidence, and HARDWARE_EXECUTED requires an executed experiment carrying hardware-origin evidence."
+    },
+    "is_hardware_evidence": {
+      "type": "boolean",
+      "description": "Derived: whether any executed experiment carries hardware-origin evidence. Emitted for readers and must agree with the outcomes."
     },
     "config": {
       "$ref": "#/$defs/campaign_config"
@@ -432,6 +438,24 @@
           ],
           "minLength": 1
         },
+        "evidence_origin": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "HARDWARE",
+            "FIXTURE",
+            "SYNTHETIC",
+            null
+          ],
+          "description": "The origin of the study this outcome names. Required in practice on an executed outcome: without it the campaign cannot say what kind of evidence it holds."
+        },
+        "witnessed": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the named study met the stricter witnessed standard. Only hardware-origin evidence can carry it."
+        },
         "blocked_by_experiment_id": {
           "type": [
             "string",
@@ -765,11 +789,25 @@
             "null"
           ]
         },
-        "evaluation_frequency_hz": {
+        "forward_evaluation_frequency_hz": {
           "type": [
             "number",
             "null"
           ]
+        },
+        "reverse_evaluation_frequency_hz": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "frequency_mismatch_hz": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Derived: how far apart the two directions' frequency bins fell. Recorded so the asymmetry is visible in the pair rather than only inside the two runs. No limit is placed on it."
         },
         "forward_coherence": {
           "type": [

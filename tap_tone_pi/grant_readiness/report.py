@@ -30,6 +30,7 @@ from typing import Any, Sequence
 
 from tap_tone_pi.grant_readiness.contracts import (
     AcquisitionRole,
+    CampaignExecutionStatus,
     CapabilityStatus,
     EvidenceOrigin,
     GrantReadinessAuditV1,
@@ -425,6 +426,43 @@ ACOUSTIC_TRANSFER_NOTE = (
 )
 
 
+# What a campaign's title says about itself, so the distinction between
+# rehearsing the analysis path and running the rig survives being read alone.
+CAMPAIGN_TITLE_SUFFIX = {
+    CampaignExecutionStatus.PREPARED: " (Not Executed)",
+    CampaignExecutionStatus.FIXTURE_EXECUTED: " (Fixture Rehearsal — Not Hardware)",
+    CampaignExecutionStatus.HARDWARE_EXECUTED: "",
+    CampaignExecutionStatus.HALTED_AT_GATE: " (Halted at a Campaign Gate)",
+    CampaignExecutionStatus.ABORTED: " (Abandoned)",
+}
+
+CAMPAIGN_BANNER = {
+    CampaignExecutionStatus.PREPARED: (
+        "> **This campaign has not been executed.** The document below describes "
+        "a planned configuration and the structure results will be reported in. "
+        "It contains no hardware measurement, no witnessed session, and no "
+        "repeatability, reciprocity, or mass-loading result, and it supports no "
+        "hardware claim of any kind."
+    ),
+    CampaignExecutionStatus.FIXTURE_EXECUTED: (
+        "> **No hardware evidence.** The experiments below were executed against "
+        "fixture or synthetic data. That demonstrates the campaign path end to "
+        "end and says nothing about how the rig behaves: no study here is "
+        "hardware evidence, and no capability may be promoted on it."
+    ),
+    CampaignExecutionStatus.HALTED_AT_GATE: (
+        "> **This campaign was halted at a gate.** An experiment that gates the "
+        "ones after it did not produce usable evidence, so the downstream "
+        "experiments were not run. That is a result about the measurement "
+        "architecture, and the questions those experiments ask remain open."
+    ),
+    CampaignExecutionStatus.ABORTED: (
+        "> **This campaign was abandoned before completion**, for a reason that "
+        "was not a campaign gate. Whatever it recorded is partial."
+    ),
+}
+
+
 def _shown(value: Any, status: str = "observed") -> str:
     """Render one field with its evidence status, or as unknown."""
     if value is None or value == "":
@@ -461,6 +499,8 @@ def build_campaign_report(
         "campaign_id": record.campaign_id,
         "execution_status": record.execution_status.value,
         "is_executed": record.is_executed,
+        "is_hardware_evidence": record.is_hardware_evidence,
+        "witnessed_experiment_ids": list(record.witnessed_experiment_ids),
         "acoustic_transfer_note": ACOUSTIC_TRANSFER_NOTE,
         "reference_agreement_remains_open": REFERENCE_AGREEMENT_REMAINS_OPEN,
         "repeatability_is_not_accuracy": REPEATABILITY_IS_NOT_ACCURACY,
@@ -572,10 +612,12 @@ def _accounting_section(record: HardwareCampaignRecordV1) -> list[str]:
         "",
         "Every planned experiment appears here. An experiment that did not run "
         "because an earlier gate failed names the gate that stopped it; that is "
-        "a result, not a gap.",
+        "a result, not a gap. An experiment that did run names what it ran "
+        "against, so *executed* is never read without *against what*.",
         "",
-        "| Experiment | Kind | Status | Study | Blocked by |",
-        "| --- | --- | --- | --- | --- |",
+        "| Experiment | Kind | Status | Evidence origin | Witnessed | Study | "
+        "Blocked by |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
     ]
     for outcome in record.outcomes:
         study = f"`{outcome.study_id}`" if outcome.study_id else "—"
@@ -584,9 +626,11 @@ def _accounting_section(record: HardwareCampaignRecordV1) -> list[str]:
             if outcome.blocked_by_experiment_id
             else "—"
         )
+        origin = outcome.evidence_origin.value if outcome.evidence_origin else "—"
         lines.append(
             f"| `{outcome.experiment_id}` | {outcome.kind.value} | "
-            f"{outcome.status.value} | {study} | {blocked} |"
+            f"{outcome.status.value} | {origin} | "
+            f"{'yes' if outcome.witnessed else 'no'} | {study} | {blocked} |"
         )
     lines.append("")
     return lines
@@ -712,8 +756,9 @@ def _reciprocity_section(record: HardwareCampaignRecordV1) -> list[str]:
 
     lines += [
         "| Pair | Forward run | Reverse run | Forward | Reverse | Residual | "
-        "Relative | Coh. fwd | Coh. rev | Freq (Hz) |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        "Relative | Coh. fwd | Coh. rev | Freq fwd (Hz) | Freq rev (Hz) | "
+        "Freq gap (Hz) |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for observation in record.reciprocity:
         relative = (
@@ -731,9 +776,19 @@ def _reciprocity_section(record: HardwareCampaignRecordV1) -> list[str]:
             if observation.reverse_coherence is not None
             else "unknown"
         )
-        frequency = (
-            _number(observation.evaluation_frequency_hz)
-            if observation.evaluation_frequency_hz is not None
+        forward_hz = (
+            _number(observation.forward_evaluation_frequency_hz)
+            if observation.forward_evaluation_frequency_hz is not None
+            else "unknown"
+        )
+        reverse_hz = (
+            _number(observation.reverse_evaluation_frequency_hz)
+            if observation.reverse_evaluation_frequency_hz is not None
+            else "unknown"
+        )
+        mismatch = (
+            _number(observation.frequency_mismatch_hz)
+            if observation.frequency_mismatch_hz is not None
             else "unknown"
         )
         lines.append(
@@ -743,7 +798,8 @@ def _reciprocity_section(record: HardwareCampaignRecordV1) -> list[str]:
             f"{_number(observation.forward_value)} | "
             f"{_number(observation.reverse_value)} | "
             f"{_number(observation.absolute_residual)} | {relative} | "
-            f"{forward_coh} | {reverse_coh} | {frequency} |"
+            f"{forward_coh} | {reverse_coh} | {forward_hz} | {reverse_hz} | "
+            f"{mismatch} |"
         )
     lines += [
         "",
@@ -752,6 +808,12 @@ def _reciprocity_section(record: HardwareCampaignRecordV1) -> list[str]:
         "direction keeps its own coherence: a residual observed where one "
         "direction was poorly coherent is not the same finding as the same "
         "residual where both were strong.",
+        "",
+        "Each direction also keeps its own evaluation frequency, and the gap "
+        "between them is derived. Where that gap is non-zero the residual spans "
+        "two slightly different frequencies, which is a property of the "
+        "comparison a reader should see before reading the residual. No limit is "
+        "placed on it here.",
         "",
     ]
     return lines
@@ -896,12 +958,13 @@ def _promotion_section(
 
 def _risk_section(record: HardwareCampaignRecordV1) -> list[str]:
     lines = ["## Technical risks", "", REFERENCE_AGREEMENT_REMAINS_OPEN, ""]
-    if not record.is_executed:
+    if not record.is_hardware_evidence:
         lines += [
-            "No risk is narrowed by this campaign: nothing has been executed. "
-            "Excitation variability, contact variability, sensor positioning, "
-            "environment, operator variability, and between-session "
-            "repeatability all remain exactly as open as they were.",
+            "No risk is narrowed by this campaign: no experiment in it ran "
+            "against hardware. Excitation variability, contact variability, "
+            "sensor positioning, environment, operator variability, and "
+            "between-session repeatability all remain exactly as open as they "
+            "were.",
             "",
         ]
     else:
@@ -926,8 +989,7 @@ def render_campaign_report(
     compares any observed value against a limit.
     """
     indexed = _campaign_studies(record, studies)
-    executed = record.is_executed
-    suffix = "" if executed else " (Not Executed)"
+    suffix = CAMPAIGN_TITLE_SUFFIX[record.execution_status]
 
     lines: list[str] = [
         f"# Hardware Measurement Campaign{suffix}",
@@ -942,32 +1004,9 @@ def render_campaign_report(
         "",
     ]
 
-    if not executed:
-        lines += [
-            "> **This campaign has not been executed.** The document below "
-            "describes a planned configuration and the structure results will "
-            "be reported in. It contains no hardware measurement, no witnessed "
-            "session, and no repeatability, reciprocity, or mass-loading "
-            "result, and it supports no hardware claim of any kind.",
-            "",
-        ]
-    elif not any(study.is_hardware_evidence for study in indexed.values()):
-        # A campaign can be executed end to end against fixture data to prove
-        # the path works. Saying "executed" without saying "against what" would
-        # let that rehearsal read as the physical campaign.
-        origins = (
-            ", ".join(
-                sorted({study.evidence_origin.value for study in indexed.values()})
-            )
-            or "no"
-        )
-        lines += [
-            f"> **No hardware evidence.** The experiments below were executed "
-            f"against {origins} data. That demonstrates the campaign path end to "
-            "end and says nothing about how the rig behaves: no study here is "
-            "hardware evidence, and no capability may be promoted on it.",
-            "",
-        ]
+    banner = CAMPAIGN_BANNER.get(record.execution_status)
+    if banner is not None:
+        lines += [banner, ""]
 
     lines += _rig_section(record)
     lines += _channels_section(record)
