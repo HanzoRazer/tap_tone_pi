@@ -161,6 +161,17 @@ For deeper orientation by topic area, see `docs/02_ORIENTATION_PROMPTS.md`.
     repo's existing style (PEP 604 union syntax `int | None`, NDArray with
     explicit dtype).
 
+11. **Hardware-facing changes need an end-to-end evidence-path run before
+    merge.** Contract and unit tests have twice been insufficient here: a field
+    reached the contract, the schema, the validator, and the report while the
+    ingestion function silently dropped it, because the tests built records
+    directly instead of going through the path. The gate is
+    `tests/test_hardware_campaign_evidence_path.py`, which exercises
+    `manifest → ingestion → run → study → campaign → report → checker`, and
+    **at least one rejected run must traverse it** — that branch is constructed
+    separately and is where a dropped field hides. Extend that test with any new
+    field a hardware campaign records.
+
 ---
 
 ## Common patterns to follow
