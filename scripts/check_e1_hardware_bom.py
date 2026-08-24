@@ -71,8 +71,10 @@ STATUS_ORDER = (
 )
 TERMINAL_STATUSES = ("REJECTED",)
 
-# Rungs at or above which physical possession is claimed, and must be evidenced.
-OWNERSHIP_CLAIMED_FROM = "RECEIVED"
+# Rungs at or above which *physical possession* is claimed, and must therefore
+# be evidenced. Named for possession rather than ownership because this whole
+# order turns on the difference between choosing a component and holding one.
+PHYSICAL_POSSESSION_CLAIMED_FROM = "RECEIVED"
 
 INSPECTION_STATUSES = (
     "NOT_RECEIVED",
@@ -98,22 +100,55 @@ PROTOCOL_LABELS = {
     "Reference structure": "reference_structure",
 }
 
+# Columns each document must carry. A dropped column is a document-integrity
+# problem and gets reported as one: without this the first row access raises a
+# KeyError, and a traceback names the column but not the document, the row, or
+# what a reader should do about it.
+REQUIRED_BOM_COLUMNS = (
+    "local_id",
+    "component_class",
+    "manufacturer",
+    "model",
+    "status",
+    "supplier",
+)
+REQUIRED_REGISTER_COLUMNS = (
+    "local_id",
+    "serial_number",
+    "asset_label",
+    "received_date",
+    "inspection_status",
+)
+
 # Values that mean "not filled in". A placeholder is not a value.
 UNSET = {"", "tbd", "n/a", "-", "—", "none"}
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
-def is_set(value: str) -> bool:
-    return value.strip().lower() not in UNSET
+def is_set(value: object) -> bool:
+    """Whether a cell carries a real value rather than a placeholder.
+
+    Accepts any type: a malformed document can put ``null`` or a number where a
+    string belongs, and a validator that crashes on bad input reports nothing
+    about the input that broke it.
+    """
+    if value is None:
+        return False
+    return str(value).strip().lower() not in UNSET
 
 
-def parse_table(path: Path, key: str) -> list[dict[str, str]]:
+def parse_table(
+    path: Path, key: str, required: tuple[str, ...] = ()
+) -> list[dict[str, str]]:
     """Read the first pipe table whose header contains ``key``.
 
-    Deliberately strict: a row whose cell count does not match the header is
-    reported rather than silently padded, because a shifted column turns one
-    component's serial into another's.
+    Deliberately strict in two ways. A row whose cell count does not match the
+    header is reported rather than silently padded, because a shifted column
+    turns one component's serial into another's. And a table missing a required
+    column is refused up front, so a dropped column is reported as the document
+    problem it is instead of surfacing later as a ``KeyError`` naming neither
+    the document nor the row.
     """
     rows: list[dict[str, str]] = []
     header: list[str] | None = None
@@ -138,6 +173,11 @@ def parse_table(path: Path, key: str) -> list[dict[str, str]]:
         rows.append(dict(zip(header, cells)))
     if header is None:
         raise ValueError(f"{path.name}: no table with a {key!r} column")
+    missing = [column for column in required if column not in header]
+    if missing:
+        raise ValueError(
+            f"{path.name}: table is missing column(s) {', '.join(missing)}"
+        )
     return rows
 
 
@@ -151,12 +191,12 @@ def check_bom(bom: list[dict[str, str]]) -> list[str]:
 
     seen: dict[str, str] = {}
     for row in bom:
-        local_id = row["local_id"]
+        local_id = row.get("local_id", "")
         if local_id in seen:
             problems.append(f"duplicate local_id {local_id}")
-        seen[local_id] = row["component_class"]
+        seen[local_id] = row.get("component_class", "")
 
-        status = row["status"]
+        status = row.get("status", "")
         if status not in STATUS_ORDER and status not in TERMINAL_STATUSES:
             problems.append(f"{local_id}: unknown status {status!r}")
             continue
@@ -164,9 +204,9 @@ def check_bom(bom: list[dict[str, str]]) -> list[str]:
         level = rung(status)
         if level >= rung("SELECTED"):
             for field in ("manufacturer", "model"):
-                if not is_set(row[field]):
+                if not is_set(row.get(field)):
                     problems.append(f"{local_id} is {status} but names no {field}")
-        if level >= rung("ORDERED") and not is_set(row["supplier"]):
+        if level >= rung("ORDERED") and not is_set(row.get("supplier")):
             problems.append(f"{local_id} is {status} but names no supplier")
 
     present = set(seen.values())
@@ -174,7 +214,7 @@ def check_bom(bom: list[dict[str, str]]) -> list[str]:
         if required not in present:
             problems.append(f"no BOM row for required component class {required}")
     for row in bom:
-        cls = row["component_class"]
+        cls = row.get("component_class", "")
         if cls not in REQUIRED_CLASSES and cls not in CONDITIONAL_CLASSES:
             problems.append(
                 f"{row['local_id']}: component_class {cls!r} is not a known class"
@@ -195,7 +235,7 @@ def check_ownership(
 
     for row in bom:
         local_id = row["local_id"]
-        if rung(row["status"]) < rung(OWNERSHIP_CLAIMED_FROM):
+        if rung(row["status"]) < rung(PHYSICAL_POSSESSION_CLAIMED_FROM):
             continue
 
         entry = by_id.get(local_id)
@@ -205,23 +245,23 @@ def check_ownership(
             )
             continue
 
-        if not (is_set(entry["serial_number"]) or is_set(entry["asset_label"])):
+        if not (is_set(entry.get("serial_number")) or is_set(entry.get("asset_label"))):
             problems.append(
                 f"{local_id} is {row['status']} but its register entry carries "
                 "neither a serial number nor an asset label - a design "
                 "selection is not a possession"
             )
-        if not is_set(entry["received_date"]):
+        if not is_set(entry.get("received_date")):
             problems.append(
                 f"{local_id} is {row['status']} but records no received_date"
             )
-        if entry["inspection_status"] == "NOT_RECEIVED":
+        if entry.get("inspection_status") == "NOT_RECEIVED":
             problems.append(
                 f"{local_id} is {row['status']} but its register entry says "
                 "NOT_RECEIVED"
             )
         if (
-            entry["inspection_status"] == "INSPECTED_PROBLEM"
+            entry.get("inspection_status") == "INSPECTED_PROBLEM"
             and row["status"] == "BENCH_READY"
         ):
             problems.append(
@@ -230,18 +270,35 @@ def check_ownership(
     return problems
 
 
-def check_register(register: list[dict[str, str]]) -> list[str]:
+def check_register(
+    register: list[dict[str, str]], bom: list[dict[str, str]]
+) -> list[str]:
+    """The register describes physical objects, so every row must name a real one.
+
+    An orphan row — a mistyped ``FORSE-001``, or an entry left behind after a
+    component was renumbered — is not harmless. The register is what an
+    ownership claim is checked against, so a row nobody can trace to a BOM
+    component is a place where a serial number can attach to nothing.
+    """
     problems: list[str] = []
+    known = {row["local_id"] for row in bom}
     seen: set[str] = set()
+
     for row in register:
         local_id = row["local_id"]
         if local_id in seen:
             problems.append(f"duplicate identity-register entry for {local_id}")
         seen.add(local_id)
-        if row["inspection_status"] not in INSPECTION_STATUSES:
+
+        if local_id not in known:
             problems.append(
-                f"{local_id}: unknown inspection_status {row['inspection_status']!r}"
+                f"identity register names {local_id}, which is not a BOM component"
             )
+
+        status = row.get("inspection_status", "")
+        if status not in INSPECTION_STATUSES:
+            problems.append(f"{local_id}: unknown inspection_status {status!r}")
+
     return problems
 
 
@@ -254,7 +311,10 @@ def check_manifest(manifest: dict, bom: list[dict[str, str]]) -> list[str]:
     if not isinstance(entries, list):
         return ["datasheet manifest has no entries list"]
 
-    for entry in entries:
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            problems.append(f"datasheet entry {index} is not an object")
+            continue
         component = entry.get("component_id", "")
         digest = entry.get("sha256", "")
         if component not in known:
@@ -290,10 +350,15 @@ def check_protocol(bom: list[dict[str, str]]) -> list[str]:
         return [f"cannot read the protocol inventory table: {exc}"]
 
     protocol_status = {row["Component"]: row.get("Status", "") for row in inventory}
+
+    # Only classes the protocol actually tracks, and only the status question:
+    # ``check_bom`` already refuses a SELECTED row with no model, so testing the
+    # model here again would make this check depend on that one silently.
+    tracked = set(PROTOCOL_LABELS.values())
     selected = {
         row["component_class"]
         for row in bom
-        if rung(row["status"]) >= rung("SELECTED") and is_set(row["model"])
+        if row["component_class"] in tracked and rung(row["status"]) >= rung("SELECTED")
     }
 
     for label, cls in PROTOCOL_LABELS.items():
@@ -334,8 +399,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        bom = parse_table(BOM_PATH, "local_id")
-        register = parse_table(REGISTER_PATH, "local_id")
+        bom = parse_table(BOM_PATH, "local_id", REQUIRED_BOM_COLUMNS)
+        register = parse_table(REGISTER_PATH, "local_id", REQUIRED_REGISTER_COLUMNS)
         manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"cannot read the hardware documents: {exc}", file=sys.stderr)
@@ -343,7 +408,7 @@ def main(argv: list[str] | None = None) -> int:
 
     count = 0
     count += report("bom", check_bom(bom))
-    count += report("register", check_register(register))
+    count += report("register", check_register(register, bom))
     count += report("ownership", check_ownership(bom, register))
     count += report("datasheets", check_manifest(manifest, bom))
     count += report("protocol", check_protocol(bom))
@@ -353,15 +418,23 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{'component_class':<22} {'local_id':<16} status")
         for row in bom:
             print(f"{row['component_class']:<22} {row['local_id']:<16} {row['status']}")
-        owned = [
+        received = [
             row["local_id"]
             for row in bom
-            if rung(row["status"]) >= rung(OWNERSHIP_CLAIMED_FROM)
+            if rung(row["status"]) >= rung(PHYSICAL_POSSESSION_CLAIMED_FROM)
+        ]
+        design_selected = [
+            row["local_id"] for row in bom if row["status"] == "SELECTED"
         ]
         print()
-        print(f"components claimed as physically in hand: {len(owned)}")
-        if not owned:
-            print("nothing is owned; DO-104E cannot begin bench bring-up")
+        print(f"design-selected, possession unconfirmed: {len(design_selected)}")
+        print(f"recorded as physically received:         {len(received)}")
+        if not received:
+            print(
+                "\nNo component is recorded as physically received. Design "
+                "selections above are choices on paper and are not evidence of "
+                "possession, so DO-104E cannot begin bench bring-up."
+            )
 
     if count:
         print(f"\n{count} problem(s) found", file=sys.stderr)

@@ -1,6 +1,7 @@
 # TTP E1 — Procurement Status
 
-**Status:** nothing selected, nothing ordered, nothing received.
+**Status:** three components design-selected (possession unconfirmed); no
+component selected for purchase, ordered, or received.
 **Dev Order:** DO-104P
 **Last updated:** 2026-08-24
 

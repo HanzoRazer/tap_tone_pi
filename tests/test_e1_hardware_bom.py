@@ -27,6 +27,7 @@ HARDWARE = REPO_ROOT / "docs" / "hardware"
 def load_checker():
     path = REPO_ROOT / "scripts" / "check_e1_hardware_bom.py"
     spec = importlib.util.spec_from_file_location("check_e1_hardware_bom", path)
+    assert spec is not None and spec.loader is not None, f"cannot load {path}"
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -98,7 +99,7 @@ class TestTheRealDocumentsAreConsistent:
             row["local_id"]
             for row in bom
             if checker.rung(row["status"])
-            >= checker.rung(checker.OWNERSHIP_CLAIMED_FROM)
+            >= checker.rung(checker.PHYSICAL_POSSESSION_CLAIMED_FROM)
         ]
         assert owned == []
 
@@ -191,6 +192,62 @@ class TestOwnershipCannotBeClaimedFromADesign:
         assert checker.check_ownership(bom, register) == []
 
 
+class TestTheRegisterMustNameRealComponents:
+    """An orphan register row is a place a serial number can attach to nothing.
+
+    The register is what an ownership claim is checked against. A row that no
+    BOM component matches — a mistyped id, or one left behind after a component
+    was renumbered — would sit there looking authoritative while describing
+    nothing.
+    """
+
+    def entry(self, local_id="ADC-001", **overrides):
+        row = {
+            "local_id": local_id,
+            "serial_number": "TBD",
+            "asset_label": "TBD",
+            "received_date": "TBD",
+            "inspection_status": "NOT_RECEIVED",
+        }
+        row.update(overrides)
+        return row
+
+    def bom(self):
+        return [{"local_id": "ADC-001"}, {"local_id": "FORCE-001"}]
+
+    def test_a_row_naming_a_real_component_is_accepted(self, checker):
+        assert checker.check_register([self.entry()], self.bom()) == []
+
+    def test_an_orphan_row_is_refused(self, checker):
+        problems = checker.check_register([self.entry("ADC-099")], self.bom())
+        assert any("not a BOM component" in p for p in problems)
+
+    def test_a_mistyped_id_is_refused(self, checker):
+        problems = checker.check_register([self.entry("FORSE-001")], self.bom())
+        assert any("FORSE-001" in p for p in problems)
+
+    def test_a_duplicate_row_is_refused(self, checker):
+        problems = checker.check_register([self.entry(), self.entry()], self.bom())
+        assert any("duplicate identity-register entry" in p for p in problems)
+
+    def test_an_unknown_inspection_status_is_refused(self, checker):
+        problems = checker.check_register(
+            [self.entry(inspection_status="PROBABLY_FINE")], self.bom()
+        )
+        assert any("unknown inspection_status" in p for p in problems)
+
+    def test_a_missing_inspection_column_is_refused_not_crashed(self, checker):
+        row = self.entry()
+        del row["inspection_status"]
+        problems = checker.check_register([row], self.bom())
+        assert any("unknown inspection_status" in p for p in problems)
+
+    def test_the_committed_register_names_only_real_components(
+        self, checker, register, bom
+    ):
+        assert checker.check_register(register, bom) == []
+
+
 class TestStatusLadder:
     def base_row(self, **overrides):
         row = {
@@ -239,7 +296,9 @@ class TestStatusLadder:
         # REJECTED sits off the ladder, so it can never satisfy an ownership
         # claim by accident.
         assert checker.rung("REJECTED") == -1
-        assert checker.rung("REJECTED") < checker.rung(checker.OWNERSHIP_CLAIMED_FROM)
+        assert checker.rung("REJECTED") < checker.rung(
+            checker.PHYSICAL_POSSESSION_CLAIMED_FROM
+        )
 
     def test_a_duplicate_local_id_is_refused(self, checker):
         rows = self.all_classes(checker, self.base_row())
@@ -269,7 +328,7 @@ class TestDatasheetManifest:
     def test_an_entry_for_an_unknown_component_is_refused(self, checker):
         manifest = {"entries": [{"component_id": "GHOST-001", "sha256": "a" * 64}]}
         problems = checker.check_manifest(manifest, [{"local_id": "ADC-001"}])
-        assert any("not a\n" not in p and "not a BOM local_id" in p for p in problems)
+        assert any("not a BOM local_id" in p for p in problems)
 
     def test_a_malformed_digest_is_refused(self, checker):
         manifest = {
@@ -300,6 +359,15 @@ class TestDatasheetManifest:
         )
         assert any("duplicate datasheet identity" in p for p in problems)
 
+    def test_an_entry_that_is_not_an_object_is_reported_not_crashed(self, checker):
+        # A hand-edited manifest can put a bare string in the list. A validator
+        # that raises on bad input tells nobody which input broke it.
+        problems = checker.check_manifest(
+            {"entries": ["ADC-001", 7, None]}, [{"local_id": "ADC-001"}]
+        )
+        assert len(problems) == 3
+        assert all("is not an object" in p for p in problems)
+
     def test_a_well_formed_entry_passes(self, checker):
         manifest = {
             "entries": [
@@ -325,6 +393,37 @@ class TestTableParsing:
         with pytest.raises(ValueError):
             checker.parse_table(path, "local_id")
 
+    def test_a_missing_required_column_is_refused(self, checker, tmp_path):
+        # Without this the first row access raises a KeyError, and a traceback
+        # names the column but not the document, the row, or the fix.
+        path = tmp_path / "bom.md"
+        path.write_text(
+            "\n".join(["| local_id | status |", "| --- | --- |", "| A-1 | TBD |"]),
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError) as excinfo:
+            checker.parse_table(path, "local_id", checker.REQUIRED_BOM_COLUMNS)
+        assert "missing column(s)" in str(excinfo.value)
+        assert "manufacturer" in str(excinfo.value)
+
+    def test_a_table_with_every_required_column_parses(self, checker, tmp_path):
+        path = tmp_path / "bom.md"
+        header = " | ".join(checker.REQUIRED_BOM_COLUMNS)
+        dashes = " | ".join("---" for _ in checker.REQUIRED_BOM_COLUMNS)
+        values = " | ".join("x" for _ in checker.REQUIRED_BOM_COLUMNS)
+        path.write_text(
+            "\n".join([f"| {header} |", f"| {dashes} |", f"| {values} |"]),
+            encoding="utf-8",
+        )
+        rows = checker.parse_table(path, "local_id", checker.REQUIRED_BOM_COLUMNS)
+        assert len(rows) == 1
+
+    def test_the_committed_documents_carry_every_required_column(self, checker):
+        checker.parse_table(checker.BOM_PATH, "local_id", checker.REQUIRED_BOM_COLUMNS)
+        checker.parse_table(
+            checker.REGISTER_PATH, "local_id", checker.REQUIRED_REGISTER_COLUMNS
+        )
+
     def test_a_missing_table_is_refused(self, checker, tmp_path):
         path = tmp_path / "empty.md"
         path.write_text("no table here\n", encoding="utf-8")
@@ -337,6 +436,14 @@ class TestTableParsing:
 
     def test_a_real_value_counts(self, checker):
         assert checker.is_set("SN-12345")
+
+    def test_a_missing_cell_is_not_a_value(self, checker):
+        # A malformed document can put None where a string belongs; the
+        # validator reports on it rather than raising.
+        assert not checker.is_set(None)
+
+    def test_a_non_string_value_counts(self, checker):
+        assert checker.is_set(42)
 
 
 class TestProtocolConsistency:
@@ -364,6 +471,34 @@ class TestProtocolConsistency:
             }
         ]
         assert checker.check_protocol(bom) == []
+
+
+class TestTheSummaryUsesTheFrameworksVocabulary:
+    """The footer is where a reader forms an impression, so it must be exact.
+
+    "Nothing is owned" reads as contradicting three rows the BOM deliberately
+    records as design-selected. The distinction the whole order rests on is
+    between choosing a component and holding one, and the summary has to keep
+    it.
+    """
+
+    def test_it_separates_design_selection_from_possession(self, checker, capsys):
+        checker.main(["--summary"])
+        out = capsys.readouterr().out
+        assert "design-selected, possession unconfirmed: 3" in out
+        assert "recorded as physically received:         0" in out
+
+    def test_it_does_not_claim_nothing_is_owned(self, checker, capsys):
+        checker.main(["--summary"])
+        out = capsys.readouterr().out
+        assert "nothing is owned" not in out
+        assert "No component is recorded as physically received" in out
+
+    def test_it_says_why_bench_bring_up_cannot_begin(self, checker, capsys):
+        checker.main(["--summary"])
+        out = capsys.readouterr().out
+        assert "not evidence of possession" in out
+        assert "DO-104E cannot begin bench bring-up" in out
 
 
 class TestTheCheckerIsReadOnly:
