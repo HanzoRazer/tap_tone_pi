@@ -190,6 +190,65 @@ docstring, **not** here.
 - **Acceptance:** dedicated test modules, and the statuses revisited against the
   new evidence.
 
+### B-009 — E1 force-channel conditioning is unowned and unspecified
+- **Status:** open · **Priority:** P1 · **Area:** `docs/hardware/`
+- **Origin:** DO-104P hardware selection.
+- **Context:** the E1 force chain needs a transducer *and* its conditioning
+  selected together, and neither exists. The conditioner's output must land
+  inside the HiFiBerry ADC's ±3 V window (0.8–2.1 Vrms optimal); a conditioner
+  with ±5 V or ±10 V full scale needs an attenuator as its own BOM line rather
+  than software scaling. Whether `ATTEN-001` exists at all is genuinely open
+  until a conditioner is chosen.
+- **Trigger:** an authorized E1 hardware budget.
+- **Acceptance:** `FORCE-001` and `PRECOND-001` reach `SELECTED` with a resolved
+  output window, and `ATTEN-001` is either specified or struck.
+
+### B-010 — OPA1612 preamp board existence unconfirmed
+- **Status:** open · **Priority:** P2 · **Area:** `docs/hardware/`
+- **Origin:** DO-104P inventory.
+- **Context:** the authoritative stack specification *specifies* the OPA1612
+  balanced mic preamp in detail but names no product, and the repository holds no
+  evidence the board was ever built. If it has not been, E1 needs it fabricated
+  or substituted, and that is a lead-time item nobody has costed.
+- **Trigger:** hardware inventory confirmation.
+- **Acceptance:** `PREAMP-001` reaches `RECEIVED` with an asset label, or a
+  fabrication task is scoped.
+
+### B-011 — Microphone model was never locked
+- **Status:** open · **Priority:** P2 · **Area:** `docs/hardware/`
+- **Origin:** DO-104P inventory.
+- **Context:** the stack specification gives microphone *requirements* (SDC,
+  48 V phantom, approx −40 dBV/Pa) but never selected a model, which the BOM now
+  records honestly as `TBD` rather than implying a choice exists. Traceability
+  stays `UNKNOWN` unless a calibrated microphone is procured, and E1 makes no
+  calibrated-pressure claim either way.
+- **Trigger:** E1 procurement.
+- **Acceptance:** `MIC-001` reaches `SELECTED`.
+
+### B-012 — `schema-registry-guard` workflow has been red since at least 2026-08-12
+- **Status:** open · **Priority:** P2 · **Area:** `.github/workflows/`
+- **Origin:** observed while merging PR #27.
+- **Context:** the workflow has failed on every push back to at least `b0adc53`,
+  reports its own file path as its name (which is what GitHub does when a
+  workflow file cannot be parsed), and is explicitly excluded from pre-commit's
+  `check-yaml`. It predates all DO-102/103/104 work and no order touched it. A
+  permanently red check that nobody reads is worse than no check.
+- **Trigger:** whichever order owns CI hygiene.
+- **Acceptance:** the workflow parses and passes, or is removed with a reason.
+
+### B-013 — Nine CLI tests failed at `caa4d18` and no longer reproduce
+- **Status:** open · **Priority:** P3 · **Area:** `tests/test_cli_*`
+- **Origin:** baseline classification during DO-104.
+- **Context:** `test_cli_list_directive_events`, `test_cli_measure_agent_output`,
+  and `test_cli_measure_ftue_wiring` failed in a clean worktree at `caa4d18` and
+  passed on every run after the DO-103 merge. Something is order- or
+  state-dependent, which means the baseline classification cited in PR #26 is
+  less stable than it read.
+- **Trigger:** any order touching the CLI, or a recurrence.
+- **Acceptance:** the flakiness is explained or the tests are made deterministic.
+
+---
+
 **Not pre-authorized.** Formal Gage R&R, environmental characterization, a
 reference-laboratory campaign, and standardized excitation hardware are all
 named in DO-102 as out of scope. They become backlog items only if measured

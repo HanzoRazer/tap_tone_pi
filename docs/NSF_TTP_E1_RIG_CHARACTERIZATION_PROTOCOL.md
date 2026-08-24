@@ -29,17 +29,33 @@ no shaker, amplifier, transducer, interface, microphone, stinger stock, or tip
 geometry has been selected, and inventing a specification in this document would
 be inventing evidence.
 
+The canonical component list is
+[`docs/hardware/TTP_E1_HARDWARE_BOM.md`](hardware/TTP_E1_HARDWARE_BOM.md). Where
+this table and the BOM disagree, the BOM is right and this table is stale —
+`python scripts/check_e1_hardware_bom.py` checks exactly that.
+
 | Component | Record | Status |
 | --- | --- | --- |
+| Host | manufacturer, model, serial | DESIGN_SELECTED — Raspberry Pi 5, not confirmed owned |
+| Audio interface | manufacturer, model, channel count, sample rate | DESIGN_SELECTED — HiFiBerry DAC+ ADC Pro, not confirmed owned |
+| Mic preamp | design, gain, phantom | DESIGN_SPECIFIED — OPA1612 balanced preamp, board existence unconfirmed |
 | Shaker | manufacturer, model, serial | TBD |
 | Amplifier | manufacturer, model, serial | TBD |
 | Force transducer | manufacturer, model, serial, native unit, sensitivity **and the unit the manufacturer states it in** | TBD |
-| Audio interface | manufacturer, model, channel count, sample rate | TBD |
+| Force conditioner | manufacturer, model, supply current, output range | TBD |
 | Microphone | manufacturer, model, serial | TBD |
 | Stinger stock | material, diameter, length | TBD |
 | Contact tip | material, geometry | TBD |
 | Rig base and stand | description | TBD |
 | Reference structure | description, dimensions, material | TBD |
+
+**Design-selected is not owned.** Three rows above name components chosen in the
+authoritative [hardware stack specification](hardware/TTP_HARDWARE_STACK.md) as a
+design. The repository holds no evidence that any of them physically exists —
+every captured session under `runs_phase2/` is `"synthetic": true` with
+`"device": null`, or the `DEMO` fixture. Nothing advances past design selection
+without an entry in the
+[identity register](hardware/TTP_E1_HARDWARE_IDENTITY_REGISTER.md).
 
 Every row that stays TBD at execution time is recorded as unknown. It is never
 filled in with a plausible value: the reports distinguish *unknown* from
