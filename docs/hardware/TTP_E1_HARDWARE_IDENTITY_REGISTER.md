@@ -2,7 +2,7 @@
 
 **Status:** empty. No component has been received, so no component has an
 identity beyond its reserved local ID.
-**Dev Order:** DO-104P
+**Dev Order:** DO-104P; deliberately unchanged by DO-104S
 
 This register is the authority on **what is physically in hand**. The
 [BOM](TTP_E1_HARDWARE_BOM.md) records what is *chosen*; this file records what
@@ -32,6 +32,24 @@ document naming a Raspberry Pi 5 is not a Raspberry Pi 5.
 | STAND-001 | stand_base | TBD | TBD | TBD | TBD | TBD | NOT_RECEIVED | TBD | — |
 | REF-STRUCT-001 | reference_structure | TBD | TBD | n/a | TBD | TBD | NOT_RECEIVED | n/a | Asset label; a plate has no serial |
 | CABLE-001 | cabling | TBD | TBD | n/a | TBD | TBD | NOT_RECEIVED | n/a | — |
+
+## Why DO-104S did not touch this register
+
+DO-104S selected hardware and recommended a configuration. It deliberately added
+nothing here, and the omission is the point rather than an oversight.
+
+This register is the authority on **what is physically in hand**. Nothing is in
+hand. Writing a recommended manufacturer and model into these rows would put
+design identity into the one document whose entire purpose is to record physical
+identity, and the distinction between the two is what stops a design document
+from being read later as evidence of possession.
+
+The recommendation lives in the
+[procurement status](TTP_E1_PROCUREMENT_STATUS.md) and the
+[selection rationale](TTP_E1_HARDWARE_SELECTION_RATIONALE.md). The digests of
+the datasheets behind it live in the
+[datasheet manifest](TTP_E1_DATASHEET_MANIFEST.json). Rows here stay `TBD` and
+`NOT_RECEIVED` until something arrives and someone reads a serial number off it.
 
 ## Inspection status vocabulary
 

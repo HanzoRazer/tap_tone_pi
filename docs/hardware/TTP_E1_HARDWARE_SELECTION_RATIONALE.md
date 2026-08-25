@@ -349,6 +349,81 @@ of it establishes that this chain works.
 
 ---
 
+## The preferred E1 configuration
+
+The architecture gate in the [interface matrix](TTP_E1_INTERFACE_MATRIX.md)
+passed, so a preferred configuration may be nominated. This is a
+**recommendation to a human**, not a selection that has been acted on. Nothing
+below is owned, ordered, or authorized.
+
+| Role | Recommended | Why this one |
+| --- | --- | --- |
+| Force transducer | PCB Piezotronics **208C01** | 112.41 mV/N over ±44.48 N puts the exciter's full output at 40% of the input window. 0.01 Hz–36 kHz covers the E1 band with room. 10-32 female both ends matches the exciter and stinger stock |
+| Force conditioner | PCB Piezotronics **480C02** | Supplies 25–29 VDC at 2.0–3.2 mA, inside the sensor's 18–30 V / 2–20 mA window. Battery powered, so it introduces no mains ground path into the force channel. 3.25 µV rms noise is far below the sensor's own resolution |
+| Exciter | Brüel & Kjær **Type 4810** | 10 N is enough for a plate-scale structure and *not more* — the ceiling it sets is what keeps the force signal inside the input window without an attenuator. DC–18 kHz, 18 g moving mass, 10-32 UNF table |
+| Amplifier | Brüel & Kjær **Type 2718** | Manufacturer-paired with the 4810, including a stated 1.8 A current limit for it. 75 VA into 3 Ω against a 3.5 Ω exciter. Built-in attenuator and variable gain mean the amplifier adapts to the DAC output rather than the reverse |
+| Microphone | Earthworks **M23 G2** | Phantom-powered, so it uses the existing OPA1612 stage unchanged. Measurement-grade to 23 kHz. In stock at a published price, which no other serious candidate managed |
+| Mic preamp | existing **OPA1612** design | Already specified in the stack. The phantom microphone keeps it in the chain |
+| ADC | HiFiBerry **DAC+ ADC Pro** | Retained. Its verified input specification is what the whole level budget rests on. See the supply risk below |
+| Host | **Raspberry Pi 5** | Unchanged from the stack specification |
+| Stinger | B&K 10-32 stinger stock | Removes a fabrication step and matches the thread standard already running through the drive train. Fabrication remains acceptable; mass is measured either way |
+| Tip, stand, reference structure | fabricated | No purchasable item is preferable, and each is an E1 variable rather than a fixed part |
+
+### Why not the alternatives
+
+**Not the strain-gauge path (Path C), despite real advantages.** A load cell
+with a bridge conditioner offers DC response, a routine calibration certificate,
+and — through the IAA100's 256 selectable gain combinations — precise control of
+the level into the ADC. It was carried as the research-minimum force chain for
+exactly those reasons. It loses on the two properties E1 cares about most: added
+moving mass at the drive point, and mechanical bandwidth well below what a
+piezoelectric sensor reaches. The order's own warning applies here — a
+conditioner being easier to scale into the input window is not by itself a
+reason to prefer an architecture.
+
+**Not a larger exciter.** More force is not a virtue in this chain. It would
+consume the headroom that currently removes the attenuator, and a plate-scale
+reference structure does not need it.
+
+**Not the four-channel 482C05 for the preferred tier.** It is the right
+conditioner for reference grade, where it serves the CCP microphone as well as
+the force sensor. For a phantom microphone it is three unused channels and a
+mains ground path into the force chain.
+
+**Not the reference-grade microphone.** The GRAS 46AE is the better instrument
+and it changes the architecture to get there: CCP powering, no OPA1612 stage,
+and the conditioner in the response path. That is a coherent configuration and
+it is documented as the reference tier — it is simply not the smallest step from
+where the repository already is.
+
+### Total cost of the recommendation
+
+**Not established.** Three of the five instrument-grade items are
+quotation-based, and the priced remainder is not a tier cost. The recommendation
+identifies *what to buy*; it cannot yet say what it costs, and inventing a
+figure would be the kind of estimate this repository refuses.
+
+### Risks and assumptions carried by this recommendation
+
+| Risk / assumption | Consequence if wrong |
+| --- | --- |
+| **Supply.** The recommended ADC is superseded by its vendor and described as available in larger quantities for OEM customers on request | The level budget, and therefore the gate verdict, is verified against *this* board. The successor DAC2 ADC Pro does not publish its input specification and has not been verified here. If the DAC+ becomes unobtainable, the gate must be re-run against the successor before it is substituted |
+| **Aliasing.** The board carries no anti-aliasing filter | Out-of-band energy folds into the analysis band. Handled by band-limited excitation and characterized during E1; may require an external filter, which would become a BOM row |
+| **Assumed drive level.** The budget uses the exciter's 10 N rating as the worst case | If E1 drives harder than the rating, or a different exciter is substituted, the attenuator returns |
+| **Contact mass.** The transducer's specimen-side end mass is not on the datasheet | Mass cancellation cannot be computed until the assembled contact mass is weighed. E1 already records it as measured |
+| **Traceability.** No candidate is assumed to carry a calibration certificate | Sensitivity is recorded in the unit the manufacturer states. Traceability stays `UNKNOWN` unless a certificate is supplied with the unit |
+| **Possession.** Every component is `UNKNOWN` ownership | A purchase authorized from this recommendation without a physical census may duplicate equipment already on the bench |
+
+### What this recommendation is not
+
+It is not a purchase authorization, and it does not promote any component in the
+canonical BOM. The fourteen role rows still read `TBD` or `SELECTED` exactly as
+DO-104P left them, because ratifying a recommendation into the canonical
+selection is a human decision and belongs to the procurement gate that follows
+this order — not to the order that produced the recommendation.
+
+---
+
 ## What none of this establishes
 
 Datasheet figures are provenance for a nominal value: bandwidth, rated force,

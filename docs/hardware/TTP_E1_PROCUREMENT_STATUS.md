@@ -138,6 +138,73 @@ Consequence for the next pass: **lead time is a first-class selection
 criterion**, ranked beside price and specification. A part that is excellent and
 unobtainable this quarter is not the preferred choice.
 
+## DO-104S procurement recommendation
+
+This section is the human-readable procurement decision package. It is
+deliberately **separate from the ownership census above**, and neither one may
+be derived from the other.
+
+### The recommendation
+
+| Role | Recommended product | Selection status | Ownership | Procurement action |
+| --- | --- | --- | --- | --- |
+| FORCE-001 force_transducer | PCB Piezotronics 208C01 | RECOMMENDED | UNKNOWN | HOLD |
+| PRECOND-001 force_conditioner | PCB Piezotronics 480C02 | RECOMMENDED | UNKNOWN | HOLD |
+| SHAKER-001 shaker | Brüel & Kjær Type 4810 | RECOMMENDED | UNKNOWN | HOLD |
+| AMP-001 amplifier | Brüel & Kjær Type 2718 | RECOMMENDED | UNKNOWN | HOLD |
+| MIC-001 microphone | Earthworks M23 G2 | RECOMMENDED | UNKNOWN | HOLD |
+| ADC-001 adc_interface | HiFiBerry DAC+ ADC Pro | DESIGN_SELECTED, retained | UNKNOWN | HOLD |
+| HOST-001 host | Raspberry Pi 5 | DESIGN_SELECTED, retained | UNKNOWN | HOLD |
+| PREAMP-001 mic_preamp | OPA1612 design | DESIGN_SPECIFIED, retained | UNKNOWN | HOLD |
+| STINGER-001 stinger | B&K 10-32 stinger stock, or fabricated | RECOMMENDED | UNKNOWN | HOLD |
+| TIP-001 contact_tip | fabricated | NOT_SELECTED | UNKNOWN | HOLD |
+| STAND-001 stand_base | fabricated | NOT_SELECTED | UNKNOWN | HOLD |
+| REF-STRUCT-001 reference_structure | fabricated | NOT_SELECTED | UNKNOWN | HOLD |
+| ATTEN-001 attenuator | none — not required by the recommended pairing | CONDITIONAL | UNKNOWN | HOLD |
+| CABLE-001 cabling | six interconnects enumerated in the interface matrix | RECOMMENDED | UNKNOWN | HOLD |
+
+**`RECOMMENDED` is a new status and it is deliberately weaker than `SELECTED`.**
+It means DO-104S would choose this product and has shown the chain it sits in
+connects. It does not mean the campaign has chosen it — that ratification is a
+human decision.
+
+**Every action is `HOLD`, including for the recommended items.** Two independent
+reasons, either of which is sufficient: no budget is authorized, and no physical
+census has been performed. The validator enforces the second one directly —
+`RECOMMEND_PURCHASE` requires ownership `CONFIRMED_ABSENT`, and nothing here is
+established as absent.
+
+### The next action is not a purchase
+
+The correct next step is **`VERIFY_POSSESSION`**: a physical census of the bench
+that moves each row from `UNKNOWN` to `CONFIRMED_PRESENT` or `CONFIRMED_ABSENT`.
+Until that runs, a purchase order built from this table could duplicate
+equipment already owned — most plausibly the host, the ADC board, the
+microphone, or an amplifier, which are the four items a working audio bench is
+most likely to already have.
+
+Only after the census can a purchase be recommended, and only for rows that came
+back `CONFIRMED_ABSENT`.
+
+### What a decision-maker still does not have
+
+| Missing | Why it is missing | How to get it |
+| --- | --- | --- |
+| A total cost | PCB, Hottinger Brüel & Kjær, GRAS and FUTEK quote rather than publish | Request quotations — a procurement activity this order does not authorize |
+| Lead times for the instrument-grade items | Same reason | Same |
+| A physical inventory | No census has been performed | Run the census |
+| Confidence that the ADC will remain available | The recommended board is superseded by its vendor | Decide between procuring while available and verifying the successor's input specification |
+
+### Substitution rules carried forward
+
+The one substitution that must **not** be made silently is the ADC. The
+architecture gate was cleared against the DAC+ ADC Pro's published input
+specification. Its successor does not publish that specification on its product
+page and it was not verified here, so swapping boards invalidates the gate
+verdict until the gate is re-run. That is recorded in the substitution log
+below, in advance, because the supersession is already known.
+
+
 ## Substitution log
 
 No substitutions. When one occurs, DO-104P §4.13 requires it recorded here
@@ -145,4 +212,4 @@ No substitutions. When one occurs, DO-104P §4.13 requires it recorded here
 
 | Planned | Replacement | Reason | Affected interface | Review disposition |
 | --- | --- | --- | --- | --- |
-| — | — | — | — | — |
+| HiFiBerry DAC+ ADC Pro | HiFiBerry DAC2 ADC Pro | Vendor supersession; the DAC+ is described as available in larger quantities for OEM customers on request | ADC input window and gain range — the whole force-chain level budget | **Not authorized.** The gate was cleared against the DAC+ published input specification. The successor does not publish one on its product page and it was not verified here, so this substitution requires the architecture gate to be re-run first |
