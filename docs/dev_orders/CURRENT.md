@@ -1,11 +1,15 @@
 # Active Dev Order
 
-**Current:** DO-104 — E1 Hardware Bring-Up and Rig Characterization
-(PRE-EXECUTION — hardware **selection complete** under DO-104P and DO-104S;
-procurement not authorized; E1 physical execution has not begun)
-**Next:** run the physical possession census, then a procurement/receipt and
-as-built identity gate. E1 measurement execution comes after the hardware
-exists, not before
+**Current:** DO-104O — E1 Physical Ownership Reconciliation and Procurement
+Authorization Gate (**HUMAN-ASSISTED, BLOCKED at the census**). Base is
+`d3ae3b6`, the merge of PR #29. The gate is open and the census instrument
+exists at `docs/hardware/TTP_E1_OWNERSHIP_CENSUS.md`; it reads `NOT_PERFORMED`
+because ownership is observational and nobody has yet looked at the equipment.
+No ownership, selection, or procurement state may advance until it is filled
+from physical observation
+**Next:** perform the physical census, reconcile owned equipment against the E1
+architecture, then a human selection ruling and procurement authorization.
+Purchase, receipt, assembly and E1 measurement all come after, in that order
 **Just completed:** DO-104S — E1 hardware market selection and procurement
 decision package. The architecture gate **passed**: a complete
 contact-excitation, measured-force, microphone-response chain resolves against
