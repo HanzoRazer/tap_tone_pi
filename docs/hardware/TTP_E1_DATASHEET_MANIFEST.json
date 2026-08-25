@@ -4,8 +4,193 @@
   "policy": {
     "copyright": "Manufacturer documentation is not copied into this repository. Only the source reference, retrieval time, and content digest are recorded. Where a local archive exists outside the repository, local_archive_ref names it without making it the identity.",
     "identity": "The sha256 of the retrieved document is the durable identity. source_url may rot; the digest does not.",
-    "empty_state": "An empty entries list is the accurate state until a component is selected. No placeholder datasheet is recorded for an unselected part."
+    "empty_state": "An empty entries list is the accurate state until a component is selected. No placeholder datasheet is recorded for an unselected part.",
+    "retrieval": "Every digest here is the SHA-256 of the bytes actually served at source_url, retrieved with an HTTP client and hashed unmodified. No digest is computed over a rendered, extracted, or HTML-to-Markdown representation of a document - that would be a digest of something that is not the manufacturer's document. A source that could not be retrieved as a document is cited in the selection rationale as supporting information and is not a member of this manifest.",
+    "distributor_sources": "Distributor pages establish current price, stock, and lead time. They are not technical authority and do not appear here. Technical claims trace to manufacturer documents only.",
+    "local_archive": "local_archive_ref is null for every entry: retrieval was to an ephemeral working directory that is not preserved. The digest is the durable identity, which is the point of recording it.",
+    "candidate_coverage": "covers_candidates is declared, never inferred. A document covers a candidate only where that candidate's specification actually rests on it. An empty list means the document was retrieved during the survey and informed a rejection rather than a selection."
   },
-  "generated_at": "2026-08-24T00:00:00Z",
-  "entries": []
+  "generated_at": "2026-08-25T00:00:00Z",
+  "entries": [
+    {
+      "component_id": "HOST-001",
+      "manufacturer": "Raspberry Pi",
+      "model": "Raspberry Pi 5",
+      "document_title": "Raspberry Pi 5 Product Brief",
+      "document_revision": "not versioned in the document",
+      "document_format": "pdf",
+      "source_url": "https://datasheets.raspberrypi.com/rpi5/raspberry-pi-5-product-brief.pdf",
+      "retrieved_utc": "2026-08-25T06:00:33Z",
+      "sha256": "10583c80f867e05af185742bb0f80448458c606a32dd3dbefbbcfca480b59ead",
+      "byte_length": 1095537,
+      "technical_role": "Host platform: 40-pin GPIO header carrying the I2S interface the ADC board mounts to",
+      "covers_candidates": [
+        "HOST-RM-001",
+        "HOST-PE-001",
+        "HOST-RG-001"
+      ],
+      "local_archive_ref": null
+    },
+    {
+      "component_id": "ADC-001",
+      "manufacturer": "HiFiBerry",
+      "model": "DAC+ ADC Pro",
+      "document_title": "Datasheet DAC+ ADC Pro",
+      "document_revision": "not versioned by the publisher",
+      "document_format": "html",
+      "source_url": "https://www.hifiberry.com/docs/data-sheets/datasheet-dac-adc-pro/",
+      "retrieved_utc": "2026-08-25T05:44:50Z",
+      "sha256": "4d3759dac61f8148d10a61cfc3191c621cf162d1fb1942bad3a32453d91ade9d",
+      "byte_length": 45995,
+      "technical_role": "Establishes the binding acquisition limits: 2.1 Vrms maximum unbalanced input, -12 to +32 dB input gain, 44.1-192 kHz, and the 'low-jitter dual-domain clock' wording that does NOT establish DAC/ADC sample-lock",
+      "local_archive_ref": null,
+      "covers_candidates": [
+        "ADC-RM-001",
+        "ADC-PE-001",
+        "ADC-RG-001"
+      ]
+    },
+    {
+      "component_id": "FORCE-001",
+      "manufacturer": "PCB Piezotronics",
+      "model": "208C01",
+      "document_title": "ICP Force Sensor specification sheet",
+      "document_revision": "Revision K, ECN 45224",
+      "document_format": "pdf",
+      "source_url": "https://www.pcb.com/contentStore/docs/pcb_corporate/forcetorque/products/specsheets/208c01_k.pdf",
+      "retrieved_utc": "2026-08-25T05:42:23Z",
+      "sha256": "0045abf630fe4fc4076eeeab66802b9436956669be5d26ccfdeb991c3d2c4fe9",
+      "byte_length": 75875,
+      "technical_role": "Force sensitivity 500 mV/lb (112.41 mV/N), +/-10 lb range, 0.01 Hz to 36 kHz, 22.7 g mass, 10-32 female both ends - the numbers the force-chain level budget is computed from",
+      "local_archive_ref": null,
+      "covers_candidates": [
+        "FORCE-PE-001",
+        "FORCE-RG-001"
+      ]
+    },
+    {
+      "component_id": "PRECOND-001",
+      "manufacturer": "PCB Piezotronics",
+      "model": "480C02",
+      "document_title": "Battery-Powered Signal Conditioner for ICP Sensor specification sheet",
+      "document_revision": "Revision P, ECN 45339",
+      "document_format": "pdf",
+      "source_url": "https://www.pcb.com/contentstore/docs/pcb_corporate/electronics/products/specsheets/480c02_p.pdf",
+      "retrieved_utc": "2026-08-25T05:44:44Z",
+      "sha256": "5e3d723815ae1d240482960504db0faa413eb772ca066d315f2dc1ab9866f677",
+      "byte_length": 73562,
+      "technical_role": "Unity gain, 0.05 Hz to 500 kHz, 3.25 uV rms broadband noise, 25-29 VDC / 2.0-3.2 mA excitation - single-channel conditioner candidate",
+      "local_archive_ref": null,
+      "covers_candidates": [
+        "PRECOND-PE-001"
+      ]
+    },
+    {
+      "component_id": "PRECOND-001",
+      "manufacturer": "PCB Piezotronics",
+      "model": "482C05",
+      "document_title": "Four-channel ICP Sensor Signal Conditioner manual",
+      "document_revision": "Revision J, ECN 43617",
+      "document_format": "pdf",
+      "source_url": "https://www.pcb.com/contentstore/docs/PCB_Corporate/Electronics/Products/Manuals/482C05.pdf",
+      "retrieved_utc": "2026-08-25T05:42:33Z",
+      "sha256": "864c7cfb0817a2e681c151f39cd82264e59dfb7c19eb5cfabd11cdfcf0b84cf0",
+      "byte_length": 1174182,
+      "technical_role": "Four-channel unity-gain conditioner, +/-10 V output capability - conditions force and a CCP microphone from one chassis",
+      "local_archive_ref": null,
+      "covers_candidates": [
+        "PRECOND-RG-001"
+      ]
+    },
+    {
+      "component_id": "SHAKER-001",
+      "manufacturer": "Bruel & Kjaer (Hottinger Bruel & Kjaer)",
+      "model": "Type 4810",
+      "document_title": "Mini-shaker Type 4810 Product Data",
+      "document_revision": "BP 0232-16, 2021-06",
+      "document_format": "pdf",
+      "source_url": "https://www.bksv.com/media/doc/bp0232.pdf",
+      "retrieved_utc": "2026-08-25T05:44:46Z",
+      "sha256": "49317ad6dc32fb16e40552ce8137a4aa0f7a512706d9963c8063787b5a877ae7",
+      "byte_length": 893584,
+      "technical_role": "10 N force rating, DC-18 kHz, 18 g moving mass - sets the maximum force the transducer chain must represent without clipping",
+      "local_archive_ref": null,
+      "covers_candidates": [
+        "SHAKER-RM-001",
+        "SHAKER-PE-001",
+        "SHAKER-RG-001",
+        "STINGER-PE-001",
+        "STINGER-RG-001"
+      ]
+    },
+    {
+      "component_id": "AMP-001",
+      "manufacturer": "The Modal Shop (PCB Piezotronics)",
+      "model": "2100E21-400",
+      "document_title": "SmartAmp Power Amplifier datasheet",
+      "document_revision": "DS-0074 revF",
+      "document_format": "pdf",
+      "source_url": "https://www.modalshop.com/docs/themodalshoplibraries/datasheets/2100e21-400-smartamp-power-amplifier-datasheet-ds-0074.pdf",
+      "retrieved_utc": "2026-08-25T05:42:45Z",
+      "sha256": "84cf82bd3b4b5347909b734594f9826e8f75b9e2b9c34fb93b52611d5c0d3d73",
+      "byte_length": 545332,
+      "technical_role": "400 W, 38 V rms max output, 18 A peak current limit - reference-grade amplifier candidate",
+      "local_archive_ref": null,
+      "covers_candidates": []
+    },
+    {
+      "component_id": "MIC-001",
+      "manufacturer": "GRAS Sound & Vibration",
+      "model": "46AE",
+      "document_title": "1/2 inch CCP Free-field Standard Microphone Set",
+      "document_revision": "Dated 30-01-2015",
+      "document_format": "pdf",
+      "source_url": "https://www.ni.com/pdf/manuals/G.R.A.S._46AE.pdf",
+      "retrieved_utc": "2026-08-25T05:44:47Z",
+      "sha256": "6a4df72c482f23ef74a556681c88d4c713c10458ac7d15563e4f363d34a39a87",
+      "byte_length": 1007376,
+      "technical_role": "Reference-grade response microphone candidate. Requires CCP/IEPE (4 mA, 24 V), NOT 48 V phantom - the interface conflict with the OPA1612 preamp path",
+      "local_archive_ref": null,
+      "covers_candidates": [
+        "MIC-RG-001"
+      ]
+    },
+    {
+      "component_id": "MIC-001",
+      "manufacturer": "Earthworks Audio",
+      "model": "M23",
+      "document_title": "M23 Measurement Microphone datasheet",
+      "document_revision": "(c) 2021, May 2022 issue",
+      "document_format": "pdf",
+      "source_url": "https://earthworksaudio.com/wp-content/uploads/2022/05/Earthworks_Audio_M23_may2022.pdf",
+      "retrieved_utc": "2026-08-25T05:44:49Z",
+      "sha256": "890ab26fcbca7cc74fb2c41612783520e449cfd36dea5710845ac0312a664ec0",
+      "byte_length": 499718,
+      "technical_role": "Phantom-powered measurement microphone candidate (24-48 V, 10 mA) - compatible with the existing OPA1612 phantom preamp path",
+      "local_archive_ref": null,
+      "covers_candidates": [
+        "MIC-PE-001"
+      ]
+    },
+    {
+      "component_id": "AMP-001",
+      "manufacturer": "Bruel & Kjaer (Hottinger Bruel & Kjaer)",
+      "model": "Type 2718",
+      "document_title": "Power Amplifier Type 2718 Product Data",
+      "document_revision": "BP-1928",
+      "document_format": "pdf",
+      "source_url": "https://www.bksv.com/media/doc/bp1928.pdf",
+      "retrieved_utc": "2026-08-25T05:54:33Z",
+      "sha256": "ff1c5ad8dc96fb0890e28cb2137386894a44f23ead773c120ec1ed7c9de81fe7",
+      "byte_length": 427439,
+      "technical_role": "75 VA into 3 ohm, 10 Hz-20 kHz +/-0.5 dB, 40 dB gain, current limit 1-5 A rms with an explicit instruction to limit to 1.8 A for the 4810 - the manufacturer pairing the shaker requirement asks for",
+      "covers_candidates": [
+        "AMP-RM-001",
+        "AMP-PE-001",
+        "AMP-RG-001"
+      ],
+      "local_archive_ref": null
+    }
+  ],
+  "dev_order": "DO-104S"
 }

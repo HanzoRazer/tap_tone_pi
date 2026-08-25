@@ -203,6 +203,227 @@ configuration showed.
 
 ---
 
+## DO-104S market survey — sources, and what they establish
+
+Everything from here down was gathered on **2026-08-25** against the United
+States market in USD. It follows the source hierarchy the order sets: technical
+claims trace to manufacturer documents, and only to manufacturer documents.
+Distributor pages appear where they establish a *commercial* fact — current
+price, stock, lead time — and nowhere else.
+
+Eight manufacturer documents were retrieved as documents and are digested in
+[the datasheet manifest](TTP_E1_DATASHEET_MANIFEST.json). The digest is over the
+bytes actually served, not over a rendered or text-extracted version of them.
+Sources that could not be retrieved that way are cited below as supporting
+information and are deliberately absent from the manifest.
+
+### The force-chain level budget
+
+This is the calculation the whole order turns on, and it is computed from
+retrieved datasheet figures rather than from catalogue impressions:
+
+| Quantity | Value | Source |
+| --- | --- | --- |
+| 208C01 sensitivity | 500 mV/lb = **112.41 mV/N** | 208C01 spec sheet Rev K |
+| 208C01 measurement range | ±10 lb = **±44.48 N** | 208C01 spec sheet Rev K |
+| 208C01 output at its own full range | 44.48 N × 112.41 mV/N = **5.00 V pk** | derived |
+| 4810 force rating | **10 N sine peak** | B&K BP 0232-16 |
+| 208C01 output at the 4810 full force | 10 N × 112.41 mV/N = **1.124 V pk = 0.795 Vrms** | derived |
+| HiFiBerry max input, unbalanced | **2.1 Vrms = 2.97 V pk** | HiFiBerry DAC+ ADC Pro datasheet |
+| Headroom at the shaker maximum force | 2.97 / 1.124 = **2.6× (8.4 dB)** | derived |
+
+**The shaker sets the ceiling, not the ADC.** The transducer would clip the ADC
+at 26 N, and the exciter under consideration cannot produce more than 10 N. The
+attenuator that DO-104P carried as `ATTEN-001` — reserved in case a conditioner
+overran the input window — is not required by this pairing. It stays in the BOM
+as a conditional line rather than being deleted, because a different exciter or
+a higher-sensitivity transducer would bring it back.
+
+The risk turns out to run the other way. At low drive the force signal is
+*small*: 0.5 N of dynamic force is 56 mV peak, far below the input's useful
+region. The HiFiBerry published **−12 dB to +32 dB input gain** covers that —
++32 dB lifts 40 mVrms to about 1.6 Vrms — which makes the programmable input
+gain a load-bearing part of the force chain rather than a convenience.
+
+### Where the noise actually comes from
+
+| Contributor | Broadband noise | Referred to force |
+| --- | --- | --- |
+| 208C01 sensor, 1–10 kHz | 0.00045 N-rms stated directly | **450 µN** |
+| 480C02 conditioner, 1–10 kHz, gain ×1 | 3.25 µV rms | 29 µN |
+| HiFiBerry ADC (110 dB SNR typ. at 2.1 Vrms FS) | ≈6.6 µV rms | 59 µN |
+
+The sensor own resolution is roughly an order of magnitude coarser than either
+electronic contributor. **The acquisition path is not the limiting element in
+the force chain** — which is the opposite of the concern DO-104P recorded, and
+it is worth stating plainly because it removes the main reason to consider
+replacing the ADC. These are datasheet figures combined arithmetically; the
+installed noise floor is an E1 measurement and is not claimed here.
+
+### Mechanical interface — an unusually clean match
+
+The B&K 4810 fastening thread is **10-32 UNF**, and the PCB 208C01 is 10-32
+female at both ends. The exciter, the transducer, and standard stinger stock
+share one thread standard, so this pairing needs no adapter. That is recorded as
+a finding rather than an assumption: an adapter that is genuinely unnecessary
+must be shown to be unnecessary, not quietly omitted.
+
+The 4810 electrical demand is modest — **3.5 Ω coil impedance at 500 Hz, 1.8 A
+rms maximum input current**, so roughly 6.3 Vrms and about 11 W at full drive.
+This matters for tiering: a 400 W laboratory shaker amplifier is very large
+overkill for this exciter, and an amplifier decision can be made on coupling and
+noise rather than on power.
+
+### The synchronization question, answered narrowly
+
+DO-104S was asked to verify rather than assume, and the verification changes the
+claim that can be made.
+
+**What the manufacturer documentation establishes.** The HiFiBerry datasheet
+states a *"low-jitter dual-domain clock for optimised clock decoupling from the
+Raspberry Pi."* Read carefully, "dual-domain" refers to the two oscillator
+families that serve the 44.1 kHz and 48 kHz sample-rate groups, and the sentence
+is about isolating the board clocking from the Pi. **It does not state that the
+DAC and the ADC are sample-locked to each other**, and no retrieved manufacturer
+document does.
+
+**What E1 actually requires.** §4.12 requires synchronized *force and microphone*
+acquisition. Force and microphone are ch0 and ch1 of a single two-channel ADC,
+sampled by one converter into one I²S stream. Their mutual synchronization is a
+property of the converter, not an integration risk — it is structural, and it is
+the requirement that binds.
+
+**What must not be claimed.** Drive-to-response synchronization is a *different*
+claim, it is not established by any document retrieved here, and vendor support
+material states that a latency always exists between playback and capture. The
+consequence for TTP is a constraint rather than a blocker: **the commanded DAC
+signal may not be used as a phase reference.** E1 transfer functions are
+response-over-*measured-force*, both channels of the same ADC, so nothing in the
+intended measurement depends on drive-to-response sample alignment. Any future
+analysis that would use the commanded waveform as a phase reference needs its
+own architectural ruling and its own evidence.
+
+This distinction is recorded because collapsing it would be an easy and
+attractive error: "same board, so it must be synchronous" is exactly the kind of
+inference this repository exists to refuse.
+
+### The microphone powering conflict
+
+Reference-grade measurement microphones and studio measurement microphones are
+powered differently, and the difference cuts straight across the existing
+architecture:
+
+- **GRAS 46AE** — ½″ CCP free-field standard set, requiring **4 mA at 24 V CCP**.
+  CCP is the same powering scheme as IEPE and CCLD.
+- **Earthworks M23** — **24–48 V phantom at 10 mA**.
+
+The existing TTP response path is an OPA1612 preamp supplying 48 V phantom. The
+M23 drops into it. **The 46AE does not** — it needs constant-current powering,
+which is the same conditioning family the force sensor needs. So a reference-grade
+response microphone does not simply cost more; it *changes which box conditions
+it*, and a multi-channel ICP conditioner such as the 482C05 would then serve both
+the force sensor and the microphone while the OPA1612 phantom path goes unused.
+
+That is an architecture consequence, not a shopping preference, and it is why the
+tiers are compared as chains rather than as parts.
+
+### Rejected during this survey, with reasons
+
+| Candidate | Role considered | Rejected because |
+| --- | --- | --- |
+| Dayton Audio DAEX32EP-4 surface exciter | low-cost drive source | Mounts to the specimen with VHB adhesive and reacts against it. The requirement is a **grounded** exciter whose body does not ride on the specimen. It fails the architecture requirement, not the budget test — which is why it is rejected rather than tiered as a cheap option |
+| Commanded DAC voltage as the force channel | measured force | Not a force measurement. Explicitly refused by §4.10 and by the requirements document |
+| Reusing the Phase 2A reference microphone on ch0 | measured force | A microphone measures pressure. Relabelling it cannot make it a force channel |
+| PCB 480C02 as the sole conditioner where gain is needed | force conditioning | Unity gain only (1:1, ±2%). Retained as a candidate where the level budget does not need gain; where it does, a gain-selectable conditioner or the ADC own input gain must supply it |
+| The Modal Shop 2100E21-400 (400 W) | amplifier for a 4810-class exciter | 400 W into an exciter that draws about 11 W. Not wrong, but the power is unusable and the cost is not justified by the pairing. Retained only in the reference-grade tier, where a larger exciter would use it |
+
+### What is not yet established
+
+No preferred configuration is nominated in this section. Pricing for the
+laboratory-instrumentation candidates is **quotation-based** — PCB, The Modal
+Shop, Brüel & Kjær and GRAS do not publish list prices — so a genuine unit cost
+for the preferred and reference tiers cannot be stated from public sources and is
+recorded as unknown rather than estimated. Every figure above is a datasheet
+figure or arithmetic on datasheet figures. None of it is a measurement, and none
+of it establishes that this chain works.
+
+---
+
+## The preferred E1 configuration
+
+The architecture gate in the [interface matrix](TTP_E1_INTERFACE_MATRIX.md)
+passed, so a preferred configuration may be nominated. This is a
+**recommendation to a human**, not a selection that has been acted on. Nothing
+below is owned, ordered, or authorized.
+
+| Role | Recommended | Why this one |
+| --- | --- | --- |
+| Force transducer | PCB Piezotronics **208C01** | 112.41 mV/N over ±44.48 N puts the exciter's full output at 40% of the input window. 0.01 Hz–36 kHz covers the E1 band with room. 10-32 female both ends matches the exciter and stinger stock |
+| Force conditioner | PCB Piezotronics **480C02** | Supplies 25–29 VDC at 2.0–3.2 mA, inside the sensor's 18–30 V / 2–20 mA window. Battery powered, so it introduces no mains ground path into the force channel. 3.25 µV rms noise is far below the sensor's own resolution |
+| Exciter | Brüel & Kjær **Type 4810** | 10 N is enough for a plate-scale structure and *not more* — the ceiling it sets is what keeps the force signal inside the input window without an attenuator. DC–18 kHz, 18 g moving mass, 10-32 UNF table |
+| Amplifier | Brüel & Kjær **Type 2718** | Manufacturer-paired with the 4810, including a stated 1.8 A current limit for it. 75 VA into 3 Ω against a 3.5 Ω exciter. Built-in attenuator and variable gain mean the amplifier adapts to the DAC output rather than the reverse |
+| Microphone | Earthworks **M23 G2** | Phantom-powered, so it uses the existing OPA1612 stage unchanged. Measurement-grade to 23 kHz. In stock at a published price, which no other serious candidate managed |
+| Mic preamp | existing **OPA1612** design | Already specified in the stack. The phantom microphone keeps it in the chain |
+| ADC | HiFiBerry **DAC+ ADC Pro** | Retained. Its verified input specification is what the whole level budget rests on. See the supply risk below |
+| Host | **Raspberry Pi 5 8GB** | Unchanged from the stack specification |
+| Stinger | B&K **10-32 UNF stinger stock, 50 mm** | Removes a fabrication step and matches the thread standard already running through the drive train. Fabrication remains acceptable; mass is measured either way |
+| Tip, stand, reference structure | fabricated | No purchasable item is preferable, and each is an E1 variable rather than a fixed part |
+
+### Why not the alternatives
+
+**Not the strain-gauge path (Path C), despite real advantages.** A load cell
+with a bridge conditioner offers DC response, a routine calibration certificate,
+and — through the IAA100's 256 selectable gain combinations — precise control of
+the level into the ADC. It was carried as the research-minimum force chain for
+exactly those reasons. It loses on the two properties E1 cares about most: added
+moving mass at the drive point, and mechanical bandwidth well below what a
+piezoelectric sensor reaches. The order's own warning applies here — a
+conditioner being easier to scale into the input window is not by itself a
+reason to prefer an architecture.
+
+**Not a larger exciter.** More force is not a virtue in this chain. It would
+consume the headroom that currently removes the attenuator, and a plate-scale
+reference structure does not need it.
+
+**Not the four-channel 482C05 for the preferred tier.** It is the right
+conditioner for reference grade, where it serves the CCP microphone as well as
+the force sensor. For a phantom microphone it is three unused channels and a
+mains ground path into the force chain.
+
+**Not the reference-grade microphone.** The GRAS 46AE is the better instrument
+and it changes the architecture to get there: CCP powering, no OPA1612 stage,
+and the conditioner in the response path. That is a coherent configuration and
+it is documented as the reference tier — it is simply not the smallest step from
+where the repository already is.
+
+### Total cost of the recommendation
+
+**Not established.** Three of the five instrument-grade items are
+quotation-based, and the priced remainder is not a tier cost. The recommendation
+identifies *what to buy*; it cannot yet say what it costs, and inventing a
+figure would be the kind of estimate this repository refuses.
+
+### Risks and assumptions carried by this recommendation
+
+| Risk / assumption | Consequence if wrong |
+| --- | --- |
+| **Supply.** The recommended ADC is superseded by its vendor and described as available in larger quantities for OEM customers on request | The level budget, and therefore the gate verdict, is verified against *this* board. The successor DAC2 ADC Pro does not publish its input specification and has not been verified here. If the DAC+ becomes unobtainable, the gate must be re-run against the successor before it is substituted |
+| **Aliasing.** The board carries no anti-aliasing filter | Out-of-band energy folds into the analysis band. Handled by band-limited excitation and characterized during E1; may require an external filter, which would become a BOM row |
+| **Assumed drive level.** The budget uses the exciter's 10 N rating as the worst case | If E1 drives harder than the rating, or a different exciter is substituted, the attenuator returns |
+| **Contact mass.** The transducer's specimen-side end mass is not on the datasheet | Mass cancellation cannot be computed until the assembled contact mass is weighed. E1 already records it as measured |
+| **Traceability.** No candidate is assumed to carry a calibration certificate | Sensitivity is recorded in the unit the manufacturer states. Traceability stays `UNKNOWN` unless a certificate is supplied with the unit |
+| **Possession.** Every component is `UNKNOWN` ownership | A purchase authorized from this recommendation without a physical census may duplicate equipment already on the bench |
+
+### What this recommendation is not
+
+It is not a purchase authorization, and it does not promote any component in the
+canonical BOM. The fourteen role rows still read `TBD` or `SELECTED` exactly as
+DO-104P left them, because ratifying a recommendation into the canonical
+selection is a human decision and belongs to the procurement gate that follows
+this order — not to the order that produced the recommendation.
+
+---
+
 ## What none of this establishes
 
 Datasheet figures are provenance for a nominal value: bandwidth, rated force,

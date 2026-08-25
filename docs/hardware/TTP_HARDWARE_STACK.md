@@ -2,7 +2,11 @@
 
 **Document status:** Authoritative design reference
 **Scope:** TTP Analyzer physical instrument (standalone acoustic measurement device)
-**Revision:** 1.4 — Phase 2 split into **2A legacy speaker ODS** and **2B
+**Revision:** 1.5 — DO-104S verified the ADC input specification against the
+manufacturer datasheet: 2.1 Vrms is a maximum rather than an optimum, the input
+gain range is recorded, there is no anti-aliasing filter in the input path, and
+DAC-to-ADC sample lock is not established by any manufacturer document. No
+component selection in this document changed. Earlier (1.4): Phase 2 split into **2A legacy speaker ODS** and **2B
 contact-drive research architecture** (DO-104P). The NSF measurement program
 targets 2B; 2A remains documented for provenance and backward compatibility.
 Channel map now states both configurations explicitly, because they are mutually
@@ -45,7 +49,7 @@ Phase 2B — Contact-drive research architecture (two channel)
 > backward compatibility but is no longer the target architecture for the current
 > NSF measurement program.**
 >
-> Neither 2A nor 2B is validated hardware. As of Revision 1.4 no configuration in
+> Neither 2A nor 2B is validated hardware. As of Revision 1.5 no configuration in
 > this document has been physically assembled and witnessed: every captured
 > session under `runs_phase2/` is `"synthetic": true` with `"device": null`, or
 > the `DEMO` fixture. Once E1 succeeds and the contact-drive system is formally
@@ -196,7 +200,9 @@ latching relay or DIP switch to disable when using dynamic mics.
 | Parameter | Spec |
 |---|---|
 | Interface to Pi | I²S header (internal) |
-| Input range | ±3 V AC-coupled, optimal **0.8–2.1 Vrms** |
+| Input range | AC-coupled. **2.1 Vrms is the manufacturer's stated *maximum*** for the unbalanced input (2.97 V peak), not the top of a comfortable band; 4.2 Vrms balanced. Target around 1.0 Vrms |
+| Input gain | **−12 dB to +32 dB** programmable. Load-bearing for the Phase 2B force channel, where the signal is small rather than large |
+| Anti-aliasing | **None in the input path**, stated by the vendor as a recording-bandwidth feature. For measurement it means out-of-band energy folds back into the analysis band, so excitation is band-limited and the residual is characterized in E1 |
 | Sample rate | 44.1 / 48 / 96 kHz (configured in tap_tone_pi) |
 | Bit depth | 24-bit |
 | Input connector | RCA (unbalanced) from preamp |
@@ -204,6 +210,12 @@ latching relay or DIP switch to disable when using dynamic mics.
 
 The ADC is AC-coupled. The OPA1612 output must not carry DC offset —
 the circuit handles this by design (op-amp DC offset < 1 mV typical).
+
+**Supply note (DO-104S, 2026-08-25).** HiFiBerry describes the DAC+ ADC Pro as
+superseded by the DAC2 ADC Pro and available in larger quantities for OEM
+customers on request. The figures above are verified against the DAC+; the
+successor does not publish its input specification on its product page and has
+not been verified. Substituting it requires re-running the E1 architecture gate.
 
 ---
 
@@ -216,7 +228,7 @@ the circuit handles this by design (op-amp DC offset < 1 mV typical).
 | OS | Raspberry Pi OS 64-bit |
 | DSP engine | tap_tone_pi (Python / Cython) |
 | Signal generation | `tap_tone_pi.signal_gen` — chirp, sweep, sine |
-| Playback | `sd.playrec()` via sounddevice (simultaneous I/O) |
+| Playback | `sd.playrec()` via sounddevice (simultaneous I/O). **Simultaneous is not sample-locked:** no manufacturer document establishes DAC-to-ADC sample lock, so the commanded waveform is not a phase reference. Phase 2B measures response over *measured force*, and those two are channels of one converter |
 | FastAPI server | port 8000 |
 | Viewer output | `viewer_pack_v1.json` over USB or Ethernet |
 | Phase 2 latency | ~3.1 ms (capture → analysis) |
@@ -375,3 +387,4 @@ evidence of possession**.
 | 1.2 | 2026-03-30 | Gain staging corrected (+39/+52/+61 dB 3-position switch); self-excitation architecture documented; calibration loop section added; speaker driver section added |
 | 1.3 | 2026-07-08 | Merged unique sections from the superseded `HARDWARE_STACK_SPEC.md` (per-unit calibration coverage, "What This Document Is Not" scope boundary); removed the duplicate |
 | 1.4 | 2026-08-24 | Phase 2 split into 2A legacy speaker ODS and 2B contact-drive research architecture (DO-104P). Channel map added: ch0 carries a reference microphone in 2A and a conditioned force signal in 2B, and the two are mutually exclusive on a two-channel ADC. Speaker-distortion/coherence argument scoped to 2A only, since the shaker chain is mechanically in series with the specimen. Contact-drive component specification, selection, and procurement moved to the `TTP_E1_*` documents. Records that no configuration in this document has yet been physically assembled and witnessed |
+| 1.5 | 2026-08-25 | DO-104S read the acquisition board's own datasheet at the level the force chain needs. Corrections and additions only, no selection change: 2.1 Vrms unbalanced is the stated *maximum* rather than the top of an optimal band (the earlier wording implied valid room above it); the −12 to +32 dB programmable input gain is recorded, and is load-bearing for Phase 2B because the force signal is small rather than large; the vendor states there is no anti-aliasing filter in the input path, which for a measurement instrument means out-of-band energy folds back rather than being rejected; and `sd.playrec()` being simultaneous does not make it sample-locked, so the commanded waveform is not a phase reference. Records the vendor's supersession of the board |

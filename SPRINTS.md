@@ -199,6 +199,12 @@ docstring, **not** here.
   with ±5 V or ±10 V full scale needs an attenuator as its own BOM line rather
   than software scaling. Whether `ATTEN-001` exists at all is genuinely open
   until a conditioner is chosen.
+- **Update (DO-104S, 2026-08-25):** the specification half is answered. A
+  208C01 into a 480C02 puts 1.124 V peak into a 2.1 Vrms maximum at the
+  recommended exciter's full force, so `ATTEN-001` is **not required by that
+  pairing** and stays conditional rather than struck - a larger exciter brings
+  it back. Both parts are `RECOMMENDED`, not `SELECTED`. The unowned half is
+  untouched: ownership is `UNKNOWN` and no purchase is authorized.
 - **Trigger:** an authorized E1 hardware budget.
 - **Acceptance:** `FORCE-001` and `PRECOND-001` reach `SELECTED` with a resolved
   output window, and `ATTEN-001` is either specified or struck.
@@ -222,6 +228,11 @@ docstring, **not** here.
   records honestly as `TBD` rather than implying a choice exists. Traceability
   stays `UNKNOWN` unless a calibrated microphone is procured, and E1 makes no
   calibrated-pressure claim either way.
+- **Update (DO-104S, 2026-08-25):** an Earthworks M23 G2 is `RECOMMENDED` for
+  the preferred tier and a GRAS 46AE for reference grade. The two are not
+  interchangeable: the 46AE is CCP-powered and cannot use the OPA1612 phantom
+  stage at all, so choosing it moves the microphone onto the force conditioner.
+  Traceability remains `UNKNOWN` for both unless a certificate is supplied.
 - **Trigger:** E1 procurement.
 - **Acceptance:** `MIC-001` reaches `SELECTED`.
 
@@ -255,6 +266,51 @@ named in DO-102 as out of scope. They become backlog items only if measured
 evidence calls for them — not because a grant narrative would like to cite them.
 
 ---
+
+### B-014 — The E1 ADC has no anti-aliasing filter in its input path
+
+- **Status:** open · **Priority:** P1 · **Area:** `docs/hardware/`, `tap_tone_pi/capture/`
+- **Origin:** DO-104S, reading the HiFiBerry datasheet at the level the force
+  chain needed.
+- **Context:** the vendor states there is no anti-aliasing filter in the input
+  path and offers it as a recording-bandwidth feature. For a measurement
+  instrument it means energy above Nyquist folds back into the analysis band and
+  arrives indistinguishable from real content. This is a property of the board
+  already in the design, so it applies to Phase 2A captures too — not only to the
+  E1 force chain that surfaced it. The transducer's own 36 kHz limit helps at
+  96 kHz but does not bound broadband contact noise.
+- **Trigger:** E1 bench work, or any claim about usable bandwidth.
+- **Acceptance:** excitation bandwidth is limited and recorded per run, the
+  residual is characterized by measurement rather than assumed negligible, and
+  external filtering is either shown unnecessary or added as its own BOM row.
+
+### B-015 — The design-baseline ADC is superseded by its vendor
+
+- **Status:** open · **Priority:** P2 · **Area:** `docs/hardware/`
+- **Origin:** DO-104S market research.
+- **Context:** HiFiBerry describes the DAC+ ADC Pro as superseded by the DAC2
+  ADC Pro and available in larger quantities for OEM customers on request. It is
+  still purchasable at $64.90 (checked 2026-08-25). The whole E1 level budget and
+  the architecture gate verdict rest on the DAC+'s published input specification;
+  the successor does not publish one on its product page and was not verified.
+- **Trigger:** procurement, or the DAC+ becoming unobtainable.
+- **Acceptance:** either the DAC+ is procured while available, or the successor's
+  input specification is obtained and the E1 architecture gate is re-run against
+  it before any substitution.
+
+### B-016 — No physical possession census has ever been run
+
+- **Status:** open · **Priority:** P1 · **Area:** `docs/hardware/`
+- **Origin:** DO-104S ownership census, which recorded ten components as
+  `UNKNOWN` because that is what is actually known.
+- **Context:** `UNKNOWN` means nobody has looked, not that a component is absent,
+  and the validator refuses `RECOMMEND_PURCHASE` against it for that reason. Four
+  items are the ones a working audio bench most plausibly already has — the host,
+  the ADC board, a microphone, and an amplifier — so a purchase order built from
+  the DO-104S recommendation before the census could duplicate them.
+- **Trigger:** before any E1 purchase.
+- **Acceptance:** every census row moves to `CONFIRMED_PRESENT` or
+  `CONFIRMED_ABSENT`, with present items carrying identity-register entries.
 
 ## Not backlog — recorded here only so they aren't mistaken for open items
 

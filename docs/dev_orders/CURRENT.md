@@ -1,9 +1,17 @@
 # Active Dev Order
 
 **Current:** DO-104 — E1 Hardware Bring-Up and Rig Characterization
-(PRE-EXECUTION — hardware selection and procurement in progress under DO-104P;
-E1 physical execution has not begun)
-**Next:** select and procure the E1 hardware, then build the rig and execute E1
+(PRE-EXECUTION — hardware **selection complete** under DO-104P and DO-104S;
+procurement not authorized; E1 physical execution has not begun)
+**Next:** run the physical possession census, then a procurement/receipt and
+as-built identity gate. E1 measurement execution comes after the hardware
+exists, not before
+**Just completed:** DO-104S — E1 hardware market selection and procurement
+decision package. The architecture gate **passed**: a complete
+contact-excitation, measured-force, microphone-response chain resolves against
+the existing HiFiBerry acquisition architecture without replacing the ADC or
+introducing an asynchronous scheme. A preferred configuration is `RECOMMENDED`;
+nothing is selected, ordered, owned, or verified
 **Queued:** DO-105 — E2 Fixed-Point Repeatability (BLOCKED on the E1 gate);
 DO-101B — Empirical Registry and Inspection Surface (NOT STARTED)
 **Previous:** DO-103 Stages 3 and 3b — Phase 2 ingestion, the
