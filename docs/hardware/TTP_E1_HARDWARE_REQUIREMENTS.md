@@ -1,7 +1,7 @@
 # TTP E1 — Hardware Requirements
 
 **Status:** requirements frozen; no product selected.
-**Dev Order:** DO-104P — E1 Hardware Selection, Procurement, and Bench Readiness
+**Dev Order:** DO-104P; extended by DO-104S — E1 Hardware Selection, Procurement, and Bench Readiness
 
 This document exists to be written *before* anyone looks at a product page.
 DO-104P §10 Stage 0 is explicit about the order: freeze what each component has
@@ -201,6 +201,79 @@ are not investigated equally.
 
 Path D means abandoning the existing ADC and its proven synchronized capture, so
 it carries the largest architectural cost and is the last resort.
+
+**DO-104S determination.** Path A resolves against the existing ADC with 2.6x
+headroom at the selected exciter's full force, so **Path D is not required**
+and the existing acquisition architecture is retained. Path C was carried as
+the research-minimum force chain, where a bridge conditioner's selectable gain
+and a load cell's routine calibration certificate are real advantages, against
+the bandwidth and added-mass costs this table already names. Path B was not
+needed. See the [interface matrix](TTP_E1_INTERFACE_MATRIX.md) for the gate
+verdict.
+
+## Requirements added or corrected by DO-104S
+
+Three of these came out of reading the acquisition board's own datasheet at a
+level of detail DO-104P did not reach. They are added because the complete-chain
+evaluation showed them to be necessary — not because a product would look better
+against them.
+
+### Correction — how the input window is stated
+
+DO-104P recorded the ADC input as "±3 V" with an "optimal region" of
+0.8–2.1 Vrms. The manufacturer's datasheet states **2.1 Vrms as the maximum
+input voltage** for the unbalanced input, not as the top of a comfortable band.
+The two figures are the same number in different units — 2.1 Vrms is 2.97 V peak
+— so nothing about the selection changes, but the wording did imply that
+somewhere above 2.1 Vrms was merely sub-optimal rather than over the limit.
+
+**The requirement is: the conditioned force signal must stay below 2.1 Vrms
+unbalanced at the highest force the selected exciter can produce.** A balanced
+input option exists at 4.2 Vrms and is available if a future pairing needs the
+headroom.
+
+### New requirement — aliasing must be handled deliberately
+
+The selected acquisition board states that it carries **no anti-aliasing filter
+in the input path**, offered as a recording-bandwidth feature. For a measurement
+instrument that is a property to design around rather than a benefit: energy
+above Nyquist folds back into the analysis band instead of being rejected, and
+it arrives indistinguishable from real content.
+
+| Requirement | Value / criterion |
+| --- | --- |
+| Excitation bandwidth | Band-limited by the signal generator, with the limit recorded per run |
+| Residual aliasing | Characterized during E1 rather than assumed negligible |
+| External filtering | Permitted as a designed-in element if E1 shows it is needed; it becomes a BOM row if added, never an undocumented insertion |
+
+The transducer's own 36 kHz upper limit helps at 96 kHz sampling but does not
+bound broadband contact noise, so it is not a substitute for handling this.
+
+### New requirement — the commanded signal is not a phase reference
+
+Manufacturer documentation establishes that the board's clocking is decoupled
+from the host. It does **not** establish that the DAC and the ADC are
+sample-locked to one another, and vendor support material states that a latency
+always exists between playback and capture.
+
+| Requirement | Value / criterion |
+| --- | --- |
+| Phase reference | The **measured force channel**, never the commanded DAC waveform |
+| Force-to-response synchronization | Preserved structurally by using both channels of one converter |
+| Any analysis using the commanded waveform for phase | Requires its own architectural ruling and its own evidence |
+
+This is a constraint rather than a blocker: E1's transfer function is response
+over measured force, and both are channels of the same converter.
+
+### New requirement — contact mass is weighed, not derived
+
+The selected transducer's datasheet gives a total mass but does not break out
+the specimen-side end mass that actually loads the drive point. E1 already
+records `combined_contact_mass_g` as a measured field, and this confirms why it
+must stay measured: the number needed for mass cancellation is not on any
+datasheet and cannot be derived from one.
+
+---
 
 ## What this document does not establish
 
