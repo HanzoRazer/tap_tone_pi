@@ -701,7 +701,9 @@ class TestTierCompleteness:
     def test_the_attenuator_is_never_required(self, checker):
         rows, specs = complete_tier()
         by_id = {s["spec_for"]: s for s in specs}
-        assert not any("attenuator" in p for p in checker.validate_tier_completeness(rows, by_id))
+        assert not any(
+            "attenuator" in p for p in checker.validate_tier_completeness(rows, by_id)
+        )
 
     def test_an_incomplete_tier_is_not_silently_complete(self, checker):
         # C.17: the failure mode is a comparison table that reads as a finished
@@ -715,32 +717,52 @@ class TestTierCompleteness:
 class TestCandidateIdentity:
     def test_a_duplicate_candidate_id_is_refused(self, checker):
         rows = [candidate("shaker"), candidate("shaker")]
-        assert any("duplicate" in p for p in checker.validate_candidate_identity(rows, fake_bom()))
+        assert any(
+            "duplicate" in p
+            for p in checker.validate_candidate_identity(rows, fake_bom())
+        )
 
     def test_a_candidate_naming_no_role_is_refused(self, checker):
         rows = [candidate("shaker", role_local_id="SHAKR-001")]
-        assert any("not a canonical BOM row" in p for p in
-                   checker.validate_candidate_identity(rows, fake_bom()))
+        assert any(
+            "not a canonical BOM row" in p
+            for p in checker.validate_candidate_identity(rows, fake_bom())
+        )
 
     def test_a_candidate_filed_against_the_wrong_role_is_refused(self, checker):
         rows = [candidate("shaker", role_local_id="MIC-001")]
-        assert any("does not match role" in p for p in
-                   checker.validate_candidate_identity(rows, fake_bom()))
+        assert any(
+            "does not match role" in p
+            for p in checker.validate_candidate_identity(rows, fake_bom())
+        )
 
     def test_candidates_never_appear_in_the_canonical_role_table(self, checker, bom):
         # Ruling 5: downstream identity and protocol machinery must not come to
         # depend on a vendor choice.
         assert {row["local_id"] for row in bom} == {
-            "HOST-001", "ADC-001", "PREAMP-001", "MIC-001", "FORCE-001",
-            "PRECOND-001", "ATTEN-001", "SHAKER-001", "AMP-001", "STINGER-001",
-            "TIP-001", "STAND-001", "REF-STRUCT-001", "CABLE-001",
+            "HOST-001",
+            "ADC-001",
+            "PREAMP-001",
+            "MIC-001",
+            "FORCE-001",
+            "PRECOND-001",
+            "ATTEN-001",
+            "SHAKER-001",
+            "AMP-001",
+            "STINGER-001",
+            "TIP-001",
+            "STAND-001",
+            "REF-STRUCT-001",
+            "CABLE-001",
         }
 
 
 class TestFunctionalChain:
     def test_a_candidate_in_the_wrong_chain_is_refused(self, checker):
         rows = [candidate("shaker", functional_chain="force_measurement")]
-        assert any("contact_excitation" in p for p in checker.validate_functional_chain(rows))
+        assert any(
+            "contact_excitation" in p for p in checker.validate_functional_chain(rows)
+        )
 
     def test_an_unknown_chain_is_refused(self, checker):
         rows = [candidate("shaker", functional_chain="vibes")]
@@ -761,8 +783,11 @@ class TestMeasuredForceCannotBeFaked:
 
     def test_commanded_voltage_cannot_be_the_force_candidate(self, checker):
         rows = [candidate("force_transducer", role_local_id="FORCE-001")]
-        specs = {rows[0]["candidate_id"]: spec(rows[0]["candidate_id"],
-                                               model="commanded DAC output level")}
+        specs = {
+            rows[0]["candidate_id"]: spec(
+                rows[0]["candidate_id"], model="commanded DAC output level"
+            )
+        }
         problems = checker.validate_measured_force(rows, specs)
         assert any("commanded" in p for p in problems)
 
@@ -774,28 +799,51 @@ class TestMeasuredForceCannotBeFaked:
 
 class TestCostFields:
     def test_correct_arithmetic_passes(self, checker):
-        assert checker.validate_cost_fields(
-            [candidate("shaker", quantity="3", unit_cost_usd="10.00",
-                       extended_cost_usd="30.00")]
-        ) == []
+        assert (
+            checker.validate_cost_fields(
+                [
+                    candidate(
+                        "shaker",
+                        quantity="3",
+                        unit_cost_usd="10.00",
+                        extended_cost_usd="30.00",
+                    )
+                ]
+            )
+            == []
+        )
 
     def test_contradictory_extended_cost_is_refused(self, checker):
         problems = checker.validate_cost_fields(
-            [candidate("shaker", quantity="3", unit_cost_usd="10.00",
-                       extended_cost_usd="25.00")]
+            [
+                candidate(
+                    "shaker",
+                    quantity="3",
+                    unit_cost_usd="10.00",
+                    extended_cost_usd="25.00",
+                )
+            ]
         )
         assert any("does not equal" in p for p in problems)
 
     def test_zero_quantity_is_refused_where_priced(self, checker):
-        assert any("greater than zero" in p for p in checker.validate_cost_fields(
-            [candidate("shaker", quantity="0")]
-        ))
+        assert any(
+            "greater than zero" in p
+            for p in checker.validate_cost_fields([candidate("shaker", quantity="0")])
+        )
 
     @pytest.mark.parametrize("non_value", ["UNKNOWN", "QUOTE_REQUIRED"])
     def test_an_unpriced_row_is_represented_honestly(self, checker, non_value):
-        assert checker.validate_cost_fields(
-            [candidate("shaker", unit_cost_usd=non_value, extended_cost_usd=non_value)]
-        ) == []
+        assert (
+            checker.validate_cost_fields(
+                [
+                    candidate(
+                        "shaker", unit_cost_usd=non_value, extended_cost_usd=non_value
+                    )
+                ]
+            )
+            == []
+        )
 
     @pytest.mark.parametrize("non_value", ["UNKNOWN", "QUOTE_REQUIRED"])
     def test_an_unknown_price_may_not_become_zero(self, checker, non_value):
@@ -806,15 +854,25 @@ class TestCostFields:
         assert any("must stay unpriced" in p for p in problems)
 
     def test_an_unrecognised_cost_placeholder_is_refused(self, checker):
-        assert any("neither a number nor" in p for p in checker.validate_cost_fields(
-            [candidate("shaker", unit_cost_usd="ask Bob", extended_cost_usd="ask Bob")]
-        ))
+        assert any(
+            "neither a number nor" in p
+            for p in checker.validate_cost_fields(
+                [
+                    candidate(
+                        "shaker", unit_cost_usd="ask Bob", extended_cost_usd="ask Bob"
+                    )
+                ]
+            )
+        )
 
     def test_tier_totals_exclude_unpriced_rows(self, checker):
         rows = [
             candidate("shaker", unit_cost_usd="10.00", extended_cost_usd="10.00"),
-            candidate("amplifier", unit_cost_usd="QUOTE_REQUIRED",
-                      extended_cost_usd="QUOTE_REQUIRED"),
+            candidate(
+                "amplifier",
+                unit_cost_usd="QUOTE_REQUIRED",
+                extended_cost_usd="QUOTE_REQUIRED",
+            ),
         ]
         total = sum(
             checker.as_money(r["extended_cost_usd"]) or 0.0
@@ -828,76 +886,120 @@ class TestCostFields:
 class TestSourceProvenance:
     def test_a_candidate_without_a_technical_source_is_refused(self, checker):
         rows = [candidate("shaker")]
-        specs = {rows[0]["candidate_id"]: spec(rows[0]["candidate_id"],
-                                               technical_source="TBD")}
-        assert any("no technical source" in p for p in
-                   checker.validate_source_provenance(rows, specs))
+        specs = {
+            rows[0]["candidate_id"]: spec(
+                rows[0]["candidate_id"], technical_source="TBD"
+            )
+        }
+        assert any(
+            "no technical source" in p
+            for p in checker.validate_source_provenance(rows, specs)
+        )
 
     def test_a_priced_row_without_a_commercial_source_is_refused(self, checker):
         rows = [candidate("shaker", commercial_source="—")]
         specs = {rows[0]["candidate_id"]: spec(rows[0]["candidate_id"])}
-        assert any("no commercial source" in p for p in
-                   checker.validate_source_provenance(rows, specs))
+        assert any(
+            "no commercial source" in p
+            for p in checker.validate_source_provenance(rows, specs)
+        )
 
     def test_a_market_observation_without_a_date_is_refused(self, checker):
         rows = [candidate("shaker", checked_date="recently")]
         specs = {rows[0]["candidate_id"]: spec(rows[0]["candidate_id"])}
-        assert any("not an ISO-8601 date" in p for p in
-                   checker.validate_source_provenance(rows, specs))
+        assert any(
+            "not an ISO-8601 date" in p
+            for p in checker.validate_source_provenance(rows, specs)
+        )
 
     def test_a_fabricated_part_needs_no_distributor(self, checker):
         # Demanding one would push the document toward inventing a supplier for
         # something nobody sells.
-        rows = [candidate("stinger", unit_cost_usd="UNKNOWN",
-                          extended_cost_usd="UNKNOWN", availability="FABRICATED",
-                          commercial_source="—", lead_time="UNKNOWN")]
+        rows = [
+            candidate(
+                "stinger",
+                unit_cost_usd="UNKNOWN",
+                extended_cost_usd="UNKNOWN",
+                availability="FABRICATED",
+                commercial_source="—",
+                lead_time="UNKNOWN",
+            )
+        ]
         specs = {rows[0]["candidate_id"]: spec(rows[0]["candidate_id"])}
         assert checker.validate_source_provenance(rows, specs) == []
 
     def test_a_candidate_with_no_specification_row_is_refused(self, checker):
-        assert any("no specification row" in p for p in
-                   checker.validate_source_provenance([candidate("shaker")], {}))
+        assert any(
+            "no specification row" in p
+            for p in checker.validate_source_provenance([candidate("shaker")], {})
+        )
 
 
 class TestProcurementSemantics:
     def test_unknown_ownership_with_hold_is_the_normal_state(self, checker):
-        assert checker.validate_procurement_semantics(
-            [candidate("shaker", ownership="UNKNOWN", procurement_action="HOLD")]
-        ) == []
+        assert (
+            checker.validate_procurement_semantics(
+                [candidate("shaker", ownership="UNKNOWN", procurement_action="HOLD")]
+            )
+            == []
+        )
 
     def test_unknown_ownership_does_not_require_buying(self, checker):
-        rows = [candidate("shaker", ownership="UNKNOWN",
-                          procurement_action="VERIFY_POSSESSION")]
+        rows = [
+            candidate(
+                "shaker", ownership="UNKNOWN", procurement_action="VERIFY_POSSESSION"
+            )
+        ]
         assert checker.validate_procurement_semantics(rows) == []
 
     def test_recommending_purchase_against_unknown_ownership_is_refused(self, checker):
         # The inference error the census exists to prevent: UNKNOWN means nobody
         # looked, and buying on that basis duplicates equipment already owned.
-        rows = [candidate("shaker", ownership="UNKNOWN",
-                          procurement_action="RECOMMEND_PURCHASE")]
+        rows = [
+            candidate(
+                "shaker", ownership="UNKNOWN", procurement_action="RECOMMEND_PURCHASE"
+            )
+        ]
         problems = checker.validate_procurement_semantics(rows)
         assert any("nobody has looked yet" in p for p in problems)
 
     def test_purchase_may_be_recommended_once_absence_is_established(self, checker):
-        rows = [candidate("shaker", ownership="CONFIRMED_ABSENT",
-                          procurement_action="RECOMMEND_PURCHASE")]
+        rows = [
+            candidate(
+                "shaker",
+                ownership="CONFIRMED_ABSENT",
+                procurement_action="RECOMMEND_PURCHASE",
+            )
+        ]
         assert checker.validate_procurement_semantics(rows) == []
 
     def test_a_preferred_candidate_may_remain_unknown_and_held(self, checker):
-        rows = [candidate("force_transducer", tier="PREFERRED_E1",
-                          ownership="UNKNOWN", procurement_action="HOLD")]
+        rows = [
+            candidate(
+                "force_transducer",
+                tier="PREFERRED_E1",
+                ownership="UNKNOWN",
+                procurement_action="HOLD",
+            )
+        ]
         assert checker.validate_procurement_semantics(rows) == []
         assert checker.validate_tier_vocabulary(rows) == []
 
     def test_an_unknown_ownership_state_is_refused(self, checker):
-        assert any("ownership state" in p for p in
-                   checker.validate_procurement_semantics(
-                       [candidate("shaker", ownership="PROBABLY_HAVE_ONE")]))
+        assert any(
+            "ownership state" in p
+            for p in checker.validate_procurement_semantics(
+                [candidate("shaker", ownership="PROBABLY_HAVE_ONE")]
+            )
+        )
 
     def test_an_unknown_procurement_action_is_refused(self, checker):
-        assert any("procurement_action" in p for p in
-                   checker.validate_procurement_semantics(
-                       [candidate("shaker", procurement_action="ORDER_IT")]))
+        assert any(
+            "procurement_action" in p
+            for p in checker.validate_procurement_semantics(
+                [candidate("shaker", procurement_action="ORDER_IT")]
+            )
+        )
 
     @pytest.mark.parametrize(
         "claim", ["RECEIVED", "ASSEMBLED", "CALIBRATED", "VERIFIED_ON_HARDWARE"]
@@ -933,9 +1035,7 @@ class TestTheCommittedCandidateTables:
         by_id = {s["spec_for"]: s for s in specs}
         assert checker.validate_tier_completeness(candidates, by_id) == []
 
-    def test_nothing_is_owned_and_nothing_is_recommended_for_purchase(
-        self, candidates
-    ):
+    def test_nothing_is_owned_and_nothing_is_recommended_for_purchase(self, candidates):
         assert {r["ownership"] for r in candidates} == {"UNKNOWN"}
         assert {r["procurement_action"] for r in candidates} == {"HOLD"}
 
@@ -975,8 +1075,7 @@ class TestADocumentWithoutCandidatesStillValidates:
     def test_absent_candidate_tables_are_tolerated(self, checker, tmp_path):
         document = tmp_path / "bom.md"
         document.write_text(
-            "| local_id | component_class |\n| --- | --- |\n"
-            "| HOST-001 | host |\n",
+            "| local_id | component_class |\n| --- | --- |\n| HOST-001 | host |\n",
             encoding="utf-8",
         )
         assert checker.parse_optional_table(document, checker.CANDIDATE_KEY) is None
@@ -988,7 +1087,9 @@ class TestADocumentWithoutCandidatesStillValidates:
         problems = checker.check_candidates([candidate("shaker")], None, fake_bom())
         assert any("no specification table" in p for p in problems)
 
-    def test_a_half_present_candidate_table_is_a_document_error(self, checker, tmp_path):
+    def test_a_half_present_candidate_table_is_a_document_error(
+        self, checker, tmp_path
+    ):
         document = tmp_path / "bom.md"
         document.write_text(
             "| candidate_id | selection_tier |\n| --- | --- |\n"
@@ -1010,9 +1111,9 @@ class TestTheArchitectureStopCondition:
     """
 
     def test_the_checker_never_substitutes_a_component(self, checker):
-        source = (
-            REPO_ROOT / "scripts" / "check_e1_hardware_bom.py"
-        ).read_text(encoding="utf-8")
+        source = (REPO_ROOT / "scripts" / "check_e1_hardware_bom.py").read_text(
+            encoding="utf-8"
+        )
         for verb in ("def substitute", "def select_", "def recommend_", "def choose_"):
             assert verb not in source
 
@@ -1027,8 +1128,147 @@ class TestTheArchitectureStopCondition:
         assert "attenuator" not in {r["component_class"] for r in rows}
 
     def test_the_checker_writes_nothing(self, checker):
-        source = (
-            REPO_ROOT / "scripts" / "check_e1_hardware_bom.py"
-        ).read_text(encoding="utf-8")
+        source = (REPO_ROOT / "scripts" / "check_e1_hardware_bom.py").read_text(
+            encoding="utf-8"
+        )
         assert "write_text" not in source
         assert "open(" not in source.replace("read_text", "")
+
+
+class TestDocumentationAgreesWithItself:
+    """The documents are read by a human making a spending decision.
+
+    A recommendation that names one product in the rationale and another in the
+    BOM is worse than no recommendation, because the disagreement is invisible
+    until someone has bought the wrong thing.
+    """
+
+    @pytest.fixture(scope="class")
+    def docs(self):
+        return {
+            name: (HARDWARE / name).read_text(encoding="utf-8")
+            for name in (
+                "TTP_E1_HARDWARE_BOM.md",
+                "TTP_E1_HARDWARE_SELECTION_RATIONALE.md",
+                "TTP_E1_PROCUREMENT_STATUS.md",
+                "TTP_E1_INTERFACE_MATRIX.md",
+                "TTP_HARDWARE_STACK.md",
+            )
+        }
+
+    @pytest.fixture(scope="class")
+    def preferred_models(self, checker):
+        specs = checker.parse_optional_table(checker.BOM_PATH, checker.SPEC_KEY)
+        candidates = checker.parse_optional_table(
+            checker.BOM_PATH, checker.CANDIDATE_KEY
+        )
+        preferred = {
+            row["candidate_id"]
+            for row in candidates
+            if row["selection_tier"] == "PREFERRED_E1"
+        }
+        return {
+            s["model"]
+            for s in specs
+            if s["spec_for"] in preferred
+            and s["manufacturer"].lower()
+            not in ("fabricated", "assorted", "custom build")
+        }
+
+    def test_the_rationale_names_the_same_products_as_the_bom(
+        self, docs, preferred_models
+    ):
+        rationale = docs["TTP_E1_HARDWARE_SELECTION_RATIONALE.md"]
+        for model in preferred_models:
+            assert model in rationale, (
+                f"{model} is preferred in the BOM but absent from the rationale"
+            )
+
+    def test_the_procurement_recommendation_names_the_same_products(
+        self, docs, preferred_models
+    ):
+        procurement = docs["TTP_E1_PROCUREMENT_STATUS.md"]
+        for model in preferred_models:
+            assert model in procurement, (
+                f"{model} is preferred but absent from the procurement recommendation"
+            )
+
+    def test_the_interface_matrix_covers_every_preferred_chain(self, checker, docs):
+        candidates = checker.parse_optional_table(
+            checker.BOM_PATH, checker.CANDIDATE_KEY
+        )
+        chains = {
+            row["functional_chain"]
+            for row in candidates
+            if row["selection_tier"] == "PREFERRED_E1"
+        }
+        matrix = docs["TTP_E1_INTERFACE_MATRIX.md"].lower()
+        # Each chain must be resolved somewhere in the matrix, by the words the
+        # matrix actually uses for it.
+        words = {
+            "force_measurement": "force chain — resolved",
+            "contact_excitation": "excitation chain — resolved",
+            "response_acquisition": "response chain — resolved",
+            "synchronized_acquisition": "synchronization — the determination",
+            "mechanical_support": "mechanical — resolved",
+            "interconnect": "cabling — enumerated",
+        }
+        for chain in chains:
+            assert words[chain] in matrix, (
+                f"{chain} is not resolved in the interface matrix"
+            )
+
+    def test_the_ownership_census_and_the_recommendation_agree(self, docs):
+        # Both tables in the procurement document carry an Ownership column, and
+        # every row of both must read UNKNOWN. If one of them ever says otherwise
+        # while the other does not, a reader has two answers to "do we have it?"
+        procurement = docs["TTP_E1_PROCUREMENT_STATUS.md"]
+        ownership_cells = []
+        for line in procurement.splitlines():
+            if not line.startswith("|"):
+                continue
+            cells = [c.strip() for c in line.strip("|").split("|")]
+            for cell in cells:
+                if cell in ("UNKNOWN", "CONFIRMED_PRESENT", "CONFIRMED_ABSENT"):
+                    ownership_cells.append(cell)
+        assert ownership_cells, "no ownership cells found — the tables moved"
+        assert set(ownership_cells) == {"UNKNOWN"}
+
+    def test_nothing_is_actioned_beyond_hold(self, docs):
+        # HOLD is the only action this order may leave behind. RECOMMEND_PURCHASE
+        # may appear in the vocabulary table that defines it, but never in a row
+        # that assigns it to a component.
+        procurement = docs["TTP_E1_PROCUREMENT_STATUS.md"]
+        for line in procurement.splitlines():
+            if not line.startswith("|") or "RECOMMEND_PURCHASE" not in line:
+                continue
+            # A definition row names the action and explains it; an assignment
+            # row names a component id alongside it.
+            assert "-001" not in line, f"a component is actioned for purchase: {line}"
+
+    def test_the_stack_spec_claims_no_e1_validation(self, docs):
+        stack = docs["TTP_HARDWARE_STACK.md"]
+        assert "Neither 2A nor 2B is validated hardware" in stack
+        for claim in ("VERIFIED_ON_HARDWARE", "has been calibrated", "E1 confirmed"):
+            assert claim not in stack
+
+    def test_no_document_claims_the_chain_was_measured(self, docs):
+        # The gate verdict is a paper compatibility finding. If any document
+        # starts describing it as a measurement, that is the failure this whole
+        # order is shaped to prevent.
+        for name, text in docs.items():
+            lowered = text.lower()
+            for claim in (
+                "measured noise floor of the assembled",
+                "e1 has established",
+                "verified on hardware",
+            ):
+                assert claim not in lowered, f"{name} claims {claim!r}"
+
+    def test_the_gate_verdict_is_stated_with_its_limits(self, docs):
+        matrix = docs["TTP_E1_INTERFACE_MATRIX.md"]
+        assert "Architecture gate — verdict" in matrix
+        assert "The gate passes" in matrix
+        # and immediately says what passing does not mean
+        assert "What passing does not mean" in matrix
+        assert "It does not mean the chain works" in matrix

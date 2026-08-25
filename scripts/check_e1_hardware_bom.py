@@ -573,9 +573,7 @@ def validate_candidate_identity(
 
         role = row.get("role_local_id", "")
         if role not in roles:
-            problems.append(
-                f"{cid}: role_local_id {role!r} is not a canonical BOM row"
-            )
+            problems.append(f"{cid}: role_local_id {role!r} is not a canonical BOM row")
             continue
 
         cls = row.get("component_class", "")
@@ -974,9 +972,7 @@ def main(argv: list[str] | None = None) -> int:
                 quoted = [
                     r for r in rows if r["unit_cost_usd"].strip() == "QUOTE_REQUIRED"
                 ]
-                unknown = [
-                    r for r in rows if r["unit_cost_usd"].strip() == "UNKNOWN"
-                ]
+                unknown = [r for r in rows if r["unit_cost_usd"].strip() == "UNKNOWN"]
                 total = sum(as_money(r["extended_cost_usd"]) or 0.0 for r in priced)
                 print(
                     f"{tier:<20} {len(rows):<7} "

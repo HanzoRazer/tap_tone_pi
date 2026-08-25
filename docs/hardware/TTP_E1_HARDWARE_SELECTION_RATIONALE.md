@@ -365,8 +365,8 @@ below is owned, ordered, or authorized.
 | Microphone | Earthworks **M23 G2** | Phantom-powered, so it uses the existing OPA1612 stage unchanged. Measurement-grade to 23 kHz. In stock at a published price, which no other serious candidate managed |
 | Mic preamp | existing **OPA1612** design | Already specified in the stack. The phantom microphone keeps it in the chain |
 | ADC | HiFiBerry **DAC+ ADC Pro** | Retained. Its verified input specification is what the whole level budget rests on. See the supply risk below |
-| Host | **Raspberry Pi 5** | Unchanged from the stack specification |
-| Stinger | B&K 10-32 stinger stock | Removes a fabrication step and matches the thread standard already running through the drive train. Fabrication remains acceptable; mass is measured either way |
+| Host | **Raspberry Pi 5 8GB** | Unchanged from the stack specification |
+| Stinger | B&K **10-32 UNF stinger stock, 50 mm** | Removes a fabrication step and matches the thread standard already running through the drive train. Fabrication remains acceptable; mass is measured either way |
 | Tip, stand, reference structure | fabricated | No purchasable item is preferable, and each is an E1 variable rather than a fixed part |
 
 ### Why not the alternatives

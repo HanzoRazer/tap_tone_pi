@@ -232,4 +232,3 @@ read at this level of detail.
 
 The three that remain open are all fabrication tasks rather than procurement
 blockers, and none of them gates the purchase decision.
-

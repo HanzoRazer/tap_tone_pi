@@ -154,9 +154,9 @@ be derived from the other.
 | AMP-001 amplifier | Brüel & Kjær Type 2718 | RECOMMENDED | UNKNOWN | HOLD |
 | MIC-001 microphone | Earthworks M23 G2 | RECOMMENDED | UNKNOWN | HOLD |
 | ADC-001 adc_interface | HiFiBerry DAC+ ADC Pro | DESIGN_SELECTED, retained | UNKNOWN | HOLD |
-| HOST-001 host | Raspberry Pi 5 | DESIGN_SELECTED, retained | UNKNOWN | HOLD |
+| HOST-001 host | Raspberry Pi 5 8GB | DESIGN_SELECTED, retained | UNKNOWN | HOLD |
 | PREAMP-001 mic_preamp | OPA1612 design | DESIGN_SPECIFIED, retained | UNKNOWN | HOLD |
-| STINGER-001 stinger | B&K 10-32 stinger stock, or fabricated | RECOMMENDED | UNKNOWN | HOLD |
+| STINGER-001 stinger | B&K 10-32 UNF stinger stock, 50 mm, or fabricated | RECOMMENDED | UNKNOWN | HOLD |
 | TIP-001 contact_tip | fabricated | NOT_SELECTED | UNKNOWN | HOLD |
 | STAND-001 stand_base | fabricated | NOT_SELECTED | UNKNOWN | HOLD |
 | REF-STRUCT-001 reference_structure | fabricated | NOT_SELECTED | UNKNOWN | HOLD |
