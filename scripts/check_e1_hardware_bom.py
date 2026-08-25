@@ -83,6 +83,130 @@ INSPECTION_STATUSES = (
     "INSPECTED_PROBLEM",
 )
 
+# --- DO-104S: tiered candidates -------------------------------------------
+#
+# A *role row* is one of the fourteen canonical BOM rows above: a slot in the
+# measurement chain that the identity register and the bench protocol key on. A
+# *candidate row* is a specific purchasable product proposed to fill one role at
+# one tier. They are kept apart deliberately. Downstream identity machinery must
+# never come to depend on a vendor choice, because then rejecting a vendor would
+# break the register.
+
+SELECTION_TIERS = ("RESEARCH_MINIMUM", "PREFERRED_E1", "REFERENCE_GRADE")
+
+FUNCTIONAL_CHAINS = (
+    "force_measurement",
+    "contact_excitation",
+    "response_acquisition",
+    "synchronized_acquisition",
+    "mechanical_support",
+    "interconnect",
+)
+
+# Which chain each class serves. A candidate filed under the wrong chain is not a
+# cosmetic error: it makes a tier look complete in a chain it does not serve.
+CLASS_TO_CHAIN = {
+    "host": "synchronized_acquisition",
+    "adc_interface": "synchronized_acquisition",
+    "microphone": "response_acquisition",
+    "mic_preamp": "response_acquisition",
+    "force_transducer": "force_measurement",
+    "force_conditioner": "force_measurement",
+    "attenuator": "force_measurement",
+    "shaker": "contact_excitation",
+    "amplifier": "contact_excitation",
+    "stinger": "contact_excitation",
+    "contact_tip": "contact_excitation",
+    "stand_base": "mechanical_support",
+    "reference_structure": "mechanical_support",
+    "cabling": "interconnect",
+}
+
+# Roles every tier advertised as complete must fill.
+MANDATORY_ROLE_CLASSES = (
+    "host",
+    "adc_interface",
+    "microphone",
+    "force_transducer",
+    "force_conditioner",
+    "shaker",
+    "amplifier",
+    "stinger",
+    "contact_tip",
+    "stand_base",
+    "reference_structure",
+    "cabling",
+)
+
+# Required only when a tier's own selections make them necessary: an attenuator
+# only if that tier's level budget overruns the input window, and a phantom
+# preamp only if that tier's microphone is phantom-powered. A CCP microphone is
+# conditioned by the ICP conditioner, so a tier choosing one legitimately has no
+# preamp row - and padding one in to satisfy a count would be a false chain.
+CONDITIONAL_ROLE_CLASSES = ("attenuator", "mic_preamp")
+
+# Ownership is a statement about a physical object. UNKNOWN means nobody has
+# looked; it does not mean absent.
+OWNERSHIP_STATES = ("UNKNOWN", "CONFIRMED_PRESENT", "CONFIRMED_ABSENT")
+
+PROCUREMENT_ACTIONS = (
+    "HOLD",
+    "VERIFY_POSSESSION",
+    "RECOMMEND_PURCHASE",
+    "FABRICATE",
+    "REJECTED",
+)
+
+# Cost cells that are honest non-values. Neither is zero, and neither may be
+# summed into a tier total.
+COST_NON_VALUES = ("UNKNOWN", "QUOTE_REQUIRED")
+
+# Availability states that are not market observations. A fabricated part has no
+# vendor and no stock level, and demanding a distributor for one would push a
+# document toward inventing a supplier for something nobody sells.
+NON_MARKET_AVAILABILITY = ("UNKNOWN", "FABRICATED")
+
+# Claims a selection order cannot confer. Selection is not possession, purchase
+# is not validation, and a vendor listing is not a receipt.
+FORBIDDEN_CANDIDATE_CLAIMS = (
+    "RECEIVED",
+    "INSPECTED",
+    "BENCH_READY",
+    "ASSEMBLED",
+    "CALIBRATED",
+    "VERIFIED_ON_HARDWARE",
+)
+
+CANDIDATE_KEY = "candidate_id"
+SPEC_KEY = "spec_for"
+
+REQUIRED_CANDIDATE_COLUMNS = (
+    "candidate_id",
+    "role_local_id",
+    "component_class",
+    "functional_chain",
+    "selection_tier",
+    "quantity",
+    "unit_cost_usd",
+    "extended_cost_usd",
+    "availability",
+    "lead_time",
+    "commercial_source",
+    "checked_date",
+    "procurement_action",
+    "ownership",
+)
+REQUIRED_SPEC_COLUMNS = (
+    "spec_for",
+    "manufacturer",
+    "model",
+    "powering",
+    "key_specification",
+    "technical_source",
+)
+
+_ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
 # Protocol inventory label -> BOM component class. Used to catch a protocol that
 # still says TBD for something the BOM has already selected.
 PROTOCOL_LABELS = {
@@ -377,6 +501,400 @@ def check_protocol(bom: list[dict[str, str]]) -> list[str]:
     return problems
 
 
+def parse_optional_table(
+    path: Path, key: str, required: tuple[str, ...] = ()
+) -> list[dict[str, str]] | None:
+    """Read a table that a DO-104P-shaped document is allowed not to have yet.
+
+    Returns ``None`` when no table carries ``key``, so a BOM predating the
+    tiered candidates still validates. A table that *is* present is held to the
+    full column contract: a half-present candidate table is a document error,
+    not an earlier revision.
+    """
+    try:
+        return parse_table(path, key, required)
+    except ValueError as exc:
+        if f"no table with a {key!r} column" in str(exc):
+            return None
+        raise
+
+
+def as_money(value: str) -> float | None:
+    """Parse a currency cell, or ``None`` if it is not a number.
+
+    A non-numeric cell is never coerced to 0.0. That coercion is the specific
+    failure this whole cost section exists to prevent: an unpriced part summing
+    into a tier total as free.
+    """
+    text = str(value).strip().lstrip("$").replace(",", "")
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def group_candidates_by_tier(
+    candidates: list[dict[str, str]],
+) -> dict[str, list[dict[str, str]]]:
+    """Bucket candidates by selection tier, preserving document order."""
+    grouped: dict[str, list[dict[str, str]]] = {}
+    for row in candidates:
+        grouped.setdefault(row.get("selection_tier", ""), []).append(row)
+    return grouped
+
+
+def validate_tier_vocabulary(candidates: list[dict[str, str]]) -> list[str]:
+    problems: list[str] = []
+    for row in candidates:
+        tier = row.get("selection_tier", "")
+        if tier not in SELECTION_TIERS:
+            problems.append(
+                f"{row.get(CANDIDATE_KEY, '?')}: unknown selection_tier {tier!r}"
+            )
+    return problems
+
+
+def validate_candidate_identity(
+    candidates: list[dict[str, str]], bom: list[dict[str, str]]
+) -> list[str]:
+    """Candidate ids are unique, and each names a role that actually exists."""
+    problems: list[str] = []
+    roles = {row["local_id"]: row.get("component_class", "") for row in bom}
+    seen: set[str] = set()
+
+    for row in candidates:
+        cid = row.get(CANDIDATE_KEY, "")
+        if not is_set(cid):
+            problems.append("a candidate row carries no candidate_id")
+            continue
+        if cid in seen:
+            problems.append(f"duplicate candidate_id {cid}")
+        seen.add(cid)
+
+        role = row.get("role_local_id", "")
+        if role not in roles:
+            problems.append(
+                f"{cid}: role_local_id {role!r} is not a canonical BOM row"
+            )
+            continue
+
+        cls = row.get("component_class", "")
+        if cls != roles[role]:
+            problems.append(
+                f"{cid}: component_class {cls!r} does not match role {role}, "
+                f"which is a {roles[role]!r}"
+            )
+    return problems
+
+
+def validate_functional_chain(candidates: list[dict[str, str]]) -> list[str]:
+    """Each candidate sits in the chain its component class actually serves."""
+    problems: list[str] = []
+    for row in candidates:
+        cid = row.get(CANDIDATE_KEY, "?")
+        chain = row.get("functional_chain", "")
+        cls = row.get("component_class", "")
+        if chain not in FUNCTIONAL_CHAINS:
+            problems.append(f"{cid}: unknown functional_chain {chain!r}")
+            continue
+        expected = CLASS_TO_CHAIN.get(cls)
+        if expected is None:
+            continue
+        if chain != expected:
+            problems.append(
+                f"{cid}: a {cls} belongs to the {expected} chain, not {chain!r}"
+            )
+    return problems
+
+
+def validate_measured_force(
+    candidates: list[dict[str, str]], specs: dict[str, dict[str, str]]
+) -> list[str]:
+    """The measured-force role is filled by something that measures force.
+
+    A drive-side component cannot satisfy it. Commanded voltage is not force,
+    amplifier output is not force, and a microphone relabelled onto ch0 is not
+    force - so a candidate whose class belongs to the excitation or response
+    chain may not be filed against the force transducer role.
+    """
+    problems: list[str] = []
+    for row in candidates:
+        cid = row.get(CANDIDATE_KEY, "?")
+        if row.get("role_local_id") != "FORCE-001":
+            continue
+        cls = row.get("component_class", "")
+        if cls != "force_transducer":
+            problems.append(
+                f"{cid}: a {cls!r} cannot fill the measured-force role - "
+                "commanded excitation is not a force measurement"
+            )
+        spec = specs.get(cid, {})
+        powering = str(spec.get("powering", "")).lower()
+        model = str(spec.get("model", "")).lower()
+        for banned in ("commanded", "dac output", "amplifier output"):
+            if banned in model or banned in powering:
+                problems.append(
+                    f"{cid}: {banned!r} appears in the measured-force "
+                    "candidate's own specification"
+                )
+    return problems
+
+
+def validate_tier_completeness(
+    candidates: list[dict[str, str]], specs: dict[str, dict[str, str]]
+) -> list[str]:
+    """A tier presented as complete supplies every mandatory role.
+
+    The phantom preamp is the interesting case. It is required only when that
+    tier's microphone is phantom-powered; a CCP microphone is conditioned by the
+    ICP conditioner instead. Deciding this from the tier's own microphone spec is
+    the point - it means a tier cannot look complete by carrying a preamp its
+    chain never uses, nor incomplete for correctly omitting one.
+    """
+    problems: list[str] = []
+    for tier, rows in sorted(group_candidates_by_tier(candidates).items()):
+        if tier not in SELECTION_TIERS:
+            continue
+        present = {row.get("component_class", "") for row in rows}
+
+        for required in MANDATORY_ROLE_CLASSES:
+            if required not in present:
+                problems.append(
+                    f"{tier} is incomplete: no candidate for the required role "
+                    f"{required}"
+                )
+
+        mics = [row for row in rows if row.get("component_class") == "microphone"]
+        for mic in mics:
+            powering = str(
+                specs.get(mic.get(CANDIDATE_KEY, ""), {}).get("powering", "")
+            ).lower()
+            if not is_set(powering):
+                problems.append(
+                    f"{mic.get(CANDIDATE_KEY, '?')}: microphone powering is not "
+                    "recorded, so the tier's response conditioning cannot be "
+                    "resolved"
+                )
+                continue
+            if "phantom" in powering and "mic_preamp" not in present:
+                problems.append(
+                    f"{tier} is incomplete: its microphone is phantom-powered "
+                    "but the tier has no mic_preamp candidate"
+                )
+    return problems
+
+
+def validate_cost_fields(candidates: list[dict[str, str]]) -> list[str]:
+    """Cost arithmetic, and the rule that an unknown price is not zero."""
+    problems: list[str] = []
+    for row in candidates:
+        cid = row.get(CANDIDATE_KEY, "?")
+        quantity_text = str(row.get("quantity", "")).strip()
+        unit_text = str(row.get("unit_cost_usd", "")).strip()
+        extended_text = str(row.get("extended_cost_usd", "")).strip()
+
+        try:
+            quantity = int(quantity_text)
+        except ValueError:
+            problems.append(f"{cid}: quantity {quantity_text!r} is not a number")
+            continue
+        if quantity <= 0:
+            problems.append(f"{cid}: quantity must be greater than zero")
+
+        unit = as_money(unit_text)
+        extended = as_money(extended_text)
+
+        if unit is None:
+            if unit_text not in COST_NON_VALUES:
+                problems.append(
+                    f"{cid}: unit_cost_usd {unit_text!r} is neither a number nor "
+                    f"one of {', '.join(COST_NON_VALUES)}"
+                )
+            elif extended_text != unit_text:
+                problems.append(
+                    f"{cid}: unit cost is {unit_text} but extended cost is "
+                    f"{extended_text!r} - an unpriced row must stay unpriced "
+                    "rather than resolve to a number"
+                )
+            continue
+
+        if extended is None:
+            problems.append(
+                f"{cid}: unit cost is numeric but extended cost {extended_text!r} "
+                "is not"
+            )
+            continue
+        if abs(extended - unit * quantity) > 0.005:
+            problems.append(
+                f"{cid}: extended cost {extended:.2f} does not equal quantity "
+                f"{quantity} x unit cost {unit:.2f}"
+            )
+    return problems
+
+
+def validate_source_provenance(
+    candidates: list[dict[str, str]], specs: dict[str, dict[str, str]]
+) -> list[str]:
+    """Every candidate has technical authority; every market claim has a date.
+
+    The two are deliberately separate. A distributor establishes price and
+    stock; it does not become technical authority by being the only page that
+    loaded.
+    """
+    problems: list[str] = []
+    for row in candidates:
+        cid = row.get(CANDIDATE_KEY, "?")
+        spec = specs.get(cid)
+        if spec is None:
+            problems.append(f"{cid}: no specification row (no spec_for entry)")
+            continue
+        if not is_set(spec.get("technical_source")):
+            problems.append(f"{cid}: names no technical source")
+        for field in ("manufacturer", "model"):
+            if not is_set(spec.get(field)):
+                problems.append(f"{cid}: specification names no {field}")
+
+        availability = str(row.get("availability", "")).strip()
+        commercial_claimed = as_money(row.get("unit_cost_usd", "")) is not None or (
+            is_set(availability) and availability not in NON_MARKET_AVAILABILITY
+        )
+        if commercial_claimed:
+            if not is_set(row.get("commercial_source")):
+                problems.append(
+                    f"{cid}: records price or availability but names no "
+                    "commercial source"
+                )
+            checked = str(row.get("checked_date", "")).strip()
+            if not _ISO_DATE.match(checked):
+                problems.append(
+                    f"{cid}: records price or availability but its checked_date "
+                    f"{checked!r} is not an ISO-8601 date - a market observation "
+                    "without a date is not an observation"
+                )
+    return problems
+
+
+def validate_procurement_semantics(candidates: list[dict[str, str]]) -> list[str]:
+    """Ownership, procurement action, and selection tier stay independent.
+
+    The rule that matters: purchase may only be recommended for something
+    established as absent. Recommending a purchase against UNKNOWN ownership is
+    the inference error - UNKNOWN means nobody looked, and buying on that basis
+    is how a lab ends up with two of something it already had.
+    """
+    problems: list[str] = []
+    for row in candidates:
+        cid = row.get(CANDIDATE_KEY, "?")
+        ownership = row.get("ownership", "")
+        action = row.get("procurement_action", "")
+
+        if ownership not in OWNERSHIP_STATES:
+            problems.append(f"{cid}: unknown ownership state {ownership!r}")
+        if action not in PROCUREMENT_ACTIONS:
+            problems.append(f"{cid}: unknown procurement_action {action!r}")
+
+        if action == "RECOMMEND_PURCHASE" and ownership != "CONFIRMED_ABSENT":
+            problems.append(
+                f"{cid}: RECOMMEND_PURCHASE with ownership {ownership!r}. "
+                "Purchase may only be recommended for a component established "
+                "as absent - UNKNOWN means nobody has looked yet"
+            )
+
+        for cell, value in row.items():
+            if cell in ("key_specification", "commercial_source"):
+                continue
+            for claim in FORBIDDEN_CANDIDATE_CLAIMS:
+                if str(value).strip().upper() == claim:
+                    problems.append(
+                        f"{cid}: {cell} claims {claim} - a selection order "
+                        "cannot confer physical or verification status"
+                    )
+    return problems
+
+
+def check_candidates(
+    candidates: list[dict[str, str]] | None,
+    specs: list[dict[str, str]] | None,
+    bom: list[dict[str, str]],
+) -> list[str]:
+    """Run the DO-104S candidate checks, if the document carries candidates."""
+    if candidates is None:
+        return []
+    if specs is None:
+        return ["the BOM carries candidate rows but no specification table"]
+
+    by_id: dict[str, dict[str, str]] = {}
+    problems: list[str] = []
+    for spec in specs:
+        key = spec.get(SPEC_KEY, "")
+        if key in by_id:
+            problems.append(f"duplicate specification row for {key}")
+        by_id[key] = spec
+
+    known = {row.get(CANDIDATE_KEY, "") for row in candidates}
+    for key in by_id:
+        if key not in known:
+            problems.append(
+                f"specification table describes {key!r}, which is not a candidate"
+            )
+
+    problems += validate_tier_vocabulary(candidates)
+    problems += validate_candidate_identity(candidates, bom)
+    problems += validate_functional_chain(candidates)
+    problems += validate_measured_force(candidates, by_id)
+    problems += validate_tier_completeness(candidates, by_id)
+    problems += validate_cost_fields(candidates)
+    problems += validate_source_provenance(candidates, by_id)
+    problems += validate_procurement_semantics(candidates)
+    return problems
+
+
+def check_candidate_datasheets(
+    manifest: dict,
+    candidates: list[dict[str, str]] | None,
+    specs: list[dict[str, str]] | None,
+) -> list[str]:
+    """Preferred candidates resting on manufacturer documents must be covered.
+
+    Coverage is declared by the manifest rather than inferred, and it is checked
+    only for the preferred tier: a rejected or reference-only candidate may
+    legitimately rest on a page that was read but not retrievable as a document.
+    """
+    if candidates is None or specs is None:
+        return []
+
+    problems: list[str] = []
+    covered: set[str] = set()
+    all_ids = {row.get(CANDIDATE_KEY, "") for row in candidates}
+
+    for entry in manifest.get("entries", []):
+        if not isinstance(entry, dict):
+            continue
+        for cid in entry.get("covers_candidates", []) or []:
+            if cid not in all_ids:
+                problems.append(
+                    f"datasheet manifest claims to cover {cid!r}, which is not a "
+                    "candidate"
+                )
+            covered.add(cid)
+
+    fabricated = {"fabricated", "assorted", "custom build"}
+    by_id = {spec.get(SPEC_KEY, ""): spec for spec in specs}
+    for row in candidates:
+        if row.get("selection_tier") != "PREFERRED_E1":
+            continue
+        cid = row.get(CANDIDATE_KEY, "")
+        maker = str(by_id.get(cid, {}).get("manufacturer", "")).strip().lower()
+        if maker in fabricated:
+            continue
+        if cid not in covered:
+            problems.append(
+                f"{cid} is a PREFERRED_E1 candidate from {maker!r} but no "
+                "datasheet manifest entry covers it"
+            )
+    return problems
+
+
 def report(title: str, problems: Iterable[str]) -> int:
     found = list(problems)
     if not found:
@@ -402,6 +920,10 @@ def main(argv: list[str] | None = None) -> int:
         bom = parse_table(BOM_PATH, "local_id", REQUIRED_BOM_COLUMNS)
         register = parse_table(REGISTER_PATH, "local_id", REQUIRED_REGISTER_COLUMNS)
         manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+        candidates = parse_optional_table(
+            BOM_PATH, CANDIDATE_KEY, REQUIRED_CANDIDATE_COLUMNS
+        )
+        specs = parse_optional_table(BOM_PATH, SPEC_KEY, REQUIRED_SPEC_COLUMNS)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"cannot read the hardware documents: {exc}", file=sys.stderr)
         return 1
@@ -412,6 +934,11 @@ def main(argv: list[str] | None = None) -> int:
     count += report("ownership", check_ownership(bom, register))
     count += report("datasheets", check_manifest(manifest, bom))
     count += report("protocol", check_protocol(bom))
+    count += report("candidates", check_candidates(candidates, specs, bom))
+    count += report(
+        "candidate-datasheets",
+        check_candidate_datasheets(manifest, candidates, specs),
+    )
 
     if args.summary:
         print()
@@ -434,6 +961,31 @@ def main(argv: list[str] | None = None) -> int:
                 "\nNo component is recorded as physically received. Design "
                 "selections above are choices on paper and are not evidence of "
                 "possession, so DO-104E cannot begin bench bring-up."
+            )
+
+        if candidates:
+            print()
+            print(f"{'tier':<20} {'roles':<7} priced / quoted / unknown")
+            for tier in SELECTION_TIERS:
+                rows = group_candidates_by_tier(candidates).get(tier, [])
+                if not rows:
+                    continue
+                priced = [r for r in rows if as_money(r["unit_cost_usd"]) is not None]
+                quoted = [
+                    r for r in rows if r["unit_cost_usd"].strip() == "QUOTE_REQUIRED"
+                ]
+                unknown = [
+                    r for r in rows if r["unit_cost_usd"].strip() == "UNKNOWN"
+                ]
+                total = sum(as_money(r["extended_cost_usd"]) or 0.0 for r in priced)
+                print(
+                    f"{tier:<20} {len(rows):<7} "
+                    f"{len(priced)} / {len(quoted)} / {len(unknown)}"
+                    f"   partial ${total:,.2f}"
+                )
+            print(
+                "\nPartial totals cover priced rows only. An unpriced row is not "
+                "free, and these totals cannot rank the tiers."
             )
 
     if count:
