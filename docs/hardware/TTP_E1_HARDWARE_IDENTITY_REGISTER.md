@@ -1,0 +1,70 @@
+# TTP E1 — Hardware Identity Register
+
+**Status:** empty. No component has been received, so no component has an
+identity beyond its reserved local ID.
+**Dev Order:** DO-104P
+
+This register is the authority on **what is physically in hand**. The
+[BOM](TTP_E1_HARDWARE_BOM.md) records what is *chosen*; this file records what
+exists. A component cannot reach `RECEIVED` in the BOM without a row here
+carrying a real serial number or asset label, and
+`scripts/check_e1_hardware_bom.py` enforces exactly that.
+
+The distinction is not bureaucratic. Three components are `SELECTED` in the BOM
+because the repository's authoritative
+[stack specification](TTP_HARDWARE_STACK.md) chose them as a *design*. A design
+document naming a Raspberry Pi 5 is not a Raspberry Pi 5.
+
+## Register
+
+| local_id | component_class | manufacturer | model | serial_number | asset_label | received_date | inspection_status | datasheet_sha256 | notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| HOST-001 | host | Raspberry Pi | Raspberry Pi 5 | TBD | TBD | TBD | NOT_RECEIVED | TBD | Design-selected only. Ownership unconfirmed |
+| ADC-001 | adc_interface | HiFiBerry | DAC+ ADC Pro | TBD | TBD | TBD | NOT_RECEIVED | TBD | Design-selected only. Ownership unconfirmed |
+| PREAMP-001 | mic_preamp | custom build | OPA1612 balanced mic preamp | TBD | TBD | TBD | NOT_RECEIVED | TBD | Design-specified; board existence unconfirmed |
+| MIC-001 | microphone | TBD | TBD | TBD | TBD | TBD | NOT_RECEIVED | TBD | Model never locked |
+| FORCE-001 | force_transducer | TBD | TBD | TBD | TBD | TBD | NOT_RECEIVED | TBD | — |
+| PRECOND-001 | force_conditioner | TBD | TBD | TBD | TBD | TBD | NOT_RECEIVED | TBD | — |
+| SHAKER-001 | shaker | TBD | TBD | TBD | TBD | TBD | NOT_RECEIVED | TBD | — |
+| AMP-001 | amplifier | TBD | TBD | TBD | TBD | TBD | NOT_RECEIVED | TBD | — |
+| STINGER-001 | stinger | fabricated | TBD | n/a | TBD | TBD | NOT_RECEIVED | n/a | Fabricated parts carry an asset label rather than a serial |
+| TIP-001 | contact_tip | fabricated | TBD | n/a | TBD | TBD | NOT_RECEIVED | n/a | Same |
+| STAND-001 | stand_base | TBD | TBD | TBD | TBD | TBD | NOT_RECEIVED | TBD | — |
+| REF-STRUCT-001 | reference_structure | TBD | TBD | n/a | TBD | TBD | NOT_RECEIVED | n/a | Asset label; a plate has no serial |
+| CABLE-001 | cabling | TBD | TBD | n/a | TBD | TBD | NOT_RECEIVED | n/a | — |
+
+## Inspection status vocabulary
+
+| Status | Means |
+| --- | --- |
+| `NOT_RECEIVED` | Not in hand |
+| `RECEIVED_UNINSPECTED` | Arrived, not yet checked |
+| `INSPECTED_OK` | Model confirmed, undamaged, accessories present |
+| `INSPECTED_PROBLEM` | Arrived with a defect or wrong model — see notes and procurement status |
+
+## Rules
+
+**A serial number is never invented before receipt.** `TBD` on an unreceived
+component is correct and stays that way; a placeholder that looks like a serial
+is worse than an empty field because it survives into evidence.
+
+**Fabricated parts carry an asset label instead of a serial.** A stinger has no
+manufacturer serial, but it still needs a durable identity — E1 may build several,
+and "the stinger" will not be unambiguous by the third one.
+
+**Local IDs are permanent.** If `FORCE-001` is rejected and replaced, the
+replacement is `FORCE-002`. Reusing an ID silently rewrites the history of every
+run that referenced it.
+
+**Datasheet digests belong here and in the manifest.** The register records the
+digest of the datasheet that was current at receipt; the
+[manifest](TTP_E1_DATASHEET_MANIFEST.json) records where it came from and when.
+
+## Relationship to measurement evidence
+
+These local IDs are what the campaign records use. `SHAKER-001` becomes
+`excitation_device_id`, `STINGER-001` becomes `stinger_id`, `FORCE-001` becomes
+the excitation channel's `sensor_id`, `REF-STRUCT-001` becomes
+`reference_structure_id`. The IDs must exist before the first capture, because
+provenance recorded against an unnamed component cannot be traced back to a
+physical object.

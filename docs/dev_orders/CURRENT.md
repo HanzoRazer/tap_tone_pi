@@ -1,8 +1,9 @@
 # Active Dev Order
 
 **Current:** DO-104 — E1 Hardware Bring-Up and Rig Characterization
-(PRE-EXECUTION — evidence hardening and protocol landed; the rig does not exist)
-**Next:** build the rig, then execute E1
+(PRE-EXECUTION — hardware selection and procurement in progress under DO-104P;
+E1 physical execution has not begun)
+**Next:** select and procure the E1 hardware, then build the rig and execute E1
 **Queued:** DO-105 — E2 Fixed-Point Repeatability (BLOCKED on the E1 gate);
 DO-101B — Empirical Registry and Inspection Surface (NOT STARTED)
 **Previous:** DO-103 Stages 3 and 3b — Phase 2 ingestion, the
@@ -64,6 +65,52 @@ records it.
 
 **Not started:** the rig, E1 itself, any capability promotion, and any line of
 the risk table.
+
+## DO-104P — hardware selection and procurement
+
+The selection framework exists; no component is selected, ordered, or owned.
+
+**What the repository could establish about ownership.** Nothing. Every captured
+session under `runs_phase2/` is `"synthetic": true` with `"device": null`, or the
+`DEMO` fixture — so the repository holds no evidence of any physical acquisition
+and cannot say what hardware exists. The three components the authoritative stack
+specification names (Pi 5, HiFiBerry DAC+ ADC Pro, OPA1612 preamp) are recorded
+as **design-selected, ownership unconfirmed**, and
+`scripts/check_e1_hardware_bom.py` refuses to let any of them advance to
+`RECEIVED` without a serial number or asset label in the identity register. A
+design document naming a Raspberry Pi 5 is not a Raspberry Pi 5.
+
+**The architectural finding.** The stack specification and the measurement
+architecture had diverged: Phase 2 was documented as speaker-driven with ch0 as a
+*reference microphone*, while DO-103/DO-104 need ch0 to carry *measured force*.
+Those are mutually exclusive on a two-channel ADC. The specification is now
+Revision 1.4, splitting Phase 2A (legacy speaker ODS, retained for provenance)
+from Phase 2B (contact drive, the NSF target), with an explicit channel map. The
+speaker-distortion-rejected-by-coherence argument is now scoped to 2A only —
+in 2B the shaker, transducer, stinger, and tip are mechanically in series with the
+specimen, so a stinger resonance is a real feature of the measured system rather
+than something coherence removes.
+
+**Force-channel architecture, path A.** IEPE/ICP transducer into a
+constant-current conditioner into ch0 of the existing ADC. That preserves the
+strongest property of the existing design — simultaneous two-channel acquisition
+on one sample clock, which Phase 2's transfer-function path assumes. The
+conditioner's output must land inside the ADC's ±3 V window (0.8–2.1 Vrms
+optimal); a larger full-scale output needs attenuation designed in as its own BOM
+line, not scaled away in software. Paths B (charge amp), C (load cell) and D
+(replacement interface) are recorded as alternates, not investigated equally.
+
+**No budget is invented.** Selection carries three tiers — research minimum,
+preferred E1, reference-grade candidate — with preferred E1 driving the
+recommendation until a ceiling is imposed. The tiers differ in sensor quality,
+never in whether force is measured: a cheap exciter driven at a commanded level
+is not a cheaper tier, it is a different and unacceptable experiment.
+
+**Deliberately not done:** product selection. Current availability, pricing,
+conditioning requirements, mounting threads, and lead time matter too much here
+for stale product knowledge, so candidate research is a separate web-researched
+pass over complete functional chains — force, drive, and response — rather than
+isolated parts.
 **Previous:** DO-102 — NSF TTP Grant-Readiness Evidence Foundation (COMPLETE)
 **Deferred evidence gate:** `SPRINTS.md` B-006 — witnessed hardware measurement
 campaign, now formally defined as DO-103

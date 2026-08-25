@@ -2,16 +2,21 @@
 
 **Document status:** Authoritative design reference
 **Scope:** TTP Analyzer physical instrument (standalone acoustic measurement device)
-**Revision:** 1.3 — Consolidated per-unit calibration coverage and scope-boundary
-section from the superseded root-level copy (`HARDWARE_STACK_SPEC.md`, now
-removed); earlier (1.2): gain staging corrected for self-excitation
-architecture, calibration loop documented, speaker excitation path added
+**Revision:** 1.4 — Phase 2 split into **2A legacy speaker ODS** and **2B
+contact-drive research architecture** (DO-104P). The NSF measurement program
+targets 2B; 2A remains documented for provenance and backward compatibility.
+Channel map now states both configurations explicitly, because they are mutually
+exclusive on a two-channel ADC. Earlier (1.3): consolidated per-unit calibration
+coverage and scope-boundary section from the superseded root-level copy
+(`HARDWARE_STACK_SPEC.md`, now removed); (1.2): gain staging corrected for
+self-excitation architecture, calibration loop documented, speaker excitation
+path added
 
 ---
 
 ## Measurement Architecture
 
-The TTP Analyzer operates in two distinct measurement modes with different
+The TTP Analyzer operates in distinct measurement modes with different
 excitation sources. This distinction drives every gain staging decision.
 
 ```
@@ -19,16 +24,62 @@ Phase 1 — Impulse tap (single channel)
   [Operator tap] → [Plate] → [Mic] → [OPA1612 pre] → [HiFiBerry ADC] → [Pi 5]
                                                                          analyze_tap()
 
-Phase 2 — Speaker-driven ODS (two channel, 35-point grid)
+Phase 2A — Legacy speaker-driven ODS (two channel, 35-point grid)
   [Pi 5]──signal_gen──► [DAC+Amp] → [Speaker] → [Plate] → [Ref mic ch0]──┐
                                                           → [Roving mic ch1]──► [HiFiBerry 2-ch ADC] → [Pi 5]
                                                                                                         H(f), γ²(f)
+
+Phase 2B — Contact-drive research architecture (two channel)
+  [Pi 5]──signal_gen──► [DAC] → [Amp] → [Grounded shaker]
+                                              │
+                                        [Force transducer] ──► [IEPE conditioner] ──► ch0 ─┐
+                                              │                                            │
+                                          [Stinger]                                        │
+                                              │                                            ├─► [HiFiBerry 2-ch ADC] → [Pi 5]
+                                        [Contact tip]                                      │        H_pf(f), γ²(f)
+                                              │                                            │
+                                       [Reference structure] → [Mic] → [OPA1612 pre] → ch1 ┘
 ```
 
-**Key architectural property of Phase 2:** The Pi is both source and sink.
-Output level is controlled in software via `signal_gen`. If the ADC input is
-too quiet, the speaker drive level is increased. The "unknown source level"
-problem that affects tap-tone impulse work does not apply to speaker-driven ODS.
+> **DO-104 E1 uses Phase 2B. Phase 2A remains documented for provenance and
+> backward compatibility but is no longer the target architecture for the current
+> NSF measurement program.**
+>
+> Neither 2A nor 2B is validated hardware. As of Revision 1.4 no configuration in
+> this document has been physically assembled and witnessed: every captured
+> session under `runs_phase2/` is `"synthetic": true` with `"device": null`, or
+> the `DEMO` fixture. Once E1 succeeds and the contact-drive system is formally
+> adopted as production direction, a later revision may promote 2B from research
+> configuration to canonical Phase 2.
+
+### Channel map
+
+The two Phase 2 configurations are **mutually exclusive** on a two-channel ADC.
+ch0 cannot be a reference microphone and a force transducer at the same time.
+
+| Configuration | ch0 | ch1 |
+|---|---|---|
+| Phase 1 — impulse tap | microphone | unused |
+| Phase 2A — legacy speaker ODS | reference microphone | roving microphone |
+| Phase 2B — DO-104 contact drive | **force transducer via IEPE conditioner** | **microphone response** |
+
+**Key architectural property of Phase 2A:** the Pi is both source and sink.
+Output level is controlled in software via `signal_gen`; if the ADC input is too
+quiet, the speaker drive level is increased. The "unknown source level" problem
+that affects tap-tone impulse work does not apply to speaker-driven ODS.
+
+**Key architectural property of Phase 2B:** the excitation is *measured* rather
+than commanded. The transfer quantity is acoustic pressure per unit measured
+force — nominally `Pa/N` where channel scaling supports it — and it is **not**
+mobility, accelerance, or receptance, all of which require the response to be a
+mechanical motion of the structure. Raising the drive level does not substitute
+for measuring the force that reaches the drive point.
+
+2B's force channel needs constant-current conditioning that the OPA1612
+microphone preamplifier does not and should not provide; the conditioner's output
+must land inside this ADC's ±3 V window. See
+[E1 interface matrix](TTP_E1_INTERFACE_MATRIX.md) and
+[E1 requirements](TTP_E1_HARDWARE_REQUIREMENTS.md).
 
 ---
 
@@ -149,7 +200,7 @@ latching relay or DIP switch to disable when using dynamic mics.
 | Sample rate | 44.1 / 48 / 96 kHz (configured in tap_tone_pi) |
 | Bit depth | 24-bit |
 | Input connector | RCA (unbalanced) from preamp |
-| Channels | 2 (ch0 = reference, ch1 = roving for Phase 2) |
+| Channels | 2 — see the channel map above. Phase 2A: ch0 reference mic, ch1 roving mic. Phase 2B: ch0 conditioned force, ch1 microphone |
 
 The ADC is AC-coupled. The OPA1612 output must not carry DC offset —
 the circuit handles this by design (op-amp DC offset < 1 mV typical).
@@ -250,9 +301,13 @@ you need either:
 
 ---
 
-## Speaker Driver (Phase 2 Only)
+## Speaker Driver (Phase 2A Legacy Only)
 
-For ODS grid measurements, the Pi drives a small full-range speaker placed
+Retained for provenance. Phase 2B replaces this excitation path with a grounded
+shaker and a measured force channel, and reuses the same DAC output to drive the
+shaker amplifier instead.
+
+For legacy ODS grid measurements, the Pi drives a small full-range speaker placed
 approximately 30 cm from the plate surface.
 
 | Parameter | Requirement |
@@ -268,6 +323,15 @@ The speaker is not part of the measurement chain — it excites the plate.
 Nonlinear distortion in the speaker is rejected by the coherence function
 (γ²(f) drops at frequencies where output is not linearly related to input).
 
+**This argument belongs to Phase 2A and does not generalize to the shaker
+chain.** It holds because the speaker is acoustically coupled and outside the
+measured path. In Phase 2B the shaker, force transducer, stinger, and contact tip
+are *mechanically in series with the specimen*, so their behaviour is part of what
+is measured rather than something coherence removes: a stinger resonance is a
+real feature of the measured system. Characterizing that contamination is
+precisely what DO-104 E1 exists to do, and E1 records such resonances rather than
+rejecting them.
+
 ---
 
 ## What This Document Is Not
@@ -281,6 +345,27 @@ ODS grid, frequency response). It does not cover:
 
 ---
 
+## Contact-Drive Hardware (Phase 2B)
+
+The 2B components are specified, selected, and tracked outside this document,
+because procurement state does not belong in an architecture specification:
+
+| Document | Holds |
+|---|---|
+| [E1 requirements](TTP_E1_HARDWARE_REQUIREMENTS.md) | What each component must do, before any product is chosen |
+| [E1 BOM](TTP_E1_HARDWARE_BOM.md) | Canonical component list and status — **the authority** |
+| [Selection rationale](TTP_E1_HARDWARE_SELECTION_RATIONALE.md) | Why each architecture was chosen, and what was rejected |
+| [Interface matrix](TTP_E1_INTERFACE_MATRIX.md) | Electrical and mechanical connections, and the ADC window |
+| [Rig assembly](TTP_E1_RIG_ASSEMBLY.md) | Physical architecture and grounding |
+| [Identity register](TTP_E1_HARDWARE_IDENTITY_REGISTER.md) | What is physically in hand |
+| [Procurement status](TTP_E1_PROCUREMENT_STATUS.md) | Selection and order state |
+
+`python scripts/check_e1_hardware_bom.py` checks those documents against each
+other, including the rule that **a design selection recorded here is not
+evidence of possession**.
+
+---
+
 ## Change History
 
 | Rev | Date | Change |
@@ -289,3 +374,4 @@ ODS grid, frequency response). It does not cover:
 | 1.1 | 2026-03-30 | Tube preamp removed; OPA1612 declared canonical |
 | 1.2 | 2026-03-30 | Gain staging corrected (+39/+52/+61 dB 3-position switch); self-excitation architecture documented; calibration loop section added; speaker driver section added |
 | 1.3 | 2026-07-08 | Merged unique sections from the superseded `HARDWARE_STACK_SPEC.md` (per-unit calibration coverage, "What This Document Is Not" scope boundary); removed the duplicate |
+| 1.4 | 2026-08-24 | Phase 2 split into 2A legacy speaker ODS and 2B contact-drive research architecture (DO-104P). Channel map added: ch0 carries a reference microphone in 2A and a conditioned force signal in 2B, and the two are mutually exclusive on a two-channel ADC. Speaker-distortion/coherence argument scoped to 2A only, since the shaker chain is mechanically in series with the specimen. Contact-drive component specification, selection, and procurement moved to the `TTP_E1_*` documents. Records that no configuration in this document has yet been physically assembled and witnessed |

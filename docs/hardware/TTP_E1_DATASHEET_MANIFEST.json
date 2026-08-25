@@ -1,0 +1,11 @@
+{
+  "schema_version": "ttp_e1_datasheet_manifest_v1",
+  "description": "Provenance for the datasheets behind E1 hardware selection. Records where each document came from, when it was retrieved, and the digest of the bytes that were read - so a later reader can tell whether the specification a decision rested on is the specification still published. Datasheets are provenance for a nominal figure; they establish no installed-system behaviour, which is what E1 measures.",
+  "policy": {
+    "copyright": "Manufacturer documentation is not copied into this repository. Only the source reference, retrieval time, and content digest are recorded. Where a local archive exists outside the repository, local_archive_ref names it without making it the identity.",
+    "identity": "The sha256 of the retrieved document is the durable identity. source_url may rot; the digest does not.",
+    "empty_state": "An empty entries list is the accurate state until a component is selected. No placeholder datasheet is recorded for an unselected part."
+  },
+  "generated_at": "2026-08-24T00:00:00Z",
+  "entries": []
+}
