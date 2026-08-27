@@ -13,8 +13,14 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
+      # Archived source material is recorded by SHA-256 and must survive
+      # byte-for-byte. A formatter that strips trailing whitespace from an
+      # archived patch silently invalidates the digest that identifies it - and
+      # in a diff, trailing whitespace on a context line is significant.
       - id: trailing-whitespace
+        exclude: ^docs/reference/acquisition/
       - id: end-of-file-fixer
+        exclude: ^docs/reference/acquisition/
       - id: check-yaml
         exclude: ^\.github/workflows/schema-registry-guard\.yml$
       - id: check-json
