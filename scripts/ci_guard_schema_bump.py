@@ -35,8 +35,18 @@ def git_changed_paths(base: str = "origin/main") -> list[str]:
 def load_registry() -> dict[tuple[str, str], str]:
     data = json.loads(REGISTRY.read_text(encoding="utf-8"))
     idx: dict[tuple[str, str], str] = {}
-    for ent in data.get("schemas", []):
-        idx[(ent["schema_id"], ent["version"])] = ent["file"]
+    schemas = data.get("schemas", {})
+    # Support both list-of-objects and dict-keyed formats.
+    if isinstance(schemas, dict):
+        entries = [{"schema_id": k, **v} for k, v in schemas.items()]
+    else:
+        entries = schemas
+    for ent in entries:
+        schema_id = ent.get("schema_id", "")
+        version = ent.get("version", "")
+        file_val = ent.get("file", ent.get("path", ""))
+        if schema_id and version and file_val:
+            idx[(schema_id, str(version))] = file_val
     return idx
 
 
