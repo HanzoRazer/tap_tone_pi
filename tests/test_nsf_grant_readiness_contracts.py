@@ -682,7 +682,13 @@ class TestErrorVocabulary:
             # rather than an extension of 3xx, whose codes are statistics and
             # reporting; overloading that family would make the grouping the
             # errors module documents stop describing anything.
-            assert code.value[4] in {"1", "2", "3", "4", "5"}
+            #
+            # 6xx is the DO-106 E0 bench-characterization family, added on the
+            # same reasoning. E0 records what one board did on a bench and has
+            # no pass condition, so its failures are about the truthfulness of a
+            # record rather than the validity of a campaign - folding them into
+            # 5xx would merge two layers that fail for unrelated reasons.
+            assert code.value[4] in {"1", "2", "3", "4", "5", "6"}
 
     def test_codes_are_unique(self):
         values = [code.value for code in GrantReadinessErrorCode]
