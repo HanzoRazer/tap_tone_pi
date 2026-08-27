@@ -153,9 +153,20 @@ PROCUREMENT_ACTIONS = (
     "HOLD",
     "VERIFY_POSSESSION",
     "RECOMMEND_PURCHASE",
+    "USE_OWNED",
+    "NO_PURCHASE_REQUIRED",
     "FABRICATE",
     "REJECTED",
 )
+
+# Actions that assert something about possession, and the state each needs.
+# Both directions are guarded: you may not recommend buying what you have not
+# established you lack, and you may not plan to use what you do not have.
+ACTION_REQUIRES_OWNERSHIP = {
+    "RECOMMEND_PURCHASE": "CONFIRMED_ABSENT",
+    "USE_OWNED": "CONFIRMED_PRESENT",
+    "NO_PURCHASE_REQUIRED": "CONFIRMED_PRESENT",
+}
 
 # Cost cells that are honest non-values. Neither is zero, and neither may be
 # summed into a tier total.
@@ -853,11 +864,12 @@ def validate_procurement_semantics(candidates: list[dict[str, str]]) -> list[str
         if action not in PROCUREMENT_ACTIONS:
             problems.append(f"{cid}: unknown procurement_action {action!r}")
 
-        if action == "RECOMMEND_PURCHASE" and ownership != "CONFIRMED_ABSENT":
+        required = ACTION_REQUIRES_OWNERSHIP.get(action)
+        if required is not None and ownership != required:
             problems.append(
-                f"{cid}: RECOMMEND_PURCHASE with ownership {ownership!r}. "
-                "Purchase may only be recommended for a component established "
-                "as absent - UNKNOWN means nobody has looked yet"
+                f"{cid}: {action} with ownership {ownership!r}, which requires "
+                f"{required}. An action that asserts possession must be backed "
+                "by an observation - UNKNOWN means nobody has looked yet"
             )
 
         for cell, value in row.items():

@@ -1,9 +1,9 @@
 # TTP E1 — Hardware Identity Register
 
-**Status:** empty. No component has been received, so no component has an
-identity beyond its reserved local ID. As of the DO-104R census (2026-08-27)
-no component is possessed either, which is now an established finding rather
-than an open question.
+**Status:** one component possessed (`HOST-001`, pre-owned, outside this
+campaign). No component has been *received* by this campaign, so no component
+carries a campaign acquisition record. Possession and acquisition are separate
+axes and this register now carries both.
 **Dev Order:** DO-104P; deliberately unchanged by DO-104S
 
 This register is the authority on **what is physically in hand**. The
@@ -19,49 +19,65 @@ document naming a Raspberry Pi 5 is not a Raspberry Pi 5.
 
 ## Register
 
-| local_id | component_class | manufacturer | model | serial_number | asset_label | received_date | inspection_status | datasheet_sha256 | notes |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| HOST-001 | host | Raspberry Pi | Raspberry Pi 5 | TBD | TBD | TBD | NOT_RECEIVED | TBD | Design-selected only. Ownership unconfirmed |
-| ADC-001 | adc_interface | HiFiBerry | DAC+ ADC Pro | TBD | TBD | TBD | NOT_RECEIVED | TBD | Design-selected only. Ownership unconfirmed |
-| PREAMP-001 | mic_preamp | custom build | OPA1612 balanced mic preamp | TBD | TBD | TBD | NOT_RECEIVED | TBD | Design-specified; board existence unconfirmed |
-| MIC-001 | microphone | TBD | TBD | TBD | TBD | TBD | NOT_RECEIVED | TBD | Model never locked |
-| FORCE-001 | force_transducer | TBD | TBD | TBD | TBD | TBD | NOT_RECEIVED | TBD | — |
-| PRECOND-001 | force_conditioner | TBD | TBD | TBD | TBD | TBD | NOT_RECEIVED | TBD | — |
-| SHAKER-001 | shaker | TBD | TBD | TBD | TBD | TBD | NOT_RECEIVED | TBD | — |
-| AMP-001 | amplifier | TBD | TBD | TBD | TBD | TBD | NOT_RECEIVED | TBD | — |
-| STINGER-001 | stinger | fabricated | TBD | n/a | TBD | TBD | NOT_RECEIVED | n/a | Fabricated parts carry an asset label rather than a serial |
-| TIP-001 | contact_tip | fabricated | TBD | n/a | TBD | TBD | NOT_RECEIVED | n/a | Same |
-| STAND-001 | stand_base | TBD | TBD | TBD | TBD | TBD | NOT_RECEIVED | TBD | — |
-| REF-STRUCT-001 | reference_structure | TBD | TBD | n/a | TBD | TBD | NOT_RECEIVED | n/a | Asset label; a plate has no serial |
-| CABLE-001 | cabling | TBD | TBD | n/a | TBD | TBD | NOT_RECEIVED | n/a | — |
+| local_id | component_class | manufacturer | model | serial_number | asset_label | received_date | inspection_status | ownership_status | observed_at | observed_by | observation_method | datasheet_sha256 | notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| HOST-001 | host | Raspberry Pi | Raspberry Pi 5 16GB | TBD | TTP-ASSET-001 | TBD | NOT_RECEIVED | CONFIRMED_PRESENT | 2026-08-27 | Ross Echols | OPERATOR_ATTESTATION | TBD | Owned since 2025-04, outside this campaign: never ORDERED, not RECEIVED by it. Possession is on the ownership axis; the acquisition ladder is untouched. Local asset label, not a serial - the manufacturer serial has not been read |
+| ADC-001 | adc_interface | HiFiBerry | DAC+ ADC Pro | TBD | TBD | TBD | NOT_RECEIVED | CONFIRMED_ABSENT | 2026-08-27 | Ross Echols | OPERATOR_ATTESTATION | TBD | Design-selected only. Ownership unconfirmed |
+| PREAMP-001 | mic_preamp | custom build | OPA1612 balanced mic preamp | TBD | TBD | TBD | NOT_RECEIVED | CONFIRMED_ABSENT | 2026-08-27 | Ross Echols | OPERATOR_ATTESTATION | TBD | Design-specified; board existence unconfirmed |
+| MIC-001 | microphone | TBD | TBD | TBD | TBD | TBD | NOT_RECEIVED | CONFIRMED_ABSENT | 2026-08-27 | Ross Echols | OPERATOR_ATTESTATION | TBD | Model never locked |
+| FORCE-001 | force_transducer | TBD | TBD | TBD | TBD | TBD | NOT_RECEIVED | CONFIRMED_ABSENT | 2026-08-27 | Ross Echols | OPERATOR_ATTESTATION | TBD | — |
+| PRECOND-001 | force_conditioner | TBD | TBD | TBD | TBD | TBD | NOT_RECEIVED | CONFIRMED_ABSENT | 2026-08-27 | Ross Echols | OPERATOR_ATTESTATION | TBD | — |
+| SHAKER-001 | shaker | TBD | TBD | TBD | TBD | TBD | NOT_RECEIVED | CONFIRMED_ABSENT | 2026-08-27 | Ross Echols | OPERATOR_ATTESTATION | TBD | — |
+| AMP-001 | amplifier | TBD | TBD | TBD | TBD | TBD | NOT_RECEIVED | CONFIRMED_ABSENT | 2026-08-27 | Ross Echols | OPERATOR_ATTESTATION | TBD | — |
+| STINGER-001 | stinger | fabricated | TBD | n/a | TBD | TBD | NOT_RECEIVED | CONFIRMED_ABSENT | 2026-08-27 | Ross Echols | OPERATOR_ATTESTATION | n/a | Fabricated parts carry an asset label rather than a serial |
+| TIP-001 | contact_tip | fabricated | TBD | n/a | TBD | TBD | NOT_RECEIVED | CONFIRMED_ABSENT | 2026-08-27 | Ross Echols | OPERATOR_ATTESTATION | n/a | Same |
+| STAND-001 | stand_base | TBD | TBD | TBD | TBD | TBD | NOT_RECEIVED | CONFIRMED_ABSENT | 2026-08-27 | Ross Echols | OPERATOR_ATTESTATION | TBD | — |
+| REF-STRUCT-001 | reference_structure | TBD | TBD | n/a | TBD | TBD | NOT_RECEIVED | CONFIRMED_ABSENT | 2026-08-27 | Ross Echols | OPERATOR_ATTESTATION | n/a | Asset label; a plate has no serial |
+| CABLE-001 | cabling | TBD | TBD | n/a | TBD | TBD | NOT_RECEIVED | CONFIRMED_ABSENT | 2026-08-27 | Ross Echols | OPERATOR_ATTESTATION | n/a | — |
 
-## Census outcome (DO-104R, 2026-08-27)
+## Census outcome and the observation axis (DO-104R pass 2, 2026-08-27)
 
-The physical ownership census was performed and found **no E1-relevant hardware
-in possession**. See [the census](TTP_E1_OWNERSHIP_CENSUS.md).
+The census found **one owned item**: a Raspberry Pi 5 16 GB, in hand since April
+2025. See [the census](TTP_E1_OWNERSHIP_CENSUS.md), including why pass 1 recorded
+it as absent.
 
-**No rows were added and no columns were added**, and both omissions are
-deliberate.
+**The deferred observation columns land here.** They were designed to let a
+pre-owned item be recorded as possessed while remaining unselected and never
+ordered, and were held back on the reasoning that adding a schema for data that
+does not exist is worse than waiting. The first owned asset has arrived, and it
+is exactly that shape.
 
-No rows, because this register records physical objects and no physical object
-exists. A row asserting the absence of a thing would be a row about nothing.
+| Column group | Meaning | Applies to |
+| --- | --- | --- |
+| `serial_number`, `asset_label` | Which physical unit this is | any possessed item |
+| `received_date`, `inspection_status` | **Campaign acquisition** — what this project ordered and took delivery of | items acquired *by this campaign* |
+| `ownership_status`, `observed_at`, `observed_by`, `observation_method` | **Possession** — what is physically held, however it got here | any item, including pre-owned |
 
-No columns, because the DO-104R model locks an observation axis for this
-register — `ownership_status`, `observed_at`, `observed_by`,
-`observation_method` — designed to let a *pre-owned* item be `OWNED` while
-remaining unselected and never ordered. With nothing owned, those columns would
-have no data in them, and adding a schema for data that does not exist is the
-error this project deliberately avoided when it held the state-model work until
-after the census. **The columns land with the first owned asset, not before.**
+The two groups are **not** interchangeable, and the Pi is why. It was bought in
+April 2025 for the analyzer, outside this campaign entirely. It was never
+`ORDERED` and it is not `RECEIVED` by this campaign — so `received_date` stays
+`TBD` and `inspection_status` stays `NOT_RECEIVED`, while `ownership_status`
+reads `CONFIRMED_PRESENT`. Both statements are true at once. Collapsing them
+into one column would force a choice between claiming an order that never
+happened and denying possession that plainly exists.
 
-The same applies to the orphan invariant. DO-104R inverts it so the register may
-carry observed assets no BOM row references. That inversion exists to hold
-unmapped observed assets; none was found, so `check_register` keeps its stricter
-one-to-one rule and continues to catch a mistyped `local_id`. The looser rule is
-recorded here as pending, not implemented.
+`RECEIVED` is deliberately **not** used for pre-owned hardware. It sits above
+`SELECTED` on the acquisition ladder, so using it here would silently assert a
+selection nobody has made — and the human selection ruling is
+`SELECTION_DEFERRED`.
 
-Every row therefore remains `TBD` and `NOT_RECEIVED`, and now does so on
-evidence rather than on absence of information.
+**`TTP-ASSET-001` is a locally assigned asset label, not a serial number.** The
+manufacturer serial has not been read; `serial_number` stays `TBD`. Assigning a
+local label is permitted; inventing a serial is not, and none was invented.
+
+### Still not built: the orphan-rule inversion
+
+DO-104R also locks an inversion of the register's orphan invariant, so the
+register may carry observed assets no BOM row references. **Still not needed.**
+The Pi maps cleanly to `HOST-001`, and no equipment outside the BOM was found. So
+`check_register` keeps its stricter one-to-one rule and goes on catching a
+mistyped `local_id`. It lands with the first unmapped observed asset, on the same
+reasoning that governed these columns.
 
 ## Why DO-104S did not touch this register
 

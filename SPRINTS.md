@@ -311,8 +311,10 @@ evidence calls for them — not because a grant narrative would like to cite the
   performed 2026-08-27 by operator attestation. All ten required categories
   resolved to `CONFIRMED_ABSENT`: no E1-relevant hardware is possessed. The
   finding this item recorded was "no census performed"; a census has now been
-  performed, and a negative result closes it as completely as a positive one
-  would. No category was left `UNKNOWN`, so there is no residual possession
+  performed. **Corrected 2026-08-27 by pass 2**, which found a false absence on
+  `HOST-001` — see B-017. Correcting a census does not un-perform it, so this
+  stays closed; the reliability of the *method* is B-017's problem, not this
+  item's. No category was left `UNKNOWN`, so there is no residual possession
   question to carry forward.
 - **Origin:** DO-104S ownership census, which recorded ten components as
   `UNKNOWN` because that is what is actually known.
@@ -326,6 +328,28 @@ evidence calls for them — not because a grant narrative would like to cite the
   `CONFIRMED_ABSENT`, with present items carrying identity-register entries.
   **Met.** All ten are `CONFIRMED_ABSENT`; no item is present, so no
   identity-register entry was required or created.
+
+### B-017 — The ownership census produced a false absence
+
+- **Status:** open · **Priority:** P1 · **Area:** `docs/hardware/`
+- **Origin:** DO-104R census pass 2, 2026-08-27.
+- **Context:** pass 1 attested all ten categories `CONFIRMED_ABSENT`. A Raspberry
+  Pi 5 had been in hand since April 2025 — sixteen months. The pass ran on
+  `OPERATOR_ATTESTATION`, a statement about a bench rather than a look at one,
+  and failed in the one direction that matters: **a false absence is what
+  authorizes a purchase.** Had the recommendation been ratified and acted on,
+  this would have bought a second Pi.
+- **Why no check caught it:** every validator check verifies that the document is
+  internally consistent and claims no more than it records. Pass 1 was internally
+  consistent and wrong. This is the limit of document validation, and it is why
+  `observation_method` is a recorded field rather than an assumed one — the
+  weaker evidence was labelled as weaker, and the label turned out to be earned.
+- **Trigger:** before any census result is used to authorize a purchase.
+- **Acceptance:** the census that gates a purchase decision is performed by
+  `DIRECT_PHYSICAL_INSPECTION` — someone handling and reading each item — rather
+  than by attestation, or the attestation is corroborated against purchase
+  records. Recording the method is not sufficient on its own; the method has to
+  be adequate to the decision resting on it.
 
 ## Not backlog — recorded here only so they aren't mistaken for open items
 

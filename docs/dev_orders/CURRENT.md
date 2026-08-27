@@ -1,17 +1,28 @@
 # Active Dev Order
 
 **Current:** DO-104O — E1 Physical Ownership Reconciliation and Procurement
-Authorization Gate (**BLOCKED AT THE HUMAN SELECTION GATE**). Its child
-execution slice **DO-104R — Ownership Census Intake and Reconciliation is
-COMPLETE**: the census was performed on 2026-08-27 and found no E1-relevant
-hardware in possession. All ten required categories are `CONFIRMED_ABSENT`,
-compatibility reconciliation ran with an empty subject set, and B-016 is closed.
-Engineering stops here — the next decision is a human ruling, not a commit
-**Next:** the human hardware-selection ruling — `SELECTED`,
-`ALTERNATE_SELECTED`, `SELECTION_DEFERRED`, or `RESEARCH_REQUIRED`. Only after
-that ruling does DO-104O resume for selection ratification and procurement
-authorization. Purchase, receipt, assembly and E1 measurement follow in that
-order, none of them yet
+Authorization Gate (**PARKED OPEN**). Its child slice DO-104R is complete,
+including a census erratum: pass 1 recorded a false absence, and pass 2 records
+one owned item (Raspberry Pi 5 16 GB, `TTP-ASSET-001`, in hand since 2025-04).
+
+**Hardware development is PAUSED.** The selection ruling is
+**`SELECTION_DEFERRED`** — awaiting authorization to build the physical prototype
+Analyzer and displacement jig. Market research, the recommended E1 architecture,
+the census and the software are retained as **engineering inputs only**; they are
+not a selection and not a purchase authorization. No analyzer hardware,
+excitation system, force-measurement chain, displacement jig, or component is
+authorized for procurement or construction. See
+[the procurement authorization record](../hardware/TTP_E1_PROCUREMENT_AUTHORIZATION.md).
+
+**Next hardware milestone:** Prototype Analyzer + Displacement Jig Authorization.
+Not more research and not another dev order choosing an ADC. When it is given,
+the project re-checks availability at that time, settles what the prototype
+actually needs — it may not include the excitation chain — and only then writes a
+concrete prototype BOM.
+
+**Nothing is promoted.** DO-101B remains queued and unresumed; per the binding
+sequence its promotion belongs to its own docs/status commit.
+
 **Queued:** DO-105 — E2 Fixed-Point Repeatability (BLOCKED on the E1 gate);
 DO-101B — Empirical Registry and Inspection Surface (NOT STARTED)
 **Previous:** DO-103 Stages 3 and 3b — Phase 2 ingestion, the

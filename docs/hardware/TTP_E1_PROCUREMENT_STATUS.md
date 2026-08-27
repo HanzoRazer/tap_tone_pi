@@ -4,7 +4,7 @@
 component selected for purchase, ordered, or received. Physical ownership is
 `UNKNOWN` for every component — no physical census has been performed.
 **Dev Order:** DO-104P; ownership census added under DO-104S
-**Last updated:** 2026-08-27 (DO-104R census)
+**Last updated:** 2026-08-27 (DO-104R census pass 2 — erratum)
 
 Procurement state lives here and **not** in any scientific result document. A
 result document says what was measured; this one says what is on order. Mixing
@@ -45,7 +45,8 @@ it" and "we have one" are different facts:
 
 ## Physical ownership census
 
-**Superseded by the DO-104R census of 2026-08-27.** Every component below is
+**Superseded by DO-104R census pass 2 (2026-08-27).** One item is owned — a
+Raspberry Pi 5 16 GB, in hand since April 2025. Every component below is
 now `CONFIRMED_ABSENT`: a census was performed and found no E1-relevant
 hardware in possession. The `UNKNOWN` that this section originally recorded was
 the honest pre-census state; it has been resolved by observation, not by
@@ -77,7 +78,7 @@ present as a procurement result rather than as the inference error it is.
 
 | Component | BOM row | Ownership | Procurement action | Basis |
 | --- | --- | --- | --- | --- |
-| Raspberry Pi 5 | HOST-001 | CONFIRMED_ABSENT | HOLD | Design-selected in the stack specification; no physical evidence in the repository |
+| Raspberry Pi 5 16 GB | HOST-001 | CONFIRMED_PRESENT | USE_OWNED | Owned since 2025-04, outside this campaign. Asset `TTP-ASSET-001`; never ORDERED, not RECEIVED by this campaign |
 | HiFiBerry DAC+ ADC Pro | ADC-001 | CONFIRMED_ABSENT | HOLD | Design-selected; sets the binding electrical limit, so its physical presence matters more than most |
 | OPA1612 mic preamp | PREAMP-001 | CONFIRMED_ABSENT | HOLD | Design-*specified* custom board; possession and existence are separate open questions |
 | Condenser microphone | MIC-001 | CONFIRMED_ABSENT | HOLD | Never locked to a model in the stack specification |
@@ -116,10 +117,14 @@ Procurement action is independent of both ownership and selection tier:
 | `HOLD` | No procurement action authorized. The state of every row in this order |
 | `VERIFY_POSSESSION` | Resolve ownership by physical census before any purchase decision |
 | `RECOMMEND_PURCHASE` | Recommended to a human for purchase authorization; not a purchase |
+| `USE_OWNED` | Filled by hardware already possessed; requires ownership `CONFIRMED_PRESENT` |
+| `NO_PURCHASE_REQUIRED` | Nothing to buy for this role; requires ownership `CONFIRMED_PRESENT` |
 | `FABRICATE` | Made rather than bought |
 | `REJECTED` | Ruled out; reason in the rationale document |
 
-**No row in this order carries an action other than `HOLD`.** DO-104S is
+**Every row carries `HOLD` except `HOST-001`, which carries `USE_OWNED`.**
+That one exception is not a procurement decision — it records that the role is
+already filled and therefore has nothing to procure. DO-104S is
 authorized to recommend, not to buy, and the possession census has not run.
 
 ## The dominant blocker
@@ -142,6 +147,13 @@ Consequence for the next pass: **lead time is a first-class selection
 criterion**, ranked beside price and specification. A part that is excellent and
 unobtainable this quarter is not the preferred choice.
 
+## Selection ruling: `SELECTION_DEFERRED` (2026-08-27)
+
+Hardware development is **paused** pending authorization to build the physical
+prototype Analyzer and displacement jig. The recommendation below is retained as
+an engineering input and is **not** a selection. See
+[the procurement authorization record](TTP_E1_PROCUREMENT_AUTHORIZATION.md).
+
 ## DO-104S procurement recommendation
 
 This section is the human-readable procurement decision package. It is
@@ -158,7 +170,7 @@ be derived from the other.
 | AMP-001 amplifier | Brüel & Kjær Type 2718 | RECOMMENDED | CONFIRMED_ABSENT | HOLD |
 | MIC-001 microphone | Earthworks M23 G2 | RECOMMENDED | CONFIRMED_ABSENT | HOLD |
 | ADC-001 adc_interface | HiFiBerry DAC+ ADC Pro | DESIGN_SELECTED, retained | CONFIRMED_ABSENT | HOLD |
-| HOST-001 host | Raspberry Pi 5 8GB | DESIGN_SELECTED, retained | CONFIRMED_ABSENT | HOLD |
+| HOST-001 host | owned: Raspberry Pi 5 16GB; candidate priced as Raspberry Pi 5 8GB | DESIGN_SELECTED, retained | CONFIRMED_PRESENT | USE_OWNED |
 | PREAMP-001 mic_preamp | OPA1612 design | DESIGN_SPECIFIED, retained | CONFIRMED_ABSENT | HOLD |
 | STINGER-001 stinger | B&K 10-32 UNF stinger stock, 50 mm, or fabricated | RECOMMENDED | CONFIRMED_ABSENT | HOLD |
 | TIP-001 contact_tip | fabricated | NOT_SELECTED | CONFIRMED_ABSENT | HOLD |

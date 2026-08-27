@@ -1035,13 +1035,22 @@ class TestTheCommittedCandidateTables:
         by_id = {s["spec_for"]: s for s in specs}
         assert checker.validate_tier_completeness(candidates, by_id) == []
 
-    def test_nothing_is_owned_and_nothing_is_recommended_for_purchase(self, candidates):
-        # Ownership moved from UNKNOWN to CONFIRMED_ABSENT when the DO-104R
-        # census ran. Both mean "not owned" for procurement, but only the second
-        # is a finding, and only the second makes RECOMMEND_PURCHASE legal. It
-        # is still not actioned.
-        assert {r["ownership"] for r in candidates} == {"CONFIRMED_ABSENT"}
-        assert {r["procurement_action"] for r in candidates} == {"HOLD"}
+    def test_only_the_host_is_owned_and_nothing_is_bought(self, candidates):
+        # Census pass 2 found one owned role. Everything else stays absent, and
+        # no row anywhere recommends a purchase - the census made
+        # RECOMMEND_PURCHASE legal without performing it.
+        owned = {
+            r["role_local_id"]
+            for r in candidates
+            if r["ownership"] == "CONFIRMED_PRESENT"
+        }
+        assert owned == {"HOST-001"}
+        assert {r["ownership"] for r in candidates} == {
+            "CONFIRMED_PRESENT",
+            "CONFIRMED_ABSENT",
+        }
+        assert "RECOMMEND_PURCHASE" not in {r["procurement_action"] for r in candidates}
+        assert {r["procurement_action"] for r in candidates} == {"HOLD", "USE_OWNED"}
 
     def test_measured_force_is_present_in_every_tier(self, checker, candidates):
         by_tier = checker.group_candidates_by_tier(candidates)
@@ -1237,7 +1246,10 @@ class TestDocumentationAgreesWithItself:
                 if cell in ("UNKNOWN", "CONFIRMED_PRESENT", "CONFIRMED_ABSENT"):
                     ownership_cells.append(cell)
         assert ownership_cells, "no ownership cells found — the tables moved"
-        assert set(ownership_cells) == {"CONFIRMED_ABSENT"}
+        # Both tables must show the same one-owned / rest-absent split. If they
+        # ever differ, a reader has two answers to "do we have it?"
+        assert set(ownership_cells) == {"CONFIRMED_PRESENT", "CONFIRMED_ABSENT"}
+        assert ownership_cells.count("CONFIRMED_PRESENT") == 2
 
     def test_nothing_is_actioned_beyond_hold(self, docs):
         # HOLD is the only action this order may leave behind. RECOMMEND_PURCHASE
@@ -1277,3 +1289,65 @@ class TestDocumentationAgreesWithItself:
         # and immediately says what passing does not mean
         assert "What passing does not mean" in matrix
         assert "It does not mean the chain works" in matrix
+
+
+class TestOwnershipBackedActions:
+    """Actions asserting possession must be backed by an observation.
+
+    Both directions are guarded, and the second one only became reachable when
+    census pass 2 found an owned item: you may not recommend buying what you
+    have not established you lack, and you may not plan to use what you do not
+    have.
+    """
+
+    def test_use_owned_requires_confirmed_present(self, checker):
+        rows = [
+            candidate(
+                "host", ownership="CONFIRMED_ABSENT", procurement_action="USE_OWNED"
+            )
+        ]
+        problems = checker.validate_procurement_semantics(rows)
+        assert any("requires CONFIRMED_PRESENT" in p for p in problems)
+
+    def test_use_owned_is_accepted_when_owned(self, checker):
+        rows = [
+            candidate(
+                "host", ownership="CONFIRMED_PRESENT", procurement_action="USE_OWNED"
+            )
+        ]
+        assert checker.validate_procurement_semantics(rows) == []
+
+    def test_no_purchase_required_requires_confirmed_present(self, checker):
+        rows = [
+            candidate(
+                "host", ownership="UNKNOWN", procurement_action="NO_PURCHASE_REQUIRED"
+            )
+        ]
+        assert checker.validate_procurement_semantics(rows)
+
+    def test_recommend_purchase_still_requires_confirmed_absent(self, checker):
+        # The original rule survives the vocabulary extension.
+        rows = [
+            candidate(
+                "shaker",
+                ownership="CONFIRMED_PRESENT",
+                procurement_action="RECOMMEND_PURCHASE",
+            )
+        ]
+        problems = checker.validate_procurement_semantics(rows)
+        assert any("requires CONFIRMED_ABSENT" in p for p in problems)
+
+    def test_owning_something_does_not_action_it(self, checker):
+        # OWNED does not imply any procurement action at all. HOLD stays legal.
+        rows = [
+            candidate("host", ownership="CONFIRMED_PRESENT", procurement_action="HOLD")
+        ]
+        assert checker.validate_procurement_semantics(rows) == []
+
+    def test_owning_something_does_not_select_it(self, checker):
+        # The Pi is owned and the human ruling is SELECTION_DEFERRED. Possession
+        # must not have promoted the canonical role row.
+        bom = checker.parse_table(checker.BOM_PATH, "local_id")
+        host = next(r for r in bom if r["local_id"] == "HOST-001")
+        assert host["status"] == "SELECTED"  # design selection, unchanged
+        assert checker.rung(host["status"]) < checker.rung("ORDERED")
