@@ -408,12 +408,22 @@ class TestTheArchivedSourceSurvivesTheRepository:
         )
 
     def test_the_archive_is_excluded_from_rewriting_hooks(self):
+        # Four hooks rewrite files in place, and each would invalidate a recorded
+        # digest. trailing-whitespace and end-of-file-fixer mangled the archive
+        # once already; ruff and ruff-format would reformat the archived parity
+        # source, which is a .py file.
         from pathlib import Path
 
         config = (
             Path(__file__).resolve().parents[1] / ".pre-commit-config.yaml"
         ).read_text(encoding="utf-8")
-        assert config.count("exclude: ^docs/reference/acquisition/") == 2
+        for hook in ("ruff", "ruff-format", "trailing-whitespace", "end-of-file-fixer"):
+            marker = f"- id: {hook}\n"
+            assert marker in config, f"hook {hook} not found"
+            following = config.split(marker, 1)[1][:220]
+            assert "exclude: ^docs/reference/acquisition/" in following, (
+                f"{hook} may rewrite the archived source and invalidate its digest"
+            )
 
     def test_the_archive_is_excluded_from_line_ending_normalization(self):
         from pathlib import Path

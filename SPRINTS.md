@@ -460,6 +460,71 @@ evidence calls for them — not because a grant narrative would like to cite the
   site uses is named for what it actually is. **No replacement equation is
   prescribed here** — choosing one is the reconciliation work, not its premise.
 
+### B-021 — the acquisition source counts its estimator term twice
+
+- **Status:** open · **Priority:** P2 · **Area:** `tap_tone_pi/uncertainty/acquisition/frequency_budget.py`
+- **Origin:** DO-107A Commit 3 parity battery, against the archived 984-line
+  acquisition source.
+- **Context:** with peak interpolation enabled, the source assigns the estimator
+  floor to the `spectral_resolution` contributor *while also* carrying
+  `estimator_floor` as its own entry, so the estimator term enters the
+  root-sum-square twice. Raw FFT bin width is then not represented in the
+  combination at all.
+- **Reproduced deliberately.** DO-107A's job was to establish truthful parity
+  with the archived source before changing its mathematics, so the behavior is
+  carried faithfully and pinned by test. Repairing it inside DO-107A would have
+  made "parity with the archived source" a false claim.
+- **Magnitude:** invisible at TTP profile values — the estimator floor is around
+  1e-8 Hz against a 3.7e-3 Hz clock error — and close to a factor of √2 wherever
+  the estimator term dominates, such as a short record at low SNR. A test
+  demonstrates it at 0.05 s and 10 dB.
+- **Trigger:** the acquisition mathematics / source-reconciliation order.
+- **Acceptance:** reconcile the frequency-budget contributor model so an
+  estimator-floor contribution enters combined frequency uncertainty exactly
+  once, and preserve raw FFT/bin resolution as a separately reportable quantity.
+  Re-baseline parity, schemas and tests only under that successor work. Related:
+  **B-020**, which holds the naming and authority question for the estimator term
+  itself.
+
+### B-022 — the canonical MOE authority double-applies its sensitivity coefficients
+
+- **Status:** open · **Priority:** P1 · **Area:** `tap_tone_pi/uncertainty/stiffness.py`
+- **Origin:** DO-107A Commit 3, while delegating modulus propagation to the
+  canonical authority.
+- **Context:** `compute_tap_tone_moe_uncertainty()` and
+  `compute_deflection_moe_uncertainty()` both compute each component as
+  `E_GPa × rel × sens` — the sensitivity is already applied — and *then* pass
+  `sensitivity_coefficient=sens` to `add_component()`.
+  `UncertaintyComponent.contribution` is `(c_i × u_i)²`, so
+  `combined_standard_uncertainty` applies every coefficient a second time.
+- **Measured effect** on the TTP worked example: the canonical combined figure is
+  `0.0341033118` where the root-sum-square of its own component values is
+  `0.0176291288` — inflated by 1.93×. Length is squared to ×16 rather than ×4,
+  thickness and frequency to ×4 rather than ×2. **The inflation is not a constant
+  factor**: it depends on which term dominates, so no downstream scale correction
+  can be generally right.
+- **Scope:** both MOE functions. `uncertainty/amplitude.py` uses
+  `sensitivity_coefficient` correctly and `uncertainty/budget.py` itself is
+  right — the defect is confined to `stiffness.py`. Currently **latent**: no
+  production code calls either function, though both are publicly exported from
+  `tap_tone_pi.uncertainty`.
+- **Not remediated by DO-107A.** Correcting a public uncertainty API is not an
+  acquisition-integration order's job, and the absence of production callers
+  lowers urgency without widening DO-107's scope.
+- **Temporary workaround, which does not close this item.**
+  `acquisition/modulus.py` consumes the canonical *components* — which are
+  correct — and bypasses the canonical *aggregate*, marking its result
+  `aggregation = canonical_components_with_B022_aggregate_workaround` rather than
+  claiming ordinary delegation. A tripwire test asserts the canonical aggregate
+  still differs from the RSS of its own components; **when this item is fixed
+  that test fails on purpose**, and the workaround must then be deleted rather
+  than left as permanent parallel aggregation.
+- **Trigger:** before any consumer relies on a combined MOE uncertainty figure.
+- **Acceptance:** decide the correct representation of standard uncertainty
+  versus sensitivity coefficient in these functions, correct the double
+  application, update the existing tests, and check public consumers before
+  changing behavior. Then remove the acquisition workaround and its tripwire.
+
 ## Not backlog — recorded here only so they aren't mistaken for open items
 
 These are **design properties / accepted tradeoffs**, documented in code/README;

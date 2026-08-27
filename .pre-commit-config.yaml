@@ -6,9 +6,14 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.10
     hooks:
+      # The archived acquisition source is the parity baseline for DO-107A and
+      # is identified by SHA-256. Reformatting it would change the bytes the
+      # parity tests are measured against.
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
+        exclude: ^docs/reference/acquisition/
       - id: ruff-format
+        exclude: ^docs/reference/acquisition/
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0

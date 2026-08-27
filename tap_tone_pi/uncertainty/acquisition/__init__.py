@@ -23,6 +23,26 @@ from .quantities import (
     Quantity,
     as_quantity,
 )
+from .frequency_budget import (
+    FrequencyBudget,
+    clock_scale_error_hz,
+    estimator_floor_candidate_hz,
+    frequency_budget,
+)
+from .modulus import ModulusBudget, ModulusUnavailable, modulus_budget
+from .noise import (
+    NoiseBudget,
+    clock_topology_note,
+    combine_snr_db,
+    front_end_output_noise_vrms,
+    front_end_snr_db,
+    jitter_budget_s,
+    jitter_snr_db,
+    noise_budget,
+    quantization_snr_db,
+    rss,
+)
+from .sweep import SweepLimits, compute_sweep_limits
 from .specs import (
     CLOCK_TOPOLOGIES,
     CaptureSpec,
@@ -47,4 +67,27 @@ __all__ = [
     "SpecimenSpec",
     "SweepSpec",
     "spec_quantities",
+    # noise
+    "NoiseBudget",
+    "noise_budget",
+    "jitter_snr_db",
+    "jitter_budget_s",
+    "quantization_snr_db",
+    "combine_snr_db",
+    "rss",
+    "front_end_output_noise_vrms",
+    "front_end_snr_db",
+    "clock_topology_note",
+    # frequency
+    "FrequencyBudget",
+    "frequency_budget",
+    "clock_scale_error_hz",
+    "estimator_floor_candidate_hz",
+    # sweep
+    "SweepLimits",
+    "compute_sweep_limits",
+    # modulus (delegating adapter)
+    "ModulusBudget",
+    "ModulusUnavailable",
+    "modulus_budget",
 ]
