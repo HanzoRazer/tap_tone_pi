@@ -1,118 +1,118 @@
 # TTP E1 — Physical Ownership Census
 
-**Status:** `NOT_PERFORMED`
-**Dev Order:** DO-104O
+**Status:** `PERFORMED`
+**Dev Order:** DO-104O (framework) / DO-104R (intake and reconciliation)
 **Base:** `d3ae3b6` (DO-104S merged as PR #29)
-**Census date:** — (not yet conducted)
-**Observer:** — (not yet conducted)
+**Census date:** 2026-08-27
+**Observer:** Ross Echols
+**Observer role:** repository owner / bench operator
+**Observation method:** `OPERATOR_ATTESTATION`
 
 ---
 
-## This document does not close B-016
+## Result
 
-B-016 records that no physical ownership census has ever been run. **It stays
-open until this file carries actual observations of actual equipment.** A form
-populated with `UNKNOWN` is the form, not the census — DO-104O §4.9 says so
-explicitly, and the validator will not accept an unperformed census as a closing
-artifact.
+**No E1-relevant hardware is possessed. All ten required categories are
+`CONFIRMED_ABSENT`.**
 
-Right now every row below reads `UNKNOWN` because nobody has looked yet. That is
-the honest state, and it is exactly the state DO-104S ended in.
+This is a complete census with a negative result, which is a finding rather than
+an empty form. "Inspected and absent" and "never looked" are different states,
+and every row below is the former.
 
-## What a census is, and what it may not be built from
+## Method, and its limits
 
-The census is **observational**. Ownership comes from someone physically looking
-at hardware and reading identity off it.
+The operator was asked to establish possession for the ten required categories
+and reported that none of the equipment exists. That is an **attestation**, not a
+hands-on inventory conducted item by item: no unit was handled, because there
+were no units to handle.
 
-Ownership may **never** be derived from any of these, per DO-104O §4.4:
+`OPERATOR_ATTESTATION` is recorded rather than `DIRECT_PHYSICAL_INSPECTION`
+deliberately. The distinction is not pedantry — a negative attestation is
+answered by the absence of a thing, and absence cannot be photographed or
+serialised. A reader should know that the evidence here is the operator's
+statement about their own bench, which is the appropriate and only available
+evidence for a negative result.
 
-- documentation, including this repository's own design documents;
-- repository configuration, a device profile, or an installed driver;
-- a previous product selection or a DO-104S recommendation;
-- a purchase recommendation;
-- **a historical statement about what was owned, unless reconfirmed for this
-  census.**
+**What would overturn this census:** finding any listed item. If a Raspberry Pi
+or a measurement microphone surfaces later, this document is wrong and must be
+re-run, not patched.
 
-That last one is the easiest to violate and the most important. "I think I have
-one of those somewhere" is not an observation. The question this document
-answers is what is *on the bench, now, in hand.*
+## What was not inferred
 
-## Method
+Ownership was **not** derived from any of the sources DO-104O §4.4 forbids —
+documentation, repository configuration, device profiles or drivers, prior
+selections, DO-104S recommendations, or purchase recommendations.
 
-To be recorded when the census is performed. It should state:
-
-- who conducted it;
-- when;
-- what was physically handled versus seen;
-- what could not be located and why;
-- where identity was read from (label, silkscreen, packaging, firmware readout);
-- anything that was found but not expected.
+One corroborating observation is recorded as **consistent with** this result
+without being evidence for it: every captured session under `runs_phase2/` is
+`"synthetic": true` with `"device": null`, or the `DEMO` fixture. No real capture
+has ever happened in this repository. That agrees with owning no acquisition
+hardware, but agreement is not proof, and the census rests on the attestation.
 
 ## Ownership vocabulary
 
-| Ownership | Means | Established by |
-| --- | --- | --- |
-| `UNKNOWN` | Nobody has looked | the pre-census state of every row |
-| `OWNED` | A physical unit was observed and identified | direct observation, with identity recorded below |
-| `NOT_OWNED` | A census was performed and found no unit | a search that looked and did not find |
+DO-104R §6 names these `OWNED` / `NOT_OWNED` / `UNKNOWN` and instructs using
+existing repository equivalents rather than minting synonyms. The repository
+already carries this axis from DO-104S, so those terms are used here:
 
-`NOT_OWNED` is a **finding**, not a default. It requires that someone looked.
+| This repository | DO-104R §6 name | Means | Established by |
+| --- | --- | --- | --- |
+| `UNKNOWN` | `UNKNOWN` | Nobody has looked | the pre-census state |
+| `CONFIRMED_PRESENT` | `OWNED` | A physical unit was observed and identified | direct observation with identity recorded |
+| `CONFIRMED_ABSENT` | `NOT_OWNED` | A census was performed and found no unit | someone who looked and did not find |
+
+`CONFIRMED_ABSENT` is a **finding**. It is never a default for an item that went
+unmentioned.
 
 ## Compatibility disposition
 
-Recorded per role once ownership is known. An owned item is **not** assumed
-suitable merely because it fills the same nominal role — DO-104O §3.2:
-
 | Disposition | Means |
 | --- | --- |
-| `OWNED_AND_COMPATIBLE` | Owned, and its specification satisfies the E1 requirement for that role |
-| `OWNED_REQUIRES_VERIFICATION` | Owned, but a specification needed for the E1 decision is unread or unknown |
-| `OWNED_INCOMPATIBLE` | Owned, and it cannot satisfy the role — with the specific requirement it fails |
-| `NOT_OWNED` | No unit |
-| `UNKNOWN` | Not yet assessed |
+| `COMPATIBLE` | Owned, and its specification satisfies the E1 requirement for that role |
+| `COMPATIBILITY_REQUIRES_VERIFICATION` | Owned, but a specification needed for the decision is unread |
+| `INCOMPATIBLE` | Owned, and it fails a named requirement |
+| `NOT_APPLICABLE` | Nothing is owned, so there is nothing to assess |
+
+Every row below is `NOT_APPLICABLE`. **Compatibility reconciliation has an empty
+subject set** — there is no owned equipment to reconcile against the E1
+architecture, so DO-104R §3.5 has nothing to evaluate.
 
 ---
 
 ## Census record
 
-Ten categories, per DO-104O §3.1. Fill `manufacturer`, `model`, and
-`serial_or_asset_id` **only from what is physically readable on the unit**.
-
-| # | Category | BOM role | Ownership | Manufacturer | Model | Serial / asset ID | Qty | Condition | Location | Witnessed | Disposition |
+| # | Category | BOM role | Ownership | Manufacturer | Model | Serial / asset ID | Qty | Condition | Location | Observation method | Disposition |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Raspberry Pi 5 | HOST-001 | UNKNOWN | — | — | — | — | — | — | NO | UNKNOWN |
-| 2 | HiFiBerry DAC+ ADC Pro | ADC-001 | UNKNOWN | — | — | — | — | — | — | NO | UNKNOWN |
-| 3 | OPA1612 preamp hardware | PREAMP-001 | UNKNOWN | — | — | — | — | — | — | NO | UNKNOWN |
-| 4 | Condenser microphone | MIC-001 | UNKNOWN | — | — | — | — | — | — | NO | UNKNOWN |
-| 5 | Audio power amplifier | AMP-001 | UNKNOWN | — | — | — | — | — | — | NO | UNKNOWN |
-| 6 | Speaker / Phase 2A driver | — (not an E1 BOM row) | UNKNOWN | — | — | — | — | — | — | NO | UNKNOWN |
-| 7 | Force transducer / load cell | FORCE-001 | UNKNOWN | — | — | — | — | — | — | NO | UNKNOWN |
-| 8 | Force conditioner (IEPE/ICP or bridge) | PRECOND-001 | UNKNOWN | — | — | — | — | — | — | NO | UNKNOWN |
-| 9 | Shaker / exciter | SHAKER-001 | UNKNOWN | — | — | — | — | — | — | NO | UNKNOWN |
-| 10 | Stand / base / fixture hardware | STAND-001 | UNKNOWN | — | — | — | — | — | — | NO | UNKNOWN |
+| 1 | Raspberry Pi 5 | HOST-001 | CONFIRMED_ABSENT | — | — | — | 0 | — | — | OPERATOR_ATTESTATION | NOT_APPLICABLE |
+| 2 | HiFiBerry DAC+ ADC Pro | ADC-001 | CONFIRMED_ABSENT | — | — | — | 0 | — | — | OPERATOR_ATTESTATION | NOT_APPLICABLE |
+| 3 | OPA1612 preamp hardware | PREAMP-001 | CONFIRMED_ABSENT | — | — | — | 0 | — | — | OPERATOR_ATTESTATION | NOT_APPLICABLE |
+| 4 | Condenser / measurement microphone | MIC-001 | CONFIRMED_ABSENT | — | — | — | 0 | — | — | OPERATOR_ATTESTATION | NOT_APPLICABLE |
+| 5 | Audio power amplifier | AMP-001 | CONFIRMED_ABSENT | — | — | — | 0 | — | — | OPERATOR_ATTESTATION | NOT_APPLICABLE |
+| 6 | Speaker / Phase 2A driver | — (not an E1 BOM row) | CONFIRMED_ABSENT | — | — | — | 0 | — | — | OPERATOR_ATTESTATION | NOT_APPLICABLE |
+| 7 | Force transducer / load cell | FORCE-001 | CONFIRMED_ABSENT | — | — | — | 0 | — | — | OPERATOR_ATTESTATION | NOT_APPLICABLE |
+| 8 | Force conditioner (IEPE/ICP or bridge) | PRECOND-001 | CONFIRMED_ABSENT | — | — | — | 0 | — | — | OPERATOR_ATTESTATION | NOT_APPLICABLE |
+| 9 | Shaker / exciter | SHAKER-001 | CONFIRMED_ABSENT | — | — | — | 0 | — | — | OPERATOR_ATTESTATION | NOT_APPLICABLE |
+| 10 | Stand / base / fixture hardware | STAND-001 | CONFIRMED_ABSENT | — | — | — | 0 | — | — | OPERATOR_ATTESTATION | NOT_APPLICABLE |
 
-### Location granularity
-
-Record location at a granularity that distinguishes one unit from another
-without becoming a security disclosure — `bench`, `parts drawer`, `storage`,
-`in another build` are all sufficient. A street address is not wanted and must
-not be recorded here.
+No serial number or asset identifier was fabricated for any row. There is
+nothing to identify.
 
 ## Equipment found that is not in the BOM
 
-A census looks at what is there, not only at what was expected. Anything
-relevant to the E1 chain that is owned but absent from the BOM belongs here —
-a different microphone, an audio interface that is not a HiFiBerry, an amplifier
-of unknown provenance. It may turn out to change a selection.
+**None.** No alternate audio interface, microphone, amplifier, sensor, or
+fixture was reported.
 
 | Item | Manufacturer | Model | Serial / asset ID | Why it may matter to E1 |
 | --- | --- | --- | --- | --- |
 | — | — | — | — | — |
 
+This table is empty as a result, not as an omission. DO-104R §3.6 exists because
+an owned alternate could change the architecture decision; none exists, so the
+DO-104S recommendation faces no competing hardware.
+
 ## Unresolved items
 
-Anything that could not be found, could not be identified, or was found in a
-state that prevents a disposition.
+**None.** No category was left in `UNKNOWN`.
 
 | Item | What blocked the observation | What would resolve it |
 | --- | --- | --- |
@@ -120,25 +120,28 @@ state that prevents a disposition.
 
 ## Evidence references
 
-Photographs, packaging, invoices held outside the repository, or an existing
-asset register may be referenced here. **No financial credentials, account
-identifiers, or shipping addresses.** A reference names the evidence; it does
-not reproduce it.
-
-| Role | Evidence reference | Kind |
-| --- | --- | --- |
-| — | — | — |
+The evidence is the operator attestation recorded in this document's header. No
+photographs, invoices, or external asset registers were supplied, and none is
+needed to record an absence.
 
 ---
 
-## What this document will not do once filled
+## What this census does and does not settle
 
-It will record possession. It will not record suitability beyond the recorded
-disposition, it will not authorize a purchase, and it will not promote any
-component's status. Selection is
-[the rationale document](TTP_E1_HARDWARE_SELECTION_RATIONALE.md); authorization
-is `TTP_E1_PROCUREMENT_AUTHORIZATION.md`; possession of a serialized unit is
-[the identity register](TTP_E1_HARDWARE_IDENTITY_REGISTER.md).
+**Settles:** B-016. A census was performed. The finding is that no E1-relevant
+hardware is possessed.
 
-Owning the recommended hardware would not close B-014, and owning the baseline
-ADC would not close B-015.
+**Does not settle:**
+
+- **Selection.** Nothing owned means nothing to prefer over the DO-104S
+  recommendation, but the recommendation still requires an explicit human
+  ruling. `CONFIRMED_ABSENT` does not produce `SELECTED`.
+- **Purchase authorization.** The census makes a purchase recommendation
+  *legal* for the first time — the validator requires `CONFIRMED_ABSENT` before
+  `RECOMMEND_PURCHASE` — but legal is not authorized, and DO-104R §4.8 forbids
+  creating authorization here. Every procurement action stays `HOLD`.
+- **B-014.** The ADC anti-aliasing finding is untouched. Not owning the board
+  says nothing about aliasing.
+- **B-015.** The ADC supersession is untouched, and is now more pressing rather
+  than less: the recommended board must be *acquired*, and it is the one the
+  vendor has superseded.
