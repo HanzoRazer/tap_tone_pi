@@ -1036,7 +1036,11 @@ class TestTheCommittedCandidateTables:
         assert checker.validate_tier_completeness(candidates, by_id) == []
 
     def test_nothing_is_owned_and_nothing_is_recommended_for_purchase(self, candidates):
-        assert {r["ownership"] for r in candidates} == {"UNKNOWN"}
+        # Ownership moved from UNKNOWN to CONFIRMED_ABSENT when the DO-104R
+        # census ran. Both mean "not owned" for procurement, but only the second
+        # is a finding, and only the second makes RECOMMEND_PURCHASE legal. It
+        # is still not actioned.
+        assert {r["ownership"] for r in candidates} == {"CONFIRMED_ABSENT"}
         assert {r["procurement_action"] for r in candidates} == {"HOLD"}
 
     def test_measured_force_is_present_in_every_tier(self, checker, candidates):
@@ -1220,8 +1224,9 @@ class TestDocumentationAgreesWithItself:
 
     def test_the_ownership_census_and_the_recommendation_agree(self, docs):
         # Both tables in the procurement document carry an Ownership column, and
-        # every row of both must read UNKNOWN. If one of them ever says otherwise
-        # while the other does not, a reader has two answers to "do we have it?"
+        # every row of both must agree. If one says a role is absent while the
+        # other still says nobody looked, a reader has two answers to the only
+        # question that gates a purchase.
         procurement = docs["TTP_E1_PROCUREMENT_STATUS.md"]
         ownership_cells = []
         for line in procurement.splitlines():
@@ -1232,7 +1237,7 @@ class TestDocumentationAgreesWithItself:
                 if cell in ("UNKNOWN", "CONFIRMED_PRESENT", "CONFIRMED_ABSENT"):
                     ownership_cells.append(cell)
         assert ownership_cells, "no ownership cells found — the tables moved"
-        assert set(ownership_cells) == {"UNKNOWN"}
+        assert set(ownership_cells) == {"CONFIRMED_ABSENT"}
 
     def test_nothing_is_actioned_beyond_hold(self, docs):
         # HOLD is the only action this order may leave behind. RECOMMEND_PURCHASE

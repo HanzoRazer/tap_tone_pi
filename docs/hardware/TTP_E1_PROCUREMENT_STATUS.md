@@ -4,7 +4,7 @@
 component selected for purchase, ordered, or received. Physical ownership is
 `UNKNOWN` for every component — no physical census has been performed.
 **Dev Order:** DO-104P; ownership census added under DO-104S
-**Last updated:** 2026-08-25
+**Last updated:** 2026-08-27 (DO-104R census)
 
 Procurement state lives here and **not** in any scientific result document. A
 result document says what was measured; this one says what is on order. Mixing
@@ -45,7 +45,11 @@ it" and "we have one" are different facts:
 
 ## Physical ownership census
 
-**Every component below is `UNKNOWN`, and that is a finding, not a placeholder.**
+**Superseded by the DO-104R census of 2026-08-27.** Every component below is
+now `CONFIRMED_ABSENT`: a census was performed and found no E1-relevant
+hardware in possession. The `UNKNOWN` that this section originally recorded was
+the honest pre-census state; it has been resolved by observation, not by
+inference. The vocabulary and the anti-inference rules below still govern.
 
 DO-104S is a selection order executed before any physical inventory of the lab
 has been performed. No component in this campaign has been established as
@@ -73,16 +77,16 @@ present as a procurement result rather than as the inference error it is.
 
 | Component | BOM row | Ownership | Procurement action | Basis |
 | --- | --- | --- | --- | --- |
-| Raspberry Pi 5 | HOST-001 | UNKNOWN | HOLD | Design-selected in the stack specification; no physical evidence in the repository |
-| HiFiBerry DAC+ ADC Pro | ADC-001 | UNKNOWN | HOLD | Design-selected; sets the binding electrical limit, so its physical presence matters more than most |
-| OPA1612 mic preamp | PREAMP-001 | UNKNOWN | HOLD | Design-*specified* custom board; possession and existence are separate open questions |
-| Condenser microphone | MIC-001 | UNKNOWN | HOLD | Never locked to a model in the stack specification |
-| Audio power amplifier | AMP-001 | UNKNOWN | HOLD | Any amplifier already owned may not match the selected shaker; possession does not imply suitability |
-| Speaker / Phase 2A driver | — | UNKNOWN | HOLD | Not an E1 BOM row. Carried here because a physical census will encounter it and its status must not be inferred from its absence from the BOM |
-| Force transducer / load cell | FORCE-001 | UNKNOWN | HOLD | Highest-risk selection; unselected |
-| IEPE / ICP conditioner | PRECOND-001 | UNKNOWN | HOLD | Selected with the transducer, never after |
-| Shaker / exciter | SHAKER-001 | UNKNOWN | HOLD | Paired selection with the amplifier |
-| Stand / base hardware | STAND-001 | UNKNOWN | HOLD | Fixture is part of the measurement chain |
+| Raspberry Pi 5 | HOST-001 | CONFIRMED_ABSENT | HOLD | Design-selected in the stack specification; no physical evidence in the repository |
+| HiFiBerry DAC+ ADC Pro | ADC-001 | CONFIRMED_ABSENT | HOLD | Design-selected; sets the binding electrical limit, so its physical presence matters more than most |
+| OPA1612 mic preamp | PREAMP-001 | CONFIRMED_ABSENT | HOLD | Design-*specified* custom board; possession and existence are separate open questions |
+| Condenser microphone | MIC-001 | CONFIRMED_ABSENT | HOLD | Never locked to a model in the stack specification |
+| Audio power amplifier | AMP-001 | CONFIRMED_ABSENT | HOLD | Any amplifier already owned may not match the selected shaker; possession does not imply suitability |
+| Speaker / Phase 2A driver | — | CONFIRMED_ABSENT | HOLD | Not an E1 BOM row. Carried here because a physical census will encounter it and its status must not be inferred from its absence from the BOM |
+| Force transducer / load cell | FORCE-001 | CONFIRMED_ABSENT | HOLD | Highest-risk selection; unselected |
+| IEPE / ICP conditioner | PRECOND-001 | CONFIRMED_ABSENT | HOLD | Selected with the transducer, never after |
+| Shaker / exciter | SHAKER-001 | CONFIRMED_ABSENT | HOLD | Paired selection with the amplifier |
+| Stand / base hardware | STAND-001 | CONFIRMED_ABSENT | HOLD | Fixture is part of the measurement chain |
 
 The census covers the ten components named in the DO-104S ownership ruling. BOM
 rows absent from it — `ATTEN-001`, `STINGER-001`, `TIP-001`, `REF-STRUCT-001`,
@@ -148,20 +152,20 @@ be derived from the other.
 
 | Role | Recommended product | Selection status | Ownership | Procurement action |
 | --- | --- | --- | --- | --- |
-| FORCE-001 force_transducer | PCB Piezotronics 208C01 | RECOMMENDED | UNKNOWN | HOLD |
-| PRECOND-001 force_conditioner | PCB Piezotronics 480C02 | RECOMMENDED | UNKNOWN | HOLD |
-| SHAKER-001 shaker | Brüel & Kjær Type 4810 | RECOMMENDED | UNKNOWN | HOLD |
-| AMP-001 amplifier | Brüel & Kjær Type 2718 | RECOMMENDED | UNKNOWN | HOLD |
-| MIC-001 microphone | Earthworks M23 G2 | RECOMMENDED | UNKNOWN | HOLD |
-| ADC-001 adc_interface | HiFiBerry DAC+ ADC Pro | DESIGN_SELECTED, retained | UNKNOWN | HOLD |
-| HOST-001 host | Raspberry Pi 5 8GB | DESIGN_SELECTED, retained | UNKNOWN | HOLD |
-| PREAMP-001 mic_preamp | OPA1612 design | DESIGN_SPECIFIED, retained | UNKNOWN | HOLD |
-| STINGER-001 stinger | B&K 10-32 UNF stinger stock, 50 mm, or fabricated | RECOMMENDED | UNKNOWN | HOLD |
-| TIP-001 contact_tip | fabricated | NOT_SELECTED | UNKNOWN | HOLD |
-| STAND-001 stand_base | fabricated | NOT_SELECTED | UNKNOWN | HOLD |
-| REF-STRUCT-001 reference_structure | fabricated | NOT_SELECTED | UNKNOWN | HOLD |
-| ATTEN-001 attenuator | none — not required by the recommended pairing | CONDITIONAL | UNKNOWN | HOLD |
-| CABLE-001 cabling | six interconnects enumerated in the interface matrix | RECOMMENDED | UNKNOWN | HOLD |
+| FORCE-001 force_transducer | PCB Piezotronics 208C01 | RECOMMENDED | CONFIRMED_ABSENT | HOLD |
+| PRECOND-001 force_conditioner | PCB Piezotronics 480C02 | RECOMMENDED | CONFIRMED_ABSENT | HOLD |
+| SHAKER-001 shaker | Brüel & Kjær Type 4810 | RECOMMENDED | CONFIRMED_ABSENT | HOLD |
+| AMP-001 amplifier | Brüel & Kjær Type 2718 | RECOMMENDED | CONFIRMED_ABSENT | HOLD |
+| MIC-001 microphone | Earthworks M23 G2 | RECOMMENDED | CONFIRMED_ABSENT | HOLD |
+| ADC-001 adc_interface | HiFiBerry DAC+ ADC Pro | DESIGN_SELECTED, retained | CONFIRMED_ABSENT | HOLD |
+| HOST-001 host | Raspberry Pi 5 8GB | DESIGN_SELECTED, retained | CONFIRMED_ABSENT | HOLD |
+| PREAMP-001 mic_preamp | OPA1612 design | DESIGN_SPECIFIED, retained | CONFIRMED_ABSENT | HOLD |
+| STINGER-001 stinger | B&K 10-32 UNF stinger stock, 50 mm, or fabricated | RECOMMENDED | CONFIRMED_ABSENT | HOLD |
+| TIP-001 contact_tip | fabricated | NOT_SELECTED | CONFIRMED_ABSENT | HOLD |
+| STAND-001 stand_base | fabricated | NOT_SELECTED | CONFIRMED_ABSENT | HOLD |
+| REF-STRUCT-001 reference_structure | fabricated | NOT_SELECTED | CONFIRMED_ABSENT | HOLD |
+| ATTEN-001 attenuator | none — not required by the recommended pairing | CONDITIONAL | CONFIRMED_ABSENT | HOLD |
+| CABLE-001 cabling | six interconnects enumerated in the interface matrix | RECOMMENDED | CONFIRMED_ABSENT | HOLD |
 
 **`RECOMMENDED` is a new status and it is deliberately weaker than `SELECTED`.**
 It means DO-104S would choose this product and has shown the chain it sits in

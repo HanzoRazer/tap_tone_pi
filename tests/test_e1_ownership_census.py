@@ -138,11 +138,15 @@ class TestCensusSemantics:
         assert checker.check_census(full_census(), [], "PERFORMED") == []
 
     def test_an_unknown_item_is_accepted(self, checker):
-        rows = full_census(SHAKER_001=row(Ownership="UNKNOWN", **{"Observation method": "—"}))
+        rows = full_census(
+            SHAKER_001=row(Ownership="UNKNOWN", **{"Observation method": "—"})
+        )
         assert checker.check_census(rows, [], "PERFORMED") == []
 
     def test_an_owned_item_is_accepted_with_identity(self, checker):
-        assert checker.check_census(full_census(SHAKER_001=owned()), [], "PERFORMED") == []
+        assert (
+            checker.check_census(full_census(SHAKER_001=owned()), [], "PERFORMED") == []
+        )
 
     def test_an_omitted_item_does_not_silently_become_absent(self, checker):
         # The failure that matters most. A category nobody mentioned must be
@@ -166,14 +170,22 @@ class TestCensusSemantics:
             row(role=r, Ownership="UNKNOWN", **{"Observation method": "—"})
             for r in checker.CENSUS_REQUIRED_ROLES
         ]
-        rows.append(row(category="Speaker", role="—", Ownership="UNKNOWN",
-                        **{"Observation method": "—"}))
+        rows.append(
+            row(
+                category="Speaker",
+                role="—",
+                Ownership="UNKNOWN",
+                **{"Observation method": "—"},
+            )
+        )
         problems = checker.check_census(rows, [], "PERFORMED")
         assert any("establishes nothing" in p for p in problems)
 
     def test_an_unknown_census_status_is_refused(self, checker):
-        assert any("census status" in p for p in
-                   checker.check_census(full_census(), [], "MOSTLY_DONE"))
+        assert any(
+            "census status" in p
+            for p in checker.check_census(full_census(), [], "MOSTLY_DONE")
+        )
 
 
 class TestIdentity:
@@ -184,8 +196,10 @@ class TestIdentity:
 
     def test_an_owned_item_without_a_model_is_refused(self, checker):
         rows = [owned(Model="—")]
-        assert any("records no model" in p for p in
-                   checker.validate_owned_asset_identity(rows, []))
+        assert any(
+            "records no model" in p
+            for p in checker.validate_owned_asset_identity(rows, [])
+        )
 
     def test_a_locally_assigned_asset_id_satisfies_identity(self, checker):
         # A non-serialised fixture still needs to be distinguishable.
@@ -200,8 +214,12 @@ class TestIdentity:
         assert any("an absent item has no serial number" in p for p in problems)
 
     def test_an_unknown_ownership_value_is_refused(self, checker):
-        assert any("unknown ownership" in p for p in
-                   checker.validate_owned_asset_identity([row(Ownership="PROBABLY")], []))
+        assert any(
+            "unknown ownership" in p
+            for p in checker.validate_owned_asset_identity(
+                [row(Ownership="PROBABLY")], []
+            )
+        )
 
 
 class TestObservationMethod:
@@ -212,8 +230,10 @@ class TestObservationMethod:
 
     def test_an_established_state_needs_a_method(self, checker):
         rows = [row(**{"Observation method": "—"})]
-        assert any("observation method" in p for p in
-                   checker.validate_census_observation_method(rows))
+        assert any(
+            "observation method" in p
+            for p in checker.validate_census_observation_method(rows)
+        )
 
     def test_an_unknown_row_needs_no_method(self, checker):
         rows = [row(Ownership="UNKNOWN", **{"Observation method": "—"})]
@@ -245,8 +265,12 @@ class TestOwnershipAndCompatibilityAreIndependent:
         assert any("nothing unowned has been assessed" in p for p in problems)
 
     def test_an_unknown_disposition_is_refused(self, checker):
-        assert any("disposition" in p for p in
-                   checker.validate_ownership_compatibility_pair([owned(Disposition="FINE")]))
+        assert any(
+            "disposition" in p
+            for p in checker.validate_ownership_compatibility_pair(
+                [owned(Disposition="FINE")]
+            )
+        )
 
 
 class TestTheSelectionBoundary:
@@ -261,17 +285,28 @@ class TestTheSelectionBoundary:
     def test_confirmed_absent_does_not_authorize_purchase(self, checker):
         # The precondition is satisfied by the census; the authorization is not
         # created by it. Every candidate stays on HOLD.
-        candidates = checker.parse_optional_table(checker.BOM_PATH, checker.CANDIDATE_KEY)
+        candidates = checker.parse_optional_table(
+            checker.BOM_PATH, checker.CANDIDATE_KEY
+        )
         assert {r["procurement_action"] for r in candidates} == {"HOLD"}
 
     def test_the_census_makes_recommendation_legal_but_not_actioned(self, checker):
         # RECOMMEND_PURCHASE requires CONFIRMED_ABSENT, so the census unlocks it
         # without performing it. Both halves are asserted.
-        rows = [{"candidate_id": "X-001", "ownership": "CONFIRMED_ABSENT",
-                 "procurement_action": "RECOMMEND_PURCHASE"}]
+        rows = [
+            {
+                "candidate_id": "X-001",
+                "ownership": "CONFIRMED_ABSENT",
+                "procurement_action": "RECOMMEND_PURCHASE",
+            }
+        ]
         assert checker.validate_procurement_semantics(rows) == []
-        candidates = checker.parse_optional_table(checker.BOM_PATH, checker.CANDIDATE_KEY)
-        assert not any(r["procurement_action"] == "RECOMMEND_PURCHASE" for r in candidates)
+        candidates = checker.parse_optional_table(
+            checker.BOM_PATH, checker.CANDIDATE_KEY
+        )
+        assert not any(
+            r["procurement_action"] == "RECOMMEND_PURCHASE" for r in candidates
+        )
 
     def test_no_hardware_is_represented_as_received(self, checker):
         bom = checker.parse_table(checker.BOM_PATH, "local_id")
@@ -307,17 +342,25 @@ class TestARepresentativeMixedCensus:
     def mixed(self, checker):
         rows = full_census(
             HOST_001=owned(
-                category="Raspberry Pi 5", role="HOST-001",
-                Manufacturer="Raspberry Pi", Model="Raspberry Pi 5 8GB",
+                category="Raspberry Pi 5",
+                role="HOST-001",
+                Manufacturer="Raspberry Pi",
+                Model="Raspberry Pi 5 8GB",
                 Disposition="COMPATIBLE",
             ),
             ADC_001=owned(
-                category="Audio interface (alternate)", role="ADC-001",
-                Manufacturer="Some Other Vendor", Model="Two-Channel Interface",
+                category="Audio interface (alternate)",
+                role="ADC-001",
+                Manufacturer="Some Other Vendor",
+                Model="Two-Channel Interface",
                 Disposition="COMPATIBILITY_REQUIRES_VERIFICATION",
             ),
-            MIC_001=row(category="Microphone", role="MIC-001", Ownership="UNKNOWN",
-                        **{"Observation method": "—"}),
+            MIC_001=row(
+                category="Microphone",
+                role="MIC-001",
+                Ownership="UNKNOWN",
+                **{"Observation method": "—"},
+            ),
         )
         return rows
 
@@ -326,7 +369,9 @@ class TestARepresentativeMixedCensus:
 
     def test_each_state_is_represented(self, mixed):
         assert {r["Ownership"] for r in mixed} == {
-            "CONFIRMED_PRESENT", "CONFIRMED_ABSENT", "UNKNOWN"
+            "CONFIRMED_PRESENT",
+            "CONFIRMED_ABSENT",
+            "UNKNOWN",
         }
 
     def test_an_owned_exact_match_may_be_compatible(self, checker, mixed):
@@ -346,7 +391,66 @@ class TestARepresentativeMixedCensus:
     def test_an_owned_alternate_without_identity_still_fails(self, checker, mixed):
         broken = [
             owned(role="ADC-001", **{"Serial / asset ID": "—"})
-            if r["BOM role"] == "ADC-001" else r
+            if r["BOM role"] == "ADC-001"
+            else r
             for r in mixed
         ]
         assert checker.check_census(broken, [], "PERFORMED")
+
+
+class TestCensusAndBomAgree:
+    """One possession story, whichever document a reader opens."""
+
+    def test_the_committed_documents_agree(self, checker):
+        census = checker.parse_optional_table(checker.CENSUS_PATH, checker.CENSUS_KEY)
+        candidates = checker.parse_optional_table(
+            checker.BOM_PATH, checker.CANDIDATE_KEY
+        )
+        assert checker.validate_census_bom_agreement(census, candidates) == []
+
+    def test_a_disagreement_is_caught(self, checker):
+        census = [row(role="SHAKER-001", Ownership="CONFIRMED_ABSENT")]
+        candidates = [
+            {
+                "candidate_id": "SHAKER-PE-001",
+                "role_local_id": "SHAKER-001",
+                "ownership": "UNKNOWN",
+            }
+        ]
+        problems = checker.validate_census_bom_agreement(census, candidates)
+        assert any("disagrees with the census" in p for p in problems)
+
+    def test_a_stale_unknown_in_the_bom_is_caught(self, checker):
+        # The realistic version: the census resolved a role and the BOM was not
+        # updated, so a reader deciding what to buy gets two answers.
+        census = [
+            row(
+                role="MIC-001",
+                Ownership="CONFIRMED_PRESENT",
+                Manufacturer="X",
+                Model="Y",
+                **{"Serial / asset ID": "SN-1"},
+                Disposition="COMPATIBLE",
+            )
+        ]
+        candidates = [
+            {
+                "candidate_id": "MIC-PE-001",
+                "role_local_id": "MIC-001",
+                "ownership": "CONFIRMED_ABSENT",
+            }
+        ]
+        assert checker.validate_census_bom_agreement(census, candidates)
+
+    def test_a_role_absent_from_the_census_is_not_forced(self, checker):
+        # Candidate roles the census does not cover are left alone rather than
+        # being defaulted to anything.
+        census = [row(role="SHAKER-001")]
+        candidates = [
+            {
+                "candidate_id": "TIP-PE-001",
+                "role_local_id": "TIP-001",
+                "ownership": "UNKNOWN",
+            }
+        ]
+        assert checker.validate_census_bom_agreement(census, candidates) == []

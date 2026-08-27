@@ -1111,6 +1111,41 @@ def check_census(
     return problems
 
 
+def validate_census_bom_agreement(
+    census: list[dict[str, str]] | None, candidates: list[dict[str, str]] | None
+) -> list[str]:
+    """The census and the BOM must tell the same possession story.
+
+    A reader deciding what to buy may open either document. If one says a role
+    is absent and the other still says nobody has looked, they get two answers
+    to the only question that gates a purchase.
+
+    The census is authoritative here: it is the observation, and the BOM's
+    ownership column is a copy of it.
+    """
+    if census is None or candidates is None:
+        return []
+
+    problems: list[str] = []
+    observed = {
+        row.get("BOM role", "").strip(): row.get("Ownership", "").strip()
+        for row in census
+    }
+
+    for row in candidates:
+        role = row.get("role_local_id", "").strip()
+        truth = observed.get(role)
+        if truth is None:
+            continue
+        recorded = row.get("ownership", "").strip()
+        if recorded != truth:
+            problems.append(
+                f"{row.get(CANDIDATE_KEY, '?')}: ownership {recorded!r} disagrees "
+                f"with the census, which observed {truth!r} for {role}"
+            )
+    return problems
+
+
 def report(title: str, problems: Iterable[str]) -> int:
     found = list(problems)
     if not found:
@@ -1154,6 +1189,9 @@ def main(argv: list[str] | None = None) -> int:
     count += report("protocol", check_protocol(bom))
     count += report(
         "census", check_census(census, register, census_status(census_text))
+    )
+    count += report(
+        "census-bom-agreement", validate_census_bom_agreement(census, candidates)
     )
     count += report("candidates", check_candidates(candidates, specs, bom))
     count += report(

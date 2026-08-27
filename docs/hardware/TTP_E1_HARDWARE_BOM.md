@@ -86,6 +86,15 @@ A CCP/IEPE microphone is conditioned by the ICP conditioner instead, and a tier
 that chooses one legitimately has no preamp row. `attenuator` is required only
 if that tier's force level budget overruns the ADC input window.
 
+### Ownership after the census
+
+Every candidate reads `CONFIRMED_ABSENT` as of the DO-104R census (2026-08-27).
+Nothing in this chain is possessed. That is a finding, not the pre-census
+`UNKNOWN` it replaces — and it is what makes `RECOMMEND_PURCHASE` legal for
+these rows for the first time, since the validator requires established absence
+before a purchase may be recommended. **Legal is not authorized**: every
+`procurement_action` remains `HOLD` pending the human selection gate.
+
 ### Commercial observations
 
 Price, stock and lead time are **observations with a date**, not component
@@ -95,44 +104,44 @@ and must never be read as zero. `UNKNOWN` means not yet established.
 
 | candidate_id | role_local_id | component_class | functional_chain | selection_tier | quantity | unit_cost_usd | extended_cost_usd | availability | lead_time | commercial_source | checked_date | procurement_action | ownership |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| HOST-RM-001 | HOST-001 | host | synchronized_acquisition | RESEARCH_MINIMUM | 1 | 175.00 | 175.00 | IN_STOCK | ships from US reseller | PiShop.us | 2026-08-25 | HOLD | UNKNOWN |
-| ADC-RM-001 | ADC-001 | adc_interface | synchronized_acquisition | RESEARCH_MINIMUM | 1 | 64.90 | 64.90 | IN_STOCK_SUPERSEDED | not stated | HiFiBerry direct | 2026-08-25 | HOLD | UNKNOWN |
-| MIC-RM-001 | MIC-001 | microphone | response_acquisition | RESEARCH_MINIMUM | 1 | 59.98 | 59.98 | IN_STOCK | 71 on hand, restock 2026-08-21 | Parts Express | 2026-08-25 | HOLD | UNKNOWN |
-| PREAMP-RM-001 | PREAMP-001 | mic_preamp | response_acquisition | RESEARCH_MINIMUM | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | UNKNOWN |
-| FORCE-RM-001 | FORCE-001 | force_transducer | force_measurement | RESEARCH_MINIMUM | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | FUTEK direct | 2026-08-25 | HOLD | UNKNOWN |
-| PRECOND-RM-001 | PRECOND-001 | force_conditioner | force_measurement | RESEARCH_MINIMUM | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | FUTEK direct | 2026-08-25 | HOLD | UNKNOWN |
-| SHAKER-RM-001 | SHAKER-001 | shaker | contact_excitation | RESEARCH_MINIMUM | 1 | 1500.00 | 1500.00 | USED_MARKET_SINGLE_UNIT | UNKNOWN | Next Day Automation (used) | 2026-08-25 | HOLD | UNKNOWN |
-| AMP-RM-001 | AMP-001 | amplifier | contact_excitation | RESEARCH_MINIMUM | 1 | UNKNOWN | UNKNOWN | USED_MARKET | UNKNOWN | used instrumentation market | 2026-08-25 | HOLD | UNKNOWN |
-| STINGER-RM-001 | STINGER-001 | stinger | contact_excitation | RESEARCH_MINIMUM | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | UNKNOWN |
-| TIP-RM-001 | TIP-001 | contact_tip | contact_excitation | RESEARCH_MINIMUM | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | UNKNOWN |
-| STAND-RM-001 | STAND-001 | stand_base | mechanical_support | RESEARCH_MINIMUM | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | UNKNOWN |
-| REF-RM-001 | REF-STRUCT-001 | reference_structure | mechanical_support | RESEARCH_MINIMUM | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | UNKNOWN |
-| CABLE-RM-001 | CABLE-001 | cabling | interconnect | RESEARCH_MINIMUM | 1 | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | — | 2026-08-25 | HOLD | UNKNOWN |
-| HOST-PE-001 | HOST-001 | host | synchronized_acquisition | PREFERRED_E1 | 1 | 175.00 | 175.00 | IN_STOCK | ships from US reseller | PiShop.us | 2026-08-25 | HOLD | UNKNOWN |
-| ADC-PE-001 | ADC-001 | adc_interface | synchronized_acquisition | PREFERRED_E1 | 1 | 64.90 | 64.90 | IN_STOCK_SUPERSEDED | not stated | HiFiBerry direct | 2026-08-25 | HOLD | UNKNOWN |
-| MIC-PE-001 | MIC-001 | microphone | response_acquisition | PREFERRED_E1 | 1 | 549.00 | 549.00 | IN_STOCK | not stated | Sweetwater | 2026-08-25 | HOLD | UNKNOWN |
-| PREAMP-PE-001 | PREAMP-001 | mic_preamp | response_acquisition | PREFERRED_E1 | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | UNKNOWN |
-| FORCE-PE-001 | FORCE-001 | force_transducer | force_measurement | PREFERRED_E1 | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | PCB Piezotronics direct | 2026-08-25 | HOLD | UNKNOWN |
-| PRECOND-PE-001 | PRECOND-001 | force_conditioner | force_measurement | PREFERRED_E1 | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | PCB Piezotronics direct | 2026-08-25 | HOLD | UNKNOWN |
-| SHAKER-PE-001 | SHAKER-001 | shaker | contact_excitation | PREFERRED_E1 | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | Hottinger Bruel & Kjaer direct | 2026-08-25 | HOLD | UNKNOWN |
-| AMP-PE-001 | AMP-001 | amplifier | contact_excitation | PREFERRED_E1 | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | Hottinger Bruel & Kjaer direct | 2026-08-25 | HOLD | UNKNOWN |
-| STINGER-PE-001 | STINGER-001 | stinger | contact_excitation | PREFERRED_E1 | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | Hottinger Bruel & Kjaer direct | 2026-08-25 | HOLD | UNKNOWN |
-| TIP-PE-001 | TIP-001 | contact_tip | contact_excitation | PREFERRED_E1 | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | UNKNOWN |
-| STAND-PE-001 | STAND-001 | stand_base | mechanical_support | PREFERRED_E1 | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | UNKNOWN |
-| REF-PE-001 | REF-STRUCT-001 | reference_structure | mechanical_support | PREFERRED_E1 | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | UNKNOWN |
-| CABLE-PE-001 | CABLE-001 | cabling | interconnect | PREFERRED_E1 | 1 | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | — | 2026-08-25 | HOLD | UNKNOWN |
-| HOST-RG-001 | HOST-001 | host | synchronized_acquisition | REFERENCE_GRADE | 1 | 175.00 | 175.00 | IN_STOCK | ships from US reseller | PiShop.us | 2026-08-25 | HOLD | UNKNOWN |
-| ADC-RG-001 | ADC-001 | adc_interface | synchronized_acquisition | REFERENCE_GRADE | 1 | 64.90 | 64.90 | IN_STOCK_SUPERSEDED | not stated | HiFiBerry direct | 2026-08-25 | HOLD | UNKNOWN |
-| MIC-RG-001 | MIC-001 | microphone | response_acquisition | REFERENCE_GRADE | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | GRAS Sound & Vibration direct | 2026-08-25 | HOLD | UNKNOWN |
-| FORCE-RG-001 | FORCE-001 | force_transducer | force_measurement | REFERENCE_GRADE | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | PCB Piezotronics direct | 2026-08-25 | HOLD | UNKNOWN |
-| PRECOND-RG-001 | PRECOND-001 | force_conditioner | force_measurement | REFERENCE_GRADE | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | PCB Piezotronics direct | 2026-08-25 | HOLD | UNKNOWN |
-| SHAKER-RG-001 | SHAKER-001 | shaker | contact_excitation | REFERENCE_GRADE | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | Hottinger Bruel & Kjaer direct | 2026-08-25 | HOLD | UNKNOWN |
-| AMP-RG-001 | AMP-001 | amplifier | contact_excitation | REFERENCE_GRADE | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | Hottinger Bruel & Kjaer direct | 2026-08-25 | HOLD | UNKNOWN |
-| STINGER-RG-001 | STINGER-001 | stinger | contact_excitation | REFERENCE_GRADE | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | Hottinger Bruel & Kjaer direct | 2026-08-25 | HOLD | UNKNOWN |
-| TIP-RG-001 | TIP-001 | contact_tip | contact_excitation | REFERENCE_GRADE | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | UNKNOWN |
-| STAND-RG-001 | STAND-001 | stand_base | mechanical_support | REFERENCE_GRADE | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | UNKNOWN |
-| REF-RG-001 | REF-STRUCT-001 | reference_structure | mechanical_support | REFERENCE_GRADE | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | UNKNOWN |
-| CABLE-RG-001 | CABLE-001 | cabling | interconnect | REFERENCE_GRADE | 1 | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | — | 2026-08-25 | HOLD | UNKNOWN |
+| HOST-RM-001 | HOST-001 | host | synchronized_acquisition | RESEARCH_MINIMUM | 1 | 175.00 | 175.00 | IN_STOCK | ships from US reseller | PiShop.us | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| ADC-RM-001 | ADC-001 | adc_interface | synchronized_acquisition | RESEARCH_MINIMUM | 1 | 64.90 | 64.90 | IN_STOCK_SUPERSEDED | not stated | HiFiBerry direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| MIC-RM-001 | MIC-001 | microphone | response_acquisition | RESEARCH_MINIMUM | 1 | 59.98 | 59.98 | IN_STOCK | 71 on hand, restock 2026-08-21 | Parts Express | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| PREAMP-RM-001 | PREAMP-001 | mic_preamp | response_acquisition | RESEARCH_MINIMUM | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| FORCE-RM-001 | FORCE-001 | force_transducer | force_measurement | RESEARCH_MINIMUM | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | FUTEK direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| PRECOND-RM-001 | PRECOND-001 | force_conditioner | force_measurement | RESEARCH_MINIMUM | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | FUTEK direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| SHAKER-RM-001 | SHAKER-001 | shaker | contact_excitation | RESEARCH_MINIMUM | 1 | 1500.00 | 1500.00 | USED_MARKET_SINGLE_UNIT | UNKNOWN | Next Day Automation (used) | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| AMP-RM-001 | AMP-001 | amplifier | contact_excitation | RESEARCH_MINIMUM | 1 | UNKNOWN | UNKNOWN | USED_MARKET | UNKNOWN | used instrumentation market | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| STINGER-RM-001 | STINGER-001 | stinger | contact_excitation | RESEARCH_MINIMUM | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| TIP-RM-001 | TIP-001 | contact_tip | contact_excitation | RESEARCH_MINIMUM | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| STAND-RM-001 | STAND-001 | stand_base | mechanical_support | RESEARCH_MINIMUM | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| REF-RM-001 | REF-STRUCT-001 | reference_structure | mechanical_support | RESEARCH_MINIMUM | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| CABLE-RM-001 | CABLE-001 | cabling | interconnect | RESEARCH_MINIMUM | 1 | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| HOST-PE-001 | HOST-001 | host | synchronized_acquisition | PREFERRED_E1 | 1 | 175.00 | 175.00 | IN_STOCK | ships from US reseller | PiShop.us | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| ADC-PE-001 | ADC-001 | adc_interface | synchronized_acquisition | PREFERRED_E1 | 1 | 64.90 | 64.90 | IN_STOCK_SUPERSEDED | not stated | HiFiBerry direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| MIC-PE-001 | MIC-001 | microphone | response_acquisition | PREFERRED_E1 | 1 | 549.00 | 549.00 | IN_STOCK | not stated | Sweetwater | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| PREAMP-PE-001 | PREAMP-001 | mic_preamp | response_acquisition | PREFERRED_E1 | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| FORCE-PE-001 | FORCE-001 | force_transducer | force_measurement | PREFERRED_E1 | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | PCB Piezotronics direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| PRECOND-PE-001 | PRECOND-001 | force_conditioner | force_measurement | PREFERRED_E1 | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | PCB Piezotronics direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| SHAKER-PE-001 | SHAKER-001 | shaker | contact_excitation | PREFERRED_E1 | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | Hottinger Bruel & Kjaer direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| AMP-PE-001 | AMP-001 | amplifier | contact_excitation | PREFERRED_E1 | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | Hottinger Bruel & Kjaer direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| STINGER-PE-001 | STINGER-001 | stinger | contact_excitation | PREFERRED_E1 | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | Hottinger Bruel & Kjaer direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| TIP-PE-001 | TIP-001 | contact_tip | contact_excitation | PREFERRED_E1 | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| STAND-PE-001 | STAND-001 | stand_base | mechanical_support | PREFERRED_E1 | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| REF-PE-001 | REF-STRUCT-001 | reference_structure | mechanical_support | PREFERRED_E1 | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| CABLE-PE-001 | CABLE-001 | cabling | interconnect | PREFERRED_E1 | 1 | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| HOST-RG-001 | HOST-001 | host | synchronized_acquisition | REFERENCE_GRADE | 1 | 175.00 | 175.00 | IN_STOCK | ships from US reseller | PiShop.us | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| ADC-RG-001 | ADC-001 | adc_interface | synchronized_acquisition | REFERENCE_GRADE | 1 | 64.90 | 64.90 | IN_STOCK_SUPERSEDED | not stated | HiFiBerry direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| MIC-RG-001 | MIC-001 | microphone | response_acquisition | REFERENCE_GRADE | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | GRAS Sound & Vibration direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| FORCE-RG-001 | FORCE-001 | force_transducer | force_measurement | REFERENCE_GRADE | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | PCB Piezotronics direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| PRECOND-RG-001 | PRECOND-001 | force_conditioner | force_measurement | REFERENCE_GRADE | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | PCB Piezotronics direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| SHAKER-RG-001 | SHAKER-001 | shaker | contact_excitation | REFERENCE_GRADE | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | Hottinger Bruel & Kjaer direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| AMP-RG-001 | AMP-001 | amplifier | contact_excitation | REFERENCE_GRADE | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | Hottinger Bruel & Kjaer direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| STINGER-RG-001 | STINGER-001 | stinger | contact_excitation | REFERENCE_GRADE | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | Hottinger Bruel & Kjaer direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| TIP-RG-001 | TIP-001 | contact_tip | contact_excitation | REFERENCE_GRADE | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| STAND-RG-001 | STAND-001 | stand_base | mechanical_support | REFERENCE_GRADE | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| REF-RG-001 | REF-STRUCT-001 | reference_structure | mechanical_support | REFERENCE_GRADE | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| CABLE-RG-001 | CABLE-001 | cabling | interconnect | REFERENCE_GRADE | 1 | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
 
 **Reference grade has no `mic_preamp` row, and that is correct.** Its microphone
 is CCP-powered and is conditioned by the four-channel ICP conditioner that also
