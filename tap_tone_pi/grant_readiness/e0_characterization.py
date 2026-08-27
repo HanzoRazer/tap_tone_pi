@@ -773,7 +773,11 @@ class E0BalancedInputObservationV1:
         balanced = payload.get("balanced_full_scale_vrms")
         return cls(
             control_name=_optional_text(payload, "control_name", record=record),
-            granularity=_enum(payload, "granularity", E0ControlGranularity, record=record),
+            granularity=(
+                E0ControlGranularity.UNKNOWN
+                if payload.get("granularity") is None
+                else _enum(payload, "granularity", E0ControlGranularity, record=record)
+            ),
             unbalanced_full_scale_vrms=(
                 None if unbalanced is None
                 else _positive(payload, "unbalanced_full_scale_vrms", record=record)
