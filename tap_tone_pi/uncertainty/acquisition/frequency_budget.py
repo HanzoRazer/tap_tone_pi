@@ -32,17 +32,62 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Mapping
 
 from .noise import rss
+from .quantities import FormulaStatus
 from .specs import CaptureSpec, ClockSpec, SpecimenSpec
 
 __all__ = [
+    "AggregateContributor",
     "FrequencyBudget",
     "estimator_floor_candidate_hz",
     "clock_scale_error_hz",
     "frequency_budget",
 ]
+
+
+@dataclass(frozen=True)
+class AggregateContributor:
+    """One value actually supplied to the combination.
+
+    Kept as a **sequence rather than a mapping**, and carrying both the
+    contributor slot and the reportable quantity that filled it, because those
+    two are not always the same thing and the difference is load-bearing.
+
+    Under B-021 the ``spectral_resolution`` slot is filled by the *estimator
+    floor* rather than by the bin width, so the estimator enters the combination
+    twice and the bin width enters not at all. A mapping keyed by conceptual
+    quantity would collapse those two entries and hide it; the bin width would
+    still be reported beside a combined figure it never touched.
+
+    This makes the defect visible as data. When B-021 is repaired the change
+    shows up as a different contributor composition rather than as an unexplained
+    movement in ``combined_hz``.
+    """
+
+    role: str
+    """The contributor slot in the combination."""
+
+    source_quantity: str
+    """Which reportable quantity supplied this value."""
+
+    value_hz: float
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "role": self.role,
+            "source_quantity": self.source_quantity,
+            "value_hz": self.value_hz,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> AggregateContributor:
+        return cls(
+            role=str(payload["role"]),
+            source_quantity=str(payload["source_quantity"]),
+            value_hz=float(payload["value_hz"]),
+        )
 
 
 def clock_scale_error_hz(mode_frequency_hz: float, accuracy_ppm: float) -> float:
@@ -96,6 +141,17 @@ class FrequencyBudget:
     physical_repeatability_hz: float | None
     combined_hz: float
     dominant: str
+    combined_contributors: tuple[AggregateContributor, ...] = field(
+        default_factory=tuple
+    )
+    """Exactly what was supplied to the combination, in order, duplicates kept.
+
+    ``combined_hz`` is the root-sum-square of these values and of nothing else.
+    A reportable quantity absent from this sequence did not contribute, however
+    prominently it appears above.
+    """
+
+    estimator_floor_status: FormulaStatus = FormulaStatus.CANDIDATE_SOURCE_FORMULA
     notes: tuple[str, ...] = field(default_factory=tuple)
 
     @property
@@ -109,13 +165,38 @@ class FrequencyBudget:
             "clock_error_hz": self.clock_error_hz,
             "bin_width_hz": self.bin_width_hz,
             "estimator_floor_hz": self.estimator_floor_hz,
-            "estimator_floor_status": "candidate_source_formula",
+            "estimator_floor_status": self.estimator_floor_status.value,
             "physical_repeatability_hz": self.physical_repeatability_hz,
             "combined_hz": self.combined_hz,
             "is_electronic_lower_bound": self.is_electronic_lower_bound,
             "dominant": self.dominant,
+            "combined_contributors": [c.as_dict() for c in self.combined_contributors],
             "notes": list(self.notes),
         }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> FrequencyBudget:
+        return cls(
+            mode_frequency_hz=float(payload["mode_frequency_hz"]),
+            clock_error_hz=float(payload["clock_error_hz"]),
+            bin_width_hz=float(payload["bin_width_hz"]),
+            estimator_floor_hz=float(payload["estimator_floor_hz"]),
+            physical_repeatability_hz=(
+                None
+                if payload.get("physical_repeatability_hz") is None
+                else float(payload["physical_repeatability_hz"])
+            ),
+            combined_hz=float(payload["combined_hz"]),
+            dominant=str(payload["dominant"]),
+            combined_contributors=tuple(
+                AggregateContributor.from_dict(c)
+                for c in payload.get("combined_contributors", ())
+            ),
+            estimator_floor_status=FormulaStatus(
+                payload.get("estimator_floor_status", "candidate_source_formula")
+            ),
+            notes=tuple(payload.get("notes", ())),
+        )
 
 
 def frequency_budget(
@@ -147,18 +228,24 @@ def frequency_budget(
     # reproduced faithfully rather than corrected -- DO-107A establishes what the
     # existing calculator says; deciding what it ought to say is the
     # source-reconciliation work. See the parity report and B-021.
-    contributors = {
-        "clock_accuracy": clock_err,
-        "spectral_resolution": (
-            estimator_floor if capture.peak_interpolation else bin_w
+    contributors = [
+        AggregateContributor("clock_accuracy", "clock_error_hz", clock_err),
+        AggregateContributor(
+            "spectral_resolution",
+            "estimator_floor_hz" if capture.peak_interpolation else "bin_width_hz",
+            estimator_floor if capture.peak_interpolation else bin_w,
         ),
-        "estimator_floor": estimator_floor,
-    }
+        AggregateContributor("estimator_floor", "estimator_floor_hz", estimator_floor),
+    ]
     if phys is not None:
-        contributors["physical_repeatability"] = phys
+        contributors.append(
+            AggregateContributor(
+                "physical_repeatability", "physical_repeatability_hz", phys
+            )
+        )
 
-    combined = rss(*(v for v in contributors.values() if v is not None))
-    dominant = max(contributors, key=lambda k: contributors[k])
+    combined = rss(*(c.value_hz for c in contributors))
+    dominant = max(contributors, key=lambda c: c.value_hz).role
 
     if phys is None:
         notes.append(
@@ -188,5 +275,6 @@ def frequency_budget(
         physical_repeatability_hz=phys,
         combined_hz=combined,
         dominant=dominant,
+        combined_contributors=tuple(contributors),
         notes=tuple(notes),
     )

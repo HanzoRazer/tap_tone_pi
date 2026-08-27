@@ -736,3 +736,160 @@ print(n.limiter, round(n.combined_snr_db, 2), round(f.combined_hz, 9),
         # Modulus delegates to the canonical authority, which needs NumPy. It
         # must say so rather than crash or fabricate a propagation.
         assert modulus == "UNAVAILABLE"
+
+
+class TestRepresentationHardening:
+    """Commit 4: the record must be able to say what Commit 3 knows.
+
+    Three gaps were found by the contract-readiness inspection and closed here.
+    None of them changes a number — the parity battery above still passes
+    unchanged, which is the point.
+    """
+
+    @pytest.fixture
+    def budget(self, ours):
+        return frequency_budget(ours["clock"], ours["capture"], ours["specimen"], 96.5)
+
+    # --- B: contributors actually entering the aggregate --------------------
+
+    def test_combined_is_the_rss_of_the_serialized_contributors(self, budget):
+        # The contract guarantee. combined_hz is the RSS of these values and of
+        # nothing else, checked from the serialized form so it survives a
+        # round-trip through JSON.
+        payload = budget.as_dict()
+        values = [c["value_hz"] for c in payload["combined_contributors"]]
+        assert values, "no contributors serialized"
+        assert payload["combined_hz"] == pytest.approx(
+            math.sqrt(sum(v * v for v in values)), rel=1e-12
+        )
+
+    def test_b021_is_visible_as_data(self, budget):
+        # The estimator floor fills two slots and the bin width fills none. A
+        # mapping keyed by conceptual quantity would have collapsed this.
+        sources = [c.source_quantity for c in budget.combined_contributors]
+        assert sources.count("estimator_floor_hz") == 2
+        assert "bin_width_hz" not in sources
+
+    def test_a_reported_quantity_can_be_absent_from_the_combination(self, budget):
+        # Bin width is 0.25 Hz next to a combined figure of 0.0037 Hz. Before
+        # this change a reader had no way to tell it contributed nothing.
+        assert budget.bin_width_hz > budget.combined_hz * 50
+        assert all(
+            c.source_quantity != "bin_width_hz" for c in budget.combined_contributors
+        )
+
+    def test_the_roles_and_their_sources_are_distinguishable(self, budget):
+        by_role = {c.role: c.source_quantity for c in budget.combined_contributors}
+        assert by_role["spectral_resolution"] == "estimator_floor_hz"
+        assert by_role["clock_accuracy"] == "clock_error_hz"
+
+    def test_without_peak_interpolation_the_bin_width_does_contribute(self, ours):
+        capture = CaptureSpec(
+            record_length_s=Quantity(4.0, "s", Provenance.ASSUMED),
+            sample_rate_hz=Quantity(48000.0, "Hz", Provenance.DATASHEET),
+            peak_interpolation=False,
+        )
+        budget = frequency_budget(ours["clock"], capture, ours["specimen"], 96.5)
+        sources = [c.source_quantity for c in budget.combined_contributors]
+        assert sources.count("bin_width_hz") == 1
+        assert sources.count("estimator_floor_hz") == 1
+
+    def test_measured_repeatability_appears_as_a_contributor(self, ours):
+        specimen = SpecimenSpec(
+            **{
+                **{
+                    f: getattr(ours["specimen"], f)
+                    for f in ours["specimen"].__dataclass_fields__
+                },
+                "physical_repeatability_hz": Quantity(0.8, "Hz", Provenance.MEASURED),
+            }
+        )
+        budget = frequency_budget(ours["clock"], ours["capture"], specimen, 96.5)
+        roles = [c.role for c in budget.combined_contributors]
+        assert "physical_repeatability" in roles
+
+    # --- C: the estimator status is typed and round-trips -------------------
+
+    def test_the_estimator_status_is_a_typed_field(self, budget):
+        from tap_tone_pi.uncertainty.acquisition import FormulaStatus
+
+        assert budget.estimator_floor_status is FormulaStatus.CANDIDATE_SOURCE_FORMULA
+        assert budget.estimator_floor_status.is_established is False
+
+    def test_the_frequency_budget_round_trips(self, budget):
+        from tap_tone_pi.uncertainty.acquisition import FrequencyBudget
+
+        restored = FrequencyBudget.from_dict(budget.as_dict())
+        assert restored == budget
+
+    def test_the_status_survives_json(self, budget):
+        import json
+
+        from tap_tone_pi.uncertainty.acquisition import FormulaStatus, FrequencyBudget
+
+        restored = FrequencyBudget.from_dict(json.loads(json.dumps(budget.as_dict())))
+        assert restored.estimator_floor_status is FormulaStatus.CANDIDATE_SOURCE_FORMULA
+        assert restored.combined_contributors == budget.combined_contributors
+
+    def test_the_status_is_not_quietly_promoted(self, budget):
+        # B-020 and the source-verification question remain open, so nothing here
+        # may claim the expression is settled.
+        assert budget.as_dict()["estimator_floor_status"] == "candidate_source_formula"
+
+    # --- A: unavailable is representable, not an exception ------------------
+
+    def test_an_available_modulus_carries_the_discriminator(self, source, ours):
+        src = source.TTP_ANALYZER_PROFILE().compute()
+        freq = frequency_budget(
+            ours["clock"], ours["capture"], ours["specimen"], src.noise.combined_snb_db
+        )
+        from tap_tone_pi.uncertainty.acquisition import (
+            ResultAvailability,
+            modulus_budget_or_unavailable,
+        )
+
+        result = modulus_budget_or_unavailable(ours["specimen"], freq)
+        assert result.availability is ResultAvailability.AVAILABLE
+        assert result.as_dict()["availability"] == "available"
+
+    def test_an_unavailable_section_fabricates_nothing(self):
+        from tap_tone_pi.uncertainty.acquisition import (
+            UnavailableSection,
+        )
+
+        section = UnavailableSection(
+            reason_code="canonical_authority_unavailable",
+            reason="canonical uncertainty authority unavailable in the "
+            "instrument-safe environment",
+        )
+        payload = section.as_dict()
+        assert payload["availability"] == "unavailable"
+        assert payload["reason_code"] == "canonical_authority_unavailable"
+        # No numeric field at all - nothing to mistake for a result.
+        assert not any(isinstance(v, (int, float)) for v in payload.values())
+        assert UnavailableSection.from_dict(payload) == section
+
+    def test_the_reason_is_specific_not_generic(self):
+        from tap_tone_pi.uncertainty.acquisition import UnavailableSection
+
+        section = UnavailableSection.from_dict(
+            {
+                "availability": "unavailable",
+                "reason_code": "canonical_authority_unavailable",
+                "reason": "canonical uncertainty authority unavailable in the "
+                "instrument-safe environment",
+            }
+        )
+        assert "canonical uncertainty authority" in section.reason
+        for generic in ("computation failed", "error", "unknown"):
+            assert generic not in section.reason.lower()
+
+    def test_the_modulus_budget_round_trips(self, source, ours):
+        from tap_tone_pi.uncertainty.acquisition import ModulusBudget
+
+        src = source.TTP_ANALYZER_PROFILE().compute()
+        freq = frequency_budget(
+            ours["clock"], ours["capture"], ours["specimen"], src.noise.combined_snb_db
+        )
+        result = modulus_budget(ours["specimen"], freq)
+        assert ModulusBudget.from_dict(result.as_dict()) == result

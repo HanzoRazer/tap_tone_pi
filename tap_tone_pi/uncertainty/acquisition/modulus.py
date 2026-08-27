@@ -32,13 +32,60 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Mapping
 
 from .frequency_budget import FrequencyBudget
 from .noise import rss
+from .quantities import ResultAvailability
 from .specs import SpecimenSpec
 
-__all__ = ["ModulusBudget", "ModulusUnavailable", "modulus_budget"]
+__all__ = [
+    "ModulusBudget",
+    "ModulusUnavailable",
+    "UnavailableSection",
+    "modulus_budget",
+    "modulus_budget_or_unavailable",
+]
+
+# Machine-readable reason codes. A generic "computation failed" would not let a
+# reader distinguish a missing dependency from a bad input.
+REASON_CANONICAL_AUTHORITY_UNAVAILABLE = "canonical_authority_unavailable"
+REASON_CANONICAL_COMPONENTS_MISSING = "canonical_components_missing"
+
+
+@dataclass(frozen=True)
+class UnavailableSection:
+    """A section that was requested and could not be computed.
+
+    Exists so that ``UNAVAILABLE`` is a *serializable scientific state* rather
+    than an exception type. An exception is the right way to cross a dependency
+    boundary in code and the wrong thing to publish: the alternatives it leaves a
+    record are a fabricated number or a bare null whose meaning a reader has to
+    guess.
+
+    **No values are fabricated.** The section carries a status and a reason and
+    nothing numeric at all.
+    """
+
+    reason_code: str
+    reason: str
+    availability: ResultAvailability = ResultAvailability.UNAVAILABLE
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "availability": self.availability.value,
+            "reason_code": self.reason_code,
+            "reason": self.reason,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> UnavailableSection:
+        return cls(
+            reason_code=str(payload["reason_code"]),
+            reason=str(payload["reason"]),
+            availability=ResultAvailability(payload.get("availability", "unavailable")),
+        )
+
 
 # Canonical component name -> acquisition-budget term name. The canonical
 # function owns the physics and the naming; this maps its vocabulary onto ours
@@ -69,6 +116,7 @@ class ModulusBudget:
     contributions: dict[str, float]
     dominant: str
     smallest_resolvable_delta_pct: float
+    availability: ResultAvailability = ResultAvailability.AVAILABLE
     component_authority: str = (
         "tap_tone_pi.uncertainty.stiffness.compute_tap_tone_moe_uncertainty"
     )
@@ -88,17 +136,64 @@ class ModulusBudget:
 
     def as_dict(self) -> dict[str, Any]:
         return {
-            "relative_uncertainty": round(self.relative_uncertainty, 6),
-            "relative_uncertainty_pct": round(self.relative_uncertainty * 100.0, 3),
-            "contributions": {k: round(v, 6) for k, v in self.contributions.items()},
+            "availability": self.availability.value,
+            # Not rounded. Rounding belongs to report rendering; a contract
+            # payload that loses precision cannot round-trip, and a lossy
+            # record is one a later reader cannot recompute from.
+            "relative_uncertainty": self.relative_uncertainty,
+            "relative_uncertainty_pct": self.relative_uncertainty * 100.0,
+            "contributions": dict(self.contributions),
             "dominant": self.dominant,
-            "smallest_resolvable_delta_pct": round(
-                self.smallest_resolvable_delta_pct, 3
-            ),
+            "smallest_resolvable_delta_pct": self.smallest_resolvable_delta_pct,
             "component_authority": self.component_authority,
             "aggregation": self.aggregation,
             "notes": list(self.notes),
         }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> ModulusBudget:
+        return cls(
+            relative_uncertainty=float(payload["relative_uncertainty"]),
+            contributions={
+                k: float(v) for k, v in payload.get("contributions", {}).items()
+            },
+            dominant=str(payload["dominant"]),
+            smallest_resolvable_delta_pct=float(
+                payload["smallest_resolvable_delta_pct"]
+            ),
+            availability=ResultAvailability(payload.get("availability", "available")),
+            component_authority=str(payload["component_authority"]),
+            aggregation=str(payload["aggregation"]),
+            notes=tuple(payload.get("notes", ())),
+        )
+
+
+def modulus_budget_or_unavailable(
+    specimen: SpecimenSpec, freq: FrequencyBudget
+) -> ModulusBudget | UnavailableSection:
+    """Compute the modulus budget, or return a representable unavailable state.
+
+    This is what an aggregate budget calls. The exception form remains for
+    callers that asked for propagation explicitly and want to fail loudly; this
+    form is what gets serialized, because a record must be able to say what it
+    could not compute.
+    """
+    try:
+        return modulus_budget(specimen, freq)
+    except ModulusUnavailable as exc:
+        return UnavailableSection(
+            reason_code=(
+                REASON_CANONICAL_COMPONENTS_MISSING
+                if "did not return the expected" in str(exc)
+                else REASON_CANONICAL_AUTHORITY_UNAVAILABLE
+            ),
+            reason=(
+                "canonical uncertainty authority unavailable in the "
+                "instrument-safe environment; modulus propagation delegates to "
+                "tap_tone_pi.uncertainty.stiffness, which requires the general "
+                "uncertainty subsystem"
+            ),
+        )
 
 
 def modulus_budget(specimen: SpecimenSpec, freq: FrequencyBudget) -> ModulusBudget:
@@ -118,9 +213,9 @@ def modulus_budget(specimen: SpecimenSpec, freq: FrequencyBudget) -> ModulusBudg
         from tap_tone_pi.uncertainty.stiffness import compute_tap_tone_moe_uncertainty
     except ImportError as exc:  # pragma: no cover - exercised in a subprocess
         raise ModulusUnavailable(
-            "the canonical modulus authority "
-            "(tap_tone_pi.uncertainty.stiffness) could not be imported; it "
-            "requires the general uncertainty subsystem, which depends on NumPy"
+            "canonical uncertainty authority unavailable in the instrument-safe "
+            "environment: tap_tone_pi.uncertainty.stiffness could not be "
+            "imported, and it requires the general uncertainty subsystem"
         ) from exc
 
     # E_GPa = 1.0 makes every returned component a relative contribution.

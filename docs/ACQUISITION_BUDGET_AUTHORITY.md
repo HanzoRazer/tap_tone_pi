@@ -235,6 +235,81 @@ decision it asked for has been made and recorded, which is its stated acceptance
 be bookkeeping theatre. Empirical contracts should reference budget identity
 through `uncertainty.budget.UncertaintyBudget`.
 
+## What the record can express
+
+A contract-readiness inspection ran before publication, asking one question: can
+the object model serialize what the engine actually knows, without lying or
+losing state? Three gaps were found and closed; one apparent gap was recorded as
+deliberate.
+
+### Reportable quantities are not the same as contributors
+
+`FrequencyBudget` reports bin width, estimator floor, clock error and physical
+repeatability. It **separately** carries `combined_contributors` — a *sequence*,
+duplicates preserved, each entry naming both the contributor slot and the
+reportable quantity that filled it.
+
+The two lists differ, and the difference is the finding. Under **B-021** the
+`spectral_resolution` slot is filled by the estimator floor rather than the bin
+width, so the estimator enters the combination twice and the bin width enters not
+at all — while being reported as 0.25 Hz beside a combined figure of 0.0037 Hz.
+Without the contributor sequence a reader would reasonably conclude the largest
+listed quantity was included. It was not.
+
+A mapping keyed by conceptual quantity would have collapsed the two estimator
+entries and hidden this. An invariant test recomputes the root-sum-square from
+the *serialized* contributors and requires equality with `combined_hz`, which is
+the contract guarantee: **the combination contains these values and nothing
+else.** When B-021 is repaired, the change appears as a different contributor
+composition rather than as an unexplained movement in a number.
+
+### `UNAVAILABLE` is a state, not an exception
+
+`ModulusUnavailable` still exists for callers that want to fail loudly crossing
+the dependency boundary, but it is never what gets serialized.
+`modulus_budget_or_unavailable()` returns either a `ModulusBudget` or an
+`UnavailableSection`, both carrying an `availability` discriminator.
+
+An unavailable section carries a machine-readable `reason_code`, a specific
+reason — *canonical uncertainty authority unavailable in the instrument-safe
+environment*, not "computation failed" — and **no numeric field at all**. There
+is nothing in it to mistake for a result, and nothing was fabricated.
+
+### Formula authority is typed
+
+`FormulaStatus` has two members and exists for one term. The estimator floor is
+`CANDIDATE_SOURCE_FORMULA` and survives serialization and deserialization as a
+typed value rather than a string minted inside `as_dict()`. It is a different
+axis from `Provenance`, which records where a *number* came from rather than
+whether the *formula* producing it is settled.
+
+### Serialization is lossless
+
+The round-trip test found `as_dict()` rounding values. **Rounding belongs to
+report rendering, not to a contract payload**: a lossy record cannot round-trip
+and cannot be recomputed from. Where the acquisition source rounds into a stored
+field, that rounding stays — it is parity, not serialization loss.
+
+### Computed outputs carry no input-style provenance — deliberately
+
+`NoiseBudget`, `FrequencyBudget` and `ModulusBudget` hold plain floats with no
+`Provenance` tag, and this is a design decision rather than an omission.
+
+> Computed budget outputs do not carry independent input-style provenance. They
+> are derived by definition. Evidence eligibility is determined from the
+> provenance of their **inputs**, plus authority and status metadata attached to
+> the **computation**.
+
+Tagging every computed scalar `DERIVED` would add no information while diluting
+the distinction that does matter — `MEASURED` against `DATASHEET` against
+`PROPOSED` on the way in.
+
+The second clause is not decoration. **B-022 shows input provenance alone is
+insufficient**: a modulus result can rest on excellent inputs and still be
+carrying an authority workaround. That is why `ModulusBudget` records
+`component_authority` and `aggregation`, and why `FrequencyBudget` records
+`estimator_floor_status`. Evidence grade must read both axes.
+
 ## Frequency uncertainty — a four-way authority map
 
 The 984-line census of the acquisition source found a pre-existing conflict here,

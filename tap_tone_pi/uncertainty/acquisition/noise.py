@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Mapping
 
 from .specs import ClockSpec, ConverterSpec, FrontEndSpec
 
@@ -118,11 +118,28 @@ class NoiseBudget:
             "terms_db": dict(self.terms_db),
             "combined_snr_db": self.combined_snr_db,
             "limiter": self.limiter,
-            "limiter_share": round(self.limiter_share, 4),
+            # Unrounded for the same reason as ModulusBudget: the payload is a
+            # contract, not a report. terms_db and combined_snr_db are already
+            # rounded in the stored fields, which is source parity rather than
+            # serialization loss.
+            "limiter_share": self.limiter_share,
             "total_jitter_s": self.total_jitter_s,
-            "jitter_headroom_db": round(self.jitter_headroom_db, 2),
+            "jitter_headroom_db": self.jitter_headroom_db,
             "notes": list(self.notes),
         }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> NoiseBudget:
+        return cls(
+            f_in_hz=float(payload["f_in_hz"]),
+            terms_db={k: float(v) for k, v in payload["terms_db"].items()},
+            combined_snr_db=float(payload["combined_snr_db"]),
+            limiter=str(payload["limiter"]),
+            limiter_share=float(payload["limiter_share"]),
+            total_jitter_s=float(payload["total_jitter_s"]),
+            jitter_headroom_db=float(payload["jitter_headroom_db"]),
+            notes=tuple(payload.get("notes", ())),
+        )
 
 
 def noise_budget(

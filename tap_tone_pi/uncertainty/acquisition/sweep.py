@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Mapping
 
 from .quantities import Provenance
 from .specs import SweepSpec
@@ -71,6 +71,20 @@ class SweepLimits:
             "min_total_sweep_time_s": self.min_total_sweep_time_s,
             "notes": list(self.notes),
         }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> SweepLimits:
+        return cls(
+            at_frequency_hz=float(payload["at_frequency_hz"]),
+            assumed_q=float(payload["assumed_q"]),
+            q_provenance=Provenance(payload["q_provenance"]),
+            time_constant_s=float(payload["time_constant_s"]),
+            min_dwell_per_step_s=float(payload["min_dwell_per_step_s"]),
+            half_power_bandwidth_hz=float(payload["half_power_bandwidth_hz"]),
+            max_sweep_rate_hz_per_s=float(payload["max_sweep_rate_hz_per_s"]),
+            min_total_sweep_time_s=float(payload["min_total_sweep_time_s"]),
+            notes=tuple(payload.get("notes", ())),
+        )
 
 
 def compute_sweep_limits(sweep: SweepSpec, f_hz: float) -> SweepLimits:

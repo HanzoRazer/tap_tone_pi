@@ -26,6 +26,8 @@ __all__ = [
     "Quantity",
     "AcquisitionQuantityError",
     "as_quantity",
+    "ResultAvailability",
+    "FormulaStatus",
 ]
 
 
@@ -68,6 +70,42 @@ class Provenance(str, Enum):
     def is_evidence(self) -> bool:
         """Whether this tag can support an evidence-grade claim."""
         return self in (Provenance.DATASHEET, Provenance.DERIVED, Provenance.MEASURED)
+
+
+class ResultAvailability(str, Enum):
+    """Whether a section of a budget could be computed at all.
+
+    An exception is the right way to cross a dependency boundary in code; it is
+    the wrong thing to serialize. A published record must be able to say *this
+    was requested and could not be computed, and here is why* — otherwise the
+    only representations left are a fabricated number or a bare ``null`` whose
+    meaning a reader has to guess.
+    """
+
+    AVAILABLE = "available"
+    UNAVAILABLE = "unavailable"
+
+
+class FormulaStatus(str, Enum):
+    """Authority status of the expression behind a computed term.
+
+    Deliberately two members rather than a taxonomy. This exists because one
+    term — the estimator floor — is carried faithfully from the acquisition
+    source while its authority is genuinely unresolved (B-020, plus the
+    unverified factor-of-two in the newer acquisition mathematics). It is a
+    different axis from :class:`Provenance`, which records where a *number* came
+    from rather than whether the *formula* producing it is settled.
+    """
+
+    ESTABLISHED = "established"
+    """The expression is settled and named for what it is."""
+
+    CANDIDATE_SOURCE_FORMULA = "candidate_source_formula"
+    """Reproduced from the source for parity; its authority is unresolved."""
+
+    @property
+    def is_established(self) -> bool:
+        return self is FormulaStatus.ESTABLISHED
 
 
 @dataclass(frozen=True)

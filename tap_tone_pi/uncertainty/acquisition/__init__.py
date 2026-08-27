@@ -19,17 +19,26 @@ from __future__ import annotations
 
 from .quantities import (
     AcquisitionQuantityError,
+    FormulaStatus,
     Provenance,
     Quantity,
+    ResultAvailability,
     as_quantity,
 )
 from .frequency_budget import (
+    AggregateContributor,
     FrequencyBudget,
     clock_scale_error_hz,
     estimator_floor_candidate_hz,
     frequency_budget,
 )
-from .modulus import ModulusBudget, ModulusUnavailable, modulus_budget
+from .modulus import (
+    ModulusBudget,
+    ModulusUnavailable,
+    UnavailableSection,
+    modulus_budget,
+    modulus_budget_or_unavailable,
+)
 from .noise import (
     NoiseBudget,
     clock_topology_note,
@@ -58,6 +67,8 @@ __all__ = [
     "AcquisitionQuantityError",
     "Provenance",
     "Quantity",
+    "ResultAvailability",
+    "FormulaStatus",
     "as_quantity",
     "CLOCK_TOPOLOGIES",
     "CaptureSpec",
@@ -87,7 +98,10 @@ __all__ = [
     "SweepLimits",
     "compute_sweep_limits",
     # modulus (delegating adapter)
+    "AggregateContributor",
     "ModulusBudget",
     "ModulusUnavailable",
+    "UnavailableSection",
     "modulus_budget",
+    "modulus_budget_or_unavailable",
 ]
