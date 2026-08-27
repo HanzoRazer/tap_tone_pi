@@ -147,6 +147,13 @@ Consequence for the next pass: **lead time is a first-class selection
 criterion**, ranked beside price and specification. A part that is excellent and
 unobtainable this quarter is not the preferred choice.
 
+## Selection ruling: `SELECTION_DEFERRED` (2026-08-27)
+
+Hardware development is **paused** pending authorization to build the physical
+prototype Analyzer and displacement jig. The recommendation below is retained as
+an engineering input and is **not** a selection. See
+[the procurement authorization record](TTP_E1_PROCUREMENT_AUTHORIZATION.md).
+
 ## DO-104S procurement recommendation
 
 This section is the human-readable procurement decision package. It is

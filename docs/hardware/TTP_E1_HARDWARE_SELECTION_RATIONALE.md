@@ -503,6 +503,31 @@ some of it," and it no longer is. That belongs at the selection gate, not here.
 
 ---
 
+## Human selection ruling (2026-08-27)
+
+> **`SELECTION_DEFERRED`** — awaiting authorization to proceed with construction
+> of the physical TTP prototype Analyzer and displacement jig.
+
+The recommendation above is **not ratified**. It stays `RECOMMENDED`, which was
+always the weaker status, and no canonical role row was promoted. Full record in
+[the procurement authorization](TTP_E1_PROCUREMENT_AUTHORIZATION.md).
+
+**The reasoning is not rejected — it is unspent.** Nothing in the census
+contradicted the architecture gate or the level budget, and no owned alternate
+competed with any candidate. The deferral is about the project not being ready to
+build, not about the analysis being wrong.
+
+One thing the census did change: `HOST-001` is owned, so the host leaves the
+acquisition list. The remaining question about tiers is now sharper than the
+tables express. Owning nothing else means `RESEARCH_MINIMUM` no longer saves
+money by *reusing* equipment, only by *specifying cheaper* equipment — an
+argument that was available before the census and is not available now.
+
+**When the prototype is authorized, this recommendation is an input to that
+decision, not the decision.** Availability will be re-checked, the prototype's
+actual scope will be settled — it may not include the excitation chain at all —
+and only then does a concrete prototype BOM get written.
+
 ## What none of this establishes
 
 Datasheet figures are provenance for a nominal value: bandwidth, rated force,

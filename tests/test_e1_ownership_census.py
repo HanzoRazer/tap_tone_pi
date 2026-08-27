@@ -523,10 +523,65 @@ class TestBacklogAfterTheCensus:
         block = sprints.split("### B-015")[1].split("### ")[0]
         assert "**Status:** open" in block
 
-    def test_current_ends_at_the_human_selection_gate(self):
+    def test_current_records_the_deferral_and_promotes_nothing(self):
+        # The selection gate has been passed: the human ruled
+        # SELECTION_DEFERRED. CURRENT.md must say so, must not advance to
+        # procurement, and must not promote a queued order - promotion belongs
+        # to that order's own docs/status commit.
         text = (REPO_ROOT / "docs" / "dev_orders" / "CURRENT.md").read_text(
             encoding="utf-8"
         )
-        assert "BLOCKED AT THE HUMAN SELECTION GATE" in text
-        # and does not advance to procurement on its own
+        assert "SELECTION_DEFERRED" in text
+        assert "PARKED OPEN" in text
         assert "PURCHASE_AUTHORIZED" not in text
+        assert "Nothing is promoted" in text
+
+
+class TestTheDeferralIsRecordedAsADecision:
+    """A deferral is a decision record, held to the same rules as any other."""
+
+    @pytest.fixture(scope="class")
+    def auth(self):
+        return (HARDWARE / "TTP_E1_PROCUREMENT_AUTHORIZATION.md").read_text(
+            encoding="utf-8"
+        )
+
+    def test_the_authorization_record_exists_and_defers(self, auth):
+        assert "`authorization_status` | **`DEFERRED`**" in auth
+        assert "`SELECTION_DEFERRED`" in auth
+
+    def test_nothing_is_authorized(self, auth):
+        assert "`authorized_component_ids` | *(none)*" in auth
+
+    def test_the_owned_host_is_use_owned_not_purchased(self, auth):
+        assert "`use_owned_component_ids` | `HOST-001`" in auth
+
+    def test_substitution_fails_closed(self, auth):
+        assert "No substitution is pre-authorized" in auth
+        assert "re-run" in auth
+
+    def test_market_data_is_marked_perishable(self, auth):
+        assert "must be re-verified before any purchase" in auth
+
+    def test_open_findings_survive_the_deferral(self, auth):
+        for item in ("B-014", "B-015", "B-017"):
+            assert item in auth
+
+    def test_the_rationale_records_the_ruling(self):
+        text = (HARDWARE / "TTP_E1_HARDWARE_SELECTION_RATIONALE.md").read_text(
+            encoding="utf-8"
+        )
+        assert "Human selection ruling" in text
+        assert "SELECTION_DEFERRED" in text
+        assert "not ratified" in text
+
+    def test_no_canonical_role_row_was_promoted(self, checker):
+        # Deferral means the fourteen role rows are untouched by it.
+        bom = checker.parse_table(checker.BOM_PATH, "local_id")
+        for r in bom:
+            assert checker.rung(r["status"]) < checker.rung("ORDERED"), r["local_id"]
+
+    def test_b017_is_open(self, sprints):
+        block = sprints.split("### B-017")[1].split("### ")[0]
+        assert "**Status:** open" in block
+        assert "false absence" in block
