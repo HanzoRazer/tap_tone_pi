@@ -131,6 +131,20 @@ docstring, **not** here.
 - **Trigger:** before any empirical model (or DO-101B registry surface)
   embeds a canonical uncertainty budget object, or before a Dev Order needs
   a single shared budget type across packages.
+- **Narrowed by DO-107A (2026-08-27), not closed.** The trigger fired: DO-107
+  needed a budget type shared across packages. The ownership decision it
+  recorded is that `AcquisitionBudgetV1` is **not** a third implementation —
+  `UncertaintyBudget` owns conventional propagated measurement uncertainty,
+  `AcquisitionBudgetV1` owns acquisition-chain limiting-factor analysis and
+  evidence provenance, and the latter consumes the former rather than
+  reproducing it. See
+  [the authority document](docs/ACQUISITION_BUDGET_AUTHORITY.md).
+  **This does not answer B-005's question**, which is which of the two
+  *existing* types owns conventional uncertainty. Closing it on the DO-107
+  decision would be declaring victory over a different question.
+- **Evidence contributed:** `tap_tone_pi/uncertainty/stiffness.py` imports from
+  `.budget`, so `uncertainty.budget.UncertaintyBudget` is de facto canonical for
+  propagation. That is a datum for whoever resolves this, not a ruling.
 - **Acceptance:** one recorded ownership decision (merge, adapt, or keep
   both with explicit roles), plus migration notes so empirical contracts can
   reference a stable budget identity without a third implementation.

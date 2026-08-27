@@ -831,7 +831,7 @@ class TestStatusReconciliation:
         block = sprints.split("### B-019")[1].split("### ")[0]
         assert "**Status:** **closed**" in block
         assert "1a9e35d" in block
-        assert "Not fixed here" not in block.replace("*\"Not fixed here\"*", "")
+        assert "Not fixed here" not in block.replace('*"Not fixed here"*', "")
 
     def test_b018_records_the_missing_acquisition_tooling(self, sprints):
         block = sprints.split("### B-018")[1].split("### ")[0]
