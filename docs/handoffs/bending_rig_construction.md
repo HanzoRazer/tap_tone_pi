@@ -1,7 +1,13 @@
 # Bending Rig Construction — Build Guide for Future Self
 
 **Path in repo:** `docs/handoffs/bending_rig_construction.md`
-**Status:** Ready to build. Synthesized from chat `be335122` (2026-07-10), OPA1612 preamp thread (Rev 1.1 procedure, 2026-03-31), and the tap_tone_pi_management + resuming-session threads.
+**Status:** **ENGINEERING INPUT — NOT AUTHORIZED FOR CONSTRUCTION.** Retained as
+design input under the prototype hold; see
+[`docs/dev_orders/CURRENT.md`](../dev_orders/CURRENT.md). No component in the
+bill of materials below is authorized for procurement, and no fabrication step is
+authorized. The build schedule in §5 describes what *would* be done once the
+Prototype Analyzer + Displacement Jig authorization is given — it is not a
+work order. Originally written as: Synthesized from chat `be335122` (2026-07-10), OPA1612 preamp thread (Rev 1.1 procedure, 2026-03-31), and the tap_tone_pi_management + resuming-session threads.
 **Owner:** Ross Echols, P.E. — Texas Guitar Exchange LLC
 **Total budget:** ~$1,500 DIY
 **Timeline:** 4 weeks (weekends), starts when the Mitutoyo indicator ships
@@ -247,17 +253,61 @@ Per `CLAUDE.md` anti-drift rules: provenance is mandatory. Don't skip the env fi
 
 | File | Purpose |
 |---|---|
-| `docs/Bending_Stiffness_Procedure_Rev1_1.md` | Shop-level procedure this rig upgrades |
-| `docs/HARDWARE_STACK_SPEC.md` | Canonical rig hardware spec |
+| `docs/Bending_Stiffness_Procedure_Rev1_1.md` | **NOT IN THE REPOSITORY** — see the reconciliation note below |
+| `docs/hardware/TTP_HARDWARE_STACK.md` | Canonical hardware stack spec (absorbed `HARDWARE_STACK_SPEC.md` at Rev 1.3) |
 | `docs/handoffs/no_soundhole_lab_protocol.md` | Adjacent measurement protocol |
 | `docs/ADR-0009-advisory-boundary.md` | Rig outputs measurements only — no advisory logic |
 | `docs/ADR-0011-measurement-authority.md` | Measurement authority chain |
 | `docs/CHECKPOINT_2026-06-20_MEASUREMENT_LEGITIMACY.md` | Metrology framework this rig plugs into |
 | `tap_tone_pi/bending/merge_and_moe.py` | CLI entry point; consumes rig output |
 | `tap_tone_pi/bending/qa_lab_spec.py` | UncertaintyBudget dataclass |
-| `contracts/bending_stiffness.schema.json` | Output contract |
-| `contracts/load_series.schema.json`, `displacement_series.schema.json` | Input contracts |
+| `contracts/schemas/bending_stiffness.schema.json` | Output contract |
+| `contracts/schemas/load_series.schema.json`, `contracts/schemas/displacement_series.schema.json` | Input contracts |
 | `config/devices/dial_indicator_example.json`, `loadcell_example.json` | Serial device configs |
+
+---
+
+---
+
+## 14. Reconciliation against the repository (2026-08-27)
+
+This guide instructs its reader to trust the repo over the document. That check
+was run when the file was committed. Four things were found.
+
+**`docs/Bending_Stiffness_Procedure_Rev1_1.md` does not exist in this repository,
+and nothing references it.** It is cited throughout as the source for fixture
+geometry (§2.2), the E_C measurement variants (§3, §4.3, §4.4), and whole-plate
+mode (§4) — roughly a third of this document's dimensional authority. **Those
+citations are orphaned.** No dimension has been altered: the geometry may be
+entirely correct, and there is no basis in the repository to change a number. But
+a reader must know that the cited source cannot be consulted here, and Rev 1.1
+should be recovered or rewritten before any of these dimensions is cut into metal.
+
+**Three contract paths were off by a directory.** They live under
+`contracts/schemas/`, not `contracts/`. Corrected above; all three exist.
+
+**`docs/HARDWARE_STACK_SPEC.md` was removed**, merged into
+`docs/hardware/TTP_HARDWARE_STACK.md` at Rev 1.3. Corrected above.
+
+**The CLI is exactly as described.** `--specimen-type`, `--poisson`,
+`--grain-orientation`, `--method`, `--span`, `--width` and `--thickness` all
+exist on `tap_tone_pi.bending.merge_and_moe`. The software half of this rig is
+real and matches the guide.
+
+### Ownership of the hardware in §4
+
+**None of it is owned.** DO-104R census pass 2 records every item in the bill of
+materials as `CONFIRMED_ABSENT` — no dial indicator, no USB interface, no
+extrusion, no ground steel or drill rod, no OIML mass set, no load cell. The
+"starts when the Mitutoyo indicator ships" timeline in §5 refers to an order that
+has not been placed.
+
+The displacement jig has **never had a hardware specification** in this
+repository — no BOM row, no requirements document, no interface matrix. The
+`TTP_E1_*` documents cover the acoustic and excitation chain only, and a serial
+dial indicator appears in none of them. **This guide is currently the only
+hardware description the jig has**, which is precisely why it is worth keeping
+and precisely why it must not be mistaken for an authorized build.
 
 ---
 
