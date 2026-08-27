@@ -386,7 +386,12 @@ evidence calls for them — not because a grant narrative would like to cite the
 
 ### B-019 — `schema-bump-guard` cannot run against the current registry
 
-- **Status:** open · **Priority:** P2 · **Area:** `scripts/ci_guard_schema_bump.py`
+- **Status:** **closed** (2026-08-27) · **Priority:** P2 · **Area:** `scripts/ci_guard_schema_bump.py`
+- **Closed by:** `1a9e35d`, landed on the DO-106 branch before PR #32 merged.
+  `load_registry()` now handles both the dict-keyed and list-of-objects registry
+  shapes and falls back from `file` to `path`. Verified against both paths: with
+  a schema added and the registry updated it reports `registry updated; OK`, and
+  with no schema touched it correctly skips.
 - **Origin:** DO-106, the first change since the guard was written to touch
   `contracts/schemas/**` and therefore the first to trigger it.
 - **Context:** `load_registry()` iterates `data.get("schemas", [])` as a list of
@@ -399,14 +404,16 @@ evidence calls for them — not because a grant narrative would like to cite the
 - **Demonstrated pre-existing:** calling `load_registry()` against unmodified
   `main`, with no DO-106 change present, raises the same `TypeError`. This is not
   a regression from the E0 schema; DO-106 is only the first PR to reach the code.
-- **Not fixed here.** Repairing CI machinery is outside a documentation and
-  contract integration order, and the guard's intended rule — a schema change
-  must be accompanied by a registry version bump — is worth restoring
-  deliberately rather than patched to make one PR green.
-- **Trigger:** whichever order owns CI hygiene, alongside B-012.
+- **Superseded note.** This entry originally read *"Not fixed here"*, which was
+  true when written and false by the time the PR merged: the repair landed in the
+  same merge. The stale text is corrected rather than deleted, because an entry
+  claiming a working gate is broken is the mirror image of the problem this item
+  was filed about — a future reader hitting a genuine `schema-bump-guard` failure
+  would grep the backlog, find it listed as known-broken, and dismiss a real one.
 - **Acceptance:** the guard reads the registry's actual shape and enforces the
-  version-bump rule, or it is removed with a reason. A guard that fails on every
-  schema change teaches contributors to ignore it, which is worse than no guard.
+  version-bump rule, or it is removed with a reason. **Met** by the first branch.
+  B-012 remains open and unrelated: `schema-registry-guard` is a separate
+  workflow that has been red since before any DO-104 work and is still unparsed.
 
 ## Not backlog — recorded here only so they aren't mistaken for open items
 
