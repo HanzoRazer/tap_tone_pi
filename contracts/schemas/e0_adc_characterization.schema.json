@@ -1,0 +1,597 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "e0_adc_characterization.schema.json",
+  "title": "E0 ADC Characterization V1",
+  "description": "Bench characterization of the acquisition board (DO-106). Every field is a measurement: there are no proposed, expected, or assumed values, and there is no pass condition. E0 characterizes a board; it does not grade or select one. additionalProperties is false throughout, so a specification cannot leak into an evidence record.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "characterization_id",
+    "execution_status",
+    "device",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "e0_adc_characterization_v1"
+    },
+    "characterization_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "execution_status": {
+      "enum": [
+        "PREPARED",
+        "PARTIALLY_EXECUTED",
+        "EXECUTED",
+        "HALTED_AT_GATE"
+      ],
+      "description": "EXECUTED means every required observation was recorded. It does not mean the board passed, is approved, or was selected."
+    },
+    "notes": {
+      "type": "string"
+    },
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The board measured, and the software stack that read it.",
+      "properties": {
+        "local_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "manufacturer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "asset_label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "serial_number": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "driver": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kernel": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "device_tree_overlay": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "alsa_device": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "local_id",
+        "manufacturer",
+        "model"
+      ]
+    },
+    "noise_floor": {
+      "type": "array",
+      "description": "T1 - input-shorted noise, one row per (sample rate, PGA).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One cell of the T1 table.",
+        "properties": {
+          "sample_rate_hz": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "pga_db": {
+            "type": "number"
+          },
+          "rms_dbfs": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sample_rate_hz",
+          "pga_db",
+          "rms_dbfs"
+        ]
+      }
+    },
+    "spurs": {
+      "type": "array",
+      "description": "T1 - discrete tones with inputs shorted. These belong to the board. Anything found later that is absent here came from the front end.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One discrete spur.",
+        "properties": {
+          "frequency_hz": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "level_dbfs": {
+            "type": "number"
+          },
+          "sample_rate_hz": {
+            "oneOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pga_db": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "frequency_hz",
+          "level_dbfs"
+        ]
+      }
+    },
+    "pga": {
+      "type": "array",
+      "description": "T2 - gain accuracy and noise scaling by setting.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One PGA setting. Gain error is derived on read, never stored.",
+        "properties": {
+          "setting_db": {
+            "type": "number"
+          },
+          "nominal_change_db": {
+            "type": "number"
+          },
+          "measured_change_db": {
+            "type": "number"
+          },
+          "input_referred_noise_dbfs": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "setting_db",
+          "nominal_change_db",
+          "measured_change_db"
+        ]
+      }
+    },
+    "coupling": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "T3 - AC-coupling corner.",
+      "properties": {
+        "measured_corner_hz": {
+          "oneOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "separated_from_dac": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Amplitude AND phase. Phase is required: amplitude error is correctable and phase error is not, so a missing phase must never default to zero.",
+            "properties": {
+              "frequency_hz": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "amplitude_db": {
+                "type": "number"
+              },
+              "phase_deg": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "frequency_hz",
+              "amplitude_db",
+              "phase_deg"
+            ]
+          }
+        }
+      },
+      "required": []
+    },
+    "out_of_band": {
+      "type": "array",
+      "description": "T4 - folding. A frequency the source cannot generate is recorded as BLOCKED_BY_SOURCE_CAPABILITY with no numbers, never dropped: a missing row reads as a frequency that folded harmlessly.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "injected_hz",
+          "source_state"
+        ],
+        "properties": {
+          "injected_hz": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "source_state": {
+            "enum": [
+              "MEASURED",
+              "BLOCKED_BY_SOURCE_CAPABILITY"
+            ]
+          },
+          "apparent_hz": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "attenuation_db": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "sample_rate_hz": {
+            "oneOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "source_state": {
+                  "const": "MEASURED"
+                }
+              },
+              "required": [
+                "source_state"
+              ]
+            },
+            "then": {
+              "required": [
+                "apparent_hz",
+                "attenuation_db"
+              ],
+              "properties": {
+                "apparent_hz": {
+                  "type": "number"
+                },
+                "attenuation_db": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "source_state": {
+                  "const": "BLOCKED_BY_SOURCE_CAPABILITY"
+                }
+              },
+              "required": [
+                "source_state"
+              ]
+            },
+            "then": {
+              "properties": {
+                "apparent_hz": {
+                  "type": "null"
+                },
+                "attenuation_db": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "balanced_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "T5 - input-mode control scope.",
+      "properties": {
+        "control_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "granularity": {
+          "enum": [
+            "PER_CHANNEL",
+            "GLOBAL",
+            "UNKNOWN"
+          ],
+          "description": "UNKNOWN is a legitimate outcome and is not a synonym for GLOBAL. An unread control and a control demonstrated to be board-wide have different consequences for the E1 rig."
+        },
+        "unbalanced_full_scale_vrms": {
+          "oneOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "balanced_full_scale_vrms": {
+          "oneOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "simultaneous_capture_verified": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "applies_to": {
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "full_scale": {
+      "type": "array",
+      "description": "T6 - one row per input path. The 0.1 percent THD point and hard clip are separate levels answering different questions.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Full-scale on one path.",
+        "properties": {
+          "path": {
+            "enum": [
+              "UNBALANCED",
+              "BALANCED"
+            ]
+          },
+          "thd_0p1pct_vrms": {
+            "oneOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hard_clip_vrms": {
+            "oneOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "specified_vrms": {
+            "oneOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    "loopback": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "T7 - playrec offset and its stability.",
+      "properties": {
+        "run_count": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mean_offset_samples": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "null means not measured; 0 means measured and zero."
+        },
+        "stddev_samples": {
+          "oneOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "within_session_stable": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "sample_rate_hz": {
+          "oneOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": []
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "When, by whom, and with what source equipment.",
+      "properties": {
+        "performed_utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ambient_temp_c": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "ambient_rh_percent": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "source_equipment": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "source_verified_bandwidth_hz": {
+          "oneOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Once declared, binds every MEASURED out_of_band row."
+        },
+        "notes": {
+          "type": "string"
+        },
+        "artifacts": {
+          "type": "array",
+          "description": "Externally retained captures. E0 WAVs are standalone artifacts identified by digest, not Phase 2 sessions.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "One retained capture.",
+            "properties": {
+              "artifact_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "byte_length": {
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "locator": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "artifact_id",
+              "kind",
+              "sha256"
+            ]
+          }
+        }
+      },
+      "required": [
+        "performed_utc",
+        "operator"
+      ]
+    }
+  }
+}

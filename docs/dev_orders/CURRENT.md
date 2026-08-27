@@ -1,24 +1,42 @@
 # Active Dev Order
 
 **Current:** DO-104O — E1 Physical Ownership Reconciliation and Procurement
-Authorization Gate (**PARKED OPEN**). Its child slice DO-104R is complete,
-including a census erratum: pass 1 recorded a false absence, and pass 2 records
-one owned item (Raspberry Pi 5 16 GB, `TTP-ASSET-001`, in hand since 2025-04).
-
-**Hardware development is PAUSED.** The selection ruling is
-**`SELECTION_DEFERRED`** — awaiting authorization to build the physical prototype
-Analyzer and displacement jig. Market research, the recommended E1 architecture,
-the census and the software are retained as **engineering inputs only**; they are
-not a selection and not a purchase authorization. No analyzer hardware,
-excitation system, force-measurement chain, displacement jig, or component is
-authorized for procurement or construction. See
+Authorization Gate (**PARKED OPEN**). Hardware development is **paused**; the
+selection ruling is `SELECTION_DEFERRED`, awaiting authorization to build the
+physical prototype Analyzer and displacement jig. See
 [the procurement authorization record](../hardware/TTP_E1_PROCUREMENT_AUTHORIZATION.md).
 
-**Next hardware milestone:** Prototype Analyzer + Displacement Jig Authorization.
-Not more research and not another dev order choosing an ADC. When it is given,
-the project re-checks availability at that time, settles what the prototype
-actually needs — it may not include the excitation chain — and only then writes a
-concrete prototype BOM.
+**Just completed:** DO-106 — E0 ADC Characterization repository integration.
+Software and documentation only. The E0 protocol, its evidence contract, schema,
+read-only checker and an empty results stub are on `main`; **no measurement
+exists and no acquisition tooling was built.**
+
+**Build sequence, and where it is blocked:**
+
+```
+Pi 5 (owned)  ->  ADC-001 prototype  ->  characterize (E0)  ->  design AFE-001
+   ->  build Analyzer  ->  build displacement/reference jig  ->  authorize E1 rig
+         ^
+         |
+    blocked here: ADC-001 is CONFIRMED_ABSENT
+```
+
+| Item | State |
+| --- | --- |
+| DO-106 software/document integration | COMPLETE |
+| E0 physical execution | **NOT EXECUTED** |
+| `ADC-001` | procurement/receipt state unchanged — `CONFIRMED_ABSENT` |
+| `AFE-001` | BLOCKED ON E0 |
+| Analyzer prototype | BLOCKED ON E0 + AFE-001 |
+| Displacement / reference jig | downstream |
+| E1 force rig | downstream, **not authorized** |
+| B-014 (no anti-aliasing filter) | **OPEN** — E0 builds the evidence path, does not close it |
+| B-015 (ADC superseded) | **OPEN** — §5.7 is a lead, not manifest-grade evidence |
+| B-018 (E0 acquisition tooling) | **OPEN** — new; DO-106 shipped no `ttp_e0_adc.py` |
+
+**Next physical gate:** acquire `ADC-001`, record its identity, mount it on the
+owned Pi 5, execute T1–T7. **Next software order:** B-018, the complete E0
+acquisition integration.
 
 **Nothing is promoted.** DO-101B remains queued and unresumed; per the binding
 sequence its promotion belongs to its own docs/status commit.

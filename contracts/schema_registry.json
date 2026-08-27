@@ -253,8 +253,15 @@
       "schema_version_const": "ttp_preliminary_repeatability_study_v1",
       "status": "stable",
       "version": "1.3.0"
+    },
+    "e0_adc_characterization": {
+      "description": "E0 ADC bench characterization evidence (measurement-only; no pass condition)",
+      "file": "e0_adc_characterization.schema.json",
+      "owner": "measurement-team",
+      "path": "contracts/schemas/e0_adc_characterization.schema.json",
+      "version": "1.0"
     }
   },
   "title": "tap_tone_pi Schema Registry",
-  "updated": "2026-08-23T00:00:00Z"
+  "updated": "2026-08-27T00:00:00Z"
 }

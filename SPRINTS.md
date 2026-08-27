@@ -281,6 +281,11 @@ evidence calls for them — not because a grant narrative would like to cite the
   96 kHz but does not bound broadband contact noise.
 - **Not affected by the DO-104R census (2026-08-27).** Not owning the board says
   nothing about whether aliasing is acceptable. This closes only on measurement.
+- **DO-106 (2026-08-27) built the evidence path, and did not close this.** E0's
+  T4 produces the folding table a filter requirement is *derived from*; deriving
+  it is a separate document and a human's judgement. The checker is explicitly
+  forbidden from closing this item, and a test asserts that a T4 section existing
+  is not an aliasing answer. Closes only when a front end exists and is measured.
 - **Trigger:** E1 bench work, or any claim about usable bandwidth.
 - **Acceptance:** excitation bandwidth is limited and recorded per run, the
   residual is characterized by measurement rather than assumed negligible, and
@@ -298,6 +303,13 @@ evidence calls for them — not because a grant narrative would like to cite the
 - **Made more pressing by the DO-104R census (2026-08-27).** The board is not
   owned, so it must be acquired — and it is the one the vendor has superseded.
   There is no unit in hand to use while the successor is evaluated.
+- **DO-106 (2026-08-27) imported a lead, not evidence.** The stack BOM §5.7
+  records that distributors identify the successor's converters as a PCM5122 and
+  PCM1863, which would move the input characteristics into a TI datasheet and
+  make the architecture gate re-runnable against a manufacturer document. It is
+  distributor-sourced and does not meet the datasheet-manifest standard. **A lead
+  for closing this item, not a closure.** E0 characterizing the current board
+  badly would be a reason to revisit the successor, not to assume it.
 - **Trigger:** procurement, or the DAC+ becoming unobtainable.
 - **Acceptance:** either the DAC+ is procured while available, or the successor's
   input specification is obtained and the E1 architecture gate is re-run against
@@ -350,6 +362,51 @@ evidence calls for them — not because a grant narrative would like to cite the
   than by attestation, or the attestation is corroborated against purchase
   records. Recording the method is not sufficient on its own; the method has to
   be adequate to the decision resting on it.
+
+### B-018 — E0 acquisition integration does not exist
+
+- **Status:** open · **Priority:** P1 · **Area:** `scripts/`, `tap_tone_pi/capture/`
+- **Origin:** DO-106, which deliberately shipped no `ttp_e0_adc.py`.
+- **Context:** DO-106 provides the E0 protocol, evidence contract, schema,
+  checker and results stub. It provides **no way to take the measurements.** The
+  existing primitives cover part of the protocol — `calibration.loopback` already
+  does sweep generation, latency measurement and frequency response, which
+  reaches T3 and T7 — but T1's (fs × PGA) noise grid, T2's gain error and
+  input-referred noise, T4's external-source injection, T5's ALSA mixer
+  inspection and T6's THD and clip detection have no canonical utility behind
+  them.
+- **Why it was not half-built:** a command implementing three of seven tests
+  would look operational and not be. DO-106 §8 permits splitting exactly this.
+- **Trigger:** before E0 is executed, unless the operator intends to run all
+  seven tests by hand and assemble the record manually — which is legitimate and
+  the checker validates it either way.
+- **Acceptance:** a thin orchestration surface covering T1–T7 that delegates
+  acquisition and DSP to canonical utilities, or an explicit ruling that E0 is
+  run manually. Building a second acquisition engine is not acceptance.
+
+### B-019 — `schema-bump-guard` cannot run against the current registry
+
+- **Status:** open · **Priority:** P2 · **Area:** `scripts/ci_guard_schema_bump.py`
+- **Origin:** DO-106, the first change since the guard was written to touch
+  `contracts/schemas/**` and therefore the first to trigger it.
+- **Context:** `load_registry()` iterates `data.get("schemas", [])` as a list of
+  entry objects and reads `ent["schema_id"]`. The registry's `schemas` is a
+  **dict** keyed by name, so iteration yields strings and the subscript raises
+  `TypeError: string indices must be integers`. No entry carries a `schema_id`
+  key either — the actual shape is `description`, `file`, `owner`, `path`,
+  `schema_version_const`, `status`, `version`. The guard therefore fails for
+  **any** PR touching a schema, regardless of content.
+- **Demonstrated pre-existing:** calling `load_registry()` against unmodified
+  `main`, with no DO-106 change present, raises the same `TypeError`. This is not
+  a regression from the E0 schema; DO-106 is only the first PR to reach the code.
+- **Not fixed here.** Repairing CI machinery is outside a documentation and
+  contract integration order, and the guard's intended rule — a schema change
+  must be accompanied by a registry version bump — is worth restoring
+  deliberately rather than patched to make one PR green.
+- **Trigger:** whichever order owns CI hygiene, alongside B-012.
+- **Acceptance:** the guard reads the registry's actual shape and enforces the
+  version-bump rule, or it is removed with a reason. A guard that fails on every
+  schema change teaches contributors to ignore it, which is worse than no guard.
 
 ## Not backlog — recorded here only so they aren't mistaken for open items
 

@@ -132,6 +132,41 @@ class GrantReadinessErrorCode(str, Enum):
     UNRESOLVED_EVIDENCE_REFERENCE = "NSF-401"
     EVIDENCE_DIGEST_MISMATCH = "NSF-402"
 
+    # --- E0 ADC characterization (DO-106) ---------------------------------
+    # E0 is a characterization protocol with no pass conditions. Its failure
+    # modes are therefore all about *truthfulness of the record* rather than
+    # quality of the device: a value that was never measured, a frequency the
+    # source could not generate, a phase that defaulted to zero.
+    E0_EXECUTION_STATUS_INVALID = "NSF-601"
+    E0_OBSERVATION_MISSING = "NSF-602"
+
+    # A field naming an expectation rather than an observation. The protocol is
+    # explicit that every field is measured and there are no proposed values,
+    # so an ``expected_``/``proposed_``/``assumed_`` key is not a harmless extra
+    # - it is a specification leaking into an evidence record.
+    E0_SPECULATIVE_FIELD = "NSF-603"
+
+    # T4 recorded above the source's demonstrated bandwidth. The requested
+    # frequency set is not reduced to match available equipment, so an untested
+    # frequency must read BLOCKED_BY_SOURCE_CAPABILITY rather than vanish or be
+    # answered.
+    E0_SOURCE_CAPABILITY_MISREPRESENTED = "NSF-604"
+
+    # T3 without phase. Amplitude error is correctable and phase error is not,
+    # so a missing phase silently becoming zero would destroy the one quantity
+    # the test exists for.
+    E0_PHASE_NOT_RECORDED = "NSF-605"
+
+    # Two measurements that must stay distinguishable were merged: balanced with
+    # unbalanced, or the 0.1% THD point with hard clip.
+    E0_MEASUREMENT_CONFLATED = "NSF-606"
+
+    # A pass/fail, grade, or verdict field. E0 has no acceptance criteria to
+    # express, and inventing one would decide the question the protocol asks.
+    E0_QUALITY_JUDGEMENT = "NSF-607"
+
+    E0_DEVICE_IDENTITY_INCOMPLETE = "NSF-608"
+
 
 class GrantReadinessError(Exception):
     """Base class for every grant-readiness failure.
@@ -184,6 +219,10 @@ class HardwareCampaignError(GrantReadinessError):
     """A hardware campaign's configuration or grouping is unusable."""
 
 
+class E0CharacterizationError(GrantReadinessError):
+    """An E0 ADC characterization record is not a truthful account of a bench."""
+
+
 __all__ = [
     "GrantReadinessErrorCode",
     "GrantReadinessError",
@@ -192,4 +231,5 @@ __all__ = [
     "RepeatabilityStatisticsError",
     "EvidenceLinkageError",
     "HardwareCampaignError",
+    "E0CharacterizationError",
 ]
