@@ -685,3 +685,45 @@ class TestEndToEnd:
         payload["schema_version"] = "e0_adc_characterization_v2"
         with pytest.raises(E0CharacterizationError):
             E0AdcCharacterizationV1.from_dict(payload)
+
+
+class TestTheResultsStub:
+    """The results file must stay empty until a bench produces something."""
+
+    @pytest.fixture(scope="class")
+    def stub(self):
+        return (HARDWARE / "TTP_E0_ADC_CHARACTERIZATION_RESULTS.md").read_text(
+            encoding="utf-8"
+        )
+
+    def test_it_says_not_executed(self, stub):
+        assert "STATUS: NOT EXECUTED" in stub
+        assert "ADC-001 has not been characterized." in stub
+
+    def test_b014_is_recorded_as_open(self, stub):
+        assert "B-014 remains open." in stub
+
+    def test_no_afe_requirement_is_derived(self, stub):
+        assert "No AFE-001 filter requirement has been derived." in stub
+
+    def test_no_measurement_is_pre_populated(self, stub):
+        # The failure this guards is a plausible number written into an empty
+        # results file, which is a specification that reads as a measurement.
+        flat = stub.lower()
+        for unit in ("dbfs", "vrms measured", "corner is", "attenuation of"):
+            if unit == "dbfs":
+                # The word may appear in prose about what E0 will produce, but
+                # never attached to a number.
+                import re
+
+                assert not re.search(r"-?\d+(\.\d+)?\s*dbfs", flat), flat
+            else:
+                assert unit not in flat
+
+    def test_the_acquisition_tooling_is_recorded_as_absent(self, stub):
+        assert "ttp_e0_adc.py" in stub
+        assert "successor development order" in stub
+
+    def test_artifacts_are_standalone_not_phase2_sessions(self, stub):
+        assert "not a Phase 2 session" in stub
+        assert "synthetic" in stub
