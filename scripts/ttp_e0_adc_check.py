@@ -50,7 +50,9 @@ from tap_tone_pi.grant_readiness.e0_characterization import (  # noqa: E402
 )
 from tap_tone_pi.grant_readiness.errors import E0CharacterizationError  # noqa: E402
 
-SCHEMA_PATH = REPO_ROOT / "contracts" / "schemas" / "e0_adc_characterization.schema.json"
+SCHEMA_PATH = (
+    REPO_ROOT / "contracts" / "schemas" / "e0_adc_characterization.schema.json"
+)
 
 # The seven tests, and the field that shows one was run.
 TEST_FIELDS = {
@@ -81,7 +83,9 @@ def check_schema(payload: Any) -> list[str]:
     validator = jsonschema.Draft202012Validator(schema)
     return [
         f"schema: {'/'.join(str(p) for p in err.absolute_path) or '<root>'}: {err.message}"
-        for err in sorted(validator.iter_errors(payload), key=lambda e: list(e.absolute_path))
+        for err in sorted(
+            validator.iter_errors(payload), key=lambda e: list(e.absolute_path)
+        )
     ]
 
 
@@ -90,10 +94,7 @@ def check_coverage(record: E0AdcCharacterizationV1) -> list[str]:
     observed = record.observed_groups()
     missing = [name for name, key in TEST_FIELDS.items() if not observed[key]]
     if record.execution_status is E0ExecutionStatus.EXECUTED and missing:
-        return [
-            "claims EXECUTED but has no observations for "
-            + ", ".join(missing)
-        ]
+        return ["claims EXECUTED but has no observations for " + ", ".join(missing)]
     return []
 
 
@@ -106,7 +107,8 @@ def check_source_capability(record: E0AdcCharacterizationV1) -> list[str]:
     """
     problems: list[str] = []
     blocked = [
-        o for o in record.out_of_band
+        o
+        for o in record.out_of_band
         if o.source_state is E0SourceCapability.BLOCKED_BY_SOURCE_CAPABILITY
     ]
     if blocked and not record.provenance.source_equipment:
@@ -160,7 +162,8 @@ def summarize(record: E0AdcCharacterizationV1) -> list[str]:
         lines.append(f"  {name:<18} {'recorded' if observed[key] else '-'}")
 
     blocked = [
-        o.injected_hz for o in record.out_of_band
+        o.injected_hz
+        for o in record.out_of_band
         if o.source_state is E0SourceCapability.BLOCKED_BY_SOURCE_CAPABILITY
     ]
     if blocked:
@@ -202,7 +205,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Check an E0 ADC characterization record (read-only)"
     )
-    parser.add_argument("result", type=Path, help="path to e0_adc_characterization.json")
+    parser.add_argument(
+        "result", type=Path, help="path to e0_adc_characterization.json"
+    )
     parser.add_argument(
         "--summary", action="store_true", help="print what the record contains"
     )

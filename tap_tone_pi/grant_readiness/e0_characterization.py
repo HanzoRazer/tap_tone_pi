@@ -126,7 +126,9 @@ class E0ControlGranularity(str, Enum):
 # ---------------------------------------------------------------------------
 
 
-def _reject_unknown_keys(payload: Mapping[str, Any], allowed: Sequence[str], *, record: str) -> None:
+def _reject_unknown_keys(
+    payload: Mapping[str, Any], allowed: Sequence[str], *, record: str
+) -> None:
     """Refuse extra keys, and name speculative or judgemental ones specifically.
 
     A generic "unknown field" message would be technically correct and useless
@@ -214,7 +216,9 @@ def _number(
     return number
 
 
-def _optional_number(payload: Mapping[str, Any], key: str, *, record: str) -> float | None:
+def _optional_number(
+    payload: Mapping[str, Any], key: str, *, record: str
+) -> float | None:
     """A number that may be absent.
 
     ``None`` means *not measured*. It is not zero, and the two are kept
@@ -237,8 +241,14 @@ def _positive(payload: Mapping[str, Any], key: str, *, record: str) -> float:
     return value
 
 
-def _enum(payload: Mapping[str, Any], key: str, enum_cls: type[Enum], *, record: str,
-          code: GrantReadinessErrorCode = GrantReadinessErrorCode.E0_OBSERVATION_MISSING) -> Any:
+def _enum(
+    payload: Mapping[str, Any],
+    key: str,
+    enum_cls: type[Enum],
+    *,
+    record: str,
+    code: GrantReadinessErrorCode = GrantReadinessErrorCode.E0_OBSERVATION_MISSING,
+) -> Any:
     raw = payload.get(key)
     try:
         return enum_cls(raw)
@@ -285,8 +295,15 @@ class E0DeviceIdentityV1:
     alsa_device: str | None = None
 
     _FIELDS = (
-        "local_id", "manufacturer", "model", "asset_label", "serial_number",
-        "driver", "kernel", "device_tree_overlay", "alsa_device",
+        "local_id",
+        "manufacturer",
+        "model",
+        "asset_label",
+        "serial_number",
+        "driver",
+        "kernel",
+        "device_tree_overlay",
+        "alsa_device",
     )
 
     def to_dict(self) -> dict[str, Any]:
@@ -314,7 +331,9 @@ class E0DeviceIdentityV1:
             serial_number=_optional_text(payload, "serial_number", record=record),
             driver=_optional_text(payload, "driver", record=record),
             kernel=_optional_text(payload, "kernel", record=record),
-            device_tree_overlay=_optional_text(payload, "device_tree_overlay", record=record),
+            device_tree_overlay=_optional_text(
+                payload, "device_tree_overlay", record=record
+            ),
             alsa_device=_optional_text(payload, "alsa_device", record=record),
         )
 
@@ -387,8 +406,14 @@ class E0ProvenanceV1:
     notes: str = ""
 
     _FIELDS = (
-        "performed_utc", "operator", "ambient_temp_c", "ambient_rh_percent",
-        "source_equipment", "source_verified_bandwidth_hz", "artifacts", "notes",
+        "performed_utc",
+        "operator",
+        "ambient_temp_c",
+        "ambient_rh_percent",
+        "source_equipment",
+        "source_verified_bandwidth_hz",
+        "artifacts",
+        "notes",
     )
 
     def to_dict(self) -> dict[str, Any]:
@@ -420,14 +445,18 @@ class E0ProvenanceV1:
             performed_utc=_text(payload, "performed_utc", record=record),
             operator=_text(payload, "operator", record=record),
             ambient_temp_c=_optional_number(payload, "ambient_temp_c", record=record),
-            ambient_rh_percent=_optional_number(payload, "ambient_rh_percent", record=record),
+            ambient_rh_percent=_optional_number(
+                payload, "ambient_rh_percent", record=record
+            ),
             source_equipment=tuple(str(i) for i in equipment),
             source_verified_bandwidth_hz=(
-                None if bandwidth is None
+                None
+                if bandwidth is None
                 else _positive(payload, "source_verified_bandwidth_hz", record=record)
             ),
             artifacts=tuple(
-                E0ArtifactRefV1.from_dict(a) for a in _rows(payload, "artifacts", record=record)
+                E0ArtifactRefV1.from_dict(a)
+                for a in _rows(payload, "artifacts", record=record)
             ),
             notes=payload.get("notes", "") or "",
         )
@@ -498,7 +527,11 @@ class E0SpurObservationV1:
         return cls(
             frequency_hz=_positive(payload, "frequency_hz", record=record),
             level_dbfs=_number(payload, "level_dbfs", record=record),
-            sample_rate_hz=(None if rate is None else _positive(payload, "sample_rate_hz", record=record)),
+            sample_rate_hz=(
+                None
+                if rate is None
+                else _positive(payload, "sample_rate_hz", record=record)
+            ),
             pga_db=_optional_number(payload, "pga_db", record=record),
         )
 
@@ -525,8 +558,12 @@ class E0PgaObservationV1:
     measured_change_db: float
     input_referred_noise_dbfs: float | None = None
 
-    _FIELDS = ("setting_db", "nominal_change_db", "measured_change_db",
-               "input_referred_noise_dbfs")
+    _FIELDS = (
+        "setting_db",
+        "nominal_change_db",
+        "measured_change_db",
+        "input_referred_noise_dbfs",
+    )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -599,7 +636,9 @@ class E0CouplingObservationV1:
             frequency_hz=_positive(payload, "frequency_hz", record=record),
             amplitude_db=_number(payload, "amplitude_db", record=record),
             phase_deg=_number(
-                payload, "phase_deg", record=record,
+                payload,
+                "phase_deg",
+                record=record,
                 code=GrantReadinessErrorCode.E0_PHASE_NOT_RECORDED,
             ),
         )
@@ -636,7 +675,9 @@ class E0CouplingResultV1:
             )
         return cls(
             measured_corner_hz=(
-                None if corner is None else _positive(payload, "measured_corner_hz", record=record)
+                None
+                if corner is None
+                else _positive(payload, "measured_corner_hz", record=record)
             ),
             points=tuple(
                 E0CouplingObservationV1.from_dict(p)
@@ -668,8 +709,13 @@ class E0OutOfBandObservationV1:
     attenuation_db: float | None = None
     sample_rate_hz: float | None = None
 
-    _FIELDS = ("injected_hz", "source_state", "apparent_hz", "attenuation_db",
-               "sample_rate_hz")
+    _FIELDS = (
+        "injected_hz",
+        "source_state",
+        "apparent_hz",
+        "attenuation_db",
+        "sample_rate_hz",
+    )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -685,7 +731,10 @@ class E0OutOfBandObservationV1:
         record = "E0OutOfBandObservationV1"
         _reject_unknown_keys(payload, cls._FIELDS, record=record)
         state = _enum(
-            payload, "source_state", E0SourceCapability, record=record,
+            payload,
+            "source_state",
+            E0SourceCapability,
+            record=record,
             code=GrantReadinessErrorCode.E0_SOURCE_CAPABILITY_MISREPRESENTED,
         )
         apparent = payload.get("apparent_hz")
@@ -714,11 +763,21 @@ class E0OutOfBandObservationV1:
         return cls(
             injected_hz=_positive(payload, "injected_hz", record=record),
             source_state=state,
-            apparent_hz=(None if apparent is None else _number(payload, "apparent_hz", record=record)),
-            attenuation_db=(
-                None if attenuation is None else _number(payload, "attenuation_db", record=record)
+            apparent_hz=(
+                None
+                if apparent is None
+                else _number(payload, "apparent_hz", record=record)
             ),
-            sample_rate_hz=(None if rate is None else _positive(payload, "sample_rate_hz", record=record)),
+            attenuation_db=(
+                None
+                if attenuation is None
+                else _number(payload, "attenuation_db", record=record)
+            ),
+            sample_rate_hz=(
+                None
+                if rate is None
+                else _positive(payload, "sample_rate_hz", record=record)
+            ),
         )
 
 
@@ -744,9 +803,14 @@ class E0BalancedInputObservationV1:
     simultaneous_capture_verified: bool | None = None
     applies_to: str = ""
 
-    _FIELDS = ("control_name", "granularity", "unbalanced_full_scale_vrms",
-               "balanced_full_scale_vrms", "simultaneous_capture_verified",
-               "applies_to")
+    _FIELDS = (
+        "control_name",
+        "granularity",
+        "unbalanced_full_scale_vrms",
+        "balanced_full_scale_vrms",
+        "simultaneous_capture_verified",
+        "applies_to",
+    )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -779,11 +843,13 @@ class E0BalancedInputObservationV1:
                 else _enum(payload, "granularity", E0ControlGranularity, record=record)
             ),
             unbalanced_full_scale_vrms=(
-                None if unbalanced is None
+                None
+                if unbalanced is None
                 else _positive(payload, "unbalanced_full_scale_vrms", record=record)
             ),
             balanced_full_scale_vrms=(
-                None if balanced is None
+                None
+                if balanced is None
                 else _positive(payload, "balanced_full_scale_vrms", record=record)
             ),
             simultaneous_capture_verified=verified,
@@ -829,9 +895,21 @@ class E0FullScaleObservationV1:
         spec = payload.get("specified_vrms")
         return cls(
             path=_enum(payload, "path", E0InputPath, record=record),
-            thd_0p1pct_vrms=(None if thd is None else _positive(payload, "thd_0p1pct_vrms", record=record)),
-            hard_clip_vrms=(None if clip is None else _positive(payload, "hard_clip_vrms", record=record)),
-            specified_vrms=(None if spec is None else _positive(payload, "specified_vrms", record=record)),
+            thd_0p1pct_vrms=(
+                None
+                if thd is None
+                else _positive(payload, "thd_0p1pct_vrms", record=record)
+            ),
+            hard_clip_vrms=(
+                None
+                if clip is None
+                else _positive(payload, "hard_clip_vrms", record=record)
+            ),
+            specified_vrms=(
+                None
+                if spec is None
+                else _positive(payload, "specified_vrms", record=record)
+            ),
         )
 
 
@@ -859,8 +937,13 @@ class E0LoopbackObservationV1:
     within_session_stable: bool | None = None
     sample_rate_hz: float | None = None
 
-    _FIELDS = ("run_count", "mean_offset_samples", "stddev_samples",
-               "within_session_stable", "sample_rate_hz")
+    _FIELDS = (
+        "run_count",
+        "mean_offset_samples",
+        "stddev_samples",
+        "within_session_stable",
+        "sample_rate_hz",
+    )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -902,10 +985,20 @@ class E0LoopbackObservationV1:
         rate = payload.get("sample_rate_hz")
         return cls(
             run_count=runs,
-            mean_offset_samples=_optional_number(payload, "mean_offset_samples", record=record),
-            stddev_samples=(None if stddev is None else _number(payload, "stddev_samples", record=record)),
+            mean_offset_samples=_optional_number(
+                payload, "mean_offset_samples", record=record
+            ),
+            stddev_samples=(
+                None
+                if stddev is None
+                else _number(payload, "stddev_samples", record=record)
+            ),
             within_session_stable=stable,
-            sample_rate_hz=(None if rate is None else _positive(payload, "sample_rate_hz", record=record)),
+            sample_rate_hz=(
+                None
+                if rate is None
+                else _positive(payload, "sample_rate_hz", record=record)
+            ),
         )
 
 
@@ -952,9 +1045,20 @@ class E0AdcCharacterizationV1:
     schema_version: str = field(default=E0_SCHEMA_VERSION, init=False)
 
     _FIELDS = (
-        "schema_version", "characterization_id", "device", "provenance",
-        "execution_status", "noise_floor", "spurs", "pga", "coupling",
-        "out_of_band", "balanced_scope", "full_scale", "loopback", "notes",
+        "schema_version",
+        "characterization_id",
+        "device",
+        "provenance",
+        "execution_status",
+        "noise_floor",
+        "spurs",
+        "pga",
+        "coupling",
+        "out_of_band",
+        "balanced_scope",
+        "full_scale",
+        "loopback",
+        "notes",
     )
 
     def to_dict(self) -> dict[str, Any]:
@@ -989,7 +1093,10 @@ class E0AdcCharacterizationV1:
             )
 
         status = _enum(
-            payload, "execution_status", E0ExecutionStatus, record=record,
+            payload,
+            "execution_status",
+            E0ExecutionStatus,
+            record=record,
             code=GrantReadinessErrorCode.E0_EXECUTION_STATUS_INVALID,
         )
 
@@ -1023,7 +1130,8 @@ class E0AdcCharacterizationV1:
                 for s in _rows(payload, "spurs", record=record)
             ),
             pga=tuple(
-                E0PgaObservationV1.from_dict(p) for p in _rows(payload, "pga", record=record)
+                E0PgaObservationV1.from_dict(p)
+                for p in _rows(payload, "pga", record=record)
             ),
             coupling=E0CouplingResultV1.from_dict(payload.get("coupling") or {}),
             out_of_band=tuple(
@@ -1063,7 +1171,9 @@ class E0AdcCharacterizationV1:
         """Refuse a record whose status disagrees with what it contains."""
         observed = self.observed_groups()
 
-        if self.execution_status is E0ExecutionStatus.PREPARED and any(observed.values()):
+        if self.execution_status is E0ExecutionStatus.PREPARED and any(
+            observed.values()
+        ):
             carried = sorted(k for k, v in observed.items() if v)
             raise _ERR(
                 GrantReadinessErrorCode.E0_EXECUTION_STATUS_INVALID,
@@ -1101,7 +1211,8 @@ class E0AdcCharacterizationV1:
             beyond = [
                 o.injected_hz
                 for o in self.out_of_band
-                if o.source_state is E0SourceCapability.MEASURED and o.injected_hz > limit
+                if o.source_state is E0SourceCapability.MEASURED
+                and o.injected_hz > limit
             ]
             if beyond:
                 raise _ERR(
@@ -1109,7 +1220,10 @@ class E0AdcCharacterizationV1:
                     "out_of_band claims measurements at "
                     f"{', '.join(f'{hz:g}' for hz in sorted(beyond))} Hz, above the "
                     f"source's verified bandwidth of {limit:g} Hz",
-                    {"record": "E0AdcCharacterizationV1", "frequencies": sorted(beyond)},
+                    {
+                        "record": "E0AdcCharacterizationV1",
+                        "frequencies": sorted(beyond),
+                    },
                 )
 
 

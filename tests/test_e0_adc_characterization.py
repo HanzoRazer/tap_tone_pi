@@ -21,7 +21,6 @@ import pytest
 from tap_tone_pi.grant_readiness.e0_characterization import (
     E0_SCHEMA_VERSION,
     E0AdcCharacterizationV1,
-    E0ArtifactRefV1,
     E0BalancedInputObservationV1,
     E0ControlGranularity,
     E0CouplingObservationV1,
@@ -45,7 +44,9 @@ from tap_tone_pi.grant_readiness.errors import (
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 HARDWARE = REPO_ROOT / "docs" / "hardware"
-SCHEMA_PATH = REPO_ROOT / "contracts" / "schemas" / "e0_adc_characterization.schema.json"
+SCHEMA_PATH = (
+    REPO_ROOT / "contracts" / "schemas" / "e0_adc_characterization.schema.json"
+)
 
 
 def device() -> E0DeviceIdentityV1:
@@ -177,8 +178,13 @@ class TestContract:
 
     @pytest.mark.parametrize(
         "key",
-        ["expected_noise_floor", "proposed_corner_hz", "assumed_full_scale",
-         "predicted_offset", "target_attenuation_db"],
+        [
+            "expected_noise_floor",
+            "proposed_corner_hz",
+            "assumed_full_scale",
+            "predicted_offset",
+            "target_attenuation_db",
+        ],
     )
     def test_a_field_naming_an_expectation_is_refused(self, key):
         # The protocol is explicit that every field is measured. A specification
@@ -247,8 +253,18 @@ class TestT1NoiseFloor:
         # attributed to the front end rather than the board.
         payload = executed().to_dict()
         payload["spurs"] = [
-            {"frequency_hz": 50.0, "level_dbfs": -121.0, "sample_rate_hz": None, "pga_db": None},
-            {"frequency_hz": 150.0, "level_dbfs": -128.0, "sample_rate_hz": None, "pga_db": None},
+            {
+                "frequency_hz": 50.0,
+                "level_dbfs": -121.0,
+                "sample_rate_hz": None,
+                "pga_db": None,
+            },
+            {
+                "frequency_hz": 150.0,
+                "level_dbfs": -128.0,
+                "sample_rate_hz": None,
+                "pga_db": None,
+            },
         ]
         record = E0AdcCharacterizationV1.from_dict(payload)
         assert [s.frequency_hz for s in record.spurs] == [50.0, 150.0]
@@ -350,18 +366,25 @@ class TestT4OutOfBand:
                     "attenuation_db": -40.0,
                 }
             )
-        assert exc.value.code is GrantReadinessErrorCode.E0_SOURCE_CAPABILITY_MISREPRESENTED
+        assert (
+            exc.value.code
+            is GrantReadinessErrorCode.E0_SOURCE_CAPABILITY_MISREPRESENTED
+        )
 
     def test_a_measured_row_must_carry_its_numbers(self):
         with pytest.raises(E0CharacterizationError) as exc:
             E0OutOfBandObservationV1.from_dict(
                 {"injected_hz": 30000.0, "source_state": "MEASURED"}
             )
-        assert exc.value.code is GrantReadinessErrorCode.E0_SOURCE_CAPABILITY_MISREPRESENTED
+        assert (
+            exc.value.code
+            is GrantReadinessErrorCode.E0_SOURCE_CAPABILITY_MISREPRESENTED
+        )
 
     def test_partial_t4_is_represented_rather_than_fabricated(self):
         blocked = [
-            o for o in executed().out_of_band
+            o
+            for o in executed().out_of_band
             if o.source_state is E0SourceCapability.BLOCKED_BY_SOURCE_CAPABILITY
         ]
         assert [o.injected_hz for o in blocked] == [200000.0]
@@ -381,7 +404,10 @@ class TestT4OutOfBand:
         )
         with pytest.raises(E0CharacterizationError) as exc:
             E0AdcCharacterizationV1.from_dict(payload)
-        assert exc.value.code is GrantReadinessErrorCode.E0_SOURCE_CAPABILITY_MISREPRESENTED
+        assert (
+            exc.value.code
+            is GrantReadinessErrorCode.E0_SOURCE_CAPABILITY_MISREPRESENTED
+        )
 
     def test_the_contract_never_closes_b014(self):
         # A T4 section existing is not an aliasing answer. Nothing in the record
@@ -432,10 +458,18 @@ class TestT6FullScale:
     def test_balanced_and_unbalanced_cannot_be_conflated(self):
         payload = executed().to_dict()
         payload["full_scale"] = [
-            {"path": "UNBALANCED", "thd_0p1pct_vrms": 2.02, "hard_clip_vrms": 2.11,
-             "specified_vrms": 2.1},
-            {"path": "UNBALANCED", "thd_0p1pct_vrms": 4.05, "hard_clip_vrms": 4.20,
-             "specified_vrms": 4.2},
+            {
+                "path": "UNBALANCED",
+                "thd_0p1pct_vrms": 2.02,
+                "hard_clip_vrms": 2.11,
+                "specified_vrms": 2.1,
+            },
+            {
+                "path": "UNBALANCED",
+                "thd_0p1pct_vrms": 4.05,
+                "hard_clip_vrms": 4.20,
+                "specified_vrms": 4.2,
+            },
         ]
         with pytest.raises(E0CharacterizationError) as exc:
             E0AdcCharacterizationV1.from_dict(payload)
@@ -511,7 +545,9 @@ class TestBoundaries:
         def walk(node):
             if isinstance(node, dict):
                 if node.get("type") == "object":
-                    assert node.get("additionalProperties") is False, node.get("title", node)
+                    assert node.get("additionalProperties") is False, node.get(
+                        "title", node
+                    )
                 for value in node.values():
                     walk(value)
             elif isinstance(node, list):
@@ -577,7 +613,8 @@ class TestTheImportedDocuments:
         assert "CONFIRMED_ABSENT" in census
         # ADC-001 is still not owned; E0 cannot run.
         adc_row = next(
-            line for line in census.splitlines()
+            line
+            for line in census.splitlines()
             if line.startswith("| 2 ") and "ADC-001" in line
         )
         assert "CONFIRMED_ABSENT" in adc_row
@@ -595,8 +632,14 @@ class TestEndToEnd:
         target = tmp_path / "e0.json"
         target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         return subprocess.run(
-            [__import__("sys").executable, str(REPO_ROOT / "scripts" / "ttp_e0_adc_check.py"), str(target)],
-            capture_output=True, text=True, cwd=REPO_ROOT,
+            [
+                __import__("sys").executable,
+                str(REPO_ROOT / "scripts" / "ttp_e0_adc_check.py"),
+                str(target),
+            ],
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
         )
 
     def test_a_prepared_record_passes_the_checker(self, tmp_path):
@@ -629,7 +672,8 @@ class TestEndToEnd:
     def test_tampering_with_a_t4_source_claim_fails_loudly(self, tmp_path):
         payload = executed().to_dict()
         blocked = next(
-            o for o in payload["out_of_band"]
+            o
+            for o in payload["out_of_band"]
             if o["source_state"] == "BLOCKED_BY_SOURCE_CAPABILITY"
         )
         blocked["source_state"] = "MEASURED"
@@ -670,12 +714,16 @@ class TestEndToEnd:
         assert "digest mismatch" in result.stderr
 
     def test_the_checker_writes_nothing(self):
-        source = (REPO_ROOT / "scripts" / "ttp_e0_adc_check.py").read_text(encoding="utf-8")
+        source = (REPO_ROOT / "scripts" / "ttp_e0_adc_check.py").read_text(
+            encoding="utf-8"
+        )
         assert "write_text" not in source
         assert "write_bytes" not in source
 
     def test_the_checker_computes_no_score(self):
-        source = (REPO_ROOT / "scripts" / "ttp_e0_adc_check.py").read_text(encoding="utf-8")
+        source = (REPO_ROOT / "scripts" / "ttp_e0_adc_check.py").read_text(
+            encoding="utf-8"
+        )
         for banned in ("def score", "def grade", "def passed", "PASS_THRESHOLD"):
             assert banned not in source
 
