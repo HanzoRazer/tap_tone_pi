@@ -424,6 +424,85 @@ this order — not to the order that produced the recommendation.
 
 ---
 
+## Census reconciliation (DO-104R, 2026-08-27)
+
+The [physical ownership census](TTP_E1_OWNERSHIP_CENSUS.md) was performed and
+returned a negative result across all ten required categories. **No E1-relevant
+hardware is possessed.**
+
+### What that does to the recommendation
+
+**Nothing. The DO-104S recommendation survives contact with the equipment
+actually owned, because there is none to contradict it.**
+
+That sentence is worth stating carefully, because a recommendation surviving by
+default is weaker evidence than a recommendation surviving a real contest. The
+census was designed to expose three specific failure modes, and it found none of
+them — not because they were ruled out, but because there was no equipment for
+them to arise in:
+
+| Failure the census was looking for | Result |
+| --- | --- |
+| A recommended part purchased despite already owning a suitable one | Cannot occur. Nothing is owned |
+| An owned alternate that changes the architecture — a different interface, microphone, or amplifier | None found. §3.6 has an empty subject set |
+| An owned item assumed suitable by product category while failing a real requirement | Cannot occur. No owned item to assess |
+
+### Compatibility reconciliation is empty, and that is the correct output
+
+DO-104R §3.5 requires a compatibility disposition for every owned item. There
+are no owned items, so every row is `NOT_APPLICABLE`. This is not a skipped
+step: the reconciliation ran and its subject set was empty.
+
+The distinction matters for what may be claimed. **No component in the
+recommended chain has been shown compatible by this order** — compatibility for
+the recommended chain rests entirely on the DO-104S paper architecture gate,
+which is a datasheet-level finding and remains one. The census neither
+strengthens nor weakens it.
+
+### What the census does change
+
+Three things, all of them procurement-shaped rather than architectural:
+
+1. **The acquisition list is now the entire chain.** Every role must be
+   acquired. There is no partial-fill, no reuse, and no equipment to work around.
+2. **`RECOMMEND_PURCHASE` becomes legal for the first time.** The validator
+   requires ownership `CONFIRMED_ABSENT` before a purchase may be recommended,
+   precisely so that unknown possession cannot drive a purchase. All ten roles
+   now satisfy that precondition. **Legal is not authorized** — DO-104R §4.8
+   forbids creating authorization here, and every procurement action stays
+   `HOLD` pending the human selection gate.
+3. **B-015 becomes more pressing, not less.** The recommended ADC must now be
+   *acquired* rather than found on a shelf, and it is the board the vendor has
+   superseded. Owning nothing removes the option of using a board already in
+   hand while the successor is evaluated.
+
+### What it does not change
+
+- **B-014 is untouched.** Not owning the acquisition board says nothing about
+  whether the absence of an anti-aliasing filter is acceptable.
+- **No selection is made.** `CONFIRMED_ABSENT` plus `RECOMMENDED` does not
+  produce `SELECTED`. That ruling is the human's and this order stops before it.
+- **No tier is chosen.** The three DO-104S tiers remain equally unratified. With
+  nothing owned, the cost difference between them is now the *entire* cost of
+  each, which is a consideration for the selection gate rather than a finding
+  here.
+
+### The open question for the selection gate
+
+One question is worth carrying forward explicitly rather than leaving implicit
+in the tier tables:
+
+> Owning nothing means the research-minimum tier no longer saves money by
+> reusing existing equipment — it saves money only by specifying cheaper
+> equipment. Does that change which tier is preferred?
+
+DO-104S nominated `PREFERRED_E1` on technical grounds with cost as one
+documented factor among several, and nothing in this census disturbs that
+reasoning. But the question was previously answerable by "we may already own
+some of it," and it no longer is. That belongs at the selection gate, not here.
+
+---
+
 ## What none of this establishes
 
 Datasheet figures are provenance for a nominal value: bandwidth, rated force,
