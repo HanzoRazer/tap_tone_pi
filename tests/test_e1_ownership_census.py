@@ -454,3 +454,27 @@ class TestCensusAndBomAgree:
             }
         ]
         assert checker.validate_census_bom_agreement(census, candidates) == []
+
+
+class TestBacklogAfterTheCensus:
+    def test_b016_is_closed_by_the_performed_census(self, sprints):
+        block = sprints.split("### B-016")[1].split("### ")[0]
+        assert "**Status:** **closed**" in block
+        assert "DO-104R" in block
+
+    def test_b014_remains_open(self, sprints):
+        block = sprints.split("### B-014")[1].split("### ")[0]
+        assert "**Status:** open" in block
+        assert "Not affected by the DO-104R census" in block
+
+    def test_b015_remains_open(self, sprints):
+        block = sprints.split("### B-015")[1].split("### ")[0]
+        assert "**Status:** open" in block
+
+    def test_current_ends_at_the_human_selection_gate(self):
+        text = (REPO_ROOT / "docs" / "dev_orders" / "CURRENT.md").read_text(
+            encoding="utf-8"
+        )
+        assert "BLOCKED AT THE HUMAN SELECTION GATE" in text
+        # and does not advance to procurement on its own
+        assert "PURCHASE_AUTHORIZED" not in text

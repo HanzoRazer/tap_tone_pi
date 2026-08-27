@@ -279,6 +279,8 @@ evidence calls for them — not because a grant narrative would like to cite the
   already in the design, so it applies to Phase 2A captures too — not only to the
   E1 force chain that surfaced it. The transducer's own 36 kHz limit helps at
   96 kHz but does not bound broadband contact noise.
+- **Not affected by the DO-104R census (2026-08-27).** Not owning the board says
+  nothing about whether aliasing is acceptable. This closes only on measurement.
 - **Trigger:** E1 bench work, or any claim about usable bandwidth.
 - **Acceptance:** excitation bandwidth is limited and recorded per run, the
   residual is characterized by measurement rather than assumed negligible, and
@@ -293,6 +295,9 @@ evidence calls for them — not because a grant narrative would like to cite the
   still purchasable at $64.90 (checked 2026-08-25). The whole E1 level budget and
   the architecture gate verdict rest on the DAC+'s published input specification;
   the successor does not publish one on its product page and was not verified.
+- **Made more pressing by the DO-104R census (2026-08-27).** The board is not
+  owned, so it must be acquired — and it is the one the vendor has superseded.
+  There is no unit in hand to use while the successor is evaluated.
 - **Trigger:** procurement, or the DAC+ becoming unobtainable.
 - **Acceptance:** either the DAC+ is procured while available, or the successor's
   input specification is obtained and the E1 architecture gate is re-run against
@@ -300,7 +305,15 @@ evidence calls for them — not because a grant narrative would like to cite the
 
 ### B-016 — No physical possession census has ever been run
 
-- **Status:** open · **Priority:** P1 · **Area:** `docs/hardware/`
+- **Status:** **closed** (2026-08-27, DO-104R) · **Priority:** P1 · **Area:** `docs/hardware/`
+- **Closed by:** the census in
+  [`TTP_E1_OWNERSHIP_CENSUS.md`](docs/hardware/TTP_E1_OWNERSHIP_CENSUS.md),
+  performed 2026-08-27 by operator attestation. All ten required categories
+  resolved to `CONFIRMED_ABSENT`: no E1-relevant hardware is possessed. The
+  finding this item recorded was "no census performed"; a census has now been
+  performed, and a negative result closes it as completely as a positive one
+  would. No category was left `UNKNOWN`, so there is no residual possession
+  question to carry forward.
 - **Origin:** DO-104S ownership census, which recorded ten components as
   `UNKNOWN` because that is what is actually known.
 - **Context:** `UNKNOWN` means nobody has looked, not that a component is absent,
@@ -311,6 +324,8 @@ evidence calls for them — not because a grant narrative would like to cite the
 - **Trigger:** before any E1 purchase.
 - **Acceptance:** every census row moves to `CONFIRMED_PRESENT` or
   `CONFIRMED_ABSENT`, with present items carrying identity-register entries.
+  **Met.** All ten are `CONFIRMED_ABSENT`; no item is present, so no
+  identity-register entry was required or created.
 
 ## Not backlog — recorded here only so they aren't mistaken for open items
 
