@@ -384,6 +384,30 @@ evidence calls for them — not because a grant narrative would like to cite the
   acquisition and DSP to canonical utilities, or an explicit ruling that E0 is
   run manually. Building a second acquisition engine is not acceptance.
 
+### B-019 — `schema-bump-guard` cannot run against the current registry
+
+- **Status:** open · **Priority:** P2 · **Area:** `scripts/ci_guard_schema_bump.py`
+- **Origin:** DO-106, the first change since the guard was written to touch
+  `contracts/schemas/**` and therefore the first to trigger it.
+- **Context:** `load_registry()` iterates `data.get("schemas", [])` as a list of
+  entry objects and reads `ent["schema_id"]`. The registry's `schemas` is a
+  **dict** keyed by name, so iteration yields strings and the subscript raises
+  `TypeError: string indices must be integers`. No entry carries a `schema_id`
+  key either — the actual shape is `description`, `file`, `owner`, `path`,
+  `schema_version_const`, `status`, `version`. The guard therefore fails for
+  **any** PR touching a schema, regardless of content.
+- **Demonstrated pre-existing:** calling `load_registry()` against unmodified
+  `main`, with no DO-106 change present, raises the same `TypeError`. This is not
+  a regression from the E0 schema; DO-106 is only the first PR to reach the code.
+- **Not fixed here.** Repairing CI machinery is outside a documentation and
+  contract integration order, and the guard's intended rule — a schema change
+  must be accompanied by a registry version bump — is worth restoring
+  deliberately rather than patched to make one PR green.
+- **Trigger:** whichever order owns CI hygiene, alongside B-012.
+- **Acceptance:** the guard reads the registry's actual shape and enforces the
+  version-bump rule, or it is removed with a reason. A guard that fails on every
+  schema change teaches contributors to ignore it, which is worse than no guard.
+
 ## Not backlog — recorded here only so they aren't mistaken for open items
 
 These are **design properties / accepted tradeoffs**, documented in code/README;
