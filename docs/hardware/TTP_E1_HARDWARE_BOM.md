@@ -88,8 +88,16 @@ if that tier's force level budget overruns the ADC input window.
 
 ### Ownership after the census
 
-Every candidate reads `CONFIRMED_ABSENT` as of the DO-104R census (2026-08-27).
-Nothing in this chain is possessed. That is a finding, not the pre-census
+As of DO-104R census pass 2 (2026-08-27), **one role is filled by owned
+hardware**: `HOST-001`, a Raspberry Pi 5 16 GB in hand since April 2025. Its
+three candidate rows read `CONFIRMED_PRESENT` with `procurement_action =
+USE_OWNED` — that role comes off the acquisition list entirely. The owned unit is
+a 16 GB variant while these candidates were priced at 8 GB; the market evidence
+is left as priced and the difference is recorded in the census rather than
+smoothed away.
+
+Every other candidate reads `CONFIRMED_ABSENT`. Nothing else in this chain is
+possessed. That is a finding, not the pre-census
 `UNKNOWN` it replaces — and it is what makes `RECOMMEND_PURCHASE` legal for
 these rows for the first time, since the validator requires established absence
 before a purchase may be recommended. **Legal is not authorized**: every
@@ -104,7 +112,7 @@ and must never be read as zero. `UNKNOWN` means not yet established.
 
 | candidate_id | role_local_id | component_class | functional_chain | selection_tier | quantity | unit_cost_usd | extended_cost_usd | availability | lead_time | commercial_source | checked_date | procurement_action | ownership |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| HOST-RM-001 | HOST-001 | host | synchronized_acquisition | RESEARCH_MINIMUM | 1 | 175.00 | 175.00 | IN_STOCK | ships from US reseller | PiShop.us | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| HOST-RM-001 | HOST-001 | host | synchronized_acquisition | RESEARCH_MINIMUM | 1 | 175.00 | 175.00 | IN_STOCK | ships from US reseller | PiShop.us | 2026-08-25 | USE_OWNED | CONFIRMED_PRESENT |
 | ADC-RM-001 | ADC-001 | adc_interface | synchronized_acquisition | RESEARCH_MINIMUM | 1 | 64.90 | 64.90 | IN_STOCK_SUPERSEDED | not stated | HiFiBerry direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
 | MIC-RM-001 | MIC-001 | microphone | response_acquisition | RESEARCH_MINIMUM | 1 | 59.98 | 59.98 | IN_STOCK | 71 on hand, restock 2026-08-21 | Parts Express | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
 | PREAMP-RM-001 | PREAMP-001 | mic_preamp | response_acquisition | RESEARCH_MINIMUM | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
@@ -117,7 +125,7 @@ and must never be read as zero. `UNKNOWN` means not yet established.
 | STAND-RM-001 | STAND-001 | stand_base | mechanical_support | RESEARCH_MINIMUM | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
 | REF-RM-001 | REF-STRUCT-001 | reference_structure | mechanical_support | RESEARCH_MINIMUM | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
 | CABLE-RM-001 | CABLE-001 | cabling | interconnect | RESEARCH_MINIMUM | 1 | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
-| HOST-PE-001 | HOST-001 | host | synchronized_acquisition | PREFERRED_E1 | 1 | 175.00 | 175.00 | IN_STOCK | ships from US reseller | PiShop.us | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| HOST-PE-001 | HOST-001 | host | synchronized_acquisition | PREFERRED_E1 | 1 | 175.00 | 175.00 | IN_STOCK | ships from US reseller | PiShop.us | 2026-08-25 | USE_OWNED | CONFIRMED_PRESENT |
 | ADC-PE-001 | ADC-001 | adc_interface | synchronized_acquisition | PREFERRED_E1 | 1 | 64.90 | 64.90 | IN_STOCK_SUPERSEDED | not stated | HiFiBerry direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
 | MIC-PE-001 | MIC-001 | microphone | response_acquisition | PREFERRED_E1 | 1 | 549.00 | 549.00 | IN_STOCK | not stated | Sweetwater | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
 | PREAMP-PE-001 | PREAMP-001 | mic_preamp | response_acquisition | PREFERRED_E1 | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
@@ -130,7 +138,7 @@ and must never be read as zero. `UNKNOWN` means not yet established.
 | STAND-PE-001 | STAND-001 | stand_base | mechanical_support | PREFERRED_E1 | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
 | REF-PE-001 | REF-STRUCT-001 | reference_structure | mechanical_support | PREFERRED_E1 | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
 | CABLE-PE-001 | CABLE-001 | cabling | interconnect | PREFERRED_E1 | 1 | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
-| HOST-RG-001 | HOST-001 | host | synchronized_acquisition | REFERENCE_GRADE | 1 | 175.00 | 175.00 | IN_STOCK | ships from US reseller | PiShop.us | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| HOST-RG-001 | HOST-001 | host | synchronized_acquisition | REFERENCE_GRADE | 1 | 175.00 | 175.00 | IN_STOCK | ships from US reseller | PiShop.us | 2026-08-25 | USE_OWNED | CONFIRMED_PRESENT |
 | ADC-RG-001 | ADC-001 | adc_interface | synchronized_acquisition | REFERENCE_GRADE | 1 | 64.90 | 64.90 | IN_STOCK_SUPERSEDED | not stated | HiFiBerry direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
 | MIC-RG-001 | MIC-001 | microphone | response_acquisition | REFERENCE_GRADE | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | GRAS Sound & Vibration direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
 | FORCE-RG-001 | FORCE-001 | force_transducer | force_measurement | REFERENCE_GRADE | 1 | QUOTE_REQUIRED | QUOTE_REQUIRED | QUOTE_REQUIRED | UNKNOWN | PCB Piezotronics direct | 2026-08-25 | HOLD | CONFIRMED_ABSENT |

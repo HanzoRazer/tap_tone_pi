@@ -1,68 +1,91 @@
 # TTP E1 — Physical Ownership Census
 
 **Status:** `PERFORMED`
-**Dev Order:** DO-104O (framework) / DO-104R (intake and reconciliation)
-**Base:** `d3ae3b6` (DO-104S merged as PR #29)
-**Census date:** 2026-08-27
+**Dev Order:** DO-104O (framework) / DO-104R (intake, reconciliation, erratum)
+**Current pass:** 2 — 2026-08-27
+**Superseded pass:** 1 — 2026-08-27 (retained below; **contained a false absence**)
 **Observer:** Ross Echols
 **Observer role:** repository owner / bench operator
 **Observation method:** `OPERATOR_ATTESTATION`
 
 ---
 
-## Result
+## Result (pass 2)
 
-**No E1-relevant hardware is possessed. All ten required categories are
-`CONFIRMED_ABSENT`.**
+**One item is owned: a Raspberry Pi 5, 16 GB, in hand, purchased April 2025.**
+Everything else required for E1 is `CONFIRMED_ABSENT`, and no bending-rig
+hardware has been purchased.
 
-This is a complete census with a negative result, which is a finding rather than
-an empty form. "Inspected and absent" and "never looked" are different states,
-and every row below is the former.
+## Pass 1 was wrong, and it is corrected by re-running rather than editing
 
-## Method, and its limits
+Pass 1 recorded all ten categories as `CONFIRMED_ABSENT`. That was a **false
+absence** on `HOST-001`: a Raspberry Pi 5 had been in hand since **April 2025**,
+sixteen months before the attestation.
 
-The operator was asked to establish possession for the ten required categories
-and reported that none of the equipment exists. That is an **attestation**, not a
-hands-on inventory conducted item by item: no unit was handled, because there
-were no units to handle.
+Pass 1 is retained below unedited. Its own text set this rule:
 
-`OPERATOR_ATTESTATION` is recorded rather than `DIRECT_PHYSICAL_INSPECTION`
-deliberately. The distinction is not pedantry — a negative attestation is
-answered by the absence of a thing, and absence cannot be photographed or
-serialised. A reader should know that the evidence here is the operator's
-statement about their own bench, which is the appropriate and only available
-evidence for a negative result.
+> **What would overturn this census:** finding any listed item. If a Raspberry Pi
+> or a measurement microphone surfaces later, this document is wrong and must be
+> re-run, not patched.
 
-**What would overturn this census:** finding any listed item. If a Raspberry Pi
-or a measurement microphone surfaces later, this document is wrong and must be
-re-run, not patched.
+A Raspberry Pi is the example it named. Editing the cell would have destroyed the
+only property that makes census evidence worth anything — that it records what
+was actually said on a date. So pass 1 stands as the record of the 2026-08-27
+attestation, and pass 2 supersedes it.
+
+### Why it failed, recorded without euphemism
+
+Pass 1 ran on `OPERATOR_ATTESTATION` — a statement about a bench rather than a
+look at one. It was recorded as weaker evidence than
+`DIRECT_PHYSICAL_INSPECTION` for exactly that reason, and it failed in the one
+direction that matters. **A false absence is what authorizes a purchase.** Had
+the DO-104S recommendation been ratified and acted on, this census would have
+bought a second Raspberry Pi.
+
+Nothing in the validator caught it, and nothing could have: every check verifies
+that the document is internally consistent and does not claim more than it
+records, and pass 1 was internally consistent and wrong. It was caught by one
+further question about what had been purchased. That is the limit of what
+document validation can do, and it is why `observation_method` is a recorded
+field rather than an assumed one.
+
+Tracked as **B-017**.
+
+## Method
+
+Pass 2 is a corrected operator attestation, informed by purchase history rather
+than recall alone. It is **not** `DIRECT_PHYSICAL_INSPECTION`: no unit was
+handled, measured, or read off a label during this pass. The Pi's RAM variant and
+acquisition date come from the operator's knowledge of the purchase.
+
+**What would overturn this census:** the same rule as before. Finding any item
+recorded absent, or finding that the Pi differs from what is recorded here, makes
+this document wrong and requires pass 3 rather than an edit.
 
 ## What was not inferred
 
-Ownership was **not** derived from any of the sources DO-104O §4.4 forbids —
+Ownership was **not** derived from any source DO-104O §4.4 forbids —
 documentation, repository configuration, device profiles or drivers, prior
 selections, DO-104S recommendations, or purchase recommendations.
 
-One corroborating observation is recorded as **consistent with** this result
-without being evidence for it: every captured session under `runs_phase2/` is
-`"synthetic": true` with `"device": null`, or the `DEMO` fixture. No real capture
-has ever happened in this repository. That agrees with owning no acquisition
-hardware, but agreement is not proof, and the census rests on the attestation.
+Pass 1 recorded one corroborating observation: every captured session under
+`runs_phase2/` is `"synthetic": true` with `"device": null`. Pass 2 shows why
+that was correctly labelled *consistent with* rather than *evidence for* — it
+remains true, and a Pi was owned the whole time. Owning a host does not produce
+captures. **The corroboration was sound and the conclusion it appeared to
+support was false**, which is the general hazard of reasoning from repository
+state to physical possession.
 
 ## Ownership vocabulary
 
-DO-104R §6 names these `OWNED` / `NOT_OWNED` / `UNKNOWN` and instructs using
-existing repository equivalents rather than minting synonyms. The repository
-already carries this axis from DO-104S, so those terms are used here:
+DO-104R §6 names these `OWNED` / `NOT_OWNED` / `UNKNOWN`; the repository's
+existing equivalents are used rather than synonyms:
 
 | This repository | DO-104R §6 name | Means | Established by |
 | --- | --- | --- | --- |
 | `UNKNOWN` | `UNKNOWN` | Nobody has looked | the pre-census state |
-| `CONFIRMED_PRESENT` | `OWNED` | A physical unit was observed and identified | direct observation with identity recorded |
-| `CONFIRMED_ABSENT` | `NOT_OWNED` | A census was performed and found no unit | someone who looked and did not find |
-
-`CONFIRMED_ABSENT` is a **finding**. It is never a default for an item that went
-unmentioned.
+| `CONFIRMED_PRESENT` | `OWNED` | A physical unit is possessed and identified | observation, with identity recorded |
+| `CONFIRMED_ABSENT` | `NOT_OWNED` | A census looked and found no unit | someone who looked and did not find |
 
 ## Compatibility disposition
 
@@ -71,19 +94,15 @@ unmentioned.
 | `COMPATIBLE` | Owned, and its specification satisfies the E1 requirement for that role |
 | `COMPATIBILITY_REQUIRES_VERIFICATION` | Owned, but a specification needed for the decision is unread |
 | `INCOMPATIBLE` | Owned, and it fails a named requirement |
-| `NOT_APPLICABLE` | Nothing is owned, so there is nothing to assess |
-
-Every row below is `NOT_APPLICABLE`. **Compatibility reconciliation has an empty
-subject set** — there is no owned equipment to reconcile against the E1
-architecture, so DO-104R §3.5 has nothing to evaluate.
+| `NOT_APPLICABLE` | Nothing owned, so nothing to assess |
 
 ---
 
-## Census record
+## Census record — pass 2 (current)
 
 | # | Category | BOM role | Ownership | Manufacturer | Model | Serial / asset ID | Qty | Condition | Location | Observation method | Disposition |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Raspberry Pi 5 | HOST-001 | CONFIRMED_ABSENT | — | — | — | 0 | — | — | OPERATOR_ATTESTATION | NOT_APPLICABLE |
+| 1 | Raspberry Pi 5 | HOST-001 | CONFIRMED_PRESENT | Raspberry Pi | Raspberry Pi 5 16GB | TTP-ASSET-001 | 1 | in hand, purchased 2025-04 | bench | OPERATOR_ATTESTATION | COMPATIBLE |
 | 2 | HiFiBerry DAC+ ADC Pro | ADC-001 | CONFIRMED_ABSENT | — | — | — | 0 | — | — | OPERATOR_ATTESTATION | NOT_APPLICABLE |
 | 3 | OPA1612 preamp hardware | PREAMP-001 | CONFIRMED_ABSENT | — | — | — | 0 | — | — | OPERATOR_ATTESTATION | NOT_APPLICABLE |
 | 4 | Condenser / measurement microphone | MIC-001 | CONFIRMED_ABSENT | — | — | — | 0 | — | — | OPERATOR_ATTESTATION | NOT_APPLICABLE |
@@ -94,54 +113,106 @@ architecture, so DO-104R §3.5 has nothing to evaluate.
 | 9 | Shaker / exciter | SHAKER-001 | CONFIRMED_ABSENT | — | — | — | 0 | — | — | OPERATOR_ATTESTATION | NOT_APPLICABLE |
 | 10 | Stand / base / fixture hardware | STAND-001 | CONFIRMED_ABSENT | — | — | — | 0 | — | — | OPERATOR_ATTESTATION | NOT_APPLICABLE |
 
-No serial number or asset identifier was fabricated for any row. There is
-nothing to identify.
+`TTP-ASSET-001` is a **locally assigned asset label**, not a serial number. The
+unit's manufacturer serial has not been read. Assigning a local label is
+permitted by DO-104O §4.5 and DO-104R §3.4; inventing a serial is not, and none
+was invented. The real serial can be added whenever the unit is next handled.
+
+### Why the Pi is `COMPATIBLE` and not merely present
+
+The documented requirement for `HOST-001` is a 64-bit Pi OS running
+`tap_tone_pi`, with the 40-pin GPIO header carrying I²S to the ADC board. The
+40-pin header is identical across Raspberry Pi 5 RAM variants, so the interface
+that matters to this measurement chain is unaffected by the variant difference.
+
+**The owned unit is 16 GB; the DO-104S candidates were priced at 8 GB.** The
+owned unit exceeds the specification rather than missing it. The market evidence
+is *not* rewritten to match — the candidates record what was priced, this record
+records what is owned, and the difference is stated instead of being smoothed
+away.
+
+This disposition is a paper judgement about specifications, exactly like the
+DO-104S architecture gate. **It is not a demonstration that the board works**;
+nothing has been powered, mounted, or captured.
+
+## Displacement-jig hardware
+
+Pass 1 covered only the ten E1 categories, so bending-rig hardware was outside
+its scope and its ownership was `UNKNOWN` rather than absent. Pass 2 extends the
+scope and resolves it.
+
+| Category | Ownership | Observation method |
+| --- | --- | --- |
+| Dial indicator (Mitutoyo ID-C 543-861 or equivalent) | CONFIRMED_ABSENT | OPERATOR_ATTESTATION |
+| USB Input Tool / serial interface for the indicator | CONFIRMED_ABSENT | OPERATOR_ATTESTATION |
+| T-slot aluminium extrusion, brackets, hardware | CONFIRMED_ABSENT | OPERATOR_ATTESTATION |
+| Ground steel plate, hardened drill rod, loading roller | CONFIRMED_ABSENT | OPERATOR_ATTESTATION |
+| OIML class M1 calibrated mass set | CONFIRMED_ABSENT | OPERATOR_ATTESTATION |
+| Strain-gauge load cell + HX711 (optional path) | CONFIRMED_ABSENT | OPERATOR_ATTESTATION |
+
+**No bending-rig hardware has been purchased.** These categories have no E1 BOM
+role because the displacement jig has never had a hardware specification in this
+repository — see
+[the construction guide](../handoffs/bending_rig_construction.md), which is an
+engineering input rather than an authorized build.
 
 ## Equipment found that is not in the BOM
 
-**None.** No alternate audio interface, microphone, amplifier, sensor, or
-fixture was reported.
+**None.** No alternate audio interface, microphone, amplifier, sensor, or fixture
+was reported in either pass.
 
 | Item | Manufacturer | Model | Serial / asset ID | Why it may matter to E1 |
 | --- | --- | --- | --- | --- |
 | — | — | — | — | — |
 
-This table is empty as a result, not as an omission. DO-104R §3.6 exists because
-an owned alternate could change the architecture decision; none exists, so the
-DO-104S recommendation faces no competing hardware.
-
 ## Unresolved items
-
-**None.** No category was left in `UNKNOWN`.
 
 | Item | What blocked the observation | What would resolve it |
 | --- | --- | --- |
-| — | — | — |
-
-## Evidence references
-
-The evidence is the operator attestation recorded in this document's header. No
-photographs, invoices, or external asset registers were supplied, and none is
-needed to record an absence.
+| Raspberry Pi manufacturer serial | Unit not handled during this pass | Read the label; add it beside `TTP-ASSET-001` |
 
 ---
 
-## What this census does and does not settle
+## Census record — pass 1 (2026-08-27, SUPERSEDED)
 
-**Settles:** B-016. A census was performed. The finding is that no E1-relevant
-hardware is possessed.
+**Retained unedited. Row 1 is known to be false.** Kept because a census records
+what was attested on a date, and rewriting that would leave no way to see that an
+attestation can be wrong.
+
+| # | Category | BOM role | Ownership | Observation method | Disposition |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Raspberry Pi 5 | HOST-001 | ~~CONFIRMED_ABSENT~~ **FALSE — owned since 2025-04** | OPERATOR_ATTESTATION | NOT_APPLICABLE |
+| 2 | HiFiBerry DAC+ ADC Pro | ADC-001 | CONFIRMED_ABSENT | OPERATOR_ATTESTATION | NOT_APPLICABLE |
+| 3 | OPA1612 preamp hardware | PREAMP-001 | CONFIRMED_ABSENT | OPERATOR_ATTESTATION | NOT_APPLICABLE |
+| 4 | Condenser / measurement microphone | MIC-001 | CONFIRMED_ABSENT | OPERATOR_ATTESTATION | NOT_APPLICABLE |
+| 5 | Audio power amplifier | AMP-001 | CONFIRMED_ABSENT | OPERATOR_ATTESTATION | NOT_APPLICABLE |
+| 6 | Speaker / Phase 2A driver | — | CONFIRMED_ABSENT | OPERATOR_ATTESTATION | NOT_APPLICABLE |
+| 7 | Force transducer / load cell | FORCE-001 | CONFIRMED_ABSENT | OPERATOR_ATTESTATION | NOT_APPLICABLE |
+| 8 | Force conditioner | PRECOND-001 | CONFIRMED_ABSENT | OPERATOR_ATTESTATION | NOT_APPLICABLE |
+| 9 | Shaker / exciter | SHAKER-001 | CONFIRMED_ABSENT | OPERATOR_ATTESTATION | NOT_APPLICABLE |
+| 10 | Stand / base / fixture hardware | STAND-001 | CONFIRMED_ABSENT | OPERATOR_ATTESTATION | NOT_APPLICABLE |
+
+Nine of ten rows survived pass 2 unchanged.
+
+---
+
+## What this census settles
+
+**Settles:** B-016 stays closed — a census was performed, and correcting it does
+not un-perform it. One role is filled by owned hardware and needs no purchase.
+Bending-rig hardware is established absent rather than unknown.
 
 **Does not settle:**
 
-- **Selection.** Nothing owned means nothing to prefer over the DO-104S
-  recommendation, but the recommendation still requires an explicit human
-  ruling. `CONFIRMED_ABSENT` does not produce `SELECTED`.
-- **Purchase authorization.** The census makes a purchase recommendation
-  *legal* for the first time — the validator requires `CONFIRMED_ABSENT` before
-  `RECOMMEND_PURCHASE` — but legal is not authorized, and DO-104R §4.8 forbids
-  creating authorization here. Every procurement action stays `HOLD`.
-- **B-014.** The ADC anti-aliasing finding is untouched. Not owning the board
-  says nothing about aliasing.
-- **B-015.** The ADC supersession is untouched, and is now more pressing rather
-  than less: the recommended board must be *acquired*, and it is the one the
-  vendor has superseded.
+- **Selection.** Owning a Pi does not select it. `HOST-001` was already
+  `DESIGN_SELECTED` in the stack specification, and the human selection ruling is
+  `SELECTION_DEFERRED` — see
+  [procurement authorization](TTP_E1_PROCUREMENT_AUTHORIZATION.md).
+- **Campaign acquisition.** The Pi was bought in April 2025, outside this
+  campaign. It was never `ORDERED` and is not `RECEIVED` by it. Possession sits
+  on its own axis in [the identity register](TTP_E1_HARDWARE_IDENTITY_REGISTER.md);
+  the acquisition ladder is untouched.
+- **B-014.** Owning a host says nothing about the ADC's missing anti-aliasing
+  filter.
+- **B-015.** The ADC is still absent, still superseded by its vendor, and still
+  must be acquired.

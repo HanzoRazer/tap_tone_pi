@@ -111,15 +111,34 @@ class TestTheCommittedCensus:
 
     def test_every_category_is_resolved(self, census):
         # No category was left UNKNOWN, so nothing is pending re-inspection.
-        assert {r["Ownership"] for r in census} == {"CONFIRMED_ABSENT"}
+        assert {r["Ownership"] for r in census} <= {
+            "CONFIRMED_ABSENT",
+            "CONFIRMED_PRESENT",
+        }
+        assert "UNKNOWN" not in {r["Ownership"] for r in census}
 
-    def test_nothing_is_owned_so_nothing_is_assessed(self, census):
-        assert {r["Disposition"] for r in census} == {"NOT_APPLICABLE"}
+    def test_exactly_one_role_is_owned(self, census):
+        owned = [r for r in census if r["Ownership"] == "CONFIRMED_PRESENT"]
+        assert [r["BOM role"] for r in owned] == ["HOST-001"]
 
-    def test_no_identity_was_fabricated(self, checker, census):
+    def test_the_owned_role_is_assessed_and_the_rest_are_not(self, census):
         for r in census:
-            assert not checker.is_set(r["Serial / asset ID"]), r["Category"]
-            assert not checker.is_set(r["Manufacturer"]), r["Category"]
+            if r["Ownership"] == "CONFIRMED_PRESENT":
+                assert r["Disposition"] != "NOT_APPLICABLE", r["Category"]
+            else:
+                assert r["Disposition"] == "NOT_APPLICABLE", r["Category"]
+
+    def test_no_serial_number_was_fabricated(self, checker, census):
+        # An asset label is permitted for an owned item; a serial is not
+        # invented. TTP-ASSET-001 is a locally assigned label, and the
+        # register keeps serial_number at TBD.
+        for r in census:
+            if r["Ownership"] != "CONFIRMED_PRESENT":
+                assert not checker.is_set(r["Serial / asset ID"]), r["Category"]
+                assert not checker.is_set(r["Manufacturer"]), r["Category"]
+        register = checker.parse_table(checker.REGISTER_PATH, "local_id")
+        for r in register:
+            assert not checker.is_set(r["serial_number"]), r["local_id"]
 
     def test_the_method_is_attestation_not_inspection(self, census):
         # A negative result is answered by the absence of a thing, which cannot
@@ -130,7 +149,30 @@ class TestTheCommittedCensus:
     def test_the_register_gained_no_rows(self, checker):
         register = checker.parse_table(checker.REGISTER_PATH, "local_id")
         assert len(register) == 13
+        # Possession did not touch the campaign acquisition axis. The Pi was
+        # bought outside this campaign, so it was never ORDERED and is not
+        # RECEIVED by it.
         assert {r["inspection_status"] for r in register} == {"NOT_RECEIVED"}
+
+    def test_possession_and_acquisition_are_separate_columns(self, checker):
+        register = checker.parse_table(checker.REGISTER_PATH, "local_id")
+        host = next(r for r in register if r["local_id"] == "HOST-001")
+        assert host["ownership_status"] == "CONFIRMED_PRESENT"
+        assert host["inspection_status"] == "NOT_RECEIVED"
+        assert not checker.is_set(host["received_date"])
+        assert host["asset_label"] == "TTP-ASSET-001"
+        assert host["observation_method"] in checker.OBSERVATION_METHODS
+
+    def test_the_register_agrees_with_the_census(self, checker, census):
+        register = {
+            r["local_id"]: r
+            for r in checker.parse_table(checker.REGISTER_PATH, "local_id")
+        }
+        for r in census:
+            entry = register.get(r["BOM role"].strip())
+            if entry is None:
+                continue
+            assert entry["ownership_status"] == r["Ownership"], r["BOM role"]
 
 
 class TestCensusSemantics:
@@ -284,11 +326,21 @@ class TestTheSelectionBoundary:
 
     def test_confirmed_absent_does_not_authorize_purchase(self, checker):
         # The precondition is satisfied by the census; the authorization is not
-        # created by it. Every candidate stays on HOLD.
+        # created by it. Nothing absent is actioned beyond HOLD.
         candidates = checker.parse_optional_table(
             checker.BOM_PATH, checker.CANDIDATE_KEY
         )
-        assert {r["procurement_action"] for r in candidates} == {"HOLD"}
+        for r in candidates:
+            if r["ownership"] == "CONFIRMED_ABSENT":
+                assert r["procurement_action"] == "HOLD", r["candidate_id"]
+
+    def test_only_the_owned_role_is_actioned(self, checker):
+        candidates = checker.parse_optional_table(
+            checker.BOM_PATH, checker.CANDIDATE_KEY
+        )
+        actioned = [r for r in candidates if r["procurement_action"] != "HOLD"]
+        assert {r["role_local_id"] for r in actioned} == {"HOST-001"}
+        assert {r["procurement_action"] for r in actioned} == {"USE_OWNED"}
 
     def test_the_census_makes_recommendation_legal_but_not_actioned(self, checker):
         # RECOMMEND_PURCHASE requires CONFIRMED_ABSENT, so the census unlocks it
