@@ -727,3 +727,58 @@ class TestTheResultsStub:
     def test_artifacts_are_standalone_not_phase2_sessions(self, stub):
         assert "not a Phase 2 session" in stub
         assert "synthetic" in stub
+
+
+class TestStatusReconciliation:
+    """DO-106 changed the software state and none of the physical state."""
+
+    @pytest.fixture(scope="class")
+    def current(self):
+        return (REPO_ROOT / "docs" / "dev_orders" / "CURRENT.md").read_text(
+            encoding="utf-8"
+        )
+
+    @pytest.fixture(scope="class")
+    def sprints(self):
+        return (REPO_ROOT / "SPRINTS.md").read_text(encoding="utf-8")
+
+    def test_e0_is_not_executed(self, current):
+        assert "**NOT EXECUTED**" in current
+
+    def test_the_adc_procurement_state_is_unchanged(self, current):
+        assert "CONFIRMED_ABSENT" in current
+
+    def test_the_do104_deferral_still_stands(self, current):
+        # DO-106 must not reopen settled DO-104 governance to express a simpler
+        # build sequence.
+        assert "SELECTION_DEFERRED" in current
+        assert "PARKED OPEN" in current
+
+    def test_afe_and_downstream_stay_blocked(self, current):
+        assert "BLOCKED ON E0" in current
+        assert "not authorized" in current
+
+    def test_nothing_is_promoted(self, current):
+        assert "Nothing is promoted" in current
+        assert "PURCHASE_AUTHORIZED" not in current
+
+    def test_b014_and_b015_remain_open(self, sprints):
+        for item in ("B-014", "B-015"):
+            block = sprints.split(f"### {item}")[1].split("### ")[0]
+            assert "**Status:** open" in block, item
+
+    def test_b014_records_that_e0_does_not_close_it(self, sprints):
+        block = sprints.split("### B-014")[1].split("### ")[0]
+        assert "did not close this" in block
+
+    def test_b015_records_the_lead_as_a_lead(self, sprints):
+        block = sprints.split("### B-015")[1].split("### ")[0]
+        assert "not a closure" in block.lower()
+
+    def test_b018_records_the_missing_acquisition_tooling(self, sprints):
+        block = sprints.split("### B-018")[1].split("### ")[0]
+        assert "**Status:** open" in block
+        assert "ttp_e0_adc.py" in block
+
+    def test_no_partial_acquisition_cli_was_shipped(self):
+        assert not (REPO_ROOT / "scripts" / "ttp_e0_adc.py").exists()
