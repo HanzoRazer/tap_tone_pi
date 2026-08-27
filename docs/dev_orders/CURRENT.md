@@ -1,17 +1,17 @@
 # Active Dev Order
 
-**Current:** DO-104 — E1 Hardware Bring-Up and Rig Characterization
-(PRE-EXECUTION — hardware **selection complete** under DO-104P and DO-104S;
-procurement not authorized; E1 physical execution has not begun)
-**Next:** run the physical possession census, then a procurement/receipt and
-as-built identity gate. E1 measurement execution comes after the hardware
-exists, not before
-**Just completed:** DO-104S — E1 hardware market selection and procurement
-decision package. The architecture gate **passed**: a complete
-contact-excitation, measured-force, microphone-response chain resolves against
-the existing HiFiBerry acquisition architecture without replacing the ADC or
-introducing an asynchronous scheme. A preferred configuration is `RECOMMENDED`;
-nothing is selected, ordered, owned, or verified
+**Current:** DO-104O — E1 Physical Ownership Reconciliation and Procurement
+Authorization Gate (**BLOCKED AT THE HUMAN SELECTION GATE**). Its child
+execution slice **DO-104R — Ownership Census Intake and Reconciliation is
+COMPLETE**: the census was performed on 2026-08-27 and found no E1-relevant
+hardware in possession. All ten required categories are `CONFIRMED_ABSENT`,
+compatibility reconciliation ran with an empty subject set, and B-016 is closed.
+Engineering stops here — the next decision is a human ruling, not a commit
+**Next:** the human hardware-selection ruling — `SELECTED`,
+`ALTERNATE_SELECTED`, `SELECTION_DEFERRED`, or `RESEARCH_REQUIRED`. Only after
+that ruling does DO-104O resume for selection ratification and procurement
+authorization. Purchase, receipt, assembly and E1 measurement follow in that
+order, none of them yet
 **Queued:** DO-105 — E2 Fixed-Point Repeatability (BLOCKED on the E1 gate);
 DO-101B — Empirical Registry and Inspection Surface (NOT STARTED)
 **Previous:** DO-103 Stages 3 and 3b — Phase 2 ingestion, the

@@ -177,6 +177,68 @@ FORBIDDEN_CANDIDATE_CLAIMS = (
     "VERIFIED_ON_HARDWARE",
 )
 
+# --- DO-104R: the physical ownership census ---------------------------------
+#
+# The census is the only thing in this repository that can establish possession.
+# Everything else - a design document, a device profile, a prior selection, a
+# recommendation - is forbidden as a source by DO-104O 4.4, so the checks here
+# are mostly about stopping the census from claiming more than it observed.
+#
+# Note what is deliberately NOT here. The DO-104R model locks an observation
+# axis for the identity register and inverts its orphan rule so it can hold
+# observed assets no BOM row references. Both exist to represent *owned*
+# hardware. The census found none, so building either would be adding a schema
+# for data that does not exist - the error avoided by holding the state-model
+# work until after the census. They land with the first owned asset.
+
+CENSUS_PATH = HARDWARE / "TTP_E1_OWNERSHIP_CENSUS.md"
+
+CENSUS_STATUSES = ("NOT_PERFORMED", "PERFORMED")
+
+# How an observation was made. Kept separate from who made it, because a
+# photograph establishes a visible marking and a hands-on inspection
+# establishes rather more, and a single witnessed flag loses that.
+OBSERVATION_METHODS = (
+    "DIRECT_PHYSICAL_INSPECTION",
+    "PHOTOGRAPHIC_EVIDENCE",
+    "OPERATOR_ATTESTATION",
+)
+
+COMPATIBILITY_DISPOSITIONS = (
+    "COMPATIBLE",
+    "COMPATIBILITY_REQUIRES_VERIFICATION",
+    "INCOMPATIBLE",
+    "NOT_APPLICABLE",
+)
+
+# The ten categories DO-104O 3.1 requires. Nine map to a BOM role; the speaker
+# is carried because a census will encounter it and its state must not be
+# inferred from its absence from the BOM.
+CENSUS_REQUIRED_ROLES = (
+    "HOST-001",
+    "ADC-001",
+    "PREAMP-001",
+    "MIC-001",
+    "AMP-001",
+    "FORCE-001",
+    "PRECOND-001",
+    "SHAKER-001",
+    "STAND-001",
+)
+CENSUS_REQUIRED_CATEGORY_COUNT = 10
+
+CENSUS_KEY = "Category"
+REQUIRED_CENSUS_COLUMNS = (
+    "Category",
+    "BOM role",
+    "Ownership",
+    "Manufacturer",
+    "Model",
+    "Serial / asset ID",
+    "Observation method",
+    "Disposition",
+)
+
 CANDIDATE_KEY = "candidate_id"
 SPEC_KEY = "spec_for"
 
@@ -893,6 +955,197 @@ def check_candidate_datasheets(
     return problems
 
 
+def census_status(text: str) -> str:
+    """The declared status from the census document header."""
+    match = re.search(r"^\*\*Status:\*\*\s*`([A-Z_]+)`", text, re.MULTILINE)
+    return match.group(1) if match else ""
+
+
+def validate_census_role_coverage(census: list[dict[str, str]]) -> list[str]:
+    """Every required category appears. Silence is not absence.
+
+    The failure this prevents is an item going unmentioned and later being read
+    as CONFIRMED_ABSENT - which would be a purchase recommendation built on
+    nobody having looked.
+    """
+    problems: list[str] = []
+    roles = {row.get("BOM role", "").strip() for row in census}
+    for required in CENSUS_REQUIRED_ROLES:
+        if required not in roles:
+            problems.append(f"census has no row for required role {required}")
+    if len(census) < CENSUS_REQUIRED_CATEGORY_COUNT:
+        problems.append(
+            f"census covers {len(census)} categories; "
+            f"{CENSUS_REQUIRED_CATEGORY_COUNT} are required"
+        )
+    return problems
+
+
+def validate_owned_asset_identity(
+    census: list[dict[str, str]], register: list[dict[str, str]]
+) -> list[str]:
+    """Possession claims carry identity; absences carry none.
+
+    Both directions matter. An owned item with no identity cannot be
+    distinguished from another unit of the same model, and an absent item
+    carrying a serial number is a fabricated observation.
+    """
+    problems: list[str] = []
+    known = {row["local_id"] for row in register}
+
+    for row in census:
+        category = row.get("Category", "?")
+        ownership = row.get("Ownership", "").strip()
+        role = row.get("BOM role", "").strip()
+        identity = row.get("Serial / asset ID", "")
+        maker = row.get("Manufacturer", "")
+        model = row.get("Model", "")
+
+        if ownership not in OWNERSHIP_STATES:
+            problems.append(f"{category}: unknown ownership {ownership!r}")
+            continue
+
+        if ownership == "CONFIRMED_PRESENT":
+            for field, value in (("manufacturer", maker), ("model", model)):
+                if not is_set(value):
+                    problems.append(
+                        f"{category} is CONFIRMED_PRESENT but records no {field}"
+                    )
+            if not is_set(identity):
+                problems.append(
+                    f"{category} is CONFIRMED_PRESENT but carries no serial or "
+                    "asset identifier - an owned unit must be distinguishable "
+                    "from another of the same model"
+                )
+            if role in known and role not in {r["local_id"] for r in register}:
+                problems.append(f"{category}: role {role} is not in the register")
+        else:
+            if is_set(identity):
+                problems.append(
+                    f"{category} is {ownership} but carries the identity "
+                    f"{identity!r} - an absent item has no serial number"
+                )
+    return problems
+
+
+def validate_census_observation_method(census: list[dict[str, str]]) -> list[str]:
+    """Any established possession state records how it was established."""
+    problems: list[str] = []
+    for row in census:
+        category = row.get("Category", "?")
+        ownership = row.get("Ownership", "").strip()
+        method = row.get("Observation method", "").strip()
+        if ownership == "UNKNOWN":
+            continue
+        if method not in OBSERVATION_METHODS:
+            problems.append(
+                f"{category} is {ownership} but its observation method "
+                f"{method!r} is not one of {', '.join(OBSERVATION_METHODS)}"
+            )
+    return problems
+
+
+def validate_ownership_compatibility_pair(census: list[dict[str, str]]) -> list[str]:
+    """Ownership and compatibility are independent, and neither implies the other.
+
+    OWNED != COMPATIBLE. An owned item still needs a real disposition, and an
+    item nobody owns cannot have been assessed.
+    """
+    problems: list[str] = []
+    for row in census:
+        category = row.get("Category", "?")
+        ownership = row.get("Ownership", "").strip()
+        disposition = row.get("Disposition", "").strip()
+
+        if disposition not in COMPATIBILITY_DISPOSITIONS:
+            problems.append(
+                f"{category}: unknown compatibility disposition {disposition!r}"
+            )
+            continue
+
+        if ownership == "CONFIRMED_PRESENT" and disposition == "NOT_APPLICABLE":
+            problems.append(
+                f"{category} is owned but its compatibility is NOT_APPLICABLE - "
+                "an owned item needs a real disposition, even if that "
+                "disposition is COMPATIBILITY_REQUIRES_VERIFICATION"
+            )
+        if ownership != "CONFIRMED_PRESENT" and disposition != "NOT_APPLICABLE":
+            problems.append(
+                f"{category} is {ownership} but records compatibility "
+                f"{disposition} - nothing unowned has been assessed"
+            )
+    return problems
+
+
+def check_census(
+    census: list[dict[str, str]] | None,
+    register: list[dict[str, str]],
+    status: str,
+) -> list[str]:
+    """Census integrity, and the rule that it may not claim more than it saw."""
+    if census is None:
+        return ["the census document carries no census record table"]
+
+    problems: list[str] = []
+    if status not in CENSUS_STATUSES:
+        problems.append(f"unknown census status {status!r}")
+
+    established = [
+        row for row in census if row.get("Ownership", "").strip() != "UNKNOWN"
+    ]
+    if status == "NOT_PERFORMED" and established:
+        problems.append(
+            f"census reads NOT_PERFORMED but {len(established)} row(s) claim an "
+            "established ownership state"
+        )
+    if status == "PERFORMED" and not established:
+        problems.append(
+            "census reads PERFORMED but establishes nothing - a performed census "
+            "resolves at least one category"
+        )
+
+    problems += validate_census_role_coverage(census)
+    problems += validate_owned_asset_identity(census, register)
+    problems += validate_census_observation_method(census)
+    problems += validate_ownership_compatibility_pair(census)
+    return problems
+
+
+def validate_census_bom_agreement(
+    census: list[dict[str, str]] | None, candidates: list[dict[str, str]] | None
+) -> list[str]:
+    """The census and the BOM must tell the same possession story.
+
+    A reader deciding what to buy may open either document. If one says a role
+    is absent and the other still says nobody has looked, they get two answers
+    to the only question that gates a purchase.
+
+    The census is authoritative here: it is the observation, and the BOM's
+    ownership column is a copy of it.
+    """
+    if census is None or candidates is None:
+        return []
+
+    problems: list[str] = []
+    observed = {
+        row.get("BOM role", "").strip(): row.get("Ownership", "").strip()
+        for row in census
+    }
+
+    for row in candidates:
+        role = row.get("role_local_id", "").strip()
+        truth = observed.get(role)
+        if truth is None:
+            continue
+        recorded = row.get("ownership", "").strip()
+        if recorded != truth:
+            problems.append(
+                f"{row.get(CANDIDATE_KEY, '?')}: ownership {recorded!r} disagrees "
+                f"with the census, which observed {truth!r} for {role}"
+            )
+    return problems
+
+
 def report(title: str, problems: Iterable[str]) -> int:
     found = list(problems)
     if not found:
@@ -922,6 +1175,8 @@ def main(argv: list[str] | None = None) -> int:
             BOM_PATH, CANDIDATE_KEY, REQUIRED_CANDIDATE_COLUMNS
         )
         specs = parse_optional_table(BOM_PATH, SPEC_KEY, REQUIRED_SPEC_COLUMNS)
+        census_text = CENSUS_PATH.read_text(encoding="utf-8")
+        census = parse_optional_table(CENSUS_PATH, CENSUS_KEY, REQUIRED_CENSUS_COLUMNS)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"cannot read the hardware documents: {exc}", file=sys.stderr)
         return 1
@@ -932,6 +1187,12 @@ def main(argv: list[str] | None = None) -> int:
     count += report("ownership", check_ownership(bom, register))
     count += report("datasheets", check_manifest(manifest, bom))
     count += report("protocol", check_protocol(bom))
+    count += report(
+        "census", check_census(census, register, census_status(census_text))
+    )
+    count += report(
+        "census-bom-agreement", validate_census_bom_agreement(census, candidates)
+    )
     count += report("candidates", check_candidates(candidates, specs, bom))
     count += report(
         "candidate-datasheets",

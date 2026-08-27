@@ -1,7 +1,9 @@
 # TTP E1 — Hardware Identity Register
 
 **Status:** empty. No component has been received, so no component has an
-identity beyond its reserved local ID.
+identity beyond its reserved local ID. As of the DO-104R census (2026-08-27)
+no component is possessed either, which is now an established finding rather
+than an open question.
 **Dev Order:** DO-104P; deliberately unchanged by DO-104S
 
 This register is the authority on **what is physically in hand**. The
@@ -32,6 +34,34 @@ document naming a Raspberry Pi 5 is not a Raspberry Pi 5.
 | STAND-001 | stand_base | TBD | TBD | TBD | TBD | TBD | NOT_RECEIVED | TBD | — |
 | REF-STRUCT-001 | reference_structure | TBD | TBD | n/a | TBD | TBD | NOT_RECEIVED | n/a | Asset label; a plate has no serial |
 | CABLE-001 | cabling | TBD | TBD | n/a | TBD | TBD | NOT_RECEIVED | n/a | — |
+
+## Census outcome (DO-104R, 2026-08-27)
+
+The physical ownership census was performed and found **no E1-relevant hardware
+in possession**. See [the census](TTP_E1_OWNERSHIP_CENSUS.md).
+
+**No rows were added and no columns were added**, and both omissions are
+deliberate.
+
+No rows, because this register records physical objects and no physical object
+exists. A row asserting the absence of a thing would be a row about nothing.
+
+No columns, because the DO-104R model locks an observation axis for this
+register — `ownership_status`, `observed_at`, `observed_by`,
+`observation_method` — designed to let a *pre-owned* item be `OWNED` while
+remaining unselected and never ordered. With nothing owned, those columns would
+have no data in them, and adding a schema for data that does not exist is the
+error this project deliberately avoided when it held the state-model work until
+after the census. **The columns land with the first owned asset, not before.**
+
+The same applies to the orphan invariant. DO-104R inverts it so the register may
+carry observed assets no BOM row references. That inversion exists to hold
+unmapped observed assets; none was found, so `check_register` keeps its stricter
+one-to-one rule and continues to catch a mistyped `local_id`. The looser rule is
+recorded here as pending, not implemented.
+
+Every row therefore remains `TBD` and `NOT_RECEIVED`, and now does so on
+evidence rather than on absence of information.
 
 ## Why DO-104S did not touch this register
 
