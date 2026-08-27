@@ -223,16 +223,71 @@ question, and it is recorded here rather than assumed:**
 So `AcquisitionBudgetV1` is deliberately **not** a third `UncertaintyBudget`. It
 is a different kind of object that composes one.
 
-**B-005 is narrowed, not closed.** Its acceptance asks for an ownership decision
-between the two *existing* `UncertaintyBudget` implementations —
-`tap_tone_pi.uncertainty.budget` and `tap_tone_pi.core.statistics` — and the
-decision above does not answer that. Closing it on this evidence would be
-declaring victory over a different question.
+**`tap_tone_pi.uncertainty.budget` remains the canonical general
+uncertainty-budget and propagation authority.**
+`tap_tone_pi.core.statistics.UncertaintyBudget` is not, and should not acquire
+new consumers. Corroborating evidence: `uncertainty/stiffness.py` already imports
+from `.budget`, so the propagation path in use was already that one.
 
-One observation is contributed toward it: `uncertainty/stiffness.py` imports from
-`.budget`, so `uncertainty.budget.UncertaintyBudget` is de facto canonical for
-propagation. That is evidence for whoever resolves B-005, not a ruling by this
-order.
+**B-005 is closed on this decision.** Its trigger fired and the ownership
+decision it asked for has been made and recorded, which is its stated acceptance
+— "keep both with explicit roles". Leaving it open after both had happened would
+be bookkeeping theatre. Empirical contracts should reference budget identity
+through `uncertainty.budget.UncertaintyBudget`.
+
+## Frequency uncertainty — a four-way authority map
+
+The 984-line census of the acquisition source found a pre-existing conflict here,
+so the boundaries are stated explicitly rather than left to be inferred.
+
+| Owner | Owns | Status |
+| --- | --- | --- |
+| `uncertainty/frequency.py::compute_frequency_resolution()` | FFT bin resolution | canonical; **delegated to**, not reimplemented |
+| `uncertainty/frequency.py::compute_frequency_uncertainty()` | the existing empirical session-level frequency uncertainty | unchanged, callers not redirected, coefficients not reinterpreted |
+| `uncertainty/acquisition/frequency_budget.py` | the **chain-level acquisition frequency budget** | new authority (this order) |
+| `core/session_diff.py` | a production heuristic | untouched; conflict recorded as **B-020** |
+
+The chain-level budget is the only one that accounts for clock accuracy and
+physical repeatability, which are the terms that change what an operator does.
+It answers: *what limits the trustworthy frequency measurement in this
+instrument?* — bin resolution (delegated), an estimator term, clock-accuracy
+scale error, session repeatability, their combination, and the provenance of each.
+
+### The estimator term is a candidate, not a certified CRB
+
+`core/session_diff.py` computes `f / (2 × 10^(SNR_dB/20))` and calls it *"the
+Cramer-Rao lower bound for frequency estimation"*, while its own comment above
+calls it a rule of thumb. The acquisition source carries a different expression
+based on record length and sample count.
+
+**This subsystem does not claim to have the correct one.** Its estimator term is
+carried as an *estimator-floor candidate — source formula*, faithful to the
+acquisition source for parity purposes, with its authority status explicit. It is
+**not** labelled a Cramér–Rao lower bound in code, tests, or here.
+
+The reason is a real unresolved question rather than caution for its own sake:
+the newer acquisition mathematics material carries an acknowledged factor-of-two
+and SNR-convention discrepancy around exactly this expression, and it marks itself
+not source-verified. Promoting either expression now — merely because one looks
+more textbook — would settle by appearance instead of by derivation. **B-020**
+holds that reconciliation, and deliberately prescribes no replacement equation.
+
+## Material arriving after this order was written
+
+`patch-02-acquisition.patch` and `TTP_ACQUISITION_MATHEMATICS.md` arrived while
+this order was stopped at its grounding questions. They are archived under
+[`docs/reference/acquisition/deferred/`](reference/acquisition/deferred/) and
+**none of their content is implemented here** — not the new equations, the T4
+retargeting, the jitter regression, or the Smart Guitar conclusions.
+
+The mathematics document marks itself *"Not yet source-verified"* and lists an
+unresolved CRLB discrepancy, a force-correction question and coverage-factor work
+among its open items. This order publishes the first `acquisition_budget_v1`
+contract, and a published contract is the point after which downstream code is
+written against it. Shaping it with propositions their own author flagged as
+unverified is the one sequencing mistake most expensive to undo.
+
+They belong to a successor reconciliation order.
 
 ## Downstream
 

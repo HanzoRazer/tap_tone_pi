@@ -118,8 +118,8 @@ docstring, **not** here.
   tests if one is chosen.
 
 ### B-005 — Reconcile overlapping UncertaintyBudget implementations
-- **Status:** open · **Priority:** P2 · **Area:** `tap_tone_pi/uncertainty`,
-  `tap_tone_pi/core`
+- **Status:** **closed** (2026-08-27, DO-107A) · **Priority:** P2 · **Area:**
+  `tap_tone_pi/uncertainty`, `tap_tone_pi/core`
 - **Origin:** DO-101A (empirical model contract foundation).
 - **Context:** the repository has two `UncertaintyBudget` types —
   `tap_tone_pi.uncertainty.budget.UncertaintyBudget` and
@@ -131,20 +131,26 @@ docstring, **not** here.
 - **Trigger:** before any empirical model (or DO-101B registry surface)
   embeds a canonical uncertainty budget object, or before a Dev Order needs
   a single shared budget type across packages.
-- **Narrowed by DO-107A (2026-08-27), not closed.** The trigger fired: DO-107
-  needed a budget type shared across packages. The ownership decision it
-  recorded is that `AcquisitionBudgetV1` is **not** a third implementation —
-  `UncertaintyBudget` owns conventional propagated measurement uncertainty,
-  `AcquisitionBudgetV1` owns acquisition-chain limiting-factor analysis and
-  evidence provenance, and the latter consumes the former rather than
-  reproducing it. See
+- **Closed by the DO-107A ownership decision (2026-08-27).** The trigger fired —
+  DO-107 needed a budget type shared across packages — and the decision it
+  required was made and recorded:
+
+  > `tap_tone_pi.uncertainty.budget` remains the **canonical** general
+  > uncertainty-budget and propagation authority. `AcquisitionBudgetV1` is a
+  > *domain result* describing acquisition-chain limitations and provenance; it
+  > composes with or delegates to canonical uncertainty authorities where they
+  > already exist and **does not supersede them**.
+  > `tap_tone_pi.core.statistics.UncertaintyBudget` is therefore not the general
+  > authority and should not acquire new consumers.
+
+  That is the "keep both with explicit roles" disposition this item's acceptance
+  allows, and it prevented the third implementation the item existed to prevent.
+  Full reasoning in
   [the authority document](docs/ACQUISITION_BUDGET_AUTHORITY.md).
-  **This does not answer B-005's question**, which is which of the two
-  *existing* types owns conventional uncertainty. Closing it on the DO-107
-  decision would be declaring victory over a different question.
-- **Evidence contributed:** `tap_tone_pi/uncertainty/stiffness.py` imports from
-  `.budget`, so `uncertainty.budget.UncertaintyBudget` is de facto canonical for
-  propagation. That is a datum for whoever resolves this, not a ruling.
+- **Migration note for empirical contracts:** reference budget identity through
+  `tap_tone_pi.uncertainty.budget.UncertaintyBudget`. Corroborating evidence for
+  the choice: `tap_tone_pi/uncertainty/stiffness.py` already imports from
+  `.budget`, so the propagation path in use was already that one.
 - **Acceptance:** one recorded ownership decision (merge, adapt, or keep
   both with explicit roles), plus migration notes so empirical contracts can
   reference a stable budget identity without a third implementation.
@@ -428,6 +434,31 @@ evidence calls for them — not because a grant narrative would like to cite the
   version-bump rule, or it is removed with a reason. **Met** by the first branch.
   B-012 remains open and unrelated: `schema-registry-guard` is a separate
   workflow that has been red since before any DO-104 work and is still unparsed.
+
+### B-020 — `session_diff.py` labels a heuristic as a Cramér–Rao lower bound
+
+- **Status:** open · **Priority:** P2 · **Area:** `tap_tone_pi/core/session_diff.py`
+- **Origin:** DO-107A grounding, from the line-by-line census of the
+  acquisition-budget source.
+- **Context:** `core/session_diff.py` computes `f / (2 × 10^(SNR_dB/20))` and
+  labels it *"the Cramer-Rao lower bound for frequency estimation"*, while the
+  comment immediately above calls it a rule of thumb. The DO-107 acquisition
+  source carries a separate estimator treatment based on record length and
+  sample count. **The defect is the authority and naming conflict**, not a ruling
+  that the production behavior is wrong — the session-diff expression may well be
+  fit for the purpose it serves.
+- **Deliberately not resolved by DO-107A.** The acquisition-side estimator term
+  is recorded there as a *candidate* rather than as canonical CRB, because an
+  unresolved factor-of-two and SNR-convention question exists in the newer
+  acquisition mathematics material. Promoting either expression now, merely
+  because one looks more textbook, would settle by appearance rather than by
+  derivation.
+- **Trigger:** the acquisition mathematics / source-verification reconciliation
+  order, or any change to live session-diff behavior.
+- **Acceptance:** terminology, mathematical authority, SNR convention (amplitude
+  vs power) and production behavior are reconciled, and whichever expression each
+  site uses is named for what it actually is. **No replacement equation is
+  prescribed here** — choosing one is the reconciliation work, not its premise.
 
 ## Not backlog — recorded here only so they aren't mistaken for open items
 

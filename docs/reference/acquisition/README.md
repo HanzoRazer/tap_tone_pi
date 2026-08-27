@@ -1,39 +1,31 @@
-# Jitter-to-SNR Sensitivity Calculator — historical reference
+# Acquisition — historical and deferred source material
 
-**These files are reference visualizations. None of them is calculation
-authority.** The canonical implementation is the Python Acquisition Budget
-Authority in `tap_tone_pi/uncertainty/acquisition/`; see
+**Nothing in this directory is calculation authority.** The canonical
+implementation is the Python Acquisition Budget Authority in
+`tap_tone_pi/uncertainty/acquisition/`; see
 [the authority document](../../ACQUISITION_BUDGET_AUTHORITY.md).
-
-**No JavaScript reimplementation of these equations is authorized.** DO-107 §4.1
-permits exactly one calculation implementation, and maintaining two is how they
-drift apart without anyone noticing which one a number came from.
 
 ---
 
-## Why three files, and why none is marked canonical
+## `JITTER_TO_SNR_CALCULATOR.html` — the original calculator
 
-Four variants were supplied. Two were byte-identical, leaving **three materially
-distinct** files:
+The interactive Jitter-to-SNR Sensitivity Calculator that `acquisition_budget.py`
+was refined from. **Reference visualization only.**
 
-| Archived as | Bytes | SHA-256 |
-| --- | --- | --- |
-| `jitter_to_snr_calculator_a.html` | 577,714 | `53c99999c3e167987f03680ebd2fb99fa58d862ee71683c7144411b9f45c9b0a` |
-| `jitter_to_snr_calculator_b.html` | 583,984 | `052d1fb009f314c8cdee11e03efef6a56fdc7e993bd9c0184e62c0d19960ac05` |
-| `jitter_to_snr_calculator_canvas.html` | 33,445 | `c08eb89fed424cbf3bea1aca9692e12a0a5a5cc2a77877d65152be45561ad721` |
+| | |
+| --- | --- |
+| SHA-256 | `052d1fb009f314c8cdee11e03efef6a56fdc7e993bd9c0184e62c0d19960ac05` |
+| Bytes | 583,984 |
+| Supplied as | `Jitter-to-SNR Sensitivity Calculator (2).html` |
 
-`_b` was supplied twice under different names with identical bytes; the
-duplicate is not archived.
+**No JavaScript reimplementation of these equations is authorized.** DO-107 §4.1
+permits exactly one calculation implementation; maintaining two is how they drift
+apart without anyone being able to say which one a number came from.
 
-DO-107 §5 asked for *the* variant the refined `acquisition_budget.py` was derived
-from, with its digest recorded. **That relationship could not be established from
-content, so none is designated canonical** — which is what the order prescribes
-for exactly this case.
+### Why the designation needed a ruling
 
-### What the comparison showed
-
-**All three carry the same equations.** Each contains, character for character
-in its JavaScript:
+Four files were supplied. Two were byte-identical, leaving three materially
+distinct variants — and **all three carried character-identical mathematics**:
 
 ```js
 Math.log10(2 * Math.PI * fMHz * 1e6 * jPs * 1e-12)   // jitter-limited SNR
@@ -42,36 +34,56 @@ Math.log10(2 * Math.PI * fMHz * 1e6 * jPs * 1e-12)   // jitter-limited SNR
 ```
 
 Those match `acquisition_budget.py`'s `jitter_snr_db()`, `quantization_snr_db()`
-and `jitter_budget_s()` exactly. Since the mathematics is identical across all
-three, **no variant is uniquely the formula source** — the derivation is equally
-satisfied by any of them, and picking one would be a guess dressed as provenance.
+and `jitter_budget_s()` exactly. Since the mathematics was identical across all
+three, **content could not identify which one the Python was derived from** — the
+variants differ only in packaging and presentation. The file above was designated
+by ruling as the version supplied with the refined Python work, not inferred from
+a filename.
 
-They differ in packaging and presentation: `_a` and `_b` are bundled pages
-differing by about 6 KB, and `_canvas` is the design-canvas source at a fraction
-of the size.
+The two variants not retained are recorded here so the ambiguity stays visible
+without carrying 611 KB of duplicate framework:
 
-### Circumstantial ordering, recorded as circumstantial
+| Not retained | Bytes | SHA-256 |
+| --- | --- | --- |
+| bundled page, earlier revision | 577,714 | `53c99999c3e167987f03680ebd2fb99fa58d862ee71683c7144411b9f45c9b0a` |
+| design-canvas source | 33,445 | `c08eb89fed424cbf3bea1aca9692e12a0a5a5cc2a77877d65152be45561ad721` |
 
-Supplied-file timestamps run `_canvas` (09:12) → `_a` (09:14) → `_b` (09:59,
-re-saved 10:00) → `acquisition_budget.py` (12:24), all on 2026-08-27. That is
-consistent with the Python being written after the last calculator revision, and
-it is **not evidence**: these are download timestamps on loose files, not
-repository history, and they cannot distinguish which variant was open when the
-equations were transcribed.
+**The parity target for DO-107 is the Python, not the HTML.** Where a test uses a
+value these calculators also produce, the agreement checks transcription — but an
+ambiguous filename must not decide implementation behavior.
 
-Recorded here so a later reader does not have to re-derive it, and labelled so
-nobody mistakes it for provenance.
+---
 
-## The parity target is the Python, not the HTML
+## `deferred/` — arrived after the order was written, deliberately not incorporated
 
-DO-107's parity fixtures are built against `acquisition_budget.py`. Where a test
-uses a value these calculators also produce, the agreement is a useful check on
-transcription — but **an ambiguous HTML filename must not decide implementation
-behavior.**
+Both files below arrived while DO-107A was stopped at its grounding questions.
+They are archived as source material and **none of their content is implemented
+by DO-107A.**
 
-## Repository weight
+| File | Bytes | SHA-256 |
+| --- | --- | --- |
+| `deferred/TTP_ACQUISITION_MATHEMATICS.md` | 22,903 | `c9a77a862913206a…` |
+| `deferred/patch-02-acquisition.patch` | 54,578 | `9e964a8e6408ba97…` |
 
-These bundled pages total roughly 1.16 MB, most of it inlined framework rather
-than the few lines of arithmetic that matter. They are kept whole rather than
-excerpted so the reference is what was actually used, and each sits under the
-1000 KB `check-added-large-files` limit individually.
+### Why they are deferred rather than applied
+
+They postdate the dev order, and the mathematics document marks itself **"Not yet
+source-verified."** It carries pending Patch #2 functions and unresolved
+publication items — including an acknowledged CRLB discrepancy, a force-correction
+question, and coverage-factor work.
+
+**Folding unverified equations into the order that publishes the first
+`acquisition_budget_v1` contract would be the worst possible sequencing.** A
+published contract is the point after which downstream code is written against
+it; a contract shaped by propositions their own author flagged as unverified is
+one we would be migrating away from immediately.
+
+Specifically **not** incorporated into DO-107A: the new equations, the T4
+retargeting, the jitter regression, and the Smart Guitar conclusions.
+
+They deserve a successor reconciliation order once the initial authority lands
+and the source verification is done.
+
+**The patch file is archived, not applied.** It is present so the proposal
+survives; `git apply` has not been run against it and it is not expected to apply
+cleanly to the post-DO-107A tree.
