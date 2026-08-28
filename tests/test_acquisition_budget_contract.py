@@ -198,7 +198,9 @@ class TestThePublicationGate:
         evidence = payload_1_current_ttp()["evidence"]
         assert evidence["evidence_grade"] is False
         blocking = {
-            r["reference"] for r in evidence["reasons"] if r["blocking"] and r["reference"]
+            r["reference"]
+            for r in evidence["reasons"]
+            if r["blocking"] and r["reference"]
         }
         assert {"B-020", "B-021"} <= blocking
 
@@ -226,9 +228,7 @@ class TestThePublicationGate:
         evidence = payload_3_reconciled_with_advisory()["evidence"]
         assert evidence["evidence_grade"] is True
         advisory = [r for r in evidence["reasons"] if not r["blocking"]]
-        assert [r["condition"] for r in advisory] == [
-            "aggregate_authority_workaround"
-        ]
+        assert [r["condition"] for r in advisory] == ["aggregate_authority_workaround"]
         assert advisory[0]["reference"] == "B-022"
 
     def test_3_shows_the_schema_permits_true_with_advisory_reasons(self, schema):
@@ -311,7 +311,9 @@ class TestSemanticInvariants:
     def test_removing_a_material_contributor_is_refused(self):
         payload = payload_1_current_ttp()
         contributors = payload["results"]["frequency"]["combined_contributors"]
-        dominant = max(range(len(contributors)), key=lambda i: contributors[i]["value_hz"])
+        dominant = max(
+            range(len(contributors)), key=lambda i: contributors[i]["value_hz"]
+        )
         contributors.pop(dominant)
         assert validate_acquisition_budget(payload)
 
@@ -330,7 +332,9 @@ class TestSemanticInvariants:
         """
         payload = payload_1_current_ttp()
         contributors = payload["results"]["frequency"]["combined_contributors"]
-        negligible = min(range(len(contributors)), key=lambda i: contributors[i]["value_hz"])
+        negligible = min(
+            range(len(contributors)), key=lambda i: contributors[i]["value_hz"]
+        )
         assert contributors[negligible]["source_quantity"] == "estimator_floor_hz"
         contributors.pop(negligible)
 
