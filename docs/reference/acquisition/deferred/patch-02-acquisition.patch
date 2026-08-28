@@ -1,0 +1,1093 @@
+diff --git a/TTP_ACQUISITION_MATHEMATICS.md b/TTP_ACQUISITION_MATHEMATICS.md
+index d27a621..7883580 100644
+--- a/TTP_ACQUISITION_MATHEMATICS.md
++++ b/TTP_ACQUISITION_MATHEMATICS.md
+@@ -1,7 +1,11 @@
+ # TTP Analyzer — Acquisition and Uncertainty Mathematics
+ 
+ **Document class:** Technical reference, intended for the main body.
+-**Status:** Assembled from working sessions. **Not yet source-verified.**
++**Revision:** 0.2 — citations verified for 2.2, 2.5 and 3.3; equation 2.2
++reclassified `DERIVED` with its derivation; new relations 2.8, 3.4, 3.5, 3.6 and
++4.3; aperture delay distinguished from aperture jitter; SINAD and SFDR defined;
++guards G1 and G5 extended, G9 and G10 added. Earlier (0.1): initial assembly.
++**Status:** Partially source-verified. §9 lists what remains.
+ **Purpose:** state every relation used in the acquisition and uncertainty chain
+ once, with its symbols, assumptions, validity range, provenance class, and the
+ code that implements it — so that a reviewer can check the mathematics without
+@@ -94,11 +98,25 @@ this term is generally not the limiter in this instrument.
+ SNR_j = −20 log₁₀(2π f_in t_j)        [dB]
+ ```
+ 
+-**Validity** — full-scale sine at `f_in`; jitter uncorrelated, zero-mean,
+-Gaussian. **Fails for deterministic timing error.** A fractional-N clock produces
+-discrete spurs, not broadband noise; applying this relation to a spur understates
+-its perceptual and spectral impact. See (2.4) and §8.
+-**Class** `STANDARD` · **Source** requires citation (Kester / ADI)
++**Derivation** — for `v(t) = V_p sin(2π f_in t)`, a small timing error gives a
++voltage error equal to slope times time error, `Δv ≈ (dv/dt)Δt`. Since
++`dv/dt = 2π f_in V_p cos(2π f_in t)`, the RMS jitter-induced error is
++`V_n,j,rms = V_signal,rms · (2π f_in t_j)`. The `1/√2` cancels because signal and
++noise are referred to the same amplitude — which is why the *ratio* is
++amplitude-independent, and is the basis of (2.7). Taking `20 log₁₀` of the
++reciprocal gives the relation.
++
++**Validity** — sine input at `f_in`; jitter small, random, uncorrelated,
++zero-mean. **Fails for deterministic timing error.** A fractional-N clock
++produces discrete spurs, not broadband noise; applying this relation to a spur
++understates its spectral impact. See (2.4) and §8. For broadband or
++non-sinusoidal signals, use instantaneous slew rate or integrate clock phase
++noise against the signal bandwidth instead.
++
++**Class** `DERIVED` — three lines of algebra; no citation required.
++**Corroborating source** Kester, W. *MT-008 Tutorial: Converting Oscillator Phase
++Noise to Time Jitter.* Analog Devices, 2009, which presents it as
++`20 log₁₀[1/(2π f₀ t_j)]`.
+ · **Code** `jitter_snr_db()`
+ 
+ ### (2.3) Front-end-limited SNR
+@@ -146,7 +164,9 @@ t_j,total = √(t_ap² + t_clk,at-ADC²)
+ **Validity** — contributors independent and random. Measurement location is part
+ of the definition: a figure taken at the oscillator output is not `t_clk,at-ADC`
+ and understates the total.
+-**Class** `VENDOR` · **Source** requires citation (TI SNAA334)
++**Class** `VENDOR` · **Source** MT-008 (op. cit.) defines total sampling jitter
++as the RSS of external clock and internal aperture contributions. TI SNAA334
++concurs — **SNAA334 itself still requires verification.**
+ · **Code** `noise_budget()` via `rss()`
+ 
+ ### (2.6) Jitter allowance from an SNR target ★
+@@ -184,9 +204,9 @@ converter's capability and severe near it:
+ *(Computed at `f_in` = 187 Hz. The ratio is independent of `f_in`.)*
+ 
+ **Class** `VENDOR` · **Source** requires citation (TI SNAA334)
+-· **Code** `jitter_allowance_s()` — **pending, patch #2.** The current
+-`jitter_budget_s()` implements the naive form and must not be used for
+-allocation.
++· **Code** `jitter_allowance_s()`, with an `InfeasibleTarget` gate.
++`jitter_budget_s()` retains the naive form, documented as deprecated for
++allocation; `jitter_bound_from_snr()` legitimately wants it.
+ 
+ ### (2.7) Operating-level backoff ★
+ 
+@@ -215,8 +235,40 @@ A full-scale budget is a best case that neither channel occupies. This relation
+ is also the theoretical basis for test **T8**, which distinguishes additive from
+ multiplicative noise by sweeping amplitude.
+ 
+-**Class** `VENDOR` · **Source** requires citation
+-· **Code** pending, patch #2
++**Class** `VENDOR` · **Source** requires citation (TI, frequency-domain clock
++noise analysis) · **Code** `noise_budget(operating_level_dbfs=…)`
++
++### (2.8) Clock-edge threshold noise ★
++
++**Statement**
++
++```
++t_j,threshold ≈ v_n,rms / S        where S = (dV/dt) at the receiver threshold
++```
++
++**Validity** — linear approximation of the edge through the threshold region. The
++relevant slew is at the **ADC clock pin**, not the oscillator's datasheet rise
++time. For a sine clock, `S_zero-crossing = 2π f_s V_p`. This is a delivered-clock
++term and **does not reduce intrinsic aperture jitter**.
++
++**Consequence for the Smart Guitar topology decision.** On a 3.3 V GPIO edge,
++even a pessimistic 10 ns rise with 20 mV of threshold noise yields ~61 ps:
++
++| Rise time | Slew | 1 mV | 5 mV | 20 mV |
++|---|---|---|---|---|
++| 1 ns | 3.30 V/ns | 0.30 ps | 1.52 ps | 6.06 ps |
++| 2 ns | 1.65 V/ns | 0.61 ps | 3.03 ps | 12.1 ps |
++| 5 ns | 0.66 V/ns | 1.52 ps | 7.58 ps | 30.3 ps |
++| 10 ns | 0.33 V/ns | 3.03 ps | 15.2 ps | 60.6 ps |
++
++Against the ~1000 ps carried for a host fractional-N clock, threshold slew is an
++order of magnitude short of explaining it. **The Pi-master penalty is frequency
++synthesis, not edge quality**, so buffering or termination cannot rescue that
++topology — only codec-master can. Note the asymmetry: under codec-master the
++clock that determines the sample instant never crosses the header.
++
++**Class** `VENDOR` · **Source** requires citation (ADI RAQ-57, TI SBAA653)
++· **Code** `threshold_noise_jitter_s()`
+ 
+ ---
+ 
+@@ -280,8 +332,99 @@ is incomplete without `f_L`, `f_H`, and the carrier. A vendor claim of a
+ "low-jitter clock" carrying none of the three is not a quantity and cannot enter
+ a budget.
+ 
+-**Class** `VENDOR` · **Source** requires citation
+-· **Code** `phase_noise_to_jitter()` — pending, patch #2
++**Class** `VENDOR` · **Source** Kester, MT-008 (op. cit.) — this is that
++tutorial's central method. Integration commonly runs to at least `f_s`, sometimes
++`2 f_s`, when nothing filters between oscillator and ADC.
++· **Code** `phase_noise_to_jitter()`; `f_L`, `f_H` and carrier are mandatory
++arguments, not defaults.
++
++### (3.4) Multi-frequency jitter regression ★
++
++**Statement**
++
++```
++r(f) = r₀ + (2π t_j,total)² f²        with r = 10^(−SNR/10)
++t_j,total = √slope / 2π
++```
++
++**Validity** — captures at constant amplitude, identical `f_s`, record length,
++clock route and FFT convention. Strictly better than the two-point (3.1)
++subtraction: the intercept is the baseline, the slope gives the number, and the
++residual reports whether the loss has a jitter signature at all.
++
++**Why this matters in the audio band.** The resulting bound is set by SNR
++*repeatability*, not absolute SNR:
++
++| SNR repeatability | Bounds t_j | Jitter SNR at 20 kHz | vs. a ~90 dB limiter |
++|---|---|---|---|
++| 0.5 dB | 82 ps | 99.7 dB | +9.1 dB |
++| 0.2 dB | 51 ps | 103.9 dB | +13.3 dB |
++| 0.1 dB | 36 ps | 106.9 dB | +16.3 dB |
++| 0.05 dB | 25 ps | 110.0 dB | +19.4 dB |
++
++At 0.1 dB this bounds total jitter near 36 ps against 25,200 ps from (3.2) —
++roughly three orders of magnitude. It converts the `BOUNDED` tag from an
++assertion into a measured negative result. It still bounds **total** jitter and
++cannot separate the aperture term; see (3.5).
++
++**Class** `VENDOR` · **Source** requires citation (ADI AN-501)
++· **Code** `fit_jitter_from_sweep()`
++
++### (3.5) Clock-versus-aperture de-embedding, and its conditioning ⚠
++
++**Statement**
++
++```
++t_ap = √(t_total² − t_clock@pin²)
++```
++
++with the clock characterized **at the ADC clock pin**, over an integration band
++matching the SNR integration band. Alternatively by substitution: measure
++`t_total,i²` against `t_clock,i²` for several clocks and fit — the intercept is
++`t_ap²`, and **the slope should be near 1**, which is the diagnostic that the
++model holds before the number is believed.
++
++**Conditioning.** RSS subtraction of similar quantities amplifies error by
++`1/(1−ρ²)` where `ρ = t_clock/t_total`:
++
++| ρ | t_ap/t_total | Amplification | 5% input error becomes |
++|---|---|---|---|
++| 0.5 | 0.87 | 1.3× | 6.7% |
++| 0.7 | 0.71 | 2.0× | 9.8% |
++| 0.9 | 0.44 | 5.3× | 26% |
++| 0.95 | 0.31 | 10.3× | 51% |
++
++Keep the clock below roughly one-third to one-half of the total. If
++`t_total ≤ t_clock`, report total jitter or an upper bound and claim no aperture
++number.
++
++**Aperture jitter is conditional, not a fixed part property.** It varies with
++temperature, supply and reference noise, input frequency and amplitude, clock
++slew rate, and converter mode. A de-embedded value without its conditions is
++incomplete — structurally the same defect as a jitter figure without its
++integration limits (G7).
++
++**Not applicable to this instrument.** Both routes need phase-noise
++instrumentation at the pin or a substitutable clock; the board exposes neither.
++And the split would inform no decision: clock and converter are one purchasing
++unit.
++
++**Class** `VENDOR` · **Source** requires citation (ADI AN-501, TI SLYT422)
++
++### (3.6) Aperture delay — a different quantity
++
++| Quantity | Is | Measured by |
++|---|---|---|
++| Aperture **delay** | fixed mean offset, clock edge to sample instant | timing/phase measurement |
++| Aperture **jitter** | sample-to-sample variation of that offset | high-frequency FFT SNR |
++
++Delay is linear phase. In a two-channel transfer measurement it cancels **only if
++both channels share it** — verify, do not assume. The conflation is common enough
++that ADI gave it a tutorial: Kester, W. *MT-007: Aperture Time, Aperture Jitter,
++Aperture Delay Time — Removing the Confusion.* Analog Devices, 2008.
++
++**Class** `VENDOR` · **Source** MT-007 (op. cit.)
++· **Code** `ConverterSpec.aperture_delay_s`
+ 
+ ---
+ 
+@@ -324,11 +467,19 @@ Worked, at `f_s` = 48 kHz and `N` = 65536 (`Δf` = 0.732421875 Hz, `T` = 1.3653
+ **Statement** — for a coherent capture with a rectangular window:
+ 
+ ```
+-Exclude: DC · bin M · mirror bin N−M · harmonics 2M, 3M, … folded mod N
+-P_N   = Σ remaining in-band bins
+-SNR   = 10 log₁₀(P_signal / P_N)
++Window:  rectangular (none) under genuine coherence
++Exclude: DC · bin M · mirror bin N−M · harmonics 2M…6M folded mod N
++         · identified deterministic spurs
++P_N   =  Σ remaining in-band bins
++SNR   =  10 log₁₀(P_signal / P_N)
+ ```
+ 
++**SNR versus SINAD versus SFDR.** Excluding harmonics gives **SNR**. *Including*
++them gives **SINAD**, a different quantity that must never be substituted.
++**SFDR** is the level of the largest single spur relative to the carrier, and is
++the only one of the three that sees periodic contamination (G1). The ADI
++convention excludes DC and the first six harmonics.
++
+ **Validity** — the carrier-bin exclusion rule and the integration bandwidth must
+ be identical at every test frequency, or frequency-dependent comparisons are
+ meaningless. Under genuine coherence no window is applied; a non-rectangular
+@@ -337,6 +488,34 @@ window spreads main-lobe energy for no benefit.
+ **Class** `CONVENTION` — the choice of exclusion rule is a convention, and the
+ requirement that it be held constant is what makes results comparable.
+ 
++### (4.3) Sigma-delta aliasing is band-limited ★
++
++**Statement** — a sigma-delta converter carries a decimation filter by
++construction, removing essentially everything between `f_s/2` and the modulator
++rate. Folding is confined to narrow bands around `n · f_mod`.
++
++**Consequence.** A vendor claim of "no anti-aliasing filter" means no *analog*
++filter; the digital one cannot be absent. The analog front-end requirement is
++therefore not broadband rejection but adequate attenuation in those narrow bands,
++and a first-order RC suffices:
++
++| RC corner | at 3.072 MHz (64×) | at 6.144 MHz (128×) | droop at 20 kHz |
++|---|---|---|---|
++| 50 kHz | 35.8 dB | 41.8 dB | −0.64 dB |
++| 100 kHz | 29.8 dB | 35.8 dB | −0.17 dB |
++| 200 kHz | 23.7 dB | 29.8 dB | −0.04 dB |
++
++**This supersedes the earlier claim** that a multi-pole filter is required; that
++reasoning applied to a Nyquist converter. It also means a folding test must
++inject **at** `n · f_mod` — tones at 25–200 kHz sit where the decimation filter
++already works and would wrongly exonerate the design.
++
++**Unverified.** The oversampling ratio is inferred from convention, not read from
++the converter datasheet. The whole table shifts if the OSR differs.
++
++**Class** `SESSION` — requires datasheet confirmation of the OSR.
++· **Code** `noise_budget()` note
++
+ ---
+ 
+ ## 5 · Stage 5 and 7 — frequency uncertainty
+@@ -572,37 +751,52 @@ once during this session's working documents.
+ 
+ | Guard | Statement |
+ |---|---|
+-| **G1 — Spurs are not jitter** | (2.4) and (2.5) require independent random terms. A discrete spur from a fractional-N clock or a switching supply must not be RSS'd into a broadband total; it is reported as SFDR against a spur mask. A clean SNR does not imply a clean spectrum. |
++| **G1 — Spurs are not jitter** | (2.4) and (2.5) require independent random terms. A discrete spur from a fractional-N clock or a switching supply must not be RSS'd into a broadband total; it is reported as SFDR against a spur mask. A clean SNR does not imply a clean spectrum. Clock ringing producing **multiple threshold crossings** belongs here too: it becomes deterministic jitter and spurs, and shows up in SFDR before SNR. |
+ | **G2 — Full scale is not the operating point** | A budget computed at full scale is a best case. Apply (2.7) at the actual level before quoting any uncertainty. |
+ | **G3 — Aliasing, RF demodulation, and jitter are three mechanisms** | They have different magnitudes, frequency dependence, and mitigations. Do not merge them into one requirement or one error term. |
+ | **G4 — Filter phase cancels only when common** | In a two-channel transfer measurement, filter phase common to both channels cancels; phase that differs does not and enters `H(f)` directly. Separately built channel filters must be phase-matched or the mismatch characterized. |
+-| **G5 — Loopback measures two converters** | Any loopback figure is the DAC and ADC in series. Only an input-shorted measurement isolates the converter. |
++| **G5 — Loopback measures two converters, with zero source margin** | Any loopback figure is the DAC and ADC in series — roughly 108 dB for a pair specified at 110 dB each. Proper converter testing puts the source 10–15 dB cleaner than the device under test; loopback provides **0 dB** of that margin. Only an input-shorted measurement isolates the converter. |
+ | **G6 — Use the actual coherent frequency** | Every `f_in`-dependent relation takes the exact value from (4.1), never the nominal target. |
+ | **G7 — A jitter figure needs its integration limits** | Per (3.3), a value without `f_L`, `f_H`, and carrier is not a quantity. |
+-| **G8 — Bounds are not measurements** | (3.2) and (5.3) are bounds. Neither may be reported as an achieved value. |
++| **G8 — Bounds are not measurements** | (3.2), (3.4) and (5.3) are bounds. None may be reported as an achieved value. |
++| **G9 — Aperture delay is not aperture jitter** | (3.6). Different quantities, different tests. Delay cancels from a two-channel transfer function only if both channels share it. |
++| **G10 — A de-embedded aperture figure is conditional** | (3.5). It varies with temperature, supply, input frequency and amplitude, clock slew and converter mode. Quote it only with its conditions. |
+ 
+ ---
+ 
+ ## 9 · Open items before peer review
+ 
+-1. **(5.3) factor-of-two discrepancy.** Highest priority. Fix the constant and
+-   state the SNR convention explicitly.
+-2. **Primary sources.** Every `STANDARD` and `VENDOR` relation currently asserts
+-   its source class without a citation. All require one.
+-3. **(2.3) omits 1/f noise.** Real for a measurement band extending to 20 Hz.
+-   Either add the term or state the omission and its magnitude.
+-4. **(6.2) safety factor.** `S` = 4 is unjustified. Either derive it from an
+-   acceptable peak-amplitude error or record it as an explicit convention with a
+-   stated consequence.
+-5. **(7.1) proportionality constant.** Absent, so absolute `E` is not obtainable
+-   from this document alone. State where the mode-specific constant comes from.
+-6. **(7.4) unresolved correction.** Section 7.4 states a correction that cannot
+-   currently be applied. The chosen response must be recorded before any
+-   force-normalized result is published.
+-7. **Coverage factor.** Section 7.3 uses `k` = 1 throughout. Fix a convention for
+-   the whole document and apply it uniformly.
+-
+----
++Reduced from seven to five. Items 1–3 block publication.
++
++1. **(5.3) factor-of-two discrepancy. ⚠ Highest priority.** The implemented form
++   is `σ_f = (1/(πT))√(6/(SNR·N))`; the commonly written large-N Rife–Boorstyn
++   asymptotic is `√(6/(SNR·N))/(2πT)` — a factor of two smaller. Probably a
++   real-versus-complex sinusoid convention, or how `SNR_lin` is defined. The
++   implemented form is conservative, so nothing is overstated, but the constant
++   must be fixed against the primary source and the convention stated. **Not
++   resolvable by search; requires reading Rife & Boorstyn (1974).**
++2. **(7.4) unresolved correction.** The inertial correction requires drive-point
++   acceleration `a`, which Phase 2B does not measure and the two-channel
++   converter cannot supply. Record which of the three admissible responses is
++   taken before any force-normalized result is published.
++3. **Coverage factor.** §7.3 uses `k` = 1 throughout. Fix one convention for the
++   whole document and apply it uniformly.
++4. **Remaining citations.** Verified: MT-008 for (2.2) and (3.3); MT-007 for
++   (3.6). Still required: TI SNAA334 for (2.5)/(2.6); ADI AN-501 for (3.1)/(3.4);
++   TI SLYT422 for (3.5); ADI AN-835 for (4.1); ADI RAQ-57 and TI SBAA653 for
++   (2.8); Rife & Boorstyn for (5.3); plate theory for (7.1); experimental modal
++   analysis for (7.4) and (7.5).
++
++   **Priority source, not yet obtained:** Harris, S. "The Effects of Sampling
++   Clock Jitter on Nyquist Sampling Analog-to-Digital Converters, and on
++   Oversampling Delta-Sigma ADCs." *JAES* Vol. 38 No. 7/8, 1990. Every other
++   source in this set is RF, Nyquist-sampling and IF-band. That paper is the only
++   one addressing **oversampling delta-sigma converters in the audio band** —
++   this instrument's actual architecture and actual band. It may qualify (2.2)
++   for delta-sigma, which would propagate everywhere.
++5. **(2.3) omits 1/f noise**, and **(4.3) infers the OSR from convention rather
++   than from the converter datasheet.** Both are stated omissions rather than
++   hidden ones; both still need closing.
+ 
+ ## 10 · Code cross-reference
+ 
+@@ -613,11 +807,16 @@ once during this session's working documents.
+ | 2.3 | `FrontEndSpec.snr_db()` | ″ |
+ | 2.4 | `combine_snr_db()` | ″ |
+ | 2.5 | `rss()`, `noise_budget()` | ″ |
+-| 2.6 | `jitter_allowance_s()` | **pending, patch #2** |
+-| 2.7 | operating-level derating | **pending, patch #2** |
++| 2.6 | `jitter_allowance_s()`, `InfeasibleTarget` | ″ |
++| 2.7 | `noise_budget(operating_level_dbfs=…)` | ″ |
++| 2.8 | `threshold_noise_jitter_s()` | ″ |
+ | 3.2 | `jitter_bound_from_snr()` | ″ |
+-| 3.3 | `phase_noise_to_jitter()` | **pending, patch #2** |
+-| 4.1 | coherent bin selection | **pending, patch #2** |
++| 3.3 | `phase_noise_to_jitter()` | ″ |
++| 3.4 | `fit_jitter_from_sweep()` | ″ |
++| 3.5 | — analysis only; not applicable to this instrument | — |
++| 3.6 | `ConverterSpec.aperture_delay_s` | ″ |
++| 4.1 | `coherent_bin()` | ″ |
++| 4.3 | `noise_budget()` note | ″ |
+ | 5.1–5.4 | `frequency_budget()` | ″ |
+ | 6.1–6.2 | `compute_sweep_limits()` | ″ |
+ | 7.2–7.3 | `modulus_budget()` | ″ |
+diff --git a/TTP_E0_ADC_CHARACTERIZATION.md b/TTP_E0_ADC_CHARACTERIZATION.md
+index c6ca650..59e01da 100644
+--- a/TTP_E0_ADC_CHARACTERIZATION.md
++++ b/TTP_E0_ADC_CHARACTERIZATION.md
+@@ -32,8 +32,21 @@ below is measured with the board driving itself or with a shorting plug.
+ 
+ ## Standing requirement — coherent sampling
+ 
+-**Applies to T1, T2, T4, T6, T8, T9.** Any test that measures a noise floor or an
+-SNR shall use coherent sampling: choose the tone so that
++**Applies to T1, T2, T6, T8, T9 — every LOOPBACK test.**
++
++**T4 is excluded and cannot be coherent.** It needs an external source, and two
++free-running instruments do not become coherent by having calculated frequencies
++typed into them; that requires a shared reference and an explicitly enabled
++external-reference lock. T4 runs windowed, and its results carry leakage error
++accordingly — tolerable, because T4 measures folding attenuation in tens of dB.
++
++**Loopback gets coherence for free.** The textbook bench arrangement is one
++synthesizer feeding both the sampling clock and the source. On this board the DAC
++and ADC already share the on-board oscillator, so that arrangement is soldered
++in. No 10 MHz master, no reference lock, no synthesizer.
++
++Any test measuring a noise floor or an SNR shall use coherent sampling: choose
++the tone so that
+ 
+ ```
+     f_in / f_s = M / N        with M and N relatively prime
+@@ -47,9 +60,47 @@ direction — it inflates the apparent noise floor and therefore flatters nothin
+ Record M, N, and the exact synthesized f_in for every capture. A capture whose
+ coherence parameters are not recorded is not usable evidence.
+ 
++For `N = 2^m`, `gcd(M, N) = 1` reduces to **M odd** — which also exercises
++converter codes more uniformly than an even M would. Worked for f_s = 48 kHz,
++N = 65536 (bin 0.732421875 Hz, record 1.3653 s):
++
++| Target | M (odd) | Actual f_in |
++|---|---|---|
++| 187 Hz | 255 | 186.767578125 Hz |
++| 1 kHz | 1365 | 999.755859375 Hz |
++| 5 kHz | 6827 | 5000.244140625 Hz |
++| 10 kHz | 13653 | 9999.755859375 Hz |
++| 20 kHz | 27307 | 20000.244140625 Hz |
++
+ Use a tone level near −1 dBFS rather than literal full scale, so that source
+ distortion or converter overload cannot contaminate the floor.
+ 
++### SNR integration convention
++
++Fixed for every test, or frequency-dependent comparisons are meaningless:
++
++```
++Window:  rectangular (none) for coherent captures
++Exclude: DC · bin M · mirror bin N-M · harmonics 2M..6M folded mod N
++         · identified deterministic spurs
++P_N   =  sum of remaining in-band bins
++SNR   =  10 log10(P_signal / P_N)
++```
++
++Including harmonics measures **SINAD**, not SNR. Report the two separately and
++never substitute one for the other. **SFDR** is a third quantity — the largest
++single spur relative to the carrier — and the only one that sees periodic
++contamination.
++
++### Source margin — a standing caveat, not a fixable condition
++
++Proper converter testing puts the source 10–15 dB cleaner than the device under
++test. **Loopback has zero margin**: the DAC and ADC are comparable parts, so a
++loopback figure is roughly 108 dB for a pair specified at 110 dB each. Every
++loopback result is a *system* measurement of two converters in series. Only T1's
++shorted input isolates the ADC. Do not report a loopback figure as a converter
++specification.
++
+ ---
+ 
+ ## Tests
+@@ -115,24 +166,43 @@ corner is high, repeat with an external source into the ADC alone to separate th
+ 
+ ### T4 · Out-of-band response and folding ★
+ 
+-**Answers:** the actual attenuation above Nyquist, which is what §2 must be
+-derived from.
+-**Unblocks:** `AFE-001` order, corner, and stopband — the whole filter design.
++**Answers:** where energy actually folds, and how much — which is what the
++`AFE-001` requirement must be derived from.
++**Unblocks:** filter corner and order.
++**Prerequisite:** the converter's **oversampling ratio**, from the manufacturer
++datasheet. Without it this test cannot be aimed.
++
++**Read this before setting frequencies.** A sigma-delta converter has a
++decimation filter by construction. The vendor's "no anti-aliasing filter" means
++no *analog* filter — the digital one is intrinsic to the architecture and cannot
++be absent. It removes essentially everything between f_s/2 and the modulator
++rate.
++
++**Aliasing is therefore not broadband.** It is confined to narrow bands around
++integer multiples of the modulator sampling rate, `n · f_mod`. At f_s = 48 kHz a
++64× or 128× OSR puts those near 3.072 MHz and 6.144 MHz.
+ 
+-Drive the ADC from an **independent source** (the DAC cannot generate above its
+-own Nyquist). Inject single tones at frequencies above fs/2 and record where they
+-appear in the captured spectrum and at what amplitude relative to the input.
++An earlier revision of this protocol specified 25–200 kHz. **Those frequencies sit
++where the decimation filter already works.** Testing there would measure excellent
++rejection and wrongly conclude B-014 is harmless.
+ 
+-At fs = 48 kHz, test at minimum: 25, 30, 40, 48, 96, 150, 200 kHz — extended as
+-far as the available source reaches.
++Drive the ADC from an **independent source** — the DAC cannot reach these
++frequencies. Inject single tones and record where each appears in the captured
++spectrum and at what amplitude relative to the input.
++
++Test at minimum: 0.5·f_mod, 0.9·f_mod, f_mod, 1.1·f_mod, 2·f_mod, plus a control
++point near 100 kHz to confirm the decimation filter behaves as expected.
+ 
+ **Record:** for each injected frequency, the apparent in-band frequency and the
+-attenuation in dB. This table *is* the B-014 evidence.
++attenuation in dB. This table *is* the B-014 evidence. The capture is
++non-coherent and windowed; state the window.
+ 
+-**How the result drives the design.** The required stopband attenuation of
+-`AFE-001` is set by the worst-case out-of-band energy expected at the input minus
+-the acceptable in-band contamination, evaluated at the frequencies this table
+-shows fold most strongly. Without T4, filter order is a guess.
++**How the result drives the design.** Required stopband attenuation is the
++worst-case out-of-band energy expected at the input, minus the acceptable in-band
++contamination, evaluated where this table shows folding is strongest. A
++first-order RC is likely sufficient — 50–100 kHz gives 30–36 dB at 3 MHz for
++under 0.7 dB of in-band droop — but that is a prediction this test must confirm,
++not an assumption to build on.
+ 
+ ### T5 · Balanced input granularity ★
+ 
+@@ -159,8 +229,12 @@ board.
+ **Unblocks:** the entire §3 level budget, which is currently arithmetic on a
+ vendor number.
+ 
+-Drive the input through the attenuator with increasing level until clipping is
+-detected in the capture. Record the input voltage at 0.1% THD and at hard clip,
++**The loopback attenuator must be bypassed for this test.** The DAC output and
++the ADC maximum input are both near 2.1 Vrms, so with a ~20:1 pad in circuit the
++clip point can never be reached. Direct-connect, or use an external source.
++
++Drive the input with increasing level until clipping is detected in the
++capture. Record the input voltage at 0.1% THD and at hard clip,
+ on both unbalanced and balanced paths.
+ 
+ **Record:** measured maximum input, both paths, against the specified 2.1 / 4.2
+@@ -212,35 +286,55 @@ flat floor across the whole sweep confirms that prediction and closes the
+ question by measurement rather than by arithmetic. This test requires no external
+ source and no purchase.
+ 
+-### T9 · Frequency slope — falsifying jitter limitation ★
++### T9 · Multi-frequency jitter regression ★
++
++**Answers:** a quantitative upper bound on total sampling jitter, and whether the
++board is jitter-limited anywhere in band.
++**Unblocks:** converts the `BOUNDED` aperture tag from an assertion into a
++measured negative result.
++
++Take 4–8 **coherent loopback** captures at constant −1 dBFS across the band —
++1, 3, 6, 10, 15, 20 kHz. Convert each SNR to a noise-power ratio and fit:
++
++```
++    r(f) = r0 + (2π t_j)² f²        with r = 10^(-SNR/10)
++    t_j  = √slope / 2π
++```
++
++**Record:** slope, intercept r0, fitted t_j, and **r².**
+ 
+-**Answers:** whether the board is jitter-limited anywhere in the usable band.
+-**Unblocks:** the `BOUNDED` tag on aperture jitter, converting it from an
+-assertion into a negative result.
++**Why the fit rather than a slope check.** An earlier revision asked only whether
++SNR fell at 20 dB/decade. The regression is strictly better: the intercept is the
++baseline, the slope gives a number, and r² reports whether the loss actually has a
++jitter signature rather than an analog-bandwidth or source-noise signature.
+ 
+-A jitter-limited converter loses SNR at **20 dB per decade** of input frequency,
+-because the error voltage is proportional to `f`. Nothing else in the budget has
+-that slope.
++**Why this works in the audio band when the two-point method does not.** The
++bound is set by SNR *repeatability*, not by absolute SNR:
+ 
+-Sweep a coherent tone across the widest input-frequency range the DAC and any
+-available second source can reach — at minimum 100 Hz, 1 kHz, 5 kHz, 10 kHz,
+-20 kHz. Record SNR excluding harmonics at each.
++| SNR repeatability | Bounds t_j at | Jitter SNR at 20 kHz | vs. the ~90 dB limiter |
++|---|---|---|---|
++| 0.5 dB | 82 ps | 99.7 dB | +9.1 dB |
++| 0.2 dB | 51 ps | 103.9 dB | +13.3 dB |
++| 0.1 dB | 36 ps | 106.9 dB | +16.3 dB |
++| 0.05 dB | 25 ps | 110.0 dB | +19.4 dB |
+ 
+-**Record:** SNR versus f_in, and the fitted slope in dB/decade.
++At 0.1 dB repeatability — reachable with coherent capture and averaged spectra —
++this bounds total jitter near **36 ps against 25,200 ps** from a single-point
++bound. Three orders of magnitude, on hardware you already have.
+ 
+-**Interpretation.** This test is used for its *negative* result. A slope near
+-−20 dB/decade would indicate jitter limitation. **A flat slope is positive
+-evidence that the board is not jitter-limited in band**, which is the conclusion
+-the budget currently asserts from arithmetic alone.
++The underlying effect is tiny: at 5 ps the jitter term shifts SNR by 0.002 dB
++across the whole band. The fit works because it uses every point against a
++quadratic in f, not because any single point resolves it.
+ 
+-**What this test cannot do.** It cannot measure aperture jitter. The AN-501
+-two-point subtraction method requires a high input frequency — tens of MHz on a
+-100 MSPS part — to lift the jitter term clear of the converter's own floor. In
+-the audio band the only obtainable bound is roughly 25 ns, which establishes
+-nothing. That is why `ConverterSpec.aperture_jitter_s` is tagged `BOUNDED` rather
+-than left pending a measurement, and why **no E0 test schedules an aperture-jitter
+-measurement.** Closing that field would require an RF signal generator bought for
+-a number with 74 dB of headroom against it.
++**What this test cannot do.** It bounds *total* jitter. Separating the clock from
++the intrinsic aperture term needs either phase-noise instrumentation at the clock
++pin or a substitutable clock, and this board exposes neither.
++`ConverterSpec.aperture_jitter_s` stays `BOUNDED`, and **no E0 test schedules an
++aperture-jitter measurement.** The split would inform no decision here: clock and
++converter are one purchasing unit.
++
++If r² is poor, do not blame jitter. Check analog bandwidth, source noise,
++amplitude drift, distortion, and non-coherent leakage first.
+ 
+ ★ = the tests that produce the answers §6 of the BOM claims this purchase buys.
+ 
+@@ -262,7 +356,8 @@ e0_adc_characterization.json
+   full_scale        T6 measured max input, both paths
+   loopback          T7 mean offset, stddev, within-session stability
+   amplitude_scaling T8 floor dBFS vs level dBFS; additive or multiplicative
+-  frequency_slope   T9 SNR vs f_in, fitted dB/decade, jitter-limited yes/no
++  jitter_regression T9 slope, intercept r0, fitted t_j, r_squared
++  aperture_delay    inter-channel sample offset, samples
+   provenance        date, operator, ambient T and RH, source equipment
+ ```
+ 
+@@ -278,8 +373,33 @@ the point of the exercise.
+ - Not a selection ruling on ADC-001. A board that characterizes badly is evidence
+   for reopening the choice, and T4 in particular could justify revisiting B-015
+   against the successor.
+-- **Aperture jitter.** Deliberately out of scope — see T9. The field stays
+-  `BOUNDED` and no test is scheduled for it.
++- **Aperture jitter (intrinsic).** Deliberately out of scope — see T9. The field
++  stays `BOUNDED` and no test is scheduled for it.
++- **Clock-versus-aperture separation.** Needs phase-noise instrumentation at the
++  clock pin or a substitutable clock. The board exposes neither, and the split
++  would inform no decision: clock and converter are one purchasing unit.
++
++## Reproducibility block — record with every result
++
++Board and revision · f_s · exact coherent f_in with (M, N) · input amplitude in
++dBFS · PGA setting · balanced or unbalanced path · record length · window ·
++excluded bins and harmonic convention · SNR integration bandwidth · ambient
++temperature · supply arrangement · whether the figure is loopback (two
++converters) or shorted-input (one).
++
++A result without this block is not reproducible and is not evidence.
++
++## Aperture delay — a separate measurement
++
++Aperture **delay** is the fixed mean offset from clock edge to sample instant;
++aperture **jitter** is its sample-to-sample variation. Different quantities,
++different tests — delay is measured by timing, not by SNR degradation.
++
++It matters here because a fixed time offset is linear phase, and in the Phase 2B
++two-channel transfer function it cancels **only if ch0 and ch1 share it.** Verify
++whether the two channels sample simultaneously or at a fixed offset, and whether
++that offset is documented. This sits alongside inter-channel filter phase
++matching as something that corrupts H(f) without touching any noise floor.
+ 
+ ## Stopping point
+ 
+diff --git a/acquisition_budget.py b/acquisition_budget.py
+index 3d6f94e..d9529c8 100644
+--- a/acquisition_budget.py
++++ b/acquisition_budget.py
+@@ -66,6 +66,12 @@ __all__ = [
+     "jitter_snr_db",
+     "jitter_budget_s",
+     "jitter_bound_from_snr",
++    "jitter_allowance_s",
++    "InfeasibleTarget",
++    "fit_jitter_from_sweep",
++    "phase_noise_to_jitter",
++    "threshold_noise_jitter_s",
++    "coherent_bin",
+     "quantization_snr_db",
+     "combine_snr_db",
+     "TTP_ANALYZER_PROFILE",
+@@ -149,7 +155,14 @@ def jitter_snr_db(f_in_hz: float, tj_rms_s: float) -> float:
+ 
+ 
+ def jitter_budget_s(f_in_hz: float, target_snr_db: float) -> float:
+-    """Maximum total RMS jitter that still supports target_snr_db at f_in_hz."""
++    """
++    Jitter-ONLY allowance: the total RMS jitter whose jitter-limited SNR equals
++    target_snr_db at f_in_hz.
++
++    DEPRECATED FOR ALLOCATION. Assumes a noiseless converter. Use
++    jitter_allowance_s(), which removes the converter's own noise power first.
++    Retained because jitter_bound_from_snr() legitimately wants this form.
++    """
+     if f_in_hz <= 0:
+         raise ValueError("f_in_hz must be positive")
+     return (10.0 ** (-target_snr_db / 20.0)) / (2.0 * math.pi * f_in_hz)
+@@ -173,6 +186,201 @@ def jitter_bound_from_snr(f_in_hz: float, observed_snr_db: float) -> float:
+     return jitter_budget_s(f_in_hz, observed_snr_db)
+ 
+ 
++class InfeasibleTarget(ValueError):
++    """Raised when converter noise alone already misses the SNR target."""
++
++
++def jitter_allowance_s(
++    f_in_hz: float,
++    target_snr_db: float,
++    converter_snr_db: float,
++    aperture_jitter_s: float = 0.0,
++    margin: float = 1.0,
++) -> dict[str, float]:
++    """
++    Total and external jitter allowance for an SNR target, with the converter's
++    own noise power removed first.
++
++        feasibility:  SNR_converter > SNR_target,  else no clock reaches it
++        r_j       = 10^(-SNR_target/10) - 10^(-SNR_converter/10)
++        t_j,max   = sqrt(r_j) / (2 pi f_in)
++        t_ext,max = sqrt(t_j,max^2 - t_ap^2)
++
++    Supersedes jitter_budget_s() for allocation. That form assumes ALL noise is
++    jitter noise, which inflates the allowance -- negligibly far from the
++    converter's capability, severely near it (2.2x at 1 dB away, and a finite
++    answer where the honest answer is "impossible").
++
++    `margin` scales the external allowance for design headroom; 0.7 is common
++    when component figures are typical rather than guaranteed.
++    """
++    if converter_snr_db <= target_snr_db:
++        raise InfeasibleTarget(
++            f"converter SNR {converter_snr_db:.2f} dB does not exceed target "
++            f"{target_snr_db:.2f} dB; no clock improvement reaches it"
++        )
++    r_j = 10.0 ** (-target_snr_db / 10.0) - 10.0 ** (-converter_snr_db / 10.0)
++    t_total = math.sqrt(r_j) / (2.0 * math.pi * f_in_hz)
++    inner = t_total * t_total - aperture_jitter_s * aperture_jitter_s
++    if inner <= 0.0:
++        raise InfeasibleTarget(
++            "intrinsic aperture jitter alone prevents the target; no external "
++            "clock allowance exists"
++        )
++    t_ext = math.sqrt(inner)
++    return {
++        "t_total_max_s": t_total,
++        "t_ext_max_s": t_ext,
++        "t_ext_design_s": t_ext * margin,
++        "margin": margin,
++    }
++
++
++def fit_jitter_from_sweep(
++    f_in_hz: list[float], snr_db: list[float]
++) -> dict[str, float]:
++    """
++    Total jitter from a multi-frequency SNR sweep, by least squares on
++
++        r(f) = r0 + (2 pi t_j)^2 f^2       with r = 10^(-SNR/10)
++
++    Slope gives t_j = sqrt(slope) / (2 pi); intercept r0 is the frequency-
++    independent baseline. Strictly better than the two-point AN-501 subtraction:
++    the residual reports whether the loss actually has a jitter signature rather
++    than an analog-bandwidth or source-noise signature.
++
++    Critically for an audio-band instrument, the resulting BOUND is set by SNR
++    repeatability rather than by absolute SNR. At 0.1 dB repeatability this
++    bounds total jitter near 36 ps -- against ~25 ns from a single-point bound.
++    Three orders of magnitude, converting the BOUNDED aperture tag from an
++    assertion into a measured negative result.
++
++    A poor r_squared means the jitter interpretation is not supported: check
++    analog bandwidth, source phase noise, amplitude drift, and non-coherent
++    leakage before believing t_j.
++    """
++    if len(f_in_hz) != len(snr_db) or len(f_in_hz) < 3:
++        raise ValueError("need at least 3 matched (f_in, SNR) pairs")
++    xs = [f * f for f in f_in_hz]
++    ys = [10.0 ** (-s / 10.0) for s in snr_db]
++    n = len(xs)
++    mx = sum(xs) / n
++    my = sum(ys) / n
++    sxx = sum((x - mx) ** 2 for x in xs)
++    if sxx == 0:
++        raise ValueError("all input frequencies identical; cannot fit")
++    sxy = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
++    slope = sxy / sxx
++    intercept = my - slope * mx
++    ss_tot = sum((y - my) ** 2 for y in ys)
++    ss_res = sum((y - (intercept + slope * x)) ** 2 for x, y in zip(xs, ys))
++    r2 = 1.0 - (ss_res / ss_tot) if ss_tot > 0 else float("nan")
++    t_j = math.sqrt(slope) / (2.0 * math.pi) if slope > 0 else 0.0
++    return {
++        "slope": slope,
++        "intercept_r0": intercept,
++        "baseline_snr_db": (
++            -10.0 * math.log10(intercept) if intercept > 0 else float("nan")
++        ),
++        "t_j_total_s": t_j,
++        "r_squared": r2,
++        "slope_positive": slope > 0,
++    }
++
++
++def phase_noise_to_jitter(
++    points_dbc_per_hz: list[tuple[float, float]],
++    f_low_hz: float,
++    f_high_hz: float,
++    carrier_hz: float,
++) -> dict[str, float]:
++    """
++    RMS jitter from tabulated SSB phase noise L(f).
++
++        phi^2 = 2 * integral[f_L -> f_H] 10^(L(f)/10) df
++        t_j   = phi / (2 pi f_carrier)
++
++    points are (offset_hz, L_dbc_per_hz), integrated piecewise in LINEAR units.
++    dBc/Hz values are never averaged or summed directly.
++
++    f_low, f_high and carrier are MANDATORY, not defaults. A jitter figure
++    without its integration limits and carrier is not a quantity and cannot
++    enter a budget -- the standing objection to any vendor claim of a
++    "low-jitter clock" carrying no numbers. Integration commonly runs to at
++    least f_s, sometimes 2*f_s, when nothing filters between oscillator and ADC.
++
++    The integration band must match the SNR integration band it will be
++    subtracted from.
++    """
++    pts = sorted((f, L) for f, L in points_dbc_per_hz if f_low_hz <= f <= f_high_hz)
++    if len(pts) < 2:
++        raise ValueError("need at least 2 phase-noise points inside the band")
++    area = 0.0
++    for (f0, l0), (f1, l1) in zip(pts, pts[1:]):
++        p0 = 10.0 ** (l0 / 10.0)
++        p1 = 10.0 ** (l1 / 10.0)
++        area += 0.5 * (p0 + p1) * (f1 - f0)  # linear-units trapezoid
++    phi_rms = math.sqrt(2.0 * area)
++    return {
++        "phi_rms_rad": phi_rms,
++        "t_j_s": phi_rms / (2.0 * math.pi * carrier_hz),
++        "f_low_hz": f_low_hz,
++        "f_high_hz": f_high_hz,
++        "carrier_hz": carrier_hz,
++    }
++
++
++def threshold_noise_jitter_s(v_noise_rms: float, slew_v_per_s: float) -> float:
++    """
++    Timing jitter induced by voltage noise at a clock receiver's threshold:
++
++        t_j = v_n,rms / (dV/dt)|threshold
++
++    Noise becomes timing error only while the edge crosses the threshold, so a
++    steeper edge shortens the exposure. The relevant slew is at the ADC clock
++    pin, not the oscillator's datasheet rise time. For a sine clock,
++    S_zero-crossing = 2*pi*f_s*V_p.
++
++    Does NOT reduce intrinsic aperture jitter -- this is a delivered-clock term.
++    """
++    if slew_v_per_s <= 0:
++        raise ValueError("slew rate must be positive")
++    return v_noise_rms / slew_v_per_s
++
++
++def coherent_bin(
++    target_hz: float, sample_rate_hz: float, n_samples: int
++) -> dict[str, float]:
++    """
++    Nearest coherent tone to a target, per f_in = M*f_s/N with gcd(M,N)=1.
++
++    For N = 2^m this reduces to M odd, which also exercises converter codes more
++    uniformly than an even M. Returns the ACTUAL frequency -- every
++    f_in-dependent relation takes this value, never the nominal target.
++
++    Coherence requires source and sampling clock to share a reference. On a
++    board whose DAC and ADC run from one oscillator this holds in loopback with
++    no external reference. It does NOT hold when an independent source drives
++    the input.
++    """
++    if n_samples <= 0 or sample_rate_hz <= 0:
++        raise ValueError("sample_rate_hz and n_samples must be positive")
++    bin_hz = sample_rate_hz / n_samples
++    m = int(round(target_hz / bin_hz))
++    if m % 2 == 0:
++        m += 1
++    m = max(m, 1)
++    return {
++        "M": m,
++        "N": n_samples,
++        "bin_width_hz": bin_hz,
++        "actual_f_in_hz": m * bin_hz,
++        "target_hz": target_hz,
++        "record_length_s": n_samples / sample_rate_hz,
++        "m_is_odd": m % 2 == 1,
++    }
++
++
+ def quantization_snr_db(bits: int) -> float:
+     """Ideal quantization SNR for a full-scale sine: 6.02 N + 1.76 dB."""
+     return 6.02 * bits + 1.76
+@@ -209,6 +417,12 @@ class ConverterSpec:
+     ac_coupled: bool = True
+     hp_corner_hz: Quantity | None = None   # None == unmeasured, which is itself a finding
+     anti_alias_filter: bool = False
++    aperture_delay_s: Quantity | None = None  # FIXED mean offset from clock edge to
++                                           # sample instant -- a DIFFERENT quantity
++                                           # from aperture jitter, measured by a
++                                           # timing test, not by SNR. Cancels from a
++                                           # two-channel transfer function only if
++                                           # both channels share it. Verify.
+     sfdr_db: Quantity | None = None        # None == unmeasured. Periodic contamination
+                                            # (switching supplies, phantom boost) appears
+                                            # as discrete spurs, not as a raised floor,
+@@ -258,8 +472,12 @@ class CaptureSpec:
+ 
+     record_length_s: Quantity
+     sample_rate_hz: Quantity
+-    window: str = "hann"
++    window: str = "rectangular"   # Under genuine coherence use NO window. A
++                                  # non-rectangular window spreads main-lobe
++                                  # energy across bins for no benefit. Name a
++                                  # real window only for non-coherent captures.
+     peak_interpolation: bool = True
++    coherent: bool = True
+ 
+     def n_samples(self) -> int:
+         return int(round(float(self.record_length_s) * float(self.sample_rate_hz)))
+@@ -316,6 +534,9 @@ class NoiseBudget:
+     jitter_headroom_db: float
+     jitter_bound_s: float
+     sfdr_db: float | None
++    operating_level_dbfs: float
++    terms_db_at_level: dict[str, float]
++    combined_snr_db_at_level: float
+     notes: list[str] = field(default_factory=list)
+ 
+     def as_dict(self) -> dict[str, Any]:
+@@ -329,6 +550,9 @@ class NoiseBudget:
+             "jitter_headroom_db": round(self.jitter_headroom_db, 2),
+             "jitter_bound_s": self.jitter_bound_s,
+             "sfdr_db": self.sfdr_db,
++            "operating_level_dbfs": self.operating_level_dbfs,
++            "terms_db_at_level": self.terms_db_at_level,
++            "combined_snr_db_at_level": self.combined_snr_db_at_level,
+             "notes": self.notes,
+         }
+ 
+@@ -338,6 +562,7 @@ def noise_budget(
+     clock: ClockSpec,
+     front_end: FrontEndSpec | None,
+     f_in_hz: float,
++    operating_level_dbfs: float = 0.0,
+ ) -> NoiseBudget:
+     """
+     Stage 3. Four independent terms, combined on noise power, with the dominant
+@@ -358,6 +583,15 @@ def noise_budget(
+ 
+     combined = combine_snr_db(*terms.values())
+ 
++    # Operating-level backoff. Jitter error voltage is 2*pi*f*A*t_j, proportional
++    # to signal amplitude, so the jitter RATIO is preserved under backoff.
++    # Quantization, converter thermal, and front-end noise are additive and
++    # fixed, so their ratios degrade one-for-one. Reporting only the full-scale
++    # figure states a best case that neither TTP channel occupies.
++    b = abs(operating_level_dbfs)
++    terms_at_level = {k: (v if k == "jitter" else v - b) for k, v in terms.items()}
++    combined_at_level = combine_snr_db(*terms_at_level.values())
++
+     powers = {k: 10.0 ** (-v / 10.0) for k, v in terms.items()}
+     total_power = sum(powers.values())
+     limiter = max(powers, key=powers.get)
+@@ -379,9 +613,11 @@ def noise_budget(
+         notes.append(
+             f"Aperture jitter is NOT MEASURABLE in this band. The ADI AN-501 "
+             f"subtraction method requires a high input frequency to separate "
+-            f"the jitter term; the only in-band bound is {bound * 1e12:.4g} ps, "
+-            f"which establishes nothing. Do not schedule a test for it -- tag "
+-            f"the field BOUNDED and cite this headroom as the justification."
++            f"the jitter term, and the single-point in-band bound is "
++            f"{bound * 1e12:.4g} ps, which establishes nothing. A multi-frequency "
++            f"fit (fit_jitter_from_sweep) bounds TOTAL jitter far tighter -- near "
++            f"36 ps at 0.1 dB SNR repeatability -- and that is the measurement to "
++            f"run. Intrinsic aperture jitter stays BOUNDED and untested."
+         )
+     if not clock.is_gaussian_model_valid():
+         notes.append(
+@@ -391,17 +627,31 @@ def noise_budget(
+         )
+     if not converter.anti_alias_filter:
+         notes.append(
+-            "Converter has no input anti-alias filter. Out-of-band energy folds "
+-            "into the analysis band and is unrecoverable. With no filter there "
+-            "is also no bound on input slew rate, which is the mechanism by "
+-            "which jitter could matter here despite the headroom above. "
+-            "These are separate error mechanisms; do not merge them."
++            "Converter has no ANALOG input anti-alias filter. Three distinct "
++            "mechanisms motivate a front-end filter -- aliasing, RF "
++            "demodulation, and slew-rate bounding for the jitter term -- with "
++            "different magnitudes and mitigations. Do not merge them."
++        )
++        notes.append(
++            "Sigma-delta aliasing is NOT broadband. The decimation filter "
++            "removes f_s/2 to near the modulator rate; folding is confined to "
++            "narrow bands around n*f_modulator. A single input RC at 50-100 kHz "
++            "gives 30-36 dB there for under 0.7 dB in-band droop. Verify the "
++            "oversampling ratio from the converter datasheet before setting the "
++            "corner -- and test AT those bands, not merely above f_s/2."
+         )
+     if converter.ac_coupled and converter.hp_corner_hz is None:
+         notes.append(
+             "Converter is AC-coupled and the high-pass corner is unmeasured. "
+             "Phase error at the lowest modes is unbounded until it is."
+         )
++    if abs(operating_level_dbfs) > 3.0:
++        notes.append(
++            f"Operating {abs(operating_level_dbfs):.1f} dB below full scale. "
++            f"Additive terms lose that much; the jitter term does not. "
++            f"Signal-referred SNR is {combined_at_level:.2f} dB, not "
++            f"{combined:.2f} dB. Quote the former."
++        )
+     if converter.sfdr_db is None:
+         notes.append(
+             "SFDR is unmeasured. This budget models BROADBAND noise only and "
+@@ -421,6 +671,9 @@ def noise_budget(
+         jitter_headroom_db=headroom,
+         jitter_bound_s=bound,
+         sfdr_db=(float(converter.sfdr_db) if converter.sfdr_db is not None else None),
++        operating_level_dbfs=operating_level_dbfs,
++        terms_db_at_level={k: round(v, 2) for k, v in terms_at_level.items()},
++        combined_snr_db_at_level=round(combined_at_level, 2),
+         notes=notes,
+     )
+ 
+@@ -715,6 +968,8 @@ class AcquisitionBudget:
+ 
+     schema_version: str = "acquisition_budget_v1"
+ 
++    operating_level_dbfs: float = 0.0
++
+     def compute(self, f_in_hz: float | None = None) -> "AcquisitionBudget":
+         f_in = f_in_hz
+         if f_in is None and self.specimen is not None:
+@@ -722,11 +977,15 @@ class AcquisitionBudget:
+         if f_in is None:
+             raise ValueError("f_in_hz required when no specimen is supplied")
+ 
+-        self.noise = noise_budget(self.converter, self.clock, self.front_end, f_in)
++        self.noise = noise_budget(
++            self.converter, self.clock, self.front_end, f_in,
++            operating_level_dbfs=self.operating_level_dbfs,
++        )
+ 
+         if self.capture is not None and self.specimen is not None:
+             self.frequency = frequency_budget(
+-                self.clock, self.capture, self.specimen, self.noise.combined_snb_db
++                self.clock, self.capture, self.specimen,
++                self.noise.combined_snr_db_at_level,
+             )
+             self.modulus = modulus_budget(self.specimen, self.frequency)
+ 
+@@ -778,6 +1037,8 @@ class AcquisitionBudget:
+             reasons.append("AC-coupling corner unmeasured")
+         if self.converter.sfdr_db is None:
+             reasons.append("SFDR unmeasured (broadband budget is blind to spurs)")
++        if self.converter.aperture_delay_s is None:
++            reasons.append("aperture delay unmeasured (inter-channel offset unverified)")
+         return (len(reasons) == 0, reasons)
+ 
+     def emit(self) -> dict[str, Any]:
+@@ -855,6 +1116,7 @@ def TTP_ANALYZER_PROFILE() -> AcquisitionBudget:
+         ac_coupled=True,
+         hp_corner_hz=None,                 # E0/T3 measures this
+         anti_alias_filter=False,           # B-014
++        aperture_delay_s=None,             # inter-channel offset unverified
+         sfdr_db=None,                      # E0/T1 measures this
+     )
+     clock = ClockSpec(
+@@ -900,6 +1162,8 @@ def TTP_ANALYZER_PROFILE() -> AcquisitionBudget:
+         profile="ttp_analyzer_phase2b",
+         converter=converter, clock=clock, front_end=front_end,
+         capture=capture, sweep=sweep, specimen=specimen,
++        # ch1 mic, MID gain, 85 dB SPL -> 1.37 Vrms of 2.1 Vrms full scale.
++        operating_level_dbfs=-3.7,
+     )
+ 
+ 
+@@ -924,7 +1188,14 @@ def SMART_GUITAR_PROFILE(pi_is_i2s_master: bool = False) -> AcquisitionBudget:
+         clock = ClockSpec(
+             name="Pi 5 fractional-N I2S",
+             rms_jitter_s=Quantity(1e-9, "s", Provenance.PROPOSED,
+-                                  "fractional-N divider, order-of-magnitude"),
++                                  "fractional-N divider, order-of-magnitude. "
++                                  "Dominated by SYNTHESIS, not edge quality: "
++                                  "threshold noise on a 3.3 V GPIO edge gives "
++                                  "<= ~61 ps even at 10 ns rise and 20 mV noise. "
++                                  "Buffering or termination cannot rescue this "
++                                  "topology; only codec-master can, and under "
++                                  "codec-master the sampling clock never crosses "
++                                  "the header"),
+             accuracy_ppm=Quantity(50.0, "ppm", Provenance.ASSUMED, "SoC oscillator"),
+             topology="host_fractional_n",
+             spurious=True,
+@@ -980,6 +1251,12 @@ def format_report(b: AcquisitionBudget) -> str:
+         add(f"  in-band jitter bound  {n.jitter_bound_s * 1e12:>8.4g} ps rms (loose)")
+         sf = f"{n.sfdr_db:>8.2f} dB" if n.sfdr_db is not None else "  UNMEASURED"
+         add(f"  SFDR                  {sf}")
++        if abs(n.operating_level_dbfs) > 0.01:
++            add("")
++            add(f"  at {n.operating_level_dbfs:+.1f} dBFS operating level:")
++            for k, v in sorted(n.terms_db_at_level.items(), key=lambda kv: kv[1]):
++                add(f"    {k:<18} {v:>8.2f} dB")
++            add(f"    {'combined':<18} {n.combined_snr_db_at_level:>8.2f} dB")
+         add("")
+         for note in n.notes:
+             add(f"  ! {note}")

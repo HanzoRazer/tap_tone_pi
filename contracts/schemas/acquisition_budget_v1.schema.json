@@ -1,0 +1,1353 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "acquisition_budget_v1.schema.json",
+  "title": "Acquisition Budget V1",
+  "description": "A measurement session's acquisition-chain budget: what limits the measurement, what uncertainty follows, and how large a physical difference the instrument can distinguish. This contract is capable of representing evidence-grade acquisition budgets; an individual instance earns or fails evidence grade on its own inputs and computation conditions. The contract itself is neither validated nor evidence-grade, and publication of the schema asserts nothing about any instrument. Values on this path are unrounded: rounding belongs to report rendering, and a lossy record cannot be recomputed from.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile",
+    "inputs",
+    "results",
+    "evidence"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "acquisition_budget_v1"
+    },
+    "profile": {
+      "type": "string",
+      "minLength": 1
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "What the session was configured with. Inputs carry provenance; results do not, because results are derived by definition.",
+      "properties": {
+        "converter": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Stage 3. hp_corner_hz null means unmeasured, which is a finding rather than a synonym for zero.",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "bits": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "full_scale_vrms": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                },
+                "thermal_snr_db": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                },
+                "aperture_jitter_s": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                },
+                "sample_rate_hz": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                },
+                "ac_coupled": {
+                  "type": "boolean"
+                },
+                "hp_corner_hz": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                      "properties": {
+                        "value": {
+                          "type": "number"
+                        },
+                        "unit": {
+                          "type": "string"
+                        },
+                        "provenance": {
+                          "enum": [
+                            "proposed",
+                            "assumed",
+                            "datasheet",
+                            "derived",
+                            "measured"
+                          ]
+                        },
+                        "source": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "value",
+                        "unit",
+                        "provenance"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "anti_alias_filter": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "name",
+                "bits",
+                "full_scale_vrms",
+                "thermal_snr_db",
+                "aperture_jitter_s",
+                "sample_rate_hz"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "clock": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Stage 5. Jitter and accuracy are different problems and are never merged.",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "rms_jitter_s": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                },
+                "accuracy_ppm": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                },
+                "topology": {
+                  "enum": [
+                    "local_xo",
+                    "host_fractional_n",
+                    "cleanup_pll"
+                  ]
+                },
+                "spurious": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "name",
+                "rms_jitter_s",
+                "accuracy_ppm"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "front_end": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Stage 2.",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "input_referred_noise_v_per_rthz": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                },
+                "gain_db": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                },
+                "bandwidth_hz": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                }
+              },
+              "required": [
+                "name",
+                "input_referred_noise_v_per_rthz",
+                "gain_db",
+                "bandwidth_hz"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "capture": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Stage 6.",
+              "properties": {
+                "record_length_s": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                },
+                "sample_rate_hz": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                },
+                "window": {
+                  "type": "string"
+                },
+                "peak_interpolation": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "record_length_s",
+                "sample_rate_hz"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sweep": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Stage 1. Q is the binding parameter and its provenance travels into the limits.",
+              "properties": {
+                "f_start_hz": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                },
+                "f_stop_hz": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                },
+                "expected_q": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                },
+                "settle_time_constants": {
+                  "type": "number"
+                },
+                "sweep_safety_factor": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "f_start_hz",
+                "f_stop_hz",
+                "expected_q"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "specimen": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Stage 0. physical_repeatability_hz null means unmeasured; there is deliberately no default.",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "mode_frequency_hz": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                },
+                "length_m": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                },
+                "length_uncertainty_m": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                },
+                "thickness_m": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                },
+                "thickness_uncertainty_m": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                },
+                "density_kg_m3": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                },
+                "density_uncertainty_kg_m3": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "enum": [
+                        "proposed",
+                        "assumed",
+                        "datasheet",
+                        "derived",
+                        "measured"
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "unit",
+                    "provenance"
+                  ]
+                },
+                "physical_repeatability_hz": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                      "properties": {
+                        "value": {
+                          "type": "number"
+                        },
+                        "unit": {
+                          "type": "string"
+                        },
+                        "provenance": {
+                          "enum": [
+                            "proposed",
+                            "assumed",
+                            "datasheet",
+                            "derived",
+                            "measured"
+                          ]
+                        },
+                        "source": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "value",
+                        "unit",
+                        "provenance"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "name",
+                "mode_frequency_hz",
+                "length_m",
+                "length_uncertainty_m",
+                "thickness_m",
+                "thickness_uncertainty_m",
+                "density_kg_m3",
+                "density_uncertainty_kg_m3"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "converter",
+        "clock"
+      ]
+    },
+    "results": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Computed sections. Absent sections are null; a section that was requested and could not be computed is an unavailable object.",
+      "properties": {
+        "noise": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Stage 3. The named limiter is what makes the figure actionable.",
+              "properties": {
+                "f_in_hz": {
+                  "type": "number"
+                },
+                "terms_db": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "number"
+                  }
+                },
+                "combined_snr_db": {
+                  "type": "number"
+                },
+                "limiter": {
+                  "type": "string"
+                },
+                "limiter_share": {
+                  "type": "number"
+                },
+                "total_jitter_s": {
+                  "type": "number"
+                },
+                "jitter_headroom_db": {
+                  "type": "number"
+                },
+                "notes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "f_in_hz",
+                "terms_db",
+                "combined_snr_db",
+                "limiter",
+                "limiter_share",
+                "total_jitter_s",
+                "jitter_headroom_db"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "frequency": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Stage 5 + 7.",
+              "properties": {
+                "mode_frequency_hz": {
+                  "type": "number"
+                },
+                "clock_error_hz": {
+                  "type": "number"
+                },
+                "bin_width_hz": {
+                  "type": "number"
+                },
+                "estimator_floor_hz": {
+                  "type": "number"
+                },
+                "estimator_floor_status": {
+                  "enum": [
+                    "established",
+                    "candidate_source_formula"
+                  ],
+                  "description": "Authority status of the expression, not of the number. The candidate is carried from the acquisition source for parity and is deliberately not named as a Cramer-Rao bound while its authority and SNR convention are unresolved."
+                },
+                "physical_repeatability_hz": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "combined_hz": {
+                  "type": "number"
+                },
+                "is_electronic_lower_bound": {
+                  "type": "boolean"
+                },
+                "dominant": {
+                  "type": "string"
+                },
+                "combined_contributors": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "description": "One value actually supplied to the frequency combination.",
+                    "properties": {
+                      "role": {
+                        "type": "string"
+                      },
+                      "source_quantity": {
+                        "type": "string"
+                      },
+                      "value_hz": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "role",
+                      "source_quantity",
+                      "value_hz"
+                    ]
+                  },
+                  "description": "Exactly what was supplied to the combination, in order, duplicates kept. combined_hz is the root-sum-square of these and of nothing else; a reportable quantity absent from this list did not contribute. Duplicate entries are legal: a known composition defect is represented here rather than repaired, and the contract must be able to serialize that truthfully."
+                },
+                "notes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "mode_frequency_hz",
+                "clock_error_hz",
+                "bin_width_hz",
+                "estimator_floor_hz",
+                "estimator_floor_status",
+                "combined_hz",
+                "dominant",
+                "combined_contributors"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "modulus": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "A computed modulus budget.",
+              "properties": {
+                "availability": {
+                  "const": "available"
+                },
+                "relative_uncertainty": {
+                  "type": "number"
+                },
+                "relative_uncertainty_pct": {
+                  "type": "number"
+                },
+                "contributions": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "number"
+                  }
+                },
+                "dominant": {
+                  "type": "string"
+                },
+                "smallest_resolvable_delta_pct": {
+                  "type": "number"
+                },
+                "component_authority": {
+                  "type": "string",
+                  "description": "The canonical authority that produced the components and their sensitivity coefficients. This module does not implement the propagation."
+                },
+                "aggregation": {
+                  "type": "string",
+                  "description": "How the combined figure was produced. A value other than 'canonical' means the canonical aggregate was bypassed and the reason is disclosed as an evidence condition."
+                },
+                "notes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "availability",
+                "relative_uncertainty",
+                "dominant",
+                "smallest_resolvable_delta_pct",
+                "component_authority",
+                "aggregation"
+              ]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "A section that was requested and could not be computed. Carries no numeric field: there is nothing here to mistake for a result, and nothing was fabricated.",
+              "properties": {
+                "availability": {
+                  "const": "unavailable"
+                },
+                "reason_code": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "availability",
+                "reason_code",
+                "reason"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Tagged on 'availability'. An unavailable section is a first-class outcome, never null, empty, zero or error-shaped."
+        },
+        "sweep_limits": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Stage 1. Advisory: these do not drive the excitation system.",
+              "properties": {
+                "at_frequency_hz": {
+                  "type": "number"
+                },
+                "assumed_q": {
+                  "type": "number"
+                },
+                "q_provenance": {
+                  "enum": [
+                    "proposed",
+                    "assumed",
+                    "datasheet",
+                    "derived",
+                    "measured"
+                  ]
+                },
+                "is_provisional": {
+                  "type": "boolean"
+                },
+                "time_constant_s": {
+                  "type": "number"
+                },
+                "min_dwell_per_step_s": {
+                  "type": "number"
+                },
+                "half_power_bandwidth_hz": {
+                  "type": "number"
+                },
+                "max_sweep_rate_hz_per_s": {
+                  "type": "number"
+                },
+                "min_total_sweep_time_s": {
+                  "type": "number"
+                },
+                "notes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "at_frequency_hz",
+                "assumed_q",
+                "q_provenance",
+                "time_constant_s",
+                "min_dwell_per_step_s",
+                "half_power_bandwidth_hz",
+                "max_sweep_rate_hz_per_s",
+                "min_total_sweep_time_s"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "self_test": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Boot-time threshold derived from the design budget.",
+              "properties": {
+                "test": {
+                  "type": "string"
+                },
+                "expected_noise_floor_dbfs": {
+                  "type": "number"
+                },
+                "expected_noise_floor_provenance": {
+                  "const": "derived"
+                },
+                "fail_above_dbfs": {
+                  "type": "number"
+                },
+                "fail_above_provenance": {
+                  "const": "derived"
+                },
+                "limiter_at_design": {
+                  "type": "string"
+                },
+                "policy": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "The margin is policy and carries its own provenance; a bare default becomes a constant by attrition.",
+                  "properties": {
+                    "allowed_margin_db": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "description": "A number that knows its unit and where it came from. Provenance is never collapsed to a generic source string; PROPOSED and ASSUMED are stated intentions, the rest have something behind them.",
+                      "properties": {
+                        "value": {
+                          "type": "number"
+                        },
+                        "unit": {
+                          "type": "string"
+                        },
+                        "provenance": {
+                          "enum": [
+                            "proposed",
+                            "assumed",
+                            "datasheet",
+                            "derived",
+                            "measured"
+                          ]
+                        },
+                        "source": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "value",
+                        "unit",
+                        "provenance"
+                      ]
+                    },
+                    "duration_s": {
+                      "type": "number"
+                    },
+                    "input_state": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "allowed_margin_db"
+                  ]
+                },
+                "action_on_fail": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "test",
+                "expected_noise_floor_dbfs",
+                "fail_above_dbfs",
+                "limiter_at_design",
+                "policy",
+                "action_on_fail"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "clock_topology": {
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "provenance_summary": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "description": "How many input quantities carry each provenance tag."
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The boolean and why. An empty reasons list with evidence_grade true is legal, as is true with advisory-only reasons.",
+      "properties": {
+        "evidence_grade": {
+          "type": "boolean",
+          "description": "True only when the inputs are evidence-qualified AND no blocking computation condition is present. Qualified inputs are necessary but not sufficient."
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "One condition bearing on evidence grade, on the input axis or the computation axis, with a backlog reference where one exists.",
+            "properties": {
+              "condition": {
+                "enum": [
+                  "proposed_inputs",
+                  "assumed_inputs",
+                  "physical_repeatability_unmeasured",
+                  "no_anti_alias_filter",
+                  "coupling_corner_unmeasured",
+                  "section_unavailable",
+                  "provisional_formula",
+                  "contributor_composition_defect",
+                  "aggregate_authority_workaround"
+                ]
+              },
+              "blocking": {
+                "type": "boolean",
+                "description": "Whether this condition prevents evidence grade. A non-blocking reason records something true about the computation - authority debt, typically - without claiming it invalidates the result."
+              },
+              "detail": {
+                "type": "string"
+              },
+              "reference": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "condition",
+              "blocking",
+              "detail"
+            ]
+          }
+        }
+      },
+      "required": [
+        "evidence_grade",
+        "reasons"
+      ]
+    }
+  }
+}

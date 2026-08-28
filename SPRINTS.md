@@ -118,8 +118,8 @@ docstring, **not** here.
   tests if one is chosen.
 
 ### B-005 — Reconcile overlapping UncertaintyBudget implementations
-- **Status:** open · **Priority:** P2 · **Area:** `tap_tone_pi/uncertainty`,
-  `tap_tone_pi/core`
+- **Status:** **closed** (2026-08-27, DO-107A) · **Priority:** P2 · **Area:**
+  `tap_tone_pi/uncertainty`, `tap_tone_pi/core`
 - **Origin:** DO-101A (empirical model contract foundation).
 - **Context:** the repository has two `UncertaintyBudget` types —
   `tap_tone_pi.uncertainty.budget.UncertaintyBudget` and
@@ -131,6 +131,26 @@ docstring, **not** here.
 - **Trigger:** before any empirical model (or DO-101B registry surface)
   embeds a canonical uncertainty budget object, or before a Dev Order needs
   a single shared budget type across packages.
+- **Closed by the DO-107A ownership decision (2026-08-27).** The trigger fired —
+  DO-107 needed a budget type shared across packages — and the decision it
+  required was made and recorded:
+
+  > `tap_tone_pi.uncertainty.budget` remains the **canonical** general
+  > uncertainty-budget and propagation authority. `AcquisitionBudgetV1` is a
+  > *domain result* describing acquisition-chain limitations and provenance; it
+  > composes with or delegates to canonical uncertainty authorities where they
+  > already exist and **does not supersede them**.
+  > `tap_tone_pi.core.statistics.UncertaintyBudget` is therefore not the general
+  > authority and should not acquire new consumers.
+
+  That is the "keep both with explicit roles" disposition this item's acceptance
+  allows, and it prevented the third implementation the item existed to prevent.
+  Full reasoning in
+  [the authority document](docs/ACQUISITION_BUDGET_AUTHORITY.md).
+- **Migration note for empirical contracts:** reference budget identity through
+  `tap_tone_pi.uncertainty.budget.UncertaintyBudget`. Corroborating evidence for
+  the choice: `tap_tone_pi/uncertainty/stiffness.py` already imports from
+  `.budget`, so the propagation path in use was already that one.
 - **Acceptance:** one recorded ownership decision (merge, adapt, or keep
   both with explicit roles), plus migration notes so empirical contracts can
   reference a stable budget identity without a third implementation.
@@ -386,7 +406,12 @@ evidence calls for them — not because a grant narrative would like to cite the
 
 ### B-019 — `schema-bump-guard` cannot run against the current registry
 
-- **Status:** open · **Priority:** P2 · **Area:** `scripts/ci_guard_schema_bump.py`
+- **Status:** **closed** (2026-08-27) · **Priority:** P2 · **Area:** `scripts/ci_guard_schema_bump.py`
+- **Closed by:** `1a9e35d`, landed on the DO-106 branch before PR #32 merged.
+  `load_registry()` now handles both the dict-keyed and list-of-objects registry
+  shapes and falls back from `file` to `path`. Verified against both paths: with
+  a schema added and the registry updated it reports `registry updated; OK`, and
+  with no schema touched it correctly skips.
 - **Origin:** DO-106, the first change since the guard was written to touch
   `contracts/schemas/**` and therefore the first to trigger it.
 - **Context:** `load_registry()` iterates `data.get("schemas", [])` as a list of
@@ -399,14 +424,106 @@ evidence calls for them — not because a grant narrative would like to cite the
 - **Demonstrated pre-existing:** calling `load_registry()` against unmodified
   `main`, with no DO-106 change present, raises the same `TypeError`. This is not
   a regression from the E0 schema; DO-106 is only the first PR to reach the code.
-- **Not fixed here.** Repairing CI machinery is outside a documentation and
-  contract integration order, and the guard's intended rule — a schema change
-  must be accompanied by a registry version bump — is worth restoring
-  deliberately rather than patched to make one PR green.
-- **Trigger:** whichever order owns CI hygiene, alongside B-012.
+- **Superseded note.** This entry originally read *"Not fixed here"*, which was
+  true when written and false by the time the PR merged: the repair landed in the
+  same merge. The stale text is corrected rather than deleted, because an entry
+  claiming a working gate is broken is the mirror image of the problem this item
+  was filed about — a future reader hitting a genuine `schema-bump-guard` failure
+  would grep the backlog, find it listed as known-broken, and dismiss a real one.
 - **Acceptance:** the guard reads the registry's actual shape and enforces the
-  version-bump rule, or it is removed with a reason. A guard that fails on every
-  schema change teaches contributors to ignore it, which is worse than no guard.
+  version-bump rule, or it is removed with a reason. **Met** by the first branch.
+  B-012 remains open and unrelated: `schema-registry-guard` is a separate
+  workflow that has been red since before any DO-104 work and is still unparsed.
+
+### B-020 — `session_diff.py` labels a heuristic as a Cramér–Rao lower bound
+
+- **Status:** open · **Priority:** P2 · **Area:** `tap_tone_pi/core/session_diff.py`
+- **Origin:** DO-107A grounding, from the line-by-line census of the
+  acquisition-budget source.
+- **Context:** `core/session_diff.py` computes `f / (2 × 10^(SNR_dB/20))` and
+  labels it *"the Cramer-Rao lower bound for frequency estimation"*, while the
+  comment immediately above calls it a rule of thumb. The DO-107 acquisition
+  source carries a separate estimator treatment based on record length and
+  sample count. **The defect is the authority and naming conflict**, not a ruling
+  that the production behavior is wrong — the session-diff expression may well be
+  fit for the purpose it serves.
+- **Deliberately not resolved by DO-107A.** The acquisition-side estimator term
+  is recorded there as a *candidate* rather than as canonical CRB, because an
+  unresolved factor-of-two and SNR-convention question exists in the newer
+  acquisition mathematics material. Promoting either expression now, merely
+  because one looks more textbook, would settle by appearance rather than by
+  derivation.
+- **Trigger:** the acquisition mathematics / source-verification reconciliation
+  order, or any change to live session-diff behavior.
+- **Acceptance:** terminology, mathematical authority, SNR convention (amplitude
+  vs power) and production behavior are reconciled, and whichever expression each
+  site uses is named for what it actually is. **No replacement equation is
+  prescribed here** — choosing one is the reconciliation work, not its premise.
+
+### B-021 — the acquisition source counts its estimator term twice
+
+- **Status:** open · **Priority:** P2 · **Area:** `tap_tone_pi/uncertainty/acquisition/frequency_budget.py`
+- **Origin:** DO-107A Commit 3 parity battery, against the archived 984-line
+  acquisition source.
+- **Context:** with peak interpolation enabled, the source assigns the estimator
+  floor to the `spectral_resolution` contributor *while also* carrying
+  `estimator_floor` as its own entry, so the estimator term enters the
+  root-sum-square twice. Raw FFT bin width is then not represented in the
+  combination at all.
+- **Reproduced deliberately.** DO-107A's job was to establish truthful parity
+  with the archived source before changing its mathematics, so the behavior is
+  carried faithfully and pinned by test. Repairing it inside DO-107A would have
+  made "parity with the archived source" a false claim.
+- **Magnitude:** invisible at TTP profile values — the estimator floor is around
+  1e-8 Hz against a 3.7e-3 Hz clock error — and close to a factor of √2 wherever
+  the estimator term dominates, such as a short record at low SNR. A test
+  demonstrates it at 0.05 s and 10 dB.
+- **Trigger:** the acquisition mathematics / source-reconciliation order.
+- **Acceptance:** reconcile the frequency-budget contributor model so an
+  estimator-floor contribution enters combined frequency uncertainty exactly
+  once, and preserve raw FFT/bin resolution as a separately reportable quantity.
+  Re-baseline parity, schemas and tests only under that successor work. Related:
+  **B-020**, which holds the naming and authority question for the estimator term
+  itself.
+
+### B-022 — the canonical MOE authority double-applies its sensitivity coefficients
+
+- **Status:** open · **Priority:** P1 · **Area:** `tap_tone_pi/uncertainty/stiffness.py`
+- **Origin:** DO-107A Commit 3, while delegating modulus propagation to the
+  canonical authority.
+- **Context:** `compute_tap_tone_moe_uncertainty()` and
+  `compute_deflection_moe_uncertainty()` both compute each component as
+  `E_GPa × rel × sens` — the sensitivity is already applied — and *then* pass
+  `sensitivity_coefficient=sens` to `add_component()`.
+  `UncertaintyComponent.contribution` is `(c_i × u_i)²`, so
+  `combined_standard_uncertainty` applies every coefficient a second time.
+- **Measured effect** on the TTP worked example: the canonical combined figure is
+  `0.0341033118` where the root-sum-square of its own component values is
+  `0.0176291288` — inflated by 1.93×. Length is squared to ×16 rather than ×4,
+  thickness and frequency to ×4 rather than ×2. **The inflation is not a constant
+  factor**: it depends on which term dominates, so no downstream scale correction
+  can be generally right.
+- **Scope:** both MOE functions. `uncertainty/amplitude.py` uses
+  `sensitivity_coefficient` correctly and `uncertainty/budget.py` itself is
+  right — the defect is confined to `stiffness.py`. Currently **latent**: no
+  production code calls either function, though both are publicly exported from
+  `tap_tone_pi.uncertainty`.
+- **Not remediated by DO-107A.** Correcting a public uncertainty API is not an
+  acquisition-integration order's job, and the absence of production callers
+  lowers urgency without widening DO-107's scope.
+- **Temporary workaround, which does not close this item.**
+  `acquisition/modulus.py` consumes the canonical *components* — which are
+  correct — and bypasses the canonical *aggregate*, marking its result
+  `aggregation = canonical_components_with_B022_aggregate_workaround` rather than
+  claiming ordinary delegation. A tripwire test asserts the canonical aggregate
+  still differs from the RSS of its own components; **when this item is fixed
+  that test fails on purpose**, and the workaround must then be deleted rather
+  than left as permanent parallel aggregation.
+- **Trigger:** before any consumer relies on a combined MOE uncertainty figure.
+- **Acceptance:** decide the correct representation of standard uncertainty
+  versus sensitivity coefficient in these functions, correct the double
+  application, update the existing tests, and check public consumers before
+  changing behavior. Then remove the acquisition workaround and its tripwire.
 
 ## Not backlog — recorded here only so they aren't mistaken for open items
 

@@ -21,3 +21,8 @@
 *.txt text eol=lf
 *.md text eol=lf
 Makefile text eol=lf
+
+# Archived source material is identified by SHA-256 and must round-trip
+# byte-for-byte. Line-ending normalization would change the bytes and silently
+# invalidate the digests recorded alongside these files.
+docs/reference/acquisition/** -text

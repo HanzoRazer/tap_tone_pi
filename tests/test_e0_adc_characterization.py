@@ -823,6 +823,16 @@ class TestStatusReconciliation:
         block = sprints.split("### B-015")[1].split("### ")[0]
         assert "not a closure" in block.lower()
 
+    def test_b019_is_closed_and_says_why(self, sprints):
+        # The entry originally read "Not fixed here", which was true when
+        # written and false by the time the PR merged. An entry claiming a
+        # working gate is broken is the mirror of the problem it was filed
+        # about: a real failure gets dismissed as the known-broken one.
+        block = sprints.split("### B-019")[1].split("### ")[0]
+        assert "**Status:** **closed**" in block
+        assert "1a9e35d" in block
+        assert "Not fixed here" not in block.replace('*"Not fixed here"*', "")
+
     def test_b018_records_the_missing_acquisition_tooling(self, sprints):
         block = sprints.split("### B-018")[1].split("### ")[0]
         assert "**Status:** open" in block
