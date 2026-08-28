@@ -32,6 +32,7 @@ from .budget import (
     EvidenceCondition,
     EvidenceReason,
 )
+from .contract import SCHEMA_FILE, SCHEMA_VERSION, validate_acquisition_budget
 from .frequency_budget import (
     AggregateContributor,
     FrequencyBudget,
@@ -128,4 +129,8 @@ __all__ = [
     "EvidenceAssessment",
     "EvidenceCondition",
     "EvidenceReason",
+    # contract
+    "SCHEMA_VERSION",
+    "SCHEMA_FILE",
+    "validate_acquisition_budget",
 ]

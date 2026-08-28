@@ -260,6 +260,14 @@
       "owner": "measurement-team",
       "path": "contracts/schemas/e0_adc_characterization.schema.json",
       "version": "1.0"
+    },
+    "acquisition_budget": {
+      "description": "Acquisition-chain uncertainty and limiting-factor budget for a measurement session (measurement-only; instances earn evidence grade, the contract does not confer it)",
+      "file": "acquisition_budget_v1.schema.json",
+      "owner": "measurement-team",
+      "path": "contracts/schemas/acquisition_budget_v1.schema.json",
+      "schema_version_const": "acquisition_budget_v1",
+      "version": "1.0"
     }
   },
   "title": "tap_tone_pi Schema Registry",
