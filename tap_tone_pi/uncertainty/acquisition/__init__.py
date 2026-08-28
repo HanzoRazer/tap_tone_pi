@@ -25,6 +25,13 @@ from .quantities import (
     ResultAvailability,
     as_quantity,
 )
+from .budget import (
+    ACQUISITION_BUDGET_SCHEMA_VERSION,
+    AcquisitionBudgetV1,
+    EvidenceAssessment,
+    EvidenceCondition,
+    EvidenceReason,
+)
 from .frequency_budget import (
     AggregateContributor,
     FrequencyBudget,
@@ -50,6 +57,12 @@ from .noise import (
     noise_budget,
     quantization_snr_db,
     rss,
+)
+from .self_test import (
+    DEFAULT_MARGIN_DB,
+    SelfTestThresholdPolicy,
+    SelfTestThresholds,
+    self_test_thresholds,
 )
 from .sweep import SweepLimits, compute_sweep_limits
 from .specs import (
@@ -104,4 +117,15 @@ __all__ = [
     "UnavailableSection",
     "modulus_budget",
     "modulus_budget_or_unavailable",
+    # self-test
+    "DEFAULT_MARGIN_DB",
+    "SelfTestThresholdPolicy",
+    "SelfTestThresholds",
+    "self_test_thresholds",
+    # composition
+    "ACQUISITION_BUDGET_SCHEMA_VERSION",
+    "AcquisitionBudgetV1",
+    "EvidenceAssessment",
+    "EvidenceCondition",
+    "EvidenceReason",
 ]
