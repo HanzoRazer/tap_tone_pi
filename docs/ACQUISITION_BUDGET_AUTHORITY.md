@@ -310,6 +310,55 @@ carrying an authority workaround. That is why `ModulusBudget` records
 `component_authority` and `aggregation`, and why `FrequencyBudget` records
 `estimator_floor_status`. Evidence grade must read both axes.
 
+## Evidence grade, and an amended acceptance criterion
+
+**Evidence-qualified inputs are necessary but not sufficient.** An otherwise
+fully qualified budget remains non-evidence-grade while a blocking computation
+condition is present.
+
+DO-107 §8.G.49 originally expected that all-qualified inputs would produce an
+evidence-grade budget. **Grounding discovered structural computation blockers the
+order did not know existed**, so that criterion is empirically invalid as
+written. It is replaced by two tests rather than by weakening the implementation:
+
+1. Qualified inputs with B-020 and B-021 present → `evidence_grade = false`,
+   carrying exactly those structural blockers.
+2. A blocker-cleared composition → `evidence_grade = true`, proving the grading
+   function is capable of returning true.
+
+The second is not decoration. Without it, *"true is unreachable because the
+scientific authorities are unresolved"* would be indistinguishable from *"true is
+unreachable because we implemented a permanently-false grading function."*
+
+### How each condition is classified, and why
+
+| Condition | Blocks | Reasoning |
+| --- | --- | --- |
+| Input provenance, repeatability, B-014, coupling corner | **yes** | The source's own evidence rules |
+| `section_unavailable` | **yes** | A budget missing a section it was asked for cannot claim a complete result |
+| **B-021** contributor composition | **yes** | The frequency aggregate knowingly draws the estimator candidate twice. Evidence grade is a statement about the *validity of the computation*, not about whether a known defect happens to be small for today's inputs |
+| **B-020** provisional formula | **yes** | The expression was deliberately not called a Cramér–Rao bound because its authority and convention are unresolved. Calling a budget containing it evidence-grade would contradict that decision. Its tiny numerical contribution does not change its epistemic status |
+| **B-022** aggregate workaround | **no — advisory** | Materially different. The acquisition result does **not** reproduce the bad canonical aggregate: it takes component construction and sensitivities from the canonical authority and performs a correct generic RSS over them, and parity independently confirms agreement with the source calculator. What is unresolved is that the repository's nominal canonical aggregate disagrees. That is **authority debt**, not a mathematical defect in the emitted number |
+
+Repairing B-022 will remove the advisory condition and let the adapter become
+genuinely canonical **without changing the acquisition value**. That is the test
+of the classification, and it is why B-022 sits on the other side of the line
+from B-020 and B-021.
+
+### The resulting state
+
+```
+perfect hypothetical instrument + current mathematics
+        → B-020 blocking, B-021 blocking, B-022 advisory
+        → evidence_grade = false
+
+qualified inputs + a composition with no blocking condition
+        → evidence_grade = true
+```
+
+**B-020 and B-021 are not remediated to unlock publication.** Their discovery is
+evidence produced by this order, not a failure of it.
+
 ## Frequency uncertainty — a four-way authority map
 
 The 984-line census of the acquisition source found a pre-existing conflict here,

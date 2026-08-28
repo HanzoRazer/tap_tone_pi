@@ -26,7 +26,7 @@ from typing import Any, Mapping
 from .frequency_budget import FrequencyBudget
 from .modulus import ModulusBudget, UnavailableSection, modulus_budget_or_unavailable
 from .noise import NoiseBudget, clock_topology_note, noise_budget
-from .quantities import FormulaStatus, Provenance, ResultAvailability
+from .quantities import Provenance, ResultAvailability
 from .self_test import SelfTestThresholdPolicy, SelfTestThresholds, self_test_thresholds
 from .specs import (
     CaptureSpec,
@@ -110,9 +110,15 @@ class EvidenceAssessment:
     """The boolean, and why.
 
     ``evidence_grade`` is true only when the inputs are evidence-qualified **and**
-    no unresolved computation condition invalidates the claimed result. A
-    non-blocking reason is still reported — it tells a reader something true
-    about the computation without pretending it settles the question.
+    no unresolved computation condition invalidates the claimed result.
+
+    **Evidence-qualified inputs are necessary but not sufficient.** An otherwise
+    fully qualified budget stays non-evidence-grade while a blocking computation
+    condition is present — which is the state the current mathematics is in.
+
+    A non-blocking reason is still reported. It records something true about the
+    computation — authority debt, typically — without pretending it invalidates
+    the emitted result.
     """
 
     evidence_grade: bool
@@ -157,9 +163,7 @@ class AcquisitionBudgetV1:
     self_test: SelfTestThresholds | None = None
     clock_topology: str = ""
 
-    schema_version: str = field(
-        default=ACQUISITION_BUDGET_SCHEMA_VERSION, init=False
-    )
+    schema_version: str = field(default=ACQUISITION_BUDGET_SCHEMA_VERSION, init=False)
 
     # -- computation --------------------------------------------------------
 
@@ -310,13 +314,23 @@ class AcquisitionBudgetV1:
                 reasons.append(
                     EvidenceReason(
                         EvidenceCondition.AGGREGATE_AUTHORITY_WORKAROUND,
-                        blocking=True,
+                        # Advisory, not blocking. This is authority debt rather
+                        # than a defect in the emitted result: the components and
+                        # their sensitivities come from the canonical authority,
+                        # the combination over them is a correct generic RSS, and
+                        # parity independently confirms agreement with the source
+                        # calculator. What is unresolved is that the repository's
+                        # nominal canonical aggregate disagrees, because it
+                        # double-applies its own coefficients. Repairing B-022
+                        # will remove this condition without changing the number.
+                        blocking=False,
                         detail=(
                             "the modulus aggregate bypasses the canonical "
                             "authority, which double-applies its sensitivity "
-                            "coefficients. The component values and the local "
-                            "combination are correct; what is unresolved is that "
-                            "the canonical authority disagrees with them"
+                            "coefficients. The component values and this "
+                            "combination are correct and agree with the source "
+                            "calculator; what is unresolved is that the canonical "
+                            "aggregate disagrees with them"
                         ),
                         reference="B-022",
                     )
@@ -404,7 +418,10 @@ class AcquisitionBudgetV1:
         if modulus_payload is not None:
             # The availability discriminator is what makes an unavailable section
             # recoverable rather than collapsing to null or an error shape.
-            if modulus_payload.get("availability") == ResultAvailability.UNAVAILABLE.value:
+            if (
+                modulus_payload.get("availability")
+                == ResultAvailability.UNAVAILABLE.value
+            ):
                 modulus = UnavailableSection.from_dict(modulus_payload)
             else:
                 modulus = ModulusBudget.from_dict(modulus_payload)

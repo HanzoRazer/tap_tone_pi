@@ -171,7 +171,10 @@ class TestLosslessRoundTrip:
         return ttp_profile().computed()
 
     def test_the_whole_record_round_trips(self, budget):
-        assert AcquisitionBudgetV1.from_dict(budget.as_dict()).as_dict() == budget.as_dict()
+        assert (
+            AcquisitionBudgetV1.from_dict(budget.as_dict()).as_dict()
+            == budget.as_dict()
+        )
 
     def test_it_survives_json(self, budget):
         payload = json.loads(json.dumps(budget.as_dict()))
@@ -185,14 +188,16 @@ class TestLosslessRoundTrip:
         assert payload["results"]["modulus"]["relative_uncertainty"] == (
             budget.modulus.relative_uncertainty
         )
-        assert payload["results"]["noise"]["limiter_share"] == budget.noise.limiter_share
+        assert (
+            payload["results"]["noise"]["limiter_share"] == budget.noise.limiter_share
+        )
 
     def test_input_provenance_survives_exactly(self, budget):
         restored = AcquisitionBudgetV1.from_dict(budget.as_dict())
-        assert restored.converter.aperture_jitter_s == budget.converter.aperture_jitter_s
         assert (
-            restored.converter.aperture_jitter_s.provenance is Provenance.PROPOSED
+            restored.converter.aperture_jitter_s == budget.converter.aperture_jitter_s
         )
+        assert restored.converter.aperture_jitter_s.provenance is Provenance.PROPOSED
         assert restored.converter.aperture_jitter_s.source == "pending E0/T4"
 
     def test_an_unmeasured_corner_survives_as_none(self, budget):
@@ -292,24 +297,148 @@ class TestEvidenceGrade:
         }
         assert not (conditions & input_axis), "input axis should be clear"
         assert conditions == {
-            EvidenceCondition.AGGREGATE_AUTHORITY_WORKAROUND,
             EvidenceCondition.PROVISIONAL_FORMULA,
             EvidenceCondition.CONTRIBUTOR_COMPOSITION_DEFECT,
         }
 
-    def test_evidence_grade_is_currently_unreachable(self):
-        """Documents a consequence of the current classification, not an ideal.
+    def test_b022_is_advisory_not_blocking(self):
+        """Authority debt, not a defect in the emitted result.
 
-        Three computation conditions — B-020, B-021, B-022 — are structural: they
-        are present regardless of how good the inputs are. Under the current
-        classification they all block, so ``evidence_grade`` cannot be ``True``
-        for any budget until those items are repaired.
+        The modulus adapter does **not** reproduce the bad canonical aggregate.
+        It takes the component construction and sensitivities from the canonical
+        authority and performs a correct generic RSS over them, and parity
+        independently confirms agreement with the source calculator. What is
+        unresolved is that the repository's nominal canonical aggregate
+        disagrees — authority debt to be repaid in ``stiffness.py``, not a reason
+        to withhold evidence grade from a correct number.
 
-        Recorded as a test rather than a comment so the classification is
-        inspectable, and so that changing it is a deliberate edit with a visible
-        diff rather than a silent loosening.
+        Repairing B-022 removes this condition without changing the value.
         """
-        assert fully_measured().evidence().evidence_grade is False
+        reason = next(
+            r
+            for r in fully_measured().evidence().reasons
+            if r.condition is EvidenceCondition.AGGREGATE_AUTHORITY_WORKAROUND
+        )
+        assert reason.blocking is False
+        assert reason.reference == "B-022"
+
+    # --- the two tests replacing DO-107 section 8.G.49 --------------------
+    #
+    # G.49 expected qualified inputs to produce an evidence-grade budget
+    # immediately. Grounding discovered structural computation blockers the
+    # original order did not know existed, so that expectation is empirically
+    # invalid. It is replaced by the pair below, which separate two very
+    # different failures: "true is unreachable because the mathematics is
+    # unresolved" from "true is unreachable because the grading function is
+    # permanently false".
+
+    def test_qualified_inputs_are_necessary_but_not_sufficient(self):
+        """Every input qualifies, and the budget is still not evidence-grade.
+
+        Exactly the two structural blockers remain — B-020's provisional formula
+        and B-021's contributor-composition defect. Neither is about input
+        quality, and neither shrinks because its numerical effect is small today:
+        evidence grade states that the computation is valid, not that a known
+        defect happens not to matter for the current profile.
+        """
+        evidence = fully_measured().evidence()
+        assert evidence.evidence_grade is False
+        assert {r.condition for r in evidence.blockers} == {
+            EvidenceCondition.PROVISIONAL_FORMULA,
+            EvidenceCondition.CONTRIBUTOR_COMPOSITION_DEFECT,
+        }
+        assert {r.reference for r in evidence.blockers} == {"B-020", "B-021"}
+
+    def test_the_grading_function_can_return_true(self):
+        """Proves the machinery works, not that today's budget is evidence-grade.
+
+        A noise-only budget — the signal-path shape, no specimen and no capture —
+        with every input measured, an anti-alias filter fitted and the coupling
+        corner measured. There is no frequency section, so neither structural
+        blocker applies, and nothing else is outstanding.
+
+        Without this test a permanently-false grading function would be
+        indistinguishable from unresolved mathematics.
+        """
+        M = Provenance.MEASURED
+        budget = AcquisitionBudgetV1(
+            profile="noise_path_fully_measured",
+            converter=ConverterSpec(
+                name="ADC",
+                bits=24,
+                full_scale_vrms=Q(2.05, "Vrms", M, "E0 T6"),
+                thermal_snr_db=Q(108.0, "dB", M, "E0 T1"),
+                aperture_jitter_s=Q(9e-13, "s", M, "E0"),
+                sample_rate_hz=Q(48000.0, "Hz", M, "E0"),
+                hp_corner_hz=Q(18.5, "Hz", M, "E0 T3"),
+                anti_alias_filter=True,
+            ),
+            clock=ClockSpec(
+                name="xo",
+                rms_jitter_s=Q(4e-12, "s", M, "E0"),
+                accuracy_ppm=Q(1.2, "ppm", M, "E0"),
+            ),
+            front_end=FrontEndSpec(
+                name="pre",
+                input_referred_noise_v_per_rthz=Q(1.1e-9, "V/rtHz", M, "measured"),
+                gain_db=Q(52.0, "dB", M, "measured"),
+                bandwidth_hz=Q(20000.0, "Hz", M, "measured"),
+            ),
+        ).computed(f_in_hz=1000.0)
+
+        evidence = budget.evidence()
+        assert evidence.blockers == (), [r.condition.value for r in evidence.blockers]
+        assert evidence.evidence_grade is True
+
+    def test_a_true_grade_still_reports_advisory_conditions(self):
+        """An advisory condition neither suppresses a true grade nor vanishes.
+
+        The frequency section here is constructed by hand rather than computed:
+        an established formula and a contributor set with no duplication, which
+        is what the mathematics looks like once B-020 and B-021 are reconciled.
+        The modulus keeps its B-022 workaround.
+        """
+        from tap_tone_pi.uncertainty.acquisition import (
+            AggregateContributor,
+            FormulaStatus,
+            FrequencyBudget,
+        )
+
+        base = fully_measured()
+        reconciled = FrequencyBudget(
+            mode_frequency_hz=base.frequency.mode_frequency_hz,
+            clock_error_hz=base.frequency.clock_error_hz,
+            bin_width_hz=base.frequency.bin_width_hz,
+            estimator_floor_hz=base.frequency.estimator_floor_hz,
+            physical_repeatability_hz=base.frequency.physical_repeatability_hz,
+            combined_hz=base.frequency.combined_hz,
+            dominant=base.frequency.dominant,
+            combined_contributors=(
+                AggregateContributor("clock_accuracy", "clock_error_hz", 1.0),
+                AggregateContributor("spectral_resolution", "bin_width_hz", 2.0),
+                AggregateContributor(
+                    "physical_repeatability", "physical_repeatability_hz", 3.0
+                ),
+            ),
+            estimator_floor_status=FormulaStatus.ESTABLISHED,
+        )
+        budget = AcquisitionBudgetV1(
+            profile=base.profile,
+            converter=base.converter,
+            clock=base.clock,
+            capture=base.capture,
+            specimen=base.specimen,
+            noise=base.noise,
+            frequency=reconciled,
+            modulus=base.modulus,
+        )
+        evidence = budget.evidence()
+        assert evidence.evidence_grade is True
+        advisory = [r for r in evidence.reasons if not r.blocking]
+        assert [r.condition for r in advisory] == [
+            EvidenceCondition.AGGREGATE_AUTHORITY_WORKAROUND
+        ]
+        assert advisory[0].reference == "B-022"
 
 
 class TestUnavailableSectionSurvivesComposition:
@@ -413,7 +542,9 @@ class TestSelfTestPolicy:
             allowed_margin_db=Q(3.5, "dB", Provenance.MEASURED, "40 healthy units")
         )
         budget = ttp_profile().computed(self_test_policy=policy)
-        assert budget.self_test.policy.allowed_margin_db.provenance is Provenance.MEASURED
+        assert (
+            budget.self_test.policy.allowed_margin_db.provenance is Provenance.MEASURED
+        )
         assert budget.self_test.fail_above_dbfs == pytest.approx(
             -budget.noise.combined_snr_db + 3.5
         )
