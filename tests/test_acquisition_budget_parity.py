@@ -656,19 +656,44 @@ class TestPreservedSourceSemantics:
         assert mine.combined_hz == pytest.approx(expected, rel=1e-12)
 
     def test_the_estimator_term_is_never_called_a_cramer_rao_bound(self):
-        # B-020: another site computes a different expression under that name,
-        # and the acquisition mathematics material flags an unresolved
-        # factor-of-two around this one. Naming it now would settle by
-        # appearance rather than by derivation.
+        """F3. B-020 did not close, so this prohibition still stands.
+
+        DO-107M established the SNR convention but refused to close B-020,
+        because both candidate expressions assume a constant-amplitude sinusoid
+        and a tap tone decays within a few percent of the record. Until that is
+        settled, the term is not earned.
+
+        Tightened in DO-107M: the guard previously accepted any occurrence of
+        the substring "not" in the preceding 200 characters, which "note",
+        "cannot" or "nothing" satisfy by accident. It now requires an explicit
+        negation of the naming itself.
+        """
+        import re
+
+        negation = re.compile(
+            r"(deliberately not|never)\b|"
+            r"\bnot\s+(called|labelled|labeled|named|claimed|a certified)"
+        )
         package = REPO_ROOT / "tap_tone_pi" / "uncertainty" / "acquisition"
+        checked = 0
         for path in package.glob("*.py"):
-            text = path.read_text(encoding="utf-8").lower()
+            raw = path.read_text(encoding="utf-8").lower()
+            # Markdown emphasis would otherwise split "not* called".
+            text = re.sub(r"[*_`]+", "", raw)
+            text = re.sub(r"\s+", " ", text)
             for banned in ("cramer-rao", "cramér–rao", "cramer_rao", "crlb"):
-                if banned in text:
-                    # Permitted only where the file explains it is NOT using it.
-                    assert "not" in text.split(banned)[0][-200:], (
-                        f"{path.name} uses {banned!r} as a label"
+                start = 0
+                while (index := text.find(banned, start)) != -1:
+                    preceding = text[max(0, index - 200) : index]
+                    assert negation.search(preceding), (
+                        f"{path.name} uses {banned!r} without explicitly "
+                        "disclaiming it as a label"
                     )
+                    checked += 1
+                    start = index + len(banned)
+        # The guard must actually be exercised; a silent zero would mean the
+        # term had vanished from the package and the test proved nothing.
+        assert checked >= 2
 
     def test_the_result_advertises_the_term_as_a_candidate(self, source, ours):
         mine = frequency_budget(ours["clock"], ours["capture"], ours["specimen"], 96.5)
