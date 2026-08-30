@@ -41,6 +41,17 @@ def compute_deflection_moe_uncertainty(
 
     The thickness uncertainty dominates due to the h³ term.
 
+    Component convention (B-022):
+    ``value`` is the **unweighted** standard uncertainty of the input mapped
+    into GPa -- ``E x (dX/X)`` -- and the partial-derivative factor travels
+    separately as ``sensitivity_coefficient``. ``UncertaintyComponent`` applies
+    it, once, as ``(c*u)^2``. Pre-multiplying the coefficient into ``value``
+    and also passing it applies the coefficient twice and squares it in the
+    aggregate; that was B-022. Components with no sensitivity factor of their
+    own (fit quality, SNR, calibration state) pass no coefficient and default
+    to 1.0, which is why the historical inflation was component-dependent
+    rather than a uniform factor.
+
     Args:
         E_GPa: Calculated Young's modulus in GPa
         span_mm: Support span in mm
@@ -83,10 +94,10 @@ def compute_deflection_moe_uncertainty(
     sens_deflection = 1.0
 
     # Force uncertainty
-    force_contrib = E_GPa * rel_force * sens_force
+    u_force = E_GPa * rel_force
     budget.add_component(
         name="Force measurement",
-        value=force_contrib,
+        value=u_force,
         unit="GPa",
         uncertainty_type=UncertaintyType.TYPE_B,
         description=f"Force ± {force_uncertainty_N:.3f} N",
@@ -94,10 +105,10 @@ def compute_deflection_moe_uncertainty(
     )
 
     # Span uncertainty
-    span_contrib = E_GPa * rel_span * sens_span
+    u_span = E_GPa * rel_span
     budget.add_component(
         name="Span measurement",
-        value=span_contrib,
+        value=u_span,
         unit="GPa",
         uncertainty_type=UncertaintyType.TYPE_B,
         description=f"Span ± {span_uncertainty_mm:.1f} mm (×3 sensitivity)",
@@ -105,10 +116,10 @@ def compute_deflection_moe_uncertainty(
     )
 
     # Width uncertainty
-    width_contrib = E_GPa * rel_width * sens_width
+    u_width = E_GPa * rel_width
     budget.add_component(
         name="Width measurement",
-        value=width_contrib,
+        value=u_width,
         unit="GPa",
         uncertainty_type=UncertaintyType.TYPE_B,
         description=f"Width ± {width_uncertainty_mm:.2f} mm",
@@ -116,10 +127,10 @@ def compute_deflection_moe_uncertainty(
     )
 
     # Thickness uncertainty (DOMINANT)
-    thickness_contrib = E_GPa * rel_thickness * sens_thickness
+    u_thickness = E_GPa * rel_thickness
     budget.add_component(
         name="Thickness measurement",
-        value=thickness_contrib,
+        value=u_thickness,
         unit="GPa",
         uncertainty_type=UncertaintyType.TYPE_B,
         description=f"Thickness ± {thickness_uncertainty_mm:.3f} mm (×3 sensitivity, DOMINANT)",
@@ -127,10 +138,10 @@ def compute_deflection_moe_uncertainty(
     )
 
     # Deflection uncertainty
-    deflection_contrib = E_GPa * rel_deflection * sens_deflection
+    u_deflection = E_GPa * rel_deflection
     budget.add_component(
         name="Deflection measurement",
-        value=deflection_contrib,
+        value=u_deflection,
         unit="GPa",
         uncertainty_type=UncertaintyType.TYPE_B,
         description=f"Deflection ± {deflection_uncertainty_mm:.3f} mm",
@@ -179,6 +190,17 @@ def compute_tap_tone_moe_uncertainty(
     Error propagation (relative uncertainties):
     (ΔE/E)² = (2×Δf/f)² + (4×ΔL/L)² + (Δρ/ρ)² + (2×Δh/h)²
 
+    Component convention (B-022):
+    ``value`` is the **unweighted** standard uncertainty of the input mapped
+    into GPa -- ``E x (dX/X)`` -- and the partial-derivative factor travels
+    separately as ``sensitivity_coefficient``. ``UncertaintyComponent`` applies
+    it, once, as ``(c*u)^2``. Pre-multiplying the coefficient into ``value``
+    and also passing it applies the coefficient twice and squares it in the
+    aggregate; that was B-022. Components with no sensitivity factor of their
+    own (fit quality, SNR, calibration state) pass no coefficient and default
+    to 1.0, which is why the historical inflation was component-dependent
+    rather than a uniform factor.
+
     Args:
         E_GPa: Calculated Young's modulus in GPa
         frequency_hz: Measured fundamental frequency in Hz
@@ -220,10 +242,10 @@ def compute_tap_tone_moe_uncertainty(
     sens_thickness = 2.0
 
     # Frequency uncertainty (×2 sensitivity)
-    freq_contrib = E_GPa * rel_freq * sens_freq
+    u_freq = E_GPa * rel_freq
     budget.add_component(
         name="Frequency measurement",
-        value=freq_contrib,
+        value=u_freq,
         unit="GPa",
         uncertainty_type=UncertaintyType.TYPE_A,
         description=f"Frequency ± {frequency_uncertainty_hz:.1f} Hz (×2 sensitivity)",
@@ -231,10 +253,10 @@ def compute_tap_tone_moe_uncertainty(
     )
 
     # Length uncertainty (×4 sensitivity - MAJOR)
-    length_contrib = E_GPa * rel_length * sens_length
+    u_length = E_GPa * rel_length
     budget.add_component(
         name="Length measurement",
-        value=length_contrib,
+        value=u_length,
         unit="GPa",
         uncertainty_type=UncertaintyType.TYPE_B,
         description=f"Length ± {length_uncertainty_mm:.1f} mm (×4 sensitivity, MAJOR)",
@@ -242,10 +264,10 @@ def compute_tap_tone_moe_uncertainty(
     )
 
     # Thickness uncertainty (×2 sensitivity)
-    thickness_contrib = E_GPa * rel_thickness * sens_thickness
+    u_thickness = E_GPa * rel_thickness
     budget.add_component(
         name="Thickness measurement",
-        value=thickness_contrib,
+        value=u_thickness,
         unit="GPa",
         uncertainty_type=UncertaintyType.TYPE_B,
         description=f"Thickness ± {thickness_uncertainty_mm:.3f} mm (×2 sensitivity)",
@@ -253,10 +275,10 @@ def compute_tap_tone_moe_uncertainty(
     )
 
     # Density uncertainty
-    density_contrib = E_GPa * rel_density * sens_density
+    u_density = E_GPa * rel_density
     budget.add_component(
         name="Density calculation",
-        value=density_contrib,
+        value=u_density,
         unit="GPa",
         uncertainty_type=UncertaintyType.TYPE_B,
         description=f"Density ± {density_uncertainty_kg_m3:.1f} kg/m³",

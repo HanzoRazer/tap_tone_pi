@@ -2,6 +2,8 @@
 Tests for uncertainty module (Phase 3 P0).
 """
 
+import math
+
 import pytest
 
 from tap_tone_pi.uncertainty import (
@@ -341,9 +343,15 @@ class TestStiffnessUncertainty:
                 break
 
         assert length_comp is not None
-        # With 0.5% length uncertainty × 4 = 2% contribution to E
-        # E = 12 GPa, so contribution ≈ 0.24 GPa (before RSS)
-        assert length_comp.value > 0.2
+        # B-022: ``value`` is the unweighted standard uncertainty and the ×4
+        # partial-derivative factor rides alongside it, applied once by
+        # ``contribution``. 0.5% of 12 GPa is 0.06 GPa unweighted; the ×4
+        # sensitivity carries it to 0.24 GPa in the aggregate. Before the
+        # B-022 repair the coefficient was baked into ``value`` *and* passed,
+        # so this component reached the RSS as 0.96 GPa.
+        assert length_comp.value == pytest.approx(0.06)
+        assert length_comp.sensitivity_coefficient == 4.0
+        assert math.sqrt(length_comp.contribution) == pytest.approx(0.24)
 
     def test_stiffness_uncertainty_dispatch(self):
         """Dispatch function selects correct method."""
@@ -534,3 +542,148 @@ class TestUncertaintyIntegration:
         # but amplitude definitely benefits
         assert amp_cal.expanded_uncertainty < amp_uncal.expanded_uncertainty
         assert moe_cal.expanded_uncertainty < moe_uncal.expanded_uncertainty
+
+
+class TestB022SensitivityAppliedOnce:
+    """B-022 -- sensitivity coefficients enter the budget exactly once.
+
+    Both MOE propagation functions used to compute a component as
+    ``E * relative * sensitivity`` **and** pass ``sensitivity_coefficient``,
+    while ``UncertaintyComponent.contribution`` is ``(c * value) ** 2``. Every
+    coefficient was therefore applied twice and squared in the aggregate --
+    length reached ``x16`` instead of ``x4``.
+
+    The expected values here are derived from the documented propagation
+    formulas and the raw inputs, never from a previously recorded output. A
+    test that pins yesterday's number cannot tell a repair from a regression.
+    """
+
+    TAP = dict(
+        E_GPa=12.0,
+        frequency_hz=500.0,
+        frequency_uncertainty_hz=2.0,
+        length_mm=400.0,
+        length_uncertainty_mm=2.0,
+        thickness_mm=3.0,
+        thickness_uncertainty_mm=0.05,
+        density_kg_m3=400.0,
+        density_uncertainty_kg_m3=10.0,
+        snr_db=40.0,
+        is_calibrated=True,
+    )
+
+    DEFL = dict(
+        E_GPa=12.0,
+        span_mm=400.0,
+        span_uncertainty_mm=0.5,
+        width_mm=30.0,
+        width_uncertainty_mm=0.2,
+        thickness_mm=3.0,
+        thickness_uncertainty_mm=0.05,
+        deflection_mm=1.0,
+        deflection_uncertainty_mm=0.02,
+        force_N=10.0,
+        force_uncertainty_N=0.05,
+    )
+
+    def test_a1_tap_tone_components_store_unweighted_uncertainty(self):
+        """Each component holds E*(dX/X), with the factor carried separately."""
+        k = self.TAP
+        budget = compute_tap_tone_moe_uncertainty(**k)
+        by_name = {c.name: c for c in budget.components}
+
+        # E proportional to f^2 L^4 rho / h^2.
+        expected = {
+            "Frequency measurement": (
+                k["E_GPa"] * k["frequency_uncertainty_hz"] / k["frequency_hz"],
+                2.0,
+            ),
+            "Length measurement": (
+                k["E_GPa"] * k["length_uncertainty_mm"] / k["length_mm"],
+                4.0,
+            ),
+            "Thickness measurement": (
+                k["E_GPa"] * k["thickness_uncertainty_mm"] / k["thickness_mm"],
+                2.0,
+            ),
+            "Density calculation": (
+                k["E_GPa"] * k["density_uncertainty_kg_m3"] / k["density_kg_m3"],
+                1.0,
+            ),
+        }
+        for name, (unweighted, sensitivity) in expected.items():
+            component = by_name[name]
+            assert component.value == pytest.approx(unweighted), name
+            assert component.sensitivity_coefficient == sensitivity, name
+            # The defect signature: value carrying the factor already.
+            if sensitivity != 1.0:
+                assert component.value != pytest.approx(unweighted * sensitivity), name
+
+    def test_a2_tap_tone_aggregate_is_the_coefficient_once_rss(self):
+        """Combined uncertainty converges to the independently propagated value."""
+        k = self.TAP
+        budget = compute_tap_tone_moe_uncertainty(**k)
+
+        relative = math.sqrt(
+            (2.0 * k["frequency_uncertainty_hz"] / k["frequency_hz"]) ** 2
+            + (4.0 * k["length_uncertainty_mm"] / k["length_mm"]) ** 2
+            + (1.0 * k["density_uncertainty_kg_m3"] / k["density_kg_m3"]) ** 2
+            + (2.0 * k["thickness_uncertainty_mm"] / k["thickness_mm"]) ** 2
+        )
+        assert budget.combined_standard_uncertainty == pytest.approx(
+            k["E_GPa"] * relative
+        )
+
+    def test_a3_deflection_aggregate_is_the_coefficient_once_rss(self):
+        """Same invariant for the 3-point bending propagation."""
+        k = self.DEFL
+        budget = compute_deflection_moe_uncertainty(**k)
+
+        relative = math.sqrt(
+            (1.0 * k["force_uncertainty_N"] / k["force_N"]) ** 2
+            + (3.0 * k["span_uncertainty_mm"] / k["span_mm"]) ** 2
+            + (1.0 * k["width_uncertainty_mm"] / k["width_mm"]) ** 2
+            + (3.0 * k["thickness_uncertainty_mm"] / k["thickness_mm"]) ** 2
+            + (1.0 * k["deflection_uncertainty_mm"] / k["deflection_mm"]) ** 2
+        )
+        assert budget.combined_standard_uncertainty == pytest.approx(
+            k["E_GPa"] * relative
+        )
+
+    @pytest.mark.parametrize(
+        "factory,kwargs",
+        [
+            (compute_tap_tone_moe_uncertainty, "TAP"),
+            (compute_deflection_moe_uncertainty, "DEFL"),
+        ],
+    )
+    def test_aggregate_equals_rss_of_its_own_weighted_components(self, factory, kwargs):
+        """The budget combines its own components and nothing else.
+
+        This is the structural half of A2/A3: whatever the inputs, the reported
+        aggregate must be reconstructible from the serialized component list.
+        """
+        budget = factory(**getattr(self, kwargs))
+        rss = math.sqrt(
+            sum((c.sensitivity_coefficient * c.value) ** 2 for c in budget.components)
+        )
+        assert budget.combined_standard_uncertainty == pytest.approx(rss, rel=1e-12)
+
+    def test_unweighted_components_pass_no_coefficient(self):
+        """Fit quality, SNR and calibration terms have no factor of their own.
+
+        They defaulted to 1.0 and were never doubled, which is why the
+        historical B-022 inflation was component-dependent rather than a
+        uniform factor that could have been divided out downstream.
+        """
+        budget = compute_tap_tone_moe_uncertainty(
+            **{**self.TAP, "snr_db": 20.0, "is_calibrated": False}
+        )
+        extras = [
+            c
+            for c in budget.components
+            if c.name in ("Signal quality (SNR)", "Uncalibrated system")
+        ]
+        assert len(extras) == 2
+        for component in extras:
+            assert component.sensitivity_coefficient == 1.0
