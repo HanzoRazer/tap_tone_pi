@@ -444,24 +444,24 @@ class TestModulusDelegation:
                 "the canonical authority owns the coefficients"
             )
 
-    def test_it_records_the_component_authority_and_the_workaround(self, pair):
+    def test_it_records_the_component_authority_and_canonical_aggregation(self, pair):
         _, mine = pair
         assert mine.component_authority.endswith("compute_tap_tone_moe_uncertainty")
-        # Not a claim of ordinary delegation: the aggregate is bypassed.
-        assert mine.aggregation == "canonical_components_with_B022_aggregate_workaround"
+        # An ordinary claim of delegation, now that it is true. DO-107A recorded
+        # "canonical_components_with_B022_aggregate_workaround" here.
+        assert mine.aggregation == "canonical"
         payload = mine.as_dict()
         assert payload["component_authority"] == mine.component_authority
         assert payload["aggregation"] == mine.aggregation
-        assert any("B-022" in n for n in mine.notes)
+        assert not any("B-022" in n for n in mine.notes)
 
-    def test_b022_tripwire_the_canonical_aggregate_is_bypassed(self, source, ours):
-        """Makes the temporary dependency on B-022 visible and removable.
+    def test_a5_no_local_aggregation_workaround_remains(self, source, ours):
+        """B-022 is repaired at the authority; acquisition aggregates nothing.
 
-        When B-022 is repaired in ``uncertainty/stiffness.py``, the third
-        assertion below starts failing. That is intentional: at that point the
-        local aggregation must be deleted and the canonical combined figure used,
-        rather than the workaround quietly becoming permanent parallel
-        aggregation.
+        This replaces the DO-107A tripwire, which asserted that the canonical
+        aggregate was *wrong* and deliberately failed once it was fixed. The
+        permanent invariant is the one that outlives the defect: the adapter's
+        combined figure is the canonical combined figure, taken verbatim.
         """
         from tap_tone_pi.uncertainty.stiffness import compute_tap_tone_moe_uncertainty
 
@@ -482,39 +482,54 @@ class TestModulusDelegation:
             snr_db=40.0,
             is_calibrated=True,
         )
-        by_name = {c.name: float(c.value) for c in canonical.components}
-        canonical_rss = math.sqrt(sum(v * v for v in by_name.values()))
 
-        # 1. Canonical component values equal the source calculator's contributions.
-        for canonical_name, term in (
-            ("Frequency measurement", "frequency"),
-            ("Length measurement", "length"),
-            ("Thickness measurement", "thickness"),
-            ("Density calculation", "density"),
-        ):
-            assert by_name[canonical_name] == pytest.approx(
+        # 1. The canonical aggregate applies each coefficient exactly once.
+        coefficient_once = math.sqrt(
+            sum(
+                (c.sensitivity_coefficient * c.value) ** 2 for c in canonical.components
+            )
+        )
+        assert canonical.combined_standard_uncertainty == pytest.approx(
+            coefficient_once, rel=1e-12
+        ), "B-022 has regressed in uncertainty/stiffness.py"
+
+        # 2. Components remain unweighted; the factor is carried, not baked in.
+        by_name = {c.name: c for c in canonical.components}
+        frequency = by_name["Frequency measurement"]
+        assert frequency.sensitivity_coefficient == 2.0
+        assert frequency.value == pytest.approx(freq.combined_hz / 187.0, rel=1e-12)
+
+        # 3. The adapter reports the canonical aggregate itself -- not an RSS of
+        #    components, not a corrected figure, not a parallel aggregation.
+        mine = modulus_budget(ours["specimen"], freq)
+        assert mine.relative_uncertainty == pytest.approx(
+            canonical.combined_standard_uncertainty, rel=1e-12
+        )
+
+        # 4. Its per-term contributions are the weighted ones, matching the
+        #    archived source calculator term by term.
+        for term in ("frequency", "length", "thickness", "density"):
+            assert mine.contributions[term] == pytest.approx(
                 src.modulus.contributions[term], rel=1e-12
             )
 
-        # 2. B-022: the canonical aggregate does NOT equal their RSS, because
-        #    compute_tap_tone_moe_uncertainty pre-multiplies each value by its
-        #    sensitivity coefficient and also passes that coefficient to
-        #    add_component, whose contribution is (c_i * u_i)**2.
-        assert canonical.combined_standard_uncertainty != pytest.approx(
-            canonical_rss, rel=1e-9
-        ), (
-            "B-022 appears to be fixed in uncertainty/stiffness.py. Remove the "
-            "local aggregation workaround in acquisition/modulus.py and use the "
-            "canonical combined figure; do not leave parallel aggregation in place."
+    def test_a5_the_adapter_source_contains_no_aggregation_of_its_own(self):
+        """Structural, not behavioural: the workaround cannot creep back."""
+        source_text = (
+            Path(__file__).resolve().parents[1]
+            / "tap_tone_pi"
+            / "uncertainty"
+            / "acquisition"
+            / "modulus.py"
+        ).read_text(encoding="utf-8")
+        after = source_text.split("def modulus_budget(", 1)[1]
+        cut = after.find(chr(10) + "def ")
+        body = after if cut == -1 else after[:cut]
+        assert "rss(" not in body, (
+            "modulus_budget aggregates locally again; the canonical combined "
+            "figure must be consumed verbatim"
         )
-        assert canonical.combined_standard_uncertainty > canonical_rss
-
-        # 3. The adapter uses the RSS of canonical components, not the aggregate.
-        mine = modulus_budget(ours["specimen"], freq)
-        assert mine.relative_uncertainty == pytest.approx(canonical_rss, rel=1e-12)
-        assert mine.relative_uncertainty != pytest.approx(
-            canonical.combined_standard_uncertainty, rel=1e-9
-        )
+        assert "combined_standard_uncertainty" in body
 
     def test_the_coefficients_come_from_the_canonical_authority(self, ours):
         # Verified by construction rather than by inspection: perturbing one

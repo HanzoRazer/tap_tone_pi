@@ -29,6 +29,7 @@ from tap_tone_pi.uncertainty.acquisition import (
     ConverterSpec,
     FormulaStatus,
     FrequencyBudget,
+    ModulusBudget,
     FrontEndSpec,
     Provenance,
     Quantity,
@@ -104,12 +105,18 @@ def payload_2_noise_only_measured() -> dict:
     )
 
 
+DO_107A_AGGREGATION = "canonical_components_with_B022_aggregate_workaround"
+
+
 def payload_3_reconciled_with_advisory() -> dict:
-    """What the mathematics looks like after B-020 and B-021 are reconciled.
+    """A DO-107A-era record: reconciled frequency, B-022 workaround still on it.
 
     Constructed by hand: an established formula and a contributor set with no
-    duplication. The B-022 workaround remains, so this is a `true` grade that
-    still discloses authority debt.
+    duplication. B-022 has since been repaired at the canonical authority, so
+    no live computation emits this aggregation identity any more -- which is
+    exactly what this fixture is for. Records written while it did must keep
+    validating, deserializing and grading, otherwise repairing a defect would
+    silently invalidate the results that disclosed it.
     """
     base = fully_measured()
     reconciled = FrequencyBudget(
@@ -137,7 +144,15 @@ def payload_3_reconciled_with_advisory() -> dict:
         specimen=base.specimen,
         noise=base.noise,
         frequency=reconciled,
-        modulus=base.modulus,
+        modulus=ModulusBudget(
+            relative_uncertainty=base.modulus.relative_uncertainty,
+            contributions=dict(base.modulus.contributions),
+            dominant=base.modulus.dominant,
+            smallest_resolvable_delta_pct=base.modulus.smallest_resolvable_delta_pct,
+            component_authority=base.modulus.component_authority,
+            aggregation=DO_107A_AGGREGATION,
+            notes=base.modulus.notes,
+        ),
         sweep_limits=base.sweep_limits,
         self_test=base.self_test,
         clock_topology=base.clock_topology,
@@ -225,7 +240,9 @@ class TestThePublicationGate:
     # --- payload 3 ---------------------------------------------------------
 
     def test_3_is_evidence_grade_while_retaining_the_advisory(self):
-        evidence = payload_3_reconciled_with_advisory()["evidence"]
+        payload = payload_3_reconciled_with_advisory()
+        assert payload["results"]["modulus"]["aggregation"] == DO_107A_AGGREGATION
+        evidence = payload["evidence"]
         assert evidence["evidence_grade"] is True
         advisory = [r for r in evidence["reasons"] if not r["blocking"]]
         assert [r["condition"] for r in advisory] == ["aggregate_authority_workaround"]
@@ -352,6 +369,9 @@ class TestSemanticInvariants:
 
     def test_an_undisclosed_noncanonical_aggregation_is_refused(self):
         payload = payload_1_current_ttp()
+        # Live computation is canonical again, so the non-canonical state this
+        # rule polices has to be constructed to be tested.
+        payload["results"]["modulus"]["aggregation"] = DO_107A_AGGREGATION
         payload["evidence"]["reasons"] = [
             r
             for r in payload["evidence"]["reasons"]
