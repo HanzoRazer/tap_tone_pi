@@ -249,19 +249,27 @@ repeatability. It **separately** carries `combined_contributors` — a *sequence
 duplicates preserved, each entry naming both the contributor slot and the
 reportable quantity that filled it.
 
-The two lists differ, and the difference is the finding. Under **B-021** the
-`spectral_resolution` slot is filled by the estimator floor rather than the bin
-width, so the estimator enters the combination twice and the bin width enters not
-at all — while being reported as 0.25 Hz beside a combined figure of 0.0037 Hz.
-Without the contributor sequence a reader would reasonably conclude the largest
-listed quantity was included. It was not.
+The two lists differ, and the difference is the finding. As DO-107A published
+it, the `spectral_resolution` slot was filled by the estimator floor rather than
+the bin width, so the estimator entered the combination **twice** and the bin
+width entered not at all — while being reported as 0.25 Hz beside a combined
+figure of 0.0037 Hz. Without the contributor sequence a reader would reasonably
+conclude the largest listed quantity was included. It was not.
 
 A mapping keyed by conceptual quantity would have collapsed the two estimator
 entries and hidden this. An invariant test recomputes the root-sum-square from
 the *serialized* contributors and requires equality with `combined_hz`, which is
 the contract guarantee: **the combination contains these values and nothing
-else.** When B-021 is repaired, the change appears as a different contributor
-composition rather than as an unexplained movement in a number.
+else.**
+
+**DO-107M removed the duplicate**, and it showed up exactly as intended: as a
+different contributor composition, with the drift stated as
+`source_combined^2 - ours^2 == estimator_floor^2`, rather than as an unexplained
+movement in a number. The bin width is still reported and still does not enter
+the aggregate — now the whole of what B-021 holds open. The count of contributors
+varies with configuration and must be read, not assumed: two with peak
+interpolation, three when physical repeatability is supplied; three without
+interpolation, four with repeatability.
 
 ### `UNAVAILABLE` is a state, not an exception
 
@@ -336,7 +344,7 @@ unreachable because we implemented a permanently-false grading function."*
 | --- | --- | --- |
 | Input provenance, repeatability, B-014, coupling corner | **yes** | The source's own evidence rules |
 | `section_unavailable` | **yes** | A budget missing a section it was asked for cannot claim a complete result |
-| **B-021** contributor composition | **yes** | The frequency aggregate knowingly draws the estimator candidate twice. Evidence grade is a statement about the *validity of the computation*, not about whether a known defect happens to be small for today's inputs |
+| **B-021** contributor composition | **yes** | DO-107A: the frequency aggregate knowingly drew the estimator candidate twice. DO-107M repaired that; what remains blocking is whether the bin width belongs in the aggregate alongside the estimator floor, which rests on the unestablished estimator model. Evidence grade is a statement about the *validity of the computation*, not about whether a known defect happens to be small for today's inputs |
 | **B-020** provisional formula | **yes** | The expression was deliberately not called a Cramér–Rao bound because its authority and convention are unresolved. Calling a budget containing it evidence-grade would contradict that decision. Its tiny numerical contribution does not change its epistemic status |
 | **B-022** aggregate workaround | **no — advisory** | Materially different. The acquisition result does **not** reproduce the bad canonical aggregate: it takes component construction and sensitivities from the canonical authority and performs a correct generic RSS over them, and parity independently confirms agreement with the source calculator. What is unresolved is that the repository's nominal canonical aggregate disagrees. That is **authority debt**, not a mathematical defect in the emitted number |
 
@@ -412,6 +420,136 @@ written against it. Shaping it with propositions their own author flagged as
 unverified is the one sequencing mistake most expensive to undo.
 
 They belong to a successor reconciliation order.
+
+## DO-107M — mathematics reconciliation
+
+DO-107A published a truthful contract while deliberately leaving three authority
+conditions open. DO-107M reconciled them **to the extent the evidence supported**
+and no further. The contract model is unchanged: no schema edit, no registry
+change, no version bump. What changed is authority and computation.
+
+### B-022 — closed
+
+Both MOE propagation functions computed each component as `E x rel x sens` **and**
+passed `sensitivity_coefficient=sens`, while `UncertaintyComponent.contribution`
+is `(c*u)^2`. Every coefficient was applied twice and squared in the aggregate:
+length reached x16 instead of x4.
+
+They now store the unweighted standard uncertainty and let the aggregate apply
+the coefficient once — the convention `UncertaintyComponent` already documented.
+Verified against the propagation formula evaluated from raw inputs, not against
+a previously recorded number, so the tests can distinguish a repair from a
+regression.
+
+`acquisition/modulus.py` consumes `canonical.combined_standard_uncertainty`
+verbatim and stamps `aggregation = "canonical"`. The DO-107A workaround is gone
+rather than naturalized, and a structural test asserts `modulus_budget` performs
+no aggregation of its own.
+
+**The adapter's aggregate and all four per-term contributions still match the
+archived source calculator to 1e-12.** That establishes something DO-107A could
+not: the archived source combined its terms correctly all along, and B-022 was
+confined to this repository's canonical `stiffness.py`. DO-107A predicted that
+repairing B-022 would remove the advisory "without changing the number"; that
+prediction is now confirmed rather than assumed.
+
+Historical figures from these two functions may **overstate** combined
+uncertainty. The distortion is component-dependent — terms carrying no
+sensitivity of their own defaulted to 1.0 and were never doubled — so no uniform
+correction could have been applied downstream. In-repo consumers were enumerated
+and are few; **external use is `NOT_ESTABLISHED`, because a census of external
+use cannot be taken from repository evidence.** If an artifact containing an
+affected result is later found, it should be corrected against its actual
+original calculation rather than by a blanket factor.
+
+### B-021 — narrowed, still open
+
+The duplicate is repaired. Counting one quantity twice is wrong under any
+estimator model, so that half did not wait on B-020: with peak interpolation the
+spectral-resolution slot is filled once, by the estimator floor.
+
+Restoring `bin_width_hz` to the aggregate was **deliberately not done**. That
+would not be a de-duplication — at TTP values the bin width is roughly 67x the
+clock error and would dominate — and adding a dominant term is a positive claim
+resting on the estimator model B-020 has not established.
+
+The remaining question is not bookkeeping. With interpolation on, the term
+entering the aggregate is a *bound* of about 1e-8 Hz, while a real interpolator's
+achieved uncertainty is plausibly a fraction of a bin. The aggregate may be
+optimistic for reasons unrelated to double counting.
+
+Parity drift is stated exactly rather than absorbed into a tolerance:
+`source_combined^2 - ours^2 == estimator_floor^2`.
+
+**The contributor count is no longer fixed**: two with interpolation, three when
+physical repeatability is supplied; three without interpolation, four with
+repeatability. Callers must read the sequence rather than assume a length.
+
+### B-020 — investigated, not closed
+
+The order permitted closure or refusal. The evidence supports refusal.
+
+*Established.* The source expression is a Cramer-Rao bound stated under a
+particular SNR convention. For a constant-amplitude real sinusoid in white
+Gaussian noise with amplitude, phase and frequency unknown,
+`var(f) >= 12*fs^2/((2*pi)^2 * eta * N(N^2-1))` with `eta = A^2/(2*sigma^2)`,
+reducing for large `N` to `(1/(pi*T))*sqrt(3/(eta*N))`. The source carries
+`sqrt(6)`. The ratio is exactly `sqrt(2)` at every operating point tested, across
+record length, sample count and SNR — the signature of a convention difference,
+not a modelling one. TTP feeds the **power** convention, which its own code
+settles: `quantization_snr_db` is the full-scale sine figure whose 1.76 dB is
+`10*log10(3/2)`, and `combine_snr_db` combines on a noise-power basis. The
+implemented form is therefore `sqrt(2)` conservative.
+
+*A correction to the archived note.* Patch #2 compares the implemented form
+against `sqrt(6)/(2*pi*T)` and calls the gap a factor of two. That comparison
+form is the **complex**-exponential bound; the real-sinusoid bound is
+`sqrt(12)/(2*pi*T)`. The implemented expression is `2x` the complex bound and
+`sqrt(2)x` the real one. The note conflated the real/complex distinction with the
+amplitude/power one.
+
+*Why closure was refused anyway.* Both candidates assume constant amplitude
+across the whole record. A tap tone is a freely decaying mode: at `Q` between 10
+and 100 — this repository's own damping range — a 187 Hz mode decays with `tau`
+of 17 to 170 ms against a 4 s record, so the bound credits Fisher information to
+samples carrying no signal. That mismatch is larger than the `sqrt(2)` it would
+correct. Adopting `sqrt(3)` would trade a conservative factor for an optimistic
+model, which is the worse error in a measurement instrument.
+
+Primary sources are paywalled and were not obtained; a secondary statement
+agreeing on constants, model and convention is corroboration, not closure
+authority. The expression, its `candidate_source_formula` status, its blocking
+evidence reason and the prohibition on Cramer-Rao terminology all stand
+unchanged.
+
+The next step is narrower than it was: obtain the damped-sinusoid bound and its
+`tau/T` dependence. The convention question is answered.
+
+### Patch #2 dispositions
+
+Nothing was adopted merely because it exists in the archive.
+
+| Candidate | Disposition |
+|---|---|
+| (5.3) estimator floor, factor-of-two note | **Evidence, corrected.** Informed the B-020 investigation; its stated discrepancy is itself mistaken (real/complex conflation). No code change. |
+| (5.4) combined frequency uncertainty | **Corroborating, not adopted.** Independently states `sqrt(df_clock^2 + sigma_f^2 + u_phys^2)` with no bin-width term, matching the structure B-021's repair produced. Not source-verified, so it does not justify the estimator term's magnitude. |
+| (2.2) jitter-limited SNR | **Deferred, untouched.** D107M-09: adjacent mathematics being under review is not grounds to rewrite a term that was already justified. |
+| (2.6) jitter allowance from an SNR target | **Deferred.** Not required by any B-020/021/022 question. |
+| (2.7) operating-level backoff | **Deferred.** Outside the reconciliation scope. |
+| (7.2) modulus uncertainty propagation | **Not needed.** B-022 was repaired at the canonical authority instead. |
+| Everything else | **Deferred, archived, not applied.** |
+
+### Evidence state after DO-107M
+
+The current TTP profile is **still not evidence-grade**, and for one fewer
+reason. B-020 remains blocking; B-021 remains blocking on its narrowed question;
+B-022 no longer appears at all, because the state that produced it is gone rather
+than because a backlog reference was suppressed. Every reason is still derived
+from result state.
+
+DO-107M did not have to close B-020 to be an honest tranche. An unresolved
+authority question recorded accurately is worth more than an unjustified equation
+promoted to canonical status.
 
 ## Downstream
 

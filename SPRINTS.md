@@ -438,6 +438,45 @@ evidence calls for them — not because a grant narrative would like to cite the
 ### B-020 — `session_diff.py` labels a heuristic as a Cramér–Rao lower bound
 
 - **Status:** open · **Priority:** P2 · **Area:** `tap_tone_pi/core/session_diff.py`
+- **DO-107M outcome: investigated, NOT closed.** The order was authorized either
+  way and the evidence does not support closure. What was established: the
+  acquisition estimator expression is a Cramér–Rao bound stated under a
+  particular SNR convention. For a constant-amplitude real sinusoid in white
+  Gaussian noise with amplitude, phase and frequency unknown,
+  `var(f) >= 12*fs^2/((2*pi)^2 * eta * N(N^2-1))` with `eta = A^2/(2*sigma^2)`,
+  which for large `N` with `T = N/fs` reduces to `(1/(pi*T))*sqrt(3/(eta*N))`.
+  The implemented form carries `sqrt(6)`. The ratio is exactly `sqrt(2)` at every
+  operating point tested — across record length, sample count and SNR — which is
+  the signature of a convention difference rather than a modelling one, and
+  substituting `A^2/sigma^2` for `A^2/(2*sigma^2)` carries one form into the
+  other. TTP feeds the **power** convention: `quantization_snr_db` is the
+  full-scale sine figure whose 1.76 dB is `10*log10(3/2)`, and `combine_snr_db`
+  combines on a noise-power basis. So the implemented form is `sqrt(2)`
+  conservative, not wrong by a factor of two.
+- **Correction to the Patch #2 discrepancy note.** That note compares the
+  implemented form against `sqrt(6)/(2*pi*T)` and calls the gap a factor of two.
+  That comparison form is the **complex**-exponential bound; the real-sinusoid
+  bound is `sqrt(12)/(2*pi*T)`. The implemented expression is `2x` the complex
+  bound and `sqrt(2)x` the real one. The note conflated the real/complex
+  distinction with the amplitude/power one.
+- **Why closure was still refused.** Both candidates assume constant amplitude
+  across the whole record, and a tap tone is a freely decaying mode. At `Q`
+  between 10 and 100 — the range this repository's own damping module works in —
+  a 187 Hz mode decays with `tau` of 17–170 ms against a 4 s record, so the bound
+  credits Fisher information to samples carrying no signal. That mismatch is
+  larger than the `sqrt(2)` it would correct and is bounded by nothing
+  established here. Adopting `sqrt(3)` would trade a conservative factor for an
+  optimistic model, which is the worse error in a measurement instrument.
+  Settling it needs the damped-sinusoid bound and its dependence on `tau/T` —
+  research, not a substitution.
+- **Evidence status:** derived independently and checked against a secondary
+  statement agreeing on constants, model and convention. Primary sources
+  (Rife & Boorstyn 1974; Kay) are paywalled and were not obtained. A secondary
+  restatement does not carry closure authority on its own, and closure is not
+  claimed. Recorded in `tests/test_acquisition_estimator_authority.py`, with a
+  comparison harness in `tests/_util/estimator_comparison.py`.
+- **Next step is narrower than it was:** obtain the damped-sinusoid CRLB and its
+  `tau/T` dependence, then decide. The convention question is answered.
 - **Origin:** DO-107A grounding, from the line-by-line census of the
   acquisition-budget source.
 - **Context:** `core/session_diff.py` computes `f / (2 × 10^(SNR_dB/20))` and
@@ -462,7 +501,37 @@ evidence calls for them — not because a grant narrative would like to cite the
 
 ### B-021 — the acquisition source counts its estimator term twice
 
-- **Status:** open · **Priority:** P2 · **Area:** `tap_tone_pi/uncertainty/acquisition/frequency_budget.py`
+- **Status:** open, **narrowed** · **Priority:** P2 · **Area:** `tap_tone_pi/uncertainty/acquisition/frequency_budget.py`
+- **DO-107M outcome: the duplicate is repaired; the composition question is
+  not.** Counting one quantity twice is wrong under any estimator model, so that
+  half did not wait on B-020. With peak interpolation the spectral-resolution
+  slot is now filled once, by the estimator floor, and the standalone
+  `estimator_floor` entry is gone. Without interpolation the two entries are
+  distinct quantities and are unchanged.
+- **What was deliberately not done:** restoring `bin_width_hz` to the aggregate.
+  That is not a de-duplication — at TTP values the bin width is roughly 67x the
+  clock error and would dominate the result. Adding a dominant term is a
+  positive mathematical claim that depends on the estimator model B-020 has not
+  established. Removing a proven duplicate does not license it.
+- **Why the remaining question is real, not bookkeeping.** With interpolation
+  on, the term entering the aggregate is a Cramér–Rao *bound* of about 1e-8 Hz,
+  while any actual interpolator's achieved uncertainty is plausibly a fraction
+  of a bin — orders of magnitude larger. So the aggregate may be optimistic for
+  a reason unrelated to double counting. Patch #2 §5.4 independently states the
+  combination as `sqrt(df_clock^2 + sigma_f^2 + u_phys^2)` with no bin-width
+  term, which corroborates the structure now implemented but is not itself
+  source-verified and does not justify the estimator term's magnitude.
+- **Parity drift, stated exactly:** `source_combined^2 - ours^2 ==
+  estimator_floor^2`. About 4 parts in 1e12 at TTP values; very nearly `sqrt(2)`
+  at 0.05 s and 10 dB, where the estimator term dominates.
+- **Contributor count is no longer fixed** and callers must not assume one: two
+  with interpolation (three with physical repeatability), three without (four
+  with it). Before this the interpolating case always reported three or four
+  because of the duplicate.
+- **Remaining acceptance:** decide, from an established estimator model, whether
+  `bin_width_hz` belongs in the aggregate alongside the estimator floor, and
+  whether the estimator term should be a bound or an achieved-interpolator
+  figure. Blocked on **B-020**.
 - **Origin:** DO-107A Commit 3 parity battery, against the archived 984-line
   acquisition source.
 - **Context:** with peak interpolation enabled, the source assigns the estimator
@@ -488,7 +557,47 @@ evidence calls for them — not because a grant narrative would like to cite the
 
 ### B-022 — the canonical MOE authority double-applies its sensitivity coefficients
 
-- **Status:** open · **Priority:** P1 · **Area:** `tap_tone_pi/uncertainty/stiffness.py`
+- **Status:** CLOSED by DO-107M · **Priority:** P1 · **Area:** `tap_tone_pi/uncertainty/stiffness.py`
+- **Resolution.** Both MOE functions now store the **unweighted** standard
+  uncertainty `E * (dX/X)` in `value` and carry the partial derivative
+  separately as `sensitivity_coefficient`, which is the convention
+  `UncertaintyComponent` already documents and applies once as `(c*u)^2`. Nine
+  sites across the two functions; no public signature, unit or unrelated formula
+  changed. Verified independently rather than against a recorded output: the
+  canonical combined uncertainty now equals the documented propagation formula
+  evaluated from raw inputs, for both the tap-tone and deflection paths.
+- **Blast radius, as predicted and as found.** `qa_lab_spec.py` builds components
+  generically with the coefficient defaulting to 1.0 and never shared the defect,
+  so the bending pipeline is untouched — `test_qa_lab_spec` and
+  `test_production_physics` pass unmodified. The re-baseline was confined to
+  `tests/test_uncertainty.py` and the acquisition batteries.
+- **Acquisition workaround removed.** `modulus.py` consumes
+  `canonical.combined_standard_uncertainty` verbatim and stamps
+  `aggregation = "canonical"`. No local RSS, no correction factor. The DO-107A
+  tripwire — which asserted the canonical aggregate was wrong and was designed to
+  fail once it was fixed — is replaced by the invariant that outlives the defect,
+  plus a structural check that `modulus_budget` contains no aggregation of its
+  own.
+- **No parity drift.** The adapter's aggregate and all four per-term
+  contributions still match the archived source calculator to 1e-12. That
+  establishes something DO-107A could not: the archived source combined its terms
+  correctly all along, and the defect was confined to this repository's canonical
+  `stiffness.py`. The DO-107A prediction that repairing B-022 would remove the
+  advisory "without changing the number" is confirmed rather than assumed.
+- **Historical results.** Figures previously produced by these two functions may
+  **overstate** combined uncertainty. The distortion is component-dependent, not
+  a uniform factor — terms carrying no sensitivity of their own (fit quality,
+  SNR, calibration state) defaulted to 1.0 and were never doubled — so no single
+  correction could have been applied downstream. In-repo consumers were
+  enumerated: the two functions, their lazy re-export, `acquisition/modulus.py`,
+  and three test modules; nothing in `bending/`, the analyzer or phase2.
+  **External use: NOT_ESTABLISHED — external-use census unavailable from
+  repository evidence.** If an artifact containing an affected result is later
+  found, correct that artifact against its actual original calculation.
+- **Records written before the repair remain valid records.** Payloads carrying
+  `canonical_components_with_B022_aggregate_workaround` still validate,
+  deserialize and grade; the composition and contract suites construct that state
+  explicitly as a historical compatibility fixture rather than computing it.
 - **Origin:** DO-107A Commit 3, while delegating modulus propagation to the
   canonical authority.
 - **Context:** `compute_tap_tone_moe_uncertainty()` and
