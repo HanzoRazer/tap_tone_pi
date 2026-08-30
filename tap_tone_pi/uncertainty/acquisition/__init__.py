@@ -33,6 +33,24 @@ from .budget import (
     EvidenceReason,
 )
 from .contract import SCHEMA_FILE, SCHEMA_VERSION, validate_acquisition_budget
+from .e0_adapter import (
+    E0_MAPPINGS,
+    E0_UNMAPPED_GROUPS,
+    E0Adaptation,
+    E0AdapterError,
+    E0InformedBudget,
+    E0Mapping,
+    E0MappingOutcome,
+    E0MappingStatus,
+    E0OperatingPoint,
+    E0UnmappedGroup,
+    adapt_e0_characterization,
+    build_acquisition_budget_from_e0,
+    compare_budget_inputs,
+    e0_informed_converter,
+    e0_source_locator,
+    parse_e0_source_locator,
+)
 from .frequency_budget import (
     AggregateContributor,
     FrequencyBudget,
@@ -133,4 +151,21 @@ __all__ = [
     "SCHEMA_VERSION",
     "SCHEMA_FILE",
     "validate_acquisition_budget",
+    # E0 integration (DO-107B)
+    "E0_MAPPINGS",
+    "E0_UNMAPPED_GROUPS",
+    "E0Adaptation",
+    "E0AdapterError",
+    "E0InformedBudget",
+    "E0Mapping",
+    "E0MappingOutcome",
+    "E0MappingStatus",
+    "E0OperatingPoint",
+    "E0UnmappedGroup",
+    "adapt_e0_characterization",
+    "build_acquisition_budget_from_e0",
+    "compare_budget_inputs",
+    "e0_informed_converter",
+    "e0_source_locator",
+    "parse_e0_source_locator",
 ]
