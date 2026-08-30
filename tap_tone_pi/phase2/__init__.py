@@ -51,6 +51,17 @@ from tap_tone_pi.phase2.coherence_gate import (
     format_coherence_feedback,
 )
 
+from tap_tone_pi.phase2.session_acquisition import (
+    ACQUISITION_BUDGET_FILENAME,
+    ACQUISITION_BUDGET_RELPATH,
+    SessionAcquisitionError,
+    acquisition_budget_path,
+    attach_acquisition_budget,
+    find_acquisition_budget,
+    has_acquisition_budget,
+    load_acquisition_budget,
+)
+
 __all__ = [
     # Grid display
     "GridDisplay",
@@ -64,4 +75,13 @@ __all__ = [
     "check_coherence",
     "check_coherence_from_arrays",
     "format_coherence_feedback",
+    # Acquisition budget as session evidence (DO-107B)
+    "ACQUISITION_BUDGET_FILENAME",
+    "ACQUISITION_BUDGET_RELPATH",
+    "SessionAcquisitionError",
+    "acquisition_budget_path",
+    "attach_acquisition_budget",
+    "find_acquisition_budget",
+    "has_acquisition_budget",
+    "load_acquisition_budget",
 ]
