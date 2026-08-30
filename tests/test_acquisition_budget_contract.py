@@ -14,6 +14,7 @@ restrictions.
 from __future__ import annotations
 
 import json
+import math
 import subprocess
 import sys
 from pathlib import Path
@@ -270,16 +271,29 @@ class TestThePublicationGate:
 
 class TestTheSchemaPermitsWhatItMust:
     def test_duplicate_contributors_are_legal(self, schema):
-        # B-021 is deliberately represented, not repaired. A contract that
-        # refused to serialize the computation's actual state would force a
-        # choice between lying and staying silent.
+        """Still legal, and now only constructible by hand.
+
+        DO-107M repaired the duplicate, so no live computation emits one. The
+        contract must keep accepting it anyway: DO-107A records carry it, and a
+        schema that refused would make a repaired defect retroactively
+        unrepresentable. Today's mathematics is not encoded as a restriction.
+        """
         payload = payload_1_current_ttp()
-        sources = [
-            c["source_quantity"]
-            for c in payload["results"]["frequency"]["combined_contributors"]
-        ]
-        assert sources.count("estimator_floor_hz") == 2
+        contributors = payload["results"]["frequency"]["combined_contributors"]
+        sources = [c["source_quantity"] for c in contributors]
+        assert sources.count("estimator_floor_hz") == 1
+
+        historical = dict(contributors[-1])
+        historical["role"] = "estimator_floor"
+        contributors.append(historical)
+        payload["results"]["frequency"]["combined_hz"] = math.sqrt(
+            sum(c["value_hz"] ** 2 for c in contributors)
+        )
+        assert [c["source_quantity"] for c in contributors].count(
+            "estimator_floor_hz"
+        ) == 2
         validate(payload, schema)
+        assert validate_acquisition_budget(payload) == []
 
     def test_both_evidence_outcomes_validate(self, schema):
         validate(payload_1_current_ttp(), schema)
@@ -353,13 +367,14 @@ class TestSemanticInvariants:
             range(len(contributors)), key=lambda i: contributors[i]["value_hz"]
         )
         assert contributors[negligible]["source_quantity"] == "estimator_floor_hz"
+        assert len(contributors) > 1
         contributors.pop(negligible)
 
         # The RSS invariant stays silent, and honestly so.
         assert validate_acquisition_budget(payload) == []
         # The structural evidence is what changed and what a reader can see.
         remaining = [c["source_quantity"] for c in contributors]
-        assert remaining.count("estimator_floor_hz") == 1
+        assert "estimator_floor_hz" not in remaining
 
     def test_an_unavailable_section_carrying_a_number_is_refused(self):
         payload = payload_4_modulus_unavailable()

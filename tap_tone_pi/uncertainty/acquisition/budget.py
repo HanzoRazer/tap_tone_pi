@@ -359,9 +359,36 @@ class AcquisitionBudgetV1:
                         blocking=True,
                         detail=(
                             "the frequency combination draws "
-                            f"{', '.join(duplicated)} more than once, preserving a "
-                            "source defect for parity; the combined figure is not "
-                            "what the intended contributor model would give"
+                            f"{', '.join(duplicated)} more than once; the combined "
+                            "figure is not what the intended contributor model "
+                            "would give"
+                        ),
+                        reference="B-021",
+                    )
+                )
+            elif (
+                "estimator_floor_hz" in sources
+                and "bin_width_hz" not in sources
+                and not self.frequency.estimator_floor_status.is_established
+            ):
+                # The duplicate DO-107A preserved is gone -- that half of B-021
+                # is repaired and provably so. What remains is a composition
+                # question, not a bookkeeping one: the spectral-resolution slot
+                # is filled by the estimator floor, and the bin width is reported
+                # without entering the combination. Whether that is right depends
+                # on the estimator model, which B-020 has not established.
+                # Restoring the bin width would add a term that dominates at TTP
+                # values, so it cannot be done as tidying.
+                reasons.append(
+                    EvidenceReason(
+                        EvidenceCondition.CONTRIBUTOR_COMPOSITION_DEFECT,
+                        blocking=True,
+                        detail=(
+                            "the spectral resolution term is filled by "
+                            "estimator_floor_hz while bin_width_hz is reported and "
+                            "does not enter the combination; whether both belong "
+                            "in the aggregate depends on the estimator model, "
+                            "which is not established"
                         ),
                         reference="B-021",
                     )

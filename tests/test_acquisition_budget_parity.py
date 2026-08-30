@@ -278,13 +278,33 @@ class TestFrequencyBudgetParity:
         )
         return src.frequency, mine
 
-    def test_every_term_matches(self, pair):
+    def test_every_reportable_term_matches(self, pair):
         src, mine = pair
         assert mine.clock_error_hz == src.clock_error_hz
         assert mine.bin_width_hz == src.bin_width_hz
         assert mine.estimator_floor_hz == src.estimator_floor_hz
-        assert mine.combined_hz == src.combined_hz
         assert mine.dominant == src.dominant
+
+    def test_the_only_drift_from_the_source_is_the_removed_duplicate(self, pair):
+        """B-021, DO-107M: the combined figure now differs, by exactly one term.
+
+        This is the one place DO-107M knowingly departs from the archived
+        source, so the departure is asserted exactly rather than absorbed into a
+        loosened tolerance. The source counted the estimator floor twice; we
+        count it once. Everything else is untouched, so:
+
+            source^2 - ours^2 == estimator_floor^2
+
+        At TTP values the drift is about 4 parts in 1e12 -- far too small to
+        notice, which is precisely why it needed a structural test rather than a
+        numerical one.
+        """
+        src, mine = pair
+        assert mine.combined_hz != src.combined_hz
+        assert mine.combined_hz < src.combined_hz
+        assert src.combined_hz**2 - mine.combined_hz**2 == pytest.approx(
+            mine.estimator_floor_hz**2, rel=1e-9
+        )
 
     def test_notes_match(self, pair):
         src, mine = pair
@@ -571,19 +591,33 @@ class TestPreservedSourceSemantics:
     integration would destroy the baseline that reconciliation needs.
     """
 
-    def test_the_estimator_term_enters_the_combination_twice(self, source, ours):
-        # With peak interpolation enabled the source assigns the estimator floor
-        # to the "spectral_resolution" contributor while also carrying
-        # "estimator_floor" separately, so it is counted twice in the RSS.
-        # Reproduced for parity; recorded as B-021.
+    def test_the_estimator_term_no_longer_enters_the_combination_twice(
+        self, source, ours
+    ):
+        """B-021, provable half: the duplicate is gone; the source still has it.
+
+        DO-107A reproduced the double count for parity. DO-107M removes it,
+        because counting one quantity twice is wrong under any estimator model
+        and does not wait on B-020.
+        """
         src = source.TTP_ANALYZER_PROFILE().compute()
         mine = frequency_budget(
             ours["clock"], ours["capture"], ours["specimen"], src.noise.combined_snb_db
         )
         floor = mine.estimator_floor_hz
         clock_err = mine.clock_error_hz
+        counted_once = math.sqrt(clock_err**2 + floor**2)
         counted_twice = math.sqrt(clock_err**2 + floor**2 + floor**2)
-        assert mine.combined_hz == pytest.approx(counted_twice, rel=1e-12)
+        assert mine.combined_hz == pytest.approx(counted_once, rel=1e-12)
+        assert src.frequency.combined_hz == pytest.approx(counted_twice, rel=1e-12)
+
+        # The estimator floor appears exactly once among the contributors, and
+        # the bin width is still reported without entering the combination --
+        # the open half of B-021.
+        sources = [c.source_quantity for c in mine.combined_contributors]
+        assert sources.count("estimator_floor_hz") == 1
+        assert "bin_width_hz" not in sources
+        assert mine.bin_width_hz > 0.0
 
         # At TTP profile values the estimator floor is ~1e-8 Hz against a
         # 3.7e-3 Hz clock error, so counting it twice is numerically invisible.
@@ -601,9 +635,11 @@ class TestPreservedSourceSemantics:
         twice = math.sqrt(
             loud_floor.clock_error_hz**2 + 2 * loud_floor.estimator_floor_hz**2
         )
-        assert loud_floor.combined_hz == pytest.approx(twice, rel=1e-12)
-        # Inflated by very nearly sqrt(2) once the estimator term dominates.
-        assert loud_floor.combined_hz / once == pytest.approx(math.sqrt(2), rel=1e-3)
+        assert loud_floor.combined_hz == pytest.approx(once, rel=1e-12)
+        assert loud_floor.combined_hz != pytest.approx(twice, rel=1e-9)
+        # Where the defect actually bit: the old aggregate was inflated by very
+        # nearly sqrt(2) here, because the estimator term dominated.
+        assert twice / once == pytest.approx(math.sqrt(2.0), rel=1e-3)
 
     def test_without_peak_interpolation_the_bin_width_is_used_instead(
         self, source, ours
@@ -778,11 +814,20 @@ class TestRepresentationHardening:
             math.sqrt(sum(v * v for v in values)), rel=1e-12
         )
 
-    def test_b021_is_visible_as_data(self, budget):
-        # The estimator floor fills two slots and the bin width fills none. A
-        # mapping keyed by conceptual quantity would have collapsed this.
+    def test_b021_duplicate_is_repaired_and_the_rest_stays_visible_as_data(
+        self, budget
+    ):
+        """The provable half is fixed; the open half is still legible.
+
+        DO-107A recorded ``estimator_floor_hz`` filling two slots. That
+        duplicate is removed. The sequence still carries role and source
+        separately, so the remaining question -- a reported bin width that does
+        not enter the aggregate -- is readable straight off the data rather
+        than inferred from a number that happens not to move.
+        """
         sources = [c.source_quantity for c in budget.combined_contributors]
-        assert sources.count("estimator_floor_hz") == 2
+        assert sources.count("estimator_floor_hz") == 1
+        assert len(sources) == len(set(sources))
         assert "bin_width_hz" not in sources
 
     def test_a_reported_quantity_can_be_absent_from_the_combination(self, budget):
@@ -908,3 +953,99 @@ class TestRepresentationHardening:
         )
         result = modulus_budget(ours["specimen"], freq)
         assert ModulusBudget.from_dict(result.as_dict()) == result
+
+
+class TestB021ContributorComposition:
+    """DO-107M: contributor identity and multiplicity, asserted structurally.
+
+    The lesson from DO-107A Commit 6 is the organising principle here. A
+    contributor that adds nothing to the root-sum-square cannot be found by
+    watching the aggregate move, so every check below reads the sequence
+    directly. None of them infer composition from a number.
+    """
+
+    @staticmethod
+    def _capture(peak_interpolation: bool) -> CaptureSpec:
+        return CaptureSpec(
+            record_length_s=Quantity(4.0, "s", Provenance.ASSUMED),
+            sample_rate_hz=Quantity(48000.0, "Hz", Provenance.DATASHEET),
+            peak_interpolation=peak_interpolation,
+        )
+
+    def _budget(self, ours, peak_interpolation, repeatability=None):
+        specimen = ours["specimen"]
+        if repeatability is not None:
+            specimen = SpecimenSpec(
+                **{
+                    **{f: getattr(specimen, f) for f in specimen.__dataclass_fields__},
+                    "physical_repeatability_hz": repeatability,
+                }
+            )
+        return frequency_budget(
+            ours["clock"], self._capture(peak_interpolation), specimen, 96.5
+        )
+
+    def test_f5_every_contributor_names_a_role_a_source_and_a_value(self, ours):
+        for interpolation in (True, False):
+            budget = self._budget(ours, interpolation)
+            for contributor in budget.combined_contributors:
+                assert contributor.role
+                assert contributor.source_quantity
+                assert isinstance(contributor.value_hz, float)
+
+    def test_f6_multiplicity_is_asserted_directly_not_inferred(self, ours):
+        """No source quantity enters the combination more than once."""
+        for interpolation in (True, False):
+            sources = [
+                c.source_quantity
+                for c in self._budget(ours, interpolation).combined_contributors
+            ]
+            assert len(sources) == len(set(sources)), sources
+
+    def test_the_contributor_count_is_not_fixed(self, ours):
+        """Two, three or four -- the count depends on configuration.
+
+        Recorded because it is easy to write a downstream check that assumes a
+        constant number of terms. Peak interpolation collapses the spectral
+        resolution term and the estimator floor into one slot; physical
+        repeatability adds a term only when the specimen supplies it.
+        """
+        assert len(self._budget(ours, True).combined_contributors) == 2
+        assert len(self._budget(ours, True, 0.02).combined_contributors) == 3
+        assert len(self._budget(ours, False).combined_contributors) == 3
+        assert len(self._budget(ours, False, 0.02).combined_contributors) == 4
+
+    def test_f8_bin_width_stays_reportable_when_it_does_not_contribute(self, ours):
+        """B-021's open half: reported, excluded, and visibly so.
+
+        Closing the duplicate did not mean putting the bin width into the
+        aggregate. It remains a serialized reportable quantity whose absence
+        from the combination a reader can see, which is what keeps the open
+        question legible instead of implicit.
+        """
+        budget = self._budget(ours, True)
+        assert budget.bin_width_hz > 0.0
+        assert "bin_width_hz" not in [
+            c.source_quantity for c in budget.combined_contributors
+        ]
+        payload = budget.as_dict()
+        assert payload["bin_width_hz"] == budget.bin_width_hz
+
+    def test_f7_combined_is_the_rss_of_the_contributors_in_every_configuration(
+        self, ours
+    ):
+        for interpolation in (True, False):
+            for repeatability in (None, 0.02):
+                budget = self._budget(ours, interpolation, repeatability)
+                assert budget.combined_hz == pytest.approx(
+                    math.sqrt(sum(c.value_hz**2 for c in budget.combined_contributors)),
+                    rel=1e-12,
+                )
+
+    def test_the_estimator_floor_enters_exactly_once_in_both_modes(self, ours):
+        for interpolation in (True, False):
+            sources = [
+                c.source_quantity
+                for c in self._budget(ours, interpolation).combined_contributors
+            ]
+            assert sources.count("estimator_floor_hz") == 1

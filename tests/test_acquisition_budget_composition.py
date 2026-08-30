@@ -312,7 +312,12 @@ class TestEvidenceGrade:
             if r.condition is EvidenceCondition.CONTRIBUTOR_COMPOSITION_DEFECT
         )
         assert reason.reference == "B-021"
-        assert "more than once" in reason.detail
+        # The duplicate half is repaired, so the reason no longer describes
+        # double counting. What is still open is the composition question.
+        assert "more than once" not in reason.detail
+        assert "bin_width_hz" in reason.detail
+        assert "estimator model" in reason.detail
+        assert reason.blocking is True
 
     def test_b020_is_reported_as_a_provisional_formula_not_as_a_foreign_bug(
         self, budget
