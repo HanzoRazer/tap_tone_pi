@@ -205,7 +205,22 @@ def frequency_budget(
     specimen: SpecimenSpec,
     snr_db: float,
 ) -> FrequencyBudget:
-    """Four contributors to the uncertainty on a measured mode frequency."""
+    """The contributors to the uncertainty on a measured mode frequency.
+
+    How many there are depends on the configuration, and the count is not a
+    fixed property of the model:
+
+    * peak interpolation on  -- clock accuracy and the spectral resolution term
+      (filled by the estimator floor): **two**, or three when the specimen
+      supplies physical repeatability.
+    * peak interpolation off -- clock accuracy, spectral resolution (filled by
+      the bin width) and the estimator floor: **three**, or four with physical
+      repeatability.
+
+    Before DO-107M the interpolating case carried the estimator floor twice and
+    so always reported three or four. Callers must read the sequence rather
+    than assume a length.
+    """
     notes: list[str] = []
     f = float(specimen.mode_frequency_hz)
 
@@ -221,22 +236,44 @@ def frequency_budget(
         else None
     )
 
-    # NOTE (source parity): when peak interpolation is enabled the source sets
-    # the "spectral_resolution" contributor to the estimator floor rather than
-    # to the bin width, while also carrying "estimator_floor" as its own entry.
-    # The estimator term therefore enters the combination twice. This is
-    # reproduced faithfully rather than corrected -- DO-107A establishes what the
-    # existing calculator says; deciding what it ought to say is the
-    # source-reconciliation work. See the parity report and B-021.
+    # B-021, partial reconciliation (DO-107M).
+    #
+    # The archived source filled the "spectral_resolution" slot with the
+    # estimator floor when peak interpolation was enabled *and* carried
+    # "estimator_floor" as a second entry, so the estimator term entered the
+    # root-sum-square twice. That duplication is provably wrong whatever the
+    # estimator expression turns out to be, so it is removed here: the slot is
+    # filled once, and the source quantity that filled it is named.
+    #
+    # What is NOT settled, and is deliberately not decided here:
+    # whether ``bin_width_hz`` should also enter the aggregate when the
+    # estimator floor is present. Restoring it would not be a de-duplication --
+    # at TTP values the bin width is orders of magnitude above the clock error
+    # and would dominate the result. Adding a dominant term is a positive
+    # mathematical claim and it depends on the estimator model that B-020 has
+    # not yet established. Removing a proven duplicate does not license it.
+    # B-021 therefore stays open on that question alone. See D107M-04.
+    #
+    # Without interpolation the two entries are distinct quantities, not a
+    # duplicate, and are left exactly as the source had them.
     contributors = [
         AggregateContributor("clock_accuracy", "clock_error_hz", clock_err),
-        AggregateContributor(
-            "spectral_resolution",
-            "estimator_floor_hz" if capture.peak_interpolation else "bin_width_hz",
-            estimator_floor if capture.peak_interpolation else bin_w,
-        ),
-        AggregateContributor("estimator_floor", "estimator_floor_hz", estimator_floor),
     ]
+    if capture.peak_interpolation:
+        contributors.append(
+            AggregateContributor(
+                "spectral_resolution", "estimator_floor_hz", estimator_floor
+            )
+        )
+    else:
+        contributors.append(
+            AggregateContributor("spectral_resolution", "bin_width_hz", bin_w)
+        )
+        contributors.append(
+            AggregateContributor(
+                "estimator_floor", "estimator_floor_hz", estimator_floor
+            )
+        )
     if phys is not None:
         contributors.append(
             AggregateContributor(

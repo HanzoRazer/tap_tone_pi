@@ -85,6 +85,43 @@ def ttp_profile(**overrides) -> AcquisitionBudgetV1:
     return AcquisitionBudgetV1(**base)
 
 
+DO_107A_AGGREGATION = "canonical_components_with_B022_aggregate_workaround"
+
+
+def with_historical_b022(budget: AcquisitionBudgetV1) -> AcquisitionBudgetV1:
+    """Re-stamp a budget's modulus with the DO-107A-era aggregation identity.
+
+    B-022 is repaired at the canonical authority, so no live computation
+    produces this state any more. Records written while it did must still
+    deserialize, still grade, and still disclose their advisory condition --
+    otherwise repairing a defect would silently rewrite the history of results
+    that carried it. Constructed explicitly here, never computed.
+    """
+    return AcquisitionBudgetV1(
+        profile=budget.profile,
+        converter=budget.converter,
+        clock=budget.clock,
+        capture=budget.capture,
+        specimen=budget.specimen,
+        noise=budget.noise,
+        frequency=budget.frequency,
+        modulus=ModulusBudget(
+            relative_uncertainty=budget.modulus.relative_uncertainty,
+            contributions=dict(budget.modulus.contributions),
+            dominant=budget.modulus.dominant,
+            smallest_resolvable_delta_pct=(
+                budget.modulus.smallest_resolvable_delta_pct
+            ),
+            component_authority=budget.modulus.component_authority,
+            aggregation=DO_107A_AGGREGATION,
+            notes=budget.modulus.notes,
+        ),
+        sweep_limits=budget.sweep_limits,
+        self_test=budget.self_test,
+        clock_topology=budget.clock_topology,
+    )
+
+
 def fully_measured() -> AcquisitionBudgetV1:
     """A hypothetical instrument where every input has been measured.
 
@@ -243,10 +280,25 @@ class TestEvidenceGrade:
         assert reason.blocking is True
         assert reason.reference == "B-014"
 
-    def test_the_b022_workaround_is_reported_as_a_computation_condition(self, budget):
-        reason = next(
+    def test_e3_a_computed_budget_reports_no_b022_condition(self, budget):
+        """B-022 is repaired; the condition disappears because the state did.
+
+        Not suppressed by name -- ``evidence()`` derives this reason from
+        ``modulus.aggregation``, and the adapter now consumes the canonical
+        aggregate, so there is no non-canonical state left to report.
+        """
+        assert budget.modulus.aggregation == "canonical"
+        assert not [
             r
             for r in budget.evidence().reasons
+            if r.condition is EvidenceCondition.AGGREGATE_AUTHORITY_WORKAROUND
+        ]
+
+    def test_a_historical_b022_record_still_reports_the_condition(self, budget):
+        """The derivation reads state, so old records still grade correctly."""
+        reason = next(
+            r
+            for r in with_historical_b022(budget).evidence().reasons
             if r.condition is EvidenceCondition.AGGREGATE_AUTHORITY_WORKAROUND
         )
         assert reason.reference == "B-022"
@@ -260,7 +312,12 @@ class TestEvidenceGrade:
             if r.condition is EvidenceCondition.CONTRIBUTOR_COMPOSITION_DEFECT
         )
         assert reason.reference == "B-021"
-        assert "more than once" in reason.detail
+        # The duplicate half is repaired, so the reason no longer describes
+        # double counting. What is still open is the composition question.
+        assert "more than once" not in reason.detail
+        assert "bin_width_hz" in reason.detail
+        assert "estimator model" in reason.detail
+        assert reason.blocking is True
 
     def test_b020_is_reported_as_a_provisional_formula_not_as_a_foreign_bug(
         self, budget
@@ -316,7 +373,7 @@ class TestEvidenceGrade:
         """
         reason = next(
             r
-            for r in fully_measured().evidence().reasons
+            for r in with_historical_b022(fully_measured()).evidence().reasons
             if r.condition is EvidenceCondition.AGGREGATE_AUTHORITY_WORKAROUND
         )
         assert reason.blocking is False
@@ -432,6 +489,7 @@ class TestEvidenceGrade:
             frequency=reconciled,
             modulus=base.modulus,
         )
+        budget = with_historical_b022(budget)
         evidence = budget.evidence()
         assert evidence.evidence_grade is True
         advisory = [r for r in evidence.reasons if not r.blocking]

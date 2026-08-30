@@ -120,16 +120,19 @@ class ModulusBudget:
     component_authority: str = (
         "tap_tone_pi.uncertainty.stiffness.compute_tap_tone_moe_uncertainty"
     )
-    aggregation: str = "canonical_components_with_B022_aggregate_workaround"
+    aggregation: str = "canonical"
     """How the combined figure was produced.
 
-    Deliberately **not** a claim of ordinary canonical delegation. The
-    sensitivity model and the component construction come from the canonical
-    authority; its *aggregate* is bypassed because it double-applies the
-    sensitivity coefficients (B-022). The local root-sum-square is a generic
-    aggregation forced by that defect, and this marker exists so a reader can
-    tell the difference — and so the workaround is removed rather than
-    naturalized when B-022 is repaired.
+    ``"canonical"`` means the combined figure is the canonical authority's own
+    aggregate, taken verbatim. Any other value means that aggregate was
+    bypassed, and the contract requires the reason to be disclosed as an
+    evidence condition.
+
+    DO-107A emitted ``canonical_components_with_B022_aggregate_workaround``
+    here, because the canonical aggregate applied every sensitivity coefficient
+    twice (B-022). That defect is repaired at the authority and the workaround
+    is gone. The field keeps its string type so records written during that
+    period still deserialize and still say what they did.
     """
 
     notes: tuple[str, ...] = field(default_factory=tuple)
@@ -199,12 +202,12 @@ def modulus_budget_or_unavailable(
 def modulus_budget(specimen: SpecimenSpec, freq: FrequencyBudget) -> ModulusBudget:
     """Propagate the frequency budget and the geometry into relative E_L uncertainty.
 
-    **The components come from the canonical authority; the aggregate does not.**
-    Every sensitivity coefficient and every per-term contribution is produced by
+    **The components and the aggregate both come from the canonical authority.**
+    Every sensitivity coefficient, every per-term contribution and the combined
+    figure are produced by
     :func:`~tap_tone_pi.uncertainty.stiffness.compute_tap_tone_moe_uncertainty`.
-    Its combined figure is bypassed under B-022 — see the comment at the
-    aggregation step. That bypass is temporary and is marked as such in the
-    result rather than presented as normal delegation.
+    DO-107A bypassed that aggregate under B-022; the defect is repaired at the
+    authority and the bypass has been removed rather than naturalized.
 
     The only other arithmetic here is the two-measurement distinguishability
     rule, which is a decision criterion rather than modulus physics.
@@ -236,11 +239,17 @@ def modulus_budget(specimen: SpecimenSpec, freq: FrequencyBudget) -> ModulusBudg
         is_calibrated=True,
     )
 
+    # A component's contribution to E_L is its unweighted standard uncertainty
+    # scaled by its own sensitivity coefficient -- the same product the
+    # canonical aggregate squares. Both halves come from the canonical
+    # authority; neither is recomputed here.
     contributions: dict[str, float] = {}
     for component in canonical.components:
         term = _CANONICAL_TERMS.get(component.name)
         if term is not None:
-            contributions[term] = float(component.value)
+            contributions[term] = float(
+                component.sensitivity_coefficient * component.value
+            )
 
     missing = sorted(set(_CANONICAL_TERMS.values()) - set(contributions))
     if missing:
@@ -251,21 +260,10 @@ def modulus_budget(specimen: SpecimenSpec, freq: FrequencyBudget) -> ModulusBudg
             "the propagation"
         )
 
-    # The canonical authority's own combination cannot be used here.
-    # ``compute_tap_tone_moe_uncertainty`` pre-multiplies each component value by
-    # its sensitivity coefficient AND passes that coefficient to
-    # ``add_component``, while ``UncertaintyComponent.contribution`` is
-    # ``(c_i * u_i)**2`` -- so ``combined_standard_uncertainty`` applies every
-    # coefficient a second time. For this specimen it returns 0.0341 where the
-    # correct root-sum-square is 0.0176, and the inflation is not even a constant
-    # factor: it depends on which term dominates.
-    #
-    # The *component values* are correct, so they are combined here. RSS of
-    # independent terms is elementary arithmetic, not a second propagation
-    # authority -- the coefficients still come entirely from the canonical
-    # function. Recorded as B-022; not fixed here, because changing a canonical
-    # uncertainty authority is not an integration order's job.
-    total = rss(*contributions.values())
+    # The canonical aggregate, verbatim. E_GPa = 1.0 above makes it relative.
+    # No local combination, no correction factor: B-022 is repaired at the
+    # authority, so there is nothing left here to work around.
+    total = float(canonical.combined_standard_uncertainty)
     dominant = max(contributions, key=lambda k: contributions[k])
 
     # Two plates are distinguishable when their difference exceeds the combined
@@ -274,11 +272,9 @@ def modulus_budget(specimen: SpecimenSpec, freq: FrequencyBudget) -> ModulusBudg
     smallest_delta = total * math.sqrt(2.0) * 100.0
 
     notes = [
-        "Components and sensitivity coefficients delegated to "
-        "compute_tap_tone_moe_uncertainty. Its combined figure is bypassed under "
-        "B-022, which double-applies the coefficients; the aggregate here is a "
-        "local root-sum-square of the canonical components and is a temporary "
-        "workaround, not canonical aggregation.",
+        "Components, sensitivity coefficients and the combined figure are "
+        "delegated to compute_tap_tone_moe_uncertainty. This module implements "
+        "no propagation of its own.",
         f"Dominant term is {dominant} "
         f"({contributions[dominant] / total * 100.0:.0f}% of the total in quadrature).",
     ]

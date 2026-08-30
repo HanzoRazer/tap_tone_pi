@@ -278,13 +278,33 @@ class TestFrequencyBudgetParity:
         )
         return src.frequency, mine
 
-    def test_every_term_matches(self, pair):
+    def test_every_reportable_term_matches(self, pair):
         src, mine = pair
         assert mine.clock_error_hz == src.clock_error_hz
         assert mine.bin_width_hz == src.bin_width_hz
         assert mine.estimator_floor_hz == src.estimator_floor_hz
-        assert mine.combined_hz == src.combined_hz
         assert mine.dominant == src.dominant
+
+    def test_the_only_drift_from_the_source_is_the_removed_duplicate(self, pair):
+        """B-021, DO-107M: the combined figure now differs, by exactly one term.
+
+        This is the one place DO-107M knowingly departs from the archived
+        source, so the departure is asserted exactly rather than absorbed into a
+        loosened tolerance. The source counted the estimator floor twice; we
+        count it once. Everything else is untouched, so:
+
+            source^2 - ours^2 == estimator_floor^2
+
+        At TTP values the drift is about 4 parts in 1e12 -- far too small to
+        notice, which is precisely why it needed a structural test rather than a
+        numerical one.
+        """
+        src, mine = pair
+        assert mine.combined_hz != src.combined_hz
+        assert mine.combined_hz < src.combined_hz
+        assert src.combined_hz**2 - mine.combined_hz**2 == pytest.approx(
+            mine.estimator_floor_hz**2, rel=1e-9
+        )
 
     def test_notes_match(self, pair):
         src, mine = pair
@@ -444,24 +464,24 @@ class TestModulusDelegation:
                 "the canonical authority owns the coefficients"
             )
 
-    def test_it_records_the_component_authority_and_the_workaround(self, pair):
+    def test_it_records_the_component_authority_and_canonical_aggregation(self, pair):
         _, mine = pair
         assert mine.component_authority.endswith("compute_tap_tone_moe_uncertainty")
-        # Not a claim of ordinary delegation: the aggregate is bypassed.
-        assert mine.aggregation == "canonical_components_with_B022_aggregate_workaround"
+        # An ordinary claim of delegation, now that it is true. DO-107A recorded
+        # "canonical_components_with_B022_aggregate_workaround" here.
+        assert mine.aggregation == "canonical"
         payload = mine.as_dict()
         assert payload["component_authority"] == mine.component_authority
         assert payload["aggregation"] == mine.aggregation
-        assert any("B-022" in n for n in mine.notes)
+        assert not any("B-022" in n for n in mine.notes)
 
-    def test_b022_tripwire_the_canonical_aggregate_is_bypassed(self, source, ours):
-        """Makes the temporary dependency on B-022 visible and removable.
+    def test_a5_no_local_aggregation_workaround_remains(self, source, ours):
+        """B-022 is repaired at the authority; acquisition aggregates nothing.
 
-        When B-022 is repaired in ``uncertainty/stiffness.py``, the third
-        assertion below starts failing. That is intentional: at that point the
-        local aggregation must be deleted and the canonical combined figure used,
-        rather than the workaround quietly becoming permanent parallel
-        aggregation.
+        This replaces the DO-107A tripwire, which asserted that the canonical
+        aggregate was *wrong* and deliberately failed once it was fixed. The
+        permanent invariant is the one that outlives the defect: the adapter's
+        combined figure is the canonical combined figure, taken verbatim.
         """
         from tap_tone_pi.uncertainty.stiffness import compute_tap_tone_moe_uncertainty
 
@@ -482,39 +502,54 @@ class TestModulusDelegation:
             snr_db=40.0,
             is_calibrated=True,
         )
-        by_name = {c.name: float(c.value) for c in canonical.components}
-        canonical_rss = math.sqrt(sum(v * v for v in by_name.values()))
 
-        # 1. Canonical component values equal the source calculator's contributions.
-        for canonical_name, term in (
-            ("Frequency measurement", "frequency"),
-            ("Length measurement", "length"),
-            ("Thickness measurement", "thickness"),
-            ("Density calculation", "density"),
-        ):
-            assert by_name[canonical_name] == pytest.approx(
+        # 1. The canonical aggregate applies each coefficient exactly once.
+        coefficient_once = math.sqrt(
+            sum(
+                (c.sensitivity_coefficient * c.value) ** 2 for c in canonical.components
+            )
+        )
+        assert canonical.combined_standard_uncertainty == pytest.approx(
+            coefficient_once, rel=1e-12
+        ), "B-022 has regressed in uncertainty/stiffness.py"
+
+        # 2. Components remain unweighted; the factor is carried, not baked in.
+        by_name = {c.name: c for c in canonical.components}
+        frequency = by_name["Frequency measurement"]
+        assert frequency.sensitivity_coefficient == 2.0
+        assert frequency.value == pytest.approx(freq.combined_hz / 187.0, rel=1e-12)
+
+        # 3. The adapter reports the canonical aggregate itself -- not an RSS of
+        #    components, not a corrected figure, not a parallel aggregation.
+        mine = modulus_budget(ours["specimen"], freq)
+        assert mine.relative_uncertainty == pytest.approx(
+            canonical.combined_standard_uncertainty, rel=1e-12
+        )
+
+        # 4. Its per-term contributions are the weighted ones, matching the
+        #    archived source calculator term by term.
+        for term in ("frequency", "length", "thickness", "density"):
+            assert mine.contributions[term] == pytest.approx(
                 src.modulus.contributions[term], rel=1e-12
             )
 
-        # 2. B-022: the canonical aggregate does NOT equal their RSS, because
-        #    compute_tap_tone_moe_uncertainty pre-multiplies each value by its
-        #    sensitivity coefficient and also passes that coefficient to
-        #    add_component, whose contribution is (c_i * u_i)**2.
-        assert canonical.combined_standard_uncertainty != pytest.approx(
-            canonical_rss, rel=1e-9
-        ), (
-            "B-022 appears to be fixed in uncertainty/stiffness.py. Remove the "
-            "local aggregation workaround in acquisition/modulus.py and use the "
-            "canonical combined figure; do not leave parallel aggregation in place."
+    def test_a5_the_adapter_source_contains_no_aggregation_of_its_own(self):
+        """Structural, not behavioural: the workaround cannot creep back."""
+        source_text = (
+            Path(__file__).resolve().parents[1]
+            / "tap_tone_pi"
+            / "uncertainty"
+            / "acquisition"
+            / "modulus.py"
+        ).read_text(encoding="utf-8")
+        after = source_text.split("def modulus_budget(", 1)[1]
+        cut = after.find(chr(10) + "def ")
+        body = after if cut == -1 else after[:cut]
+        assert "rss(" not in body, (
+            "modulus_budget aggregates locally again; the canonical combined "
+            "figure must be consumed verbatim"
         )
-        assert canonical.combined_standard_uncertainty > canonical_rss
-
-        # 3. The adapter uses the RSS of canonical components, not the aggregate.
-        mine = modulus_budget(ours["specimen"], freq)
-        assert mine.relative_uncertainty == pytest.approx(canonical_rss, rel=1e-12)
-        assert mine.relative_uncertainty != pytest.approx(
-            canonical.combined_standard_uncertainty, rel=1e-9
-        )
+        assert "combined_standard_uncertainty" in body
 
     def test_the_coefficients_come_from_the_canonical_authority(self, ours):
         # Verified by construction rather than by inspection: perturbing one
@@ -556,19 +591,33 @@ class TestPreservedSourceSemantics:
     integration would destroy the baseline that reconciliation needs.
     """
 
-    def test_the_estimator_term_enters_the_combination_twice(self, source, ours):
-        # With peak interpolation enabled the source assigns the estimator floor
-        # to the "spectral_resolution" contributor while also carrying
-        # "estimator_floor" separately, so it is counted twice in the RSS.
-        # Reproduced for parity; recorded as B-021.
+    def test_the_estimator_term_no_longer_enters_the_combination_twice(
+        self, source, ours
+    ):
+        """B-021, provable half: the duplicate is gone; the source still has it.
+
+        DO-107A reproduced the double count for parity. DO-107M removes it,
+        because counting one quantity twice is wrong under any estimator model
+        and does not wait on B-020.
+        """
         src = source.TTP_ANALYZER_PROFILE().compute()
         mine = frequency_budget(
             ours["clock"], ours["capture"], ours["specimen"], src.noise.combined_snb_db
         )
         floor = mine.estimator_floor_hz
         clock_err = mine.clock_error_hz
+        counted_once = math.sqrt(clock_err**2 + floor**2)
         counted_twice = math.sqrt(clock_err**2 + floor**2 + floor**2)
-        assert mine.combined_hz == pytest.approx(counted_twice, rel=1e-12)
+        assert mine.combined_hz == pytest.approx(counted_once, rel=1e-12)
+        assert src.frequency.combined_hz == pytest.approx(counted_twice, rel=1e-12)
+
+        # The estimator floor appears exactly once among the contributors, and
+        # the bin width is still reported without entering the combination --
+        # the open half of B-021.
+        sources = [c.source_quantity for c in mine.combined_contributors]
+        assert sources.count("estimator_floor_hz") == 1
+        assert "bin_width_hz" not in sources
+        assert mine.bin_width_hz > 0.0
 
         # At TTP profile values the estimator floor is ~1e-8 Hz against a
         # 3.7e-3 Hz clock error, so counting it twice is numerically invisible.
@@ -586,9 +635,11 @@ class TestPreservedSourceSemantics:
         twice = math.sqrt(
             loud_floor.clock_error_hz**2 + 2 * loud_floor.estimator_floor_hz**2
         )
-        assert loud_floor.combined_hz == pytest.approx(twice, rel=1e-12)
-        # Inflated by very nearly sqrt(2) once the estimator term dominates.
-        assert loud_floor.combined_hz / once == pytest.approx(math.sqrt(2), rel=1e-3)
+        assert loud_floor.combined_hz == pytest.approx(once, rel=1e-12)
+        assert loud_floor.combined_hz != pytest.approx(twice, rel=1e-9)
+        # Where the defect actually bit: the old aggregate was inflated by very
+        # nearly sqrt(2) here, because the estimator term dominated.
+        assert twice / once == pytest.approx(math.sqrt(2.0), rel=1e-3)
 
     def test_without_peak_interpolation_the_bin_width_is_used_instead(
         self, source, ours
@@ -605,19 +656,44 @@ class TestPreservedSourceSemantics:
         assert mine.combined_hz == pytest.approx(expected, rel=1e-12)
 
     def test_the_estimator_term_is_never_called_a_cramer_rao_bound(self):
-        # B-020: another site computes a different expression under that name,
-        # and the acquisition mathematics material flags an unresolved
-        # factor-of-two around this one. Naming it now would settle by
-        # appearance rather than by derivation.
+        """F3. B-020 did not close, so this prohibition still stands.
+
+        DO-107M established the SNR convention but refused to close B-020,
+        because both candidate expressions assume a constant-amplitude sinusoid
+        and a tap tone decays within a few percent of the record. Until that is
+        settled, the term is not earned.
+
+        Tightened in DO-107M: the guard previously accepted any occurrence of
+        the substring "not" in the preceding 200 characters, which "note",
+        "cannot" or "nothing" satisfy by accident. It now requires an explicit
+        negation of the naming itself.
+        """
+        import re
+
+        negation = re.compile(
+            r"(deliberately not|never)\b|"
+            r"\bnot\s+(called|labelled|labeled|named|claimed|a certified)"
+        )
         package = REPO_ROOT / "tap_tone_pi" / "uncertainty" / "acquisition"
+        checked = 0
         for path in package.glob("*.py"):
-            text = path.read_text(encoding="utf-8").lower()
+            raw = path.read_text(encoding="utf-8").lower()
+            # Markdown emphasis would otherwise split "not* called".
+            text = re.sub(r"[*_`]+", "", raw)
+            text = re.sub(r"\s+", " ", text)
             for banned in ("cramer-rao", "cramér–rao", "cramer_rao", "crlb"):
-                if banned in text:
-                    # Permitted only where the file explains it is NOT using it.
-                    assert "not" in text.split(banned)[0][-200:], (
-                        f"{path.name} uses {banned!r} as a label"
+                start = 0
+                while (index := text.find(banned, start)) != -1:
+                    preceding = text[max(0, index - 200) : index]
+                    assert negation.search(preceding), (
+                        f"{path.name} uses {banned!r} without explicitly "
+                        "disclaiming it as a label"
                     )
+                    checked += 1
+                    start = index + len(banned)
+        # The guard must actually be exercised; a silent zero would mean the
+        # term had vanished from the package and the test proved nothing.
+        assert checked >= 2
 
     def test_the_result_advertises_the_term_as_a_candidate(self, source, ours):
         mine = frequency_budget(ours["clock"], ours["capture"], ours["specimen"], 96.5)
@@ -763,11 +839,20 @@ class TestRepresentationHardening:
             math.sqrt(sum(v * v for v in values)), rel=1e-12
         )
 
-    def test_b021_is_visible_as_data(self, budget):
-        # The estimator floor fills two slots and the bin width fills none. A
-        # mapping keyed by conceptual quantity would have collapsed this.
+    def test_b021_duplicate_is_repaired_and_the_rest_stays_visible_as_data(
+        self, budget
+    ):
+        """The provable half is fixed; the open half is still legible.
+
+        DO-107A recorded ``estimator_floor_hz`` filling two slots. That
+        duplicate is removed. The sequence still carries role and source
+        separately, so the remaining question -- a reported bin width that does
+        not enter the aggregate -- is readable straight off the data rather
+        than inferred from a number that happens not to move.
+        """
         sources = [c.source_quantity for c in budget.combined_contributors]
-        assert sources.count("estimator_floor_hz") == 2
+        assert sources.count("estimator_floor_hz") == 1
+        assert len(sources) == len(set(sources))
         assert "bin_width_hz" not in sources
 
     def test_a_reported_quantity_can_be_absent_from_the_combination(self, budget):
@@ -893,3 +978,99 @@ class TestRepresentationHardening:
         )
         result = modulus_budget(ours["specimen"], freq)
         assert ModulusBudget.from_dict(result.as_dict()) == result
+
+
+class TestB021ContributorComposition:
+    """DO-107M: contributor identity and multiplicity, asserted structurally.
+
+    The lesson from DO-107A Commit 6 is the organising principle here. A
+    contributor that adds nothing to the root-sum-square cannot be found by
+    watching the aggregate move, so every check below reads the sequence
+    directly. None of them infer composition from a number.
+    """
+
+    @staticmethod
+    def _capture(peak_interpolation: bool) -> CaptureSpec:
+        return CaptureSpec(
+            record_length_s=Quantity(4.0, "s", Provenance.ASSUMED),
+            sample_rate_hz=Quantity(48000.0, "Hz", Provenance.DATASHEET),
+            peak_interpolation=peak_interpolation,
+        )
+
+    def _budget(self, ours, peak_interpolation, repeatability=None):
+        specimen = ours["specimen"]
+        if repeatability is not None:
+            specimen = SpecimenSpec(
+                **{
+                    **{f: getattr(specimen, f) for f in specimen.__dataclass_fields__},
+                    "physical_repeatability_hz": repeatability,
+                }
+            )
+        return frequency_budget(
+            ours["clock"], self._capture(peak_interpolation), specimen, 96.5
+        )
+
+    def test_f5_every_contributor_names_a_role_a_source_and_a_value(self, ours):
+        for interpolation in (True, False):
+            budget = self._budget(ours, interpolation)
+            for contributor in budget.combined_contributors:
+                assert contributor.role
+                assert contributor.source_quantity
+                assert isinstance(contributor.value_hz, float)
+
+    def test_f6_multiplicity_is_asserted_directly_not_inferred(self, ours):
+        """No source quantity enters the combination more than once."""
+        for interpolation in (True, False):
+            sources = [
+                c.source_quantity
+                for c in self._budget(ours, interpolation).combined_contributors
+            ]
+            assert len(sources) == len(set(sources)), sources
+
+    def test_the_contributor_count_is_not_fixed(self, ours):
+        """Two, three or four -- the count depends on configuration.
+
+        Recorded because it is easy to write a downstream check that assumes a
+        constant number of terms. Peak interpolation collapses the spectral
+        resolution term and the estimator floor into one slot; physical
+        repeatability adds a term only when the specimen supplies it.
+        """
+        assert len(self._budget(ours, True).combined_contributors) == 2
+        assert len(self._budget(ours, True, 0.02).combined_contributors) == 3
+        assert len(self._budget(ours, False).combined_contributors) == 3
+        assert len(self._budget(ours, False, 0.02).combined_contributors) == 4
+
+    def test_f8_bin_width_stays_reportable_when_it_does_not_contribute(self, ours):
+        """B-021's open half: reported, excluded, and visibly so.
+
+        Closing the duplicate did not mean putting the bin width into the
+        aggregate. It remains a serialized reportable quantity whose absence
+        from the combination a reader can see, which is what keeps the open
+        question legible instead of implicit.
+        """
+        budget = self._budget(ours, True)
+        assert budget.bin_width_hz > 0.0
+        assert "bin_width_hz" not in [
+            c.source_quantity for c in budget.combined_contributors
+        ]
+        payload = budget.as_dict()
+        assert payload["bin_width_hz"] == budget.bin_width_hz
+
+    def test_f7_combined_is_the_rss_of_the_contributors_in_every_configuration(
+        self, ours
+    ):
+        for interpolation in (True, False):
+            for repeatability in (None, 0.02):
+                budget = self._budget(ours, interpolation, repeatability)
+                assert budget.combined_hz == pytest.approx(
+                    math.sqrt(sum(c.value_hz**2 for c in budget.combined_contributors)),
+                    rel=1e-12,
+                )
+
+    def test_the_estimator_floor_enters_exactly_once_in_both_modes(self, ours):
+        for interpolation in (True, False):
+            sources = [
+                c.source_quantity
+                for c in self._budget(ours, interpolation).combined_contributors
+            ]
+            assert sources.count("estimator_floor_hz") == 1
