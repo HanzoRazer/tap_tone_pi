@@ -551,6 +551,36 @@ DO-107M did not have to close B-020 to be an honest tranche. An unresolved
 authority question recorded accurately is worth more than an unjustified equation
 promoted to canonical status.
 
+## Reconciliation parity rule
+
+**Archived-source numerical parity is preserved except where a reconciliation
+order intentionally corrects a documented authority defect; every divergence must
+have an exact mathematical explanation and a recorded reconciliation/backlog
+disposition.**
+
+This supersedes "all 63 original parity tests unchanged" as an acceptance
+criterion. That criterion belonged to DO-107A, whose job was to freeze the
+archived 984-line acquisition source *faithfully* — including its defects — so
+that later work could tell a repair from a regression. Reconciliation orders
+exist to change that mathematics, so parity divergence is expected there and its
+absence would mean nothing had been reconciled.
+
+**The parity battery is not a claim that historical output can never change.** It
+is a claim that output changes only for a stated reason. DO-107M's B-021 repair
+is the worked example: rather than widen a tolerance until the new number fit, it
+asserts the divergence as an identity —
+
+```
+source_combined^2 - reconciled^2 == estimator_floor^2
+```
+
+— which makes the change auditable instead of merely tolerated. A drift of about
+4 parts in 1e12 is far too small for any tolerance to police honestly; only an
+exact relationship can.
+
+Never widen a tolerance to make a reconciled number pass. State the divergence as
+an equation and name the backlog item it discharges.
+
 ## Downstream
 
 Attachment to sessions, Viewer Pack export, the engineering CLI and the E0
