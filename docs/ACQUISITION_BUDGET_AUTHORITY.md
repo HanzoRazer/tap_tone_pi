@@ -202,6 +202,10 @@ E0 is `NOT EXECUTED` and `ADC-001` is `CONFIRMED_ABSENT`, so every converter
 input today is `PROPOSED` or `DATASHEET`. That is why the design-stage budget
 must work and must refuse evidence grade.
 
+The mechanism that will carry those observations across when a bench does run is
+`tap_tone_pi/uncertainty/acquisition/e0_adapter.py` — see
+[DO-107B — E0 integration](#do-107b--e0-integration) below.
+
 ## Relationship to repeatability
 
 Physical repeatability comes from measurement, not from this subsystem. Until
@@ -581,9 +585,159 @@ exact relationship can.
 Never widen a tolerance to make a reconciled number pass. State the divergence as
 an equation and name the backlog item it discharges.
 
+## DO-107B — E0 integration
+
+The contract was published and reviewed, and the downstream path was then built
+against it: an adapter from E0 observations to acquisition inputs, attachment to
+a Phase 2 session, publication in a Viewer Pack, and a read-only report.
+
+**`AcquisitionBudgetV1` remains V1.** No schema, no contract, no equation and no
+backlog state changed. What DO-107B adds is the ability to carry a physical
+observation into a budget without losing where it came from — and to show
+exactly why the resulting instrument is, or is not, evidence-grade.
+
+### The mapping is a table, not a search
+
+`tap_tone_pi/uncertainty/acquisition/e0_adapter.py` declares every mapping in
+`E0_MAPPINGS`. No acquisition input is filled by searching an E0 payload for a
+plausible field name.
+
+| E0 test | Observation | Acquisition input | Unit | Conversion |
+|---|---|---|---|---|
+| T1 | `noise_floor[rate, pga].rms_dbfs` | `converter.thermal_snr_db` | dBFS → dB | negated |
+| T3 | `coupling.measured_corner_hz` | `converter.hp_corner_hz` | Hz → Hz | none |
+| T6 | `full_scale[path].hard_clip_vrms` | `converter.full_scale_vrms` | Vrms → Vrms | none |
+
+The single conversion is a change of reference rather than a model: `dBFS` is
+defined against full scale, so the ratio to full scale is its negation. No
+bandwidth, weighting or quantization term enters it, and the adapter contains no
+`log10`, no `sqrt` and no call into a budget module — a test asserts that by
+reading its own source.
+
+**Row selection is exact.** `E0OperatingPoint` names the sample rate, PGA setting
+and input path the budget is written for. There is no nearest-row rule, and a
+converter configured at one sample rate cannot be informed by observations taken
+at another: that is refused, not approximated.
+
+### What stays characterization evidence
+
+Most of what E0 measures has no acquisition input, and `E0_UNMAPPED_GROUPS`
+records why for each group rather than leaving the silence to be interpreted.
+Two of those reasons are load-bearing:
+
+- **T4 (out-of-band).** `anti_alias_filter` states whether an input filter is
+  fitted. That is a fact about the hardware, not a conclusion to be drawn from an
+  attenuation table, and manufacturing a pass/fail anti-alias verdict is exactly
+  what **B-014** must not acquire. B-014 is unchanged.
+- **T7 (loopback).** The `sd.playrec()` offset is a DAC-to-ADC round trip. It is
+  not a sample-clock measurement and not an ADC phase reference, so it does not
+  become aperture jitter, clock jitter, or anything else.
+
+T2's input-referred noise is also left alone: converting it from dBFS to the
+front end's V/√Hz density requires a noise bandwidth and a full-scale voltage,
+which is an equation the noise authority owns.
+
+### Provenance is an address
+
+Every measured input carries a locator built from values DO-106 already records,
+not from a new evidence-ID scheme:
+
+```
+e0:<characterization_id>/<test>/<group>[<selector>]#<field>
+e0:E0-2026-001/T1/noise_floor[sample_rate_hz=48000,pga_db=-12]#rms_dbfs
+```
+
+`parse_e0_source_locator` walks it back to the bench row. Two records holding the
+same number remain distinguishable, and provenance survives serialization
+unchanged.
+
+### Nothing is promoted by proximity
+
+An executed E0 record is not a licence to promote the datasheet figures beside
+what it measured. A record that ran T1 leaves the aperture jitter `PROPOSED`; a
+missing hard-clip level does not borrow the 0.1% THD point; a null observation
+does not become zero; a floor recorded at or above full scale is refused and
+reported rather than carried; and a `PREPARED` record cannot supply a measured
+input at all.
+
+**A fully characterized converter does not make the budget evidence-grade.** With
+every input E0 can physically supply measured, exactly one condition clears —
+`COUPLING_CORNER_UNMEASURED`, the one T3 measured — and **B-020** and **B-021**
+remain blocking. That is enforced as an integration test, not left to inspection.
+
+### Where the budget lives
+
+```
+session/
+├─ points/            raw acquisition
+├─ derived/           measurement evidence
+└─ meta/acquisition_budget.json      <- the exact serialized payload
+```
+
+Attachment is by path, the mechanism every optional evidence document in this
+repository already uses. A session may carry one budget; replacing it must be
+stated. A session without one is a normal session, and every session recorded
+before DO-107B is one.
+
+The Viewer Pack publishes the same bytes at `meta/acquisition_budget.json` with
+`kind: session_meta`, carrying relpath, digest and byte count through the
+existing manifest machinery. There is no viewer rendering of the budget and no
+second serialization: the pack must contain the exact bytes whose digest the
+manifest reports. The pre-export validator adds `ACQ-000` … `ACQ-003`, which
+catch both a document that is not an `acquisition_budget_v1` and one that is
+shaped correctly while contradicting itself.
+
+### The operator path
+
+`scripts/ttp_e0_acquisition.py` is read-only and writes nothing.
+
+```
+python scripts/ttp_e0_adc_check.py  e0.json --summary        # is the record truthful
+python scripts/ttp_e0_acquisition.py e0.json \
+    --sample-rate 48000 --pga-db -12                         # what does it supply
+python scripts/ttp_e0_acquisition.py e0.json \
+    --sample-rate 48000 --pga-db -12 --budget baseline.json  # what would it change
+```
+
+The full path, for the day the bench actually runs:
+
+```
+run E0 characterization
+   -> write the observation record
+   -> check the record is truthful      (ttp_e0_adc_check.py)
+   -> adapt it to an acquisition budget (ttp_e0_acquisition.py)
+   -> read the measured and non-measured inputs, and the blockers
+   -> capture a Phase 2 session
+   -> attach the budget                 (phase2.session_acquisition)
+   -> export a Viewer Pack
+```
+
+**Preserve the first real run.** A later characterization must not overwrite the
+first record of the instrument's behavior; it is a new record.
+
+**Exit 0 means the report was produced.** It does not mean the ADC passed
+anything — E0 has no pass condition and none was computed — and a budget that is
+not evidence-grade is a normal result rather than a failure of the command.
+
+### What DO-107B did not do
+
+It did not execute E0, and no observation in this repository is real. It changed
+no mathematics: **B-020** and **B-021** are open and blocking, **B-014** is open,
+and **B-022** stays closed with no advisory reintroduced. It did not make the TTP
+Analyzer evidence-grade or validated.
+
+**Recorded, not fixed:** a second Viewer Pack exporter exists at
+`scripts/export/viewer_pack_v1_export.py`, reached by the CLI export path, and it
+carries none of the evidence extensions added from DO-85 onward. The acquisition
+budget follows the same route as every other evidence document rather than
+becoming the one exception. The divergence between the two exporters is
+pre-existing and belongs to its own order.
+
 ## Downstream
 
-Attachment to sessions, Viewer Pack export, the engineering CLI and the E0
-adapter are **DO-107B**, built only after this contract is published and
-reviewed. Downstream code should not be written against a contract that may still
-change in review.
+The next high-value action is not another architecture order. It is the **E0
+hardware characterization campaign** — the bench run that turns converter noise,
+gain behavior, coupling phase, alias response and timing behavior into
+observations. Only then can it be decided whether the following software order is
+driven by real E0 findings or by B-020's estimator research becoming the limiting
+issue.

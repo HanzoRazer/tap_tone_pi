@@ -214,6 +214,93 @@ def _validate_timeline(
         )
 
 
+def _validate_acquisition_budget(
+    pack: Path,
+    budget_path: Path,
+    report: ValidationReport,
+    stats: Dict[str, int],
+) -> None:
+    """Validate the optional acquisition budget (ACQ-000 to ACQ-002).
+
+    Two checks, because the two failures are different. The **schema** catches a
+    document that is not an ``acquisition_budget_v1`` at all. The **contract**
+    catches one that is shaped correctly and says something untrue about itself —
+    an evidence grade that disagrees with its own blocking reasons, a combined
+    figure that is not the combination of its own contributors, an unavailable
+    section carrying a number anyway. A budget edited after export fails one or
+    the other; silent acceptance of an altered budget is what these rules exist
+    to prevent.
+
+    Absent for every pack exported before DO-107B, which is not a finding.
+    """
+    if not budget_path.exists():
+        return
+
+    stats["acquisition_budget_present"] = 1
+    relpath = str(budget_path.relative_to(pack))
+    try:
+        doc = json.loads(budget_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        report.add_error(
+            "ACQ-001", f"acquisition_budget.json is not valid JSON: {e}", relpath
+        )
+        return
+    if not isinstance(doc, dict):
+        report.add_error(
+            "ACQ-001", "acquisition_budget.json is not a JSON object", relpath
+        )
+        return
+
+    schema = _load_contract_schema(
+        "contracts/schemas/acquisition_budget_v1.schema.json"
+    )
+    if schema is None:
+        if _is_ci():
+            report.add_error(
+                "ACQ-000",
+                "Acquisition budget schema not found in CI; failing validation",
+                relpath,
+            )
+        else:
+            report.add_warning(
+                "ACQ-000",
+                "Acquisition budget schema not found; skipping schema validation",
+                relpath,
+            )
+    else:
+        err = _validate_json_against_schema(doc, schema)
+        if err is not None:
+            report.add_error(
+                "ACQ-001",
+                f"acquisition_budget.json does not conform to schema: {err}",
+                relpath,
+            )
+            return
+
+    try:
+        from tap_tone_pi.uncertainty.acquisition import validate_acquisition_budget
+
+        problems = validate_acquisition_budget(doc)
+    except ImportError:  # pragma: no cover - packaging failure, not a pack defect
+        report.add_warning(
+            "ACQ-002",
+            "Acquisition contract unavailable; skipping semantic validation",
+            relpath,
+        )
+        return
+
+    if problems:
+        report.add_error(
+            "ACQ-002",
+            "acquisition_budget.json contradicts its own contract: "
+            + "; ".join(problems),
+            relpath,
+        )
+        return
+
+    stats["acquisition_budget_valid"] = 1
+
+
 def _collect_shared_freq_grid(
     pack: Path,
     points: List[str],
@@ -565,6 +652,8 @@ def validate_pack(
         "wsi_valid": 0,
         "timeline_present": 0,
         "timeline_valid": 0,
+        "acquisition_budget_present": 0,
+        "acquisition_budget_valid": 0,
         "error_count": 0,
         "warning_count": 0,
     }
@@ -625,6 +714,13 @@ def validate_pack(
     # ========================================
     timeline_path = pack / "meta" / "session_timeline_v1.json"
     _validate_timeline(pack, timeline_path, report, stats)
+
+    # ========================================
+    # ACQ-00x: Optional acquisition budget (DO-107B)
+    # ========================================
+    _validate_acquisition_budget(
+        pack, pack / "meta" / "acquisition_budget.json", report, stats
+    )
 
     # ========================================
     # Collect shared frequency grid from first valid spectrum
@@ -689,6 +785,23 @@ def validate_pack(
         report.add_error(
             "T-002",
             "CI requires timeline_valid==1 when session_timeline_v1.json is present",
+        )
+
+    # ========================================
+    # ACQ-003 CI gate: a present budget must have validated.
+    # Same catch-all rule as T-002 and for the same reason: an acquisition
+    # budget that failed to validate must never leave CI inside a green pack,
+    # whatever later refactoring does to the ACQ-000/ACQ-001/ACQ-002 paths.
+    # ========================================
+    if (
+        _is_ci()
+        and stats.get("acquisition_budget_present") == 1
+        and stats.get("acquisition_budget_valid") != 1
+    ):
+        report.add_error(
+            "ACQ-003",
+            "CI requires acquisition_budget_valid==1 when "
+            "acquisition_budget.json is present",
         )
 
     return _finalize()

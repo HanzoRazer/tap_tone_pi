@@ -353,6 +353,25 @@ def _add_derived(session_dir: Path, add_file_fn) -> None:
         add_file_fn(wsi, "wolf/wsi_curve.csv")
 
 
+def _add_acquisition_budget(session_dir: Path, add_file_fn) -> None:
+    """Publish the session's acquisition budget (DO-107B).
+
+    The exact bytes the session carries, copied unchanged. There is no viewer
+    rendering of the budget and deliberately no second serialization: a pack that
+    reformatted the payload could not be checked against the digest of what was
+    computed, and a float that changed in transit would be invisible.
+
+    Absent for every session recorded before DO-107B, and for any session whose
+    acquisition chain was never budgeted. That is not an error and adds nothing
+    to the pack.
+    """
+    from tap_tone_pi.phase2.session_acquisition import find_acquisition_budget
+
+    path = find_acquisition_budget(session_dir)
+    if path is not None:
+        add_file_fn(path, "meta/acquisition_budget.json")
+
+
 def _add_coherence(session_dir: Path, add_file_fn) -> None:
     """Add coherence data (optional)."""
     coh_dir = session_dir / "coherence"
@@ -1179,6 +1198,7 @@ def export_viewer_pack(
     point_ids = _add_points(session_dir, add_file)
     _add_derived(session_dir, add_file)
     _add_coherence(session_dir, add_file)
+    _add_acquisition_budget(session_dir, add_file)
     bending_data = _add_bending(session_dir, add_file)
     repeatability_data = _read_repeatability(session_dir, add_file)
     workflow_contract, workflow_execution = _read_workflow_provenance(
