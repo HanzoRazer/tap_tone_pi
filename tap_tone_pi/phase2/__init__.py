@@ -60,6 +60,7 @@ from tap_tone_pi.phase2.session_acquisition import (
     find_acquisition_budget,
     has_acquisition_budget,
     load_acquisition_budget,
+    load_acquisition_budget_payload,
 )
 
 __all__ = [
@@ -84,4 +85,5 @@ __all__ = [
     "find_acquisition_budget",
     "has_acquisition_budget",
     "load_acquisition_budget",
+    "load_acquisition_budget_payload",
 ]

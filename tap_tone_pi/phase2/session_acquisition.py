@@ -74,8 +74,13 @@ def find_acquisition_budget(session_dir: Path | str) -> Path | None:
     """The attached budget's path, or ``None``.
 
     Looks in ``meta/`` first and then beside the session, matching how the
-    viewer-pack exporter locates every other optional evidence document. A
-    hand-placed file is found; nothing is moved or rewritten to normalize it.
+    viewer-pack exporter locates every other optional evidence document —
+    ``_read_repeatability`` in ``scripts/phase2/export_viewer_pack_v1.py``
+    searches the same two places and publishes to one canonical pack relpath.
+
+    A hand-placed file is found, and nothing here moves, rewrites or deletes it.
+    Normalizing a file the caller did not name is not this function's business,
+    and :func:`attach_acquisition_budget` refuses rather than tidying.
     """
     root = Path(session_dir).expanduser()
     for candidate in (
@@ -112,9 +117,9 @@ def attach_acquisition_budget(
         replace: permit overwriting a budget this session already carries.
 
     Raises:
-        SessionAcquisitionError: if the session does not exist, if a budget is
-            already attached and ``replace`` is false, or if the payload fails
-            its own contract.
+        SessionAcquisitionError: if the session does not exist, if a budget sits
+            outside the canonical path, if a budget is already attached and
+            ``replace`` is false, or if the payload fails its own contract.
     """
     root = Path(session_dir).expanduser()
     if not root.is_dir():
@@ -123,7 +128,19 @@ def attach_acquisition_budget(
             "chain that acquired a session; there is no session here to describe"
         )
 
+    target = root / "meta" / ACQUISITION_BUDGET_FILENAME
     existing = find_acquisition_budget(root)
+    if existing is not None and existing != target:
+        # A budget outside meta/ is still this session's budget. Writing the
+        # canonical file would leave two documents free to disagree, and
+        # deleting the operator's file to prevent that would destroy evidence
+        # this function was never asked to touch. Neither is ours to choose.
+        raise SessionAcquisitionError(
+            f"session carries an acquisition budget at {existing.name}, outside "
+            f"the canonical {ACQUISITION_BUDGET_RELPATH}. Move or remove it "
+            "before attaching; this function will not delete a file it was not "
+            "given"
+        )
     if existing is not None and not replace:
         raise SessionAcquisitionError(
             f"session already carries an acquisition budget at {existing.name}. "
@@ -138,15 +155,10 @@ def attach_acquisition_budget(
             "budget fails its own contract and was not attached: " + "; ".join(problems)
         )
 
-    target = root / "meta" / ACQUISITION_BUDGET_FILENAME
     target.parent.mkdir(parents=True, exist_ok=True)
     tmp = target.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
     tmp.replace(target)
-    if existing is not None and existing != target:
-        # A hand-placed copy beside the session would now disagree with the
-        # canonical one. Two budgets is the state this module exists to prevent.
-        existing.unlink()
     return target
 
 

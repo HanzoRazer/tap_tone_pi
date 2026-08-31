@@ -23,6 +23,17 @@ evidence stays characterization evidence with the reason it does.
 E0's measured inputs and report the measured and non-measured inputs, any
 unavailable section, and every blocking and advisory condition on the result.
 
+**``--json`` emits a different document in each mode, and they are not
+interchangeable.** Without ``--budget`` it emits the *mapping audit* — an
+``E0Adaptation``, keyed ``characterization_id`` / ``operating_point`` /
+``outcomes`` / ``unmapped``, which is a record of what was read and is not a
+budget. With ``--budget`` it emits the *canonical ``acquisition_budget_v1``
+payload* and nothing else: no audit, no report text, byte-identical to what
+:func:`~tap_tone_pi.phase2.session_acquisition.attach_acquisition_budget` would
+file. Tell the two apart by ``schema_version``, which only the second carries.
+Piping mapping-mode ``--json`` into anything expecting a budget will fail its
+contract, which is the intended outcome rather than a silent mismatch.
+
 Nothing is written. The baseline budget file is not modified, no session is
 touched, and no acquisition happens: computing what a chain could resolve is not
 measuring anything with it.
@@ -62,6 +73,11 @@ from tap_tone_pi.uncertainty.acquisition.quantities import (  # noqa: E402
 )
 
 _RULE = "-" * 72
+
+#: Lowercase CLI spelling to the member it names. Built from the enum so the
+#: option cannot drift from it; ``E0InputPath(value.upper())`` happened to work
+#: only because every member's name equals its value.
+_INPUT_PATHS: dict[str, E0InputPath] = {p.value.lower(): p for p in E0InputPath}
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -138,6 +154,19 @@ def report_mapping(adaptation) -> list[str]:
     return lines
 
 
+def _side(view: Any | None) -> str:
+    """One side of a changed input, including the side that has no quantity.
+
+    ``compare_budget_inputs`` reports a field when *either* budget carries a
+    quantity for it, so either side may be absent — an input one budget has
+    and the other does not. Both directions are printable; a report that
+    crashed on the second would be reporting less than it was asked to.
+    """
+    if view is None:
+        return "unset"
+    return f"{view['value']:.6g} {view['unit']} ({view['provenance']})"
+
+
 def report_budget(
     budget: AcquisitionBudgetV1, baseline: AcquisitionBudgetV1
 ) -> list[str]:
@@ -201,12 +230,7 @@ def report_budget(
     lines += _section(
         "WHAT CHARACTERIZATION CHANGED",
         [
-            f"  {name}\n      {c['before']['value']:.6g} {c['before']['unit']} "
-            f"({c['before']['provenance']})  ->  {c['after']['value']:.6g} "
-            f"{c['after']['unit']} ({c['after']['provenance']})"
-            if c["before"] is not None
-            else f"  {name}\n      unset  ->  {c['after']['value']:.6g} "
-            f"{c['after']['unit']} ({c['after']['provenance']})"
+            f"  {name}\n      {_side(c['before'])}  ->  {_side(c['after'])}"
             for name, c in sorted(changed.items())
         ],
     )
@@ -243,7 +267,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--input-path",
-        choices=[p.value.lower() for p in E0InputPath],
+        choices=sorted(_INPUT_PATHS),
         default=E0InputPath.UNBALANCED.value.lower(),
         help="input path the budget is written for; selects the T6 row",
     )
@@ -259,8 +283,10 @@ def main(argv: list[str] | None = None) -> int:
         "--json",
         action="store_true",
         help=(
-            "emit the canonical serialized budget, or the mapping audit when no "
-            "baseline budget is given"
+            "emit machine-readable output instead of the report. With --budget "
+            "this is the canonical acquisition_budget_v1 payload; without it, "
+            "the mapping audit, which is not a budget and carries no "
+            "schema_version"
         ),
     )
     args = parser.parse_args(argv)
@@ -280,7 +306,7 @@ def main(argv: list[str] | None = None) -> int:
     point = E0OperatingPoint(
         sample_rate_hz=args.sample_rate,
         pga_db=args.pga_db,
-        input_path=E0InputPath(args.input_path.upper()),
+        input_path=_INPUT_PATHS[args.input_path],
     )
 
     if args.budget is None:

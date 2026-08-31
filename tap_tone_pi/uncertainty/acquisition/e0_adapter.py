@@ -329,6 +329,18 @@ def _extract_hard_clip(
     rows = [row for row in record.full_scale if row.path is point.input_path]
     if not rows:
         return _absent(f"T6 records no {point.input_path.value} input path", selector)
+    if len(rows) > 1:
+        # E0AdcCharacterizationV1.validate() rejects a duplicated full-scale
+        # path, but this adapter never calls it: a record reaching us through
+        # from_dict() or built in memory has not been through that gate. Taking
+        # rows[0] here would silently pick one of two conflicting full-scale
+        # levels, which is the failure T1 already refuses.
+        return _refused(
+            f"T6 records {len(rows)} full-scale cells for the "
+            f"{point.input_path.value} path; the row this budget is entitled to "
+            "is ambiguous",
+            selector,
+        )
     value = rows[0].hard_clip_vrms
     if value is None:
         return _absent(
@@ -653,8 +665,20 @@ def e0_informed_converter(
     replacements: dict[str, Quantity] = {}
     for target, quantity in measured.items():
         section, _, field = target.partition(".")
-        if section == "converter":
-            replacements[field] = quantity
+        if section != "converter":
+            # Every mapping in E0_MAPPINGS targets the converter today. If one
+            # ever targets the clock or the front end, dropping it here would
+            # produce a budget that silently ignores a measurement the audit
+            # reports as CONSUMED — the exact divergence CLAUDE.md rule 11 was
+            # written about. Fail loudly instead; this function must grow a
+            # section before the mapping table does.
+            raise E0AdapterError(
+                f"mapping target {target!r} is outside the converter section, "
+                "which is the only section this composition rebuilds. A measured "
+                "input that no section carries would be reported as consumed and "
+                "silently dropped"
+            )
+        replacements[field] = quantity
 
     return ConverterSpec(
         name=converter.name,
@@ -746,13 +770,22 @@ def compare_budget_inputs(
             if old == new:
                 continue
             changed[f"{section}.{field}"] = {
-                "before": None if old is None else _quantity_view(old),
-                "after": None if new is None else _quantity_view(new),
+                "before": _quantity_view(old),
+                "after": _quantity_view(new),
             }
     return changed
 
 
-def _quantity_view(quantity: Quantity) -> Mapping[str, Any]:
+def _quantity_view(quantity: Any) -> Mapping[str, Any] | None:
+    """One side of a comparison, or ``None`` where there is no quantity.
+
+    A field is reported when *either* side is a :class:`Quantity`, so the other
+    side may be ``None`` — an optional input that one budget carries and the
+    other does not — or a plain value, if a spec ever mixes the two. Neither is
+    a reason to raise from a reporting helper.
+    """
+    if not isinstance(quantity, Quantity):
+        return None
     return {
         "value": quantity.value,
         "unit": quantity.unit,

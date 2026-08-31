@@ -679,6 +679,15 @@ repository already uses. A session may carry one budget; replacing it must be
 stated. A session without one is a normal session, and every session recorded
 before DO-107B is one.
 
+`find_acquisition_budget()` also finds a hand-placed copy beside the session,
+matching `_read_repeatability()` in the exporter, which searches the same two
+places and publishes to one canonical pack relpath. Finding it is where the
+permissiveness ends: `attach_acquisition_budget()` **refuses** while a budget
+sits outside `meta/`, and does not delete it. `replace=True` states that
+superseding this session's budget is intended; it does not authorize removing a
+file the caller never named. Two budgets free to disagree is still the state
+this module exists to prevent — the operator resolves it, not the writer.
+
 The Viewer Pack publishes the same bytes at `meta/acquisition_budget.json` with
 `kind: session_meta`, carrying relpath, digest and byte count through the
 existing manifest machinery. There is no viewer rendering of the budget and no
@@ -718,6 +727,20 @@ first record of the instrument's behavior; it is a new record.
 **Exit 0 means the report was produced.** It does not mean the ADC passed
 anything — E0 has no pass condition and none was computed — and a budget that is
 not evidence-grade is a normal result rather than a failure of the command.
+
+**`--json` emits a different document in each mode.** Without `--budget` it is
+the *mapping audit* (`characterization_id`, `operating_point`, `outcomes`,
+`unmapped`) — a record of what was read, not a budget. With `--budget` it is the
+canonical `acquisition_budget_v1` payload alone, byte-identical to what
+`attach_acquisition_budget()` files. `schema_version` tells them apart; only the
+budget carries one. The two are not interchangeable, and feeding the audit to
+something expecting a budget fails that document's contract rather than passing
+quietly.
+
+```
+python scripts/ttp_e0_acquisition.py e0.json     --sample-rate 48000 --pga-db -12 --json                  # mapping audit
+python scripts/ttp_e0_acquisition.py e0.json     --sample-rate 48000 --pga-db -12     --budget baseline.json --json > acquisition_budget.json  # the budget itself
+```
 
 ### What DO-107B did not do
 

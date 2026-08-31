@@ -215,8 +215,36 @@ class TestBackwardCompatibility:
         )
         loaded = load_acquisition_budget(session)
         assert isinstance(loaded, AcquisitionBudgetV1)
-        # Attaching canonically leaves exactly one document, not two that can
-        # disagree.
-        attach_acquisition_budget(session, budget, replace=True)
-        assert not (session / ACQUISITION_BUDGET_FILENAME).exists()
-        assert (session / "meta" / ACQUISITION_BUDGET_FILENAME).is_file()
+
+    def test_a_budget_outside_meta_is_refused_not_deleted(self, tmp_path, budget):
+        """Still exactly one document — reached by refusing, not by unlinking.
+
+        The goal is unchanged: a session must never carry two budgets free to
+        disagree. What changed is who resolves it. ``replace=True`` states that
+        superseding *this session's* budget is intended; it does not authorize
+        deleting a file the caller never named, and a module whose docstring
+        warns that evidence disappears quietly may not be the thing that makes
+        it disappear. The operator moves or removes the stray copy.
+        """
+        session = synthetic_session(tmp_path)
+        stray = session / ACQUISITION_BUDGET_FILENAME
+        stray.write_text(json.dumps(budget.as_dict()), encoding="utf-8")
+        before = stray.read_bytes()
+
+        for replace in (False, True):
+            with pytest.raises(SessionAcquisitionError, match="outside the canonical"):
+                attach_acquisition_budget(session, budget, replace=replace)
+
+        assert stray.read_bytes() == before, "the stray copy must survive a refusal"
+        assert not (session / "meta" / ACQUISITION_BUDGET_FILENAME).exists()
+
+    def test_attaching_succeeds_once_the_stray_copy_is_gone(self, tmp_path, budget):
+        session = synthetic_session(tmp_path)
+        stray = session / ACQUISITION_BUDGET_FILENAME
+        stray.write_text(json.dumps(budget.as_dict()), encoding="utf-8")
+        stray.unlink()
+
+        path = attach_acquisition_budget(session, budget)
+        assert path == session / "meta" / ACQUISITION_BUDGET_FILENAME
+        assert path.is_file()
+        assert find_acquisition_budget(session) == path

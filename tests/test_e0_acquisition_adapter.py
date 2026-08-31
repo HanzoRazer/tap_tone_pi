@@ -17,6 +17,7 @@ instrument.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import subprocess
 import sys
@@ -367,6 +368,85 @@ class TestMapping:
 # ---------------------------------------------------------------------------
 # Group B — provenance integrity
 # ---------------------------------------------------------------------------
+
+
+class TestAmbiguousAndUncarriedRows:
+    """Two ways a measurement can be lost without anybody being told."""
+
+    def test_a_duplicated_full_scale_path_is_refused_not_picked(self):
+        """T6 must refuse an ambiguous row exactly as T1 does.
+
+        ``E0AdcCharacterizationV1.validate()`` rejects a duplicated full-scale
+        path, but the adapter never calls it — a record built in memory or read
+        through ``from_dict`` has not been through that gate. Taking the first
+        row would put one of two conflicting full-scale levels into the budget
+        and report it as MEASURED.
+        """
+        record = executed(
+            full_scale=(
+                E0FullScaleObservationV1(E0InputPath.UNBALANCED, 2.02, 2.10, 2.1),
+                E0FullScaleObservationV1(E0InputPath.UNBALANCED, 2.02, 1.55, 2.1),
+            )
+        )
+        adaptation = adapt_e0_characterization(record, POINT)
+        outcome = outcome_for(adaptation, "converter.full_scale_vrms")
+
+        assert outcome.status is E0MappingStatus.REFUSED
+        assert "ambiguous" in outcome.detail
+        assert "converter.full_scale_vrms" not in adaptation.measured()
+
+    def test_a_refused_row_stays_distinct_from_an_absent_one(self):
+        """The two must not collapse: one is a bench that ran, one is not."""
+        duplicated = executed(
+            full_scale=(
+                E0FullScaleObservationV1(E0InputPath.UNBALANCED, 2.02, 2.10, 2.1),
+                E0FullScaleObservationV1(E0InputPath.UNBALANCED, 2.02, 1.55, 2.1),
+            )
+        )
+        missing = executed(
+            full_scale=(
+                E0FullScaleObservationV1(E0InputPath.BALANCED, 4.05, 4.20, 4.2),
+            )
+        )
+        refused = outcome_for(
+            adapt_e0_characterization(duplicated, POINT),
+            "converter.full_scale_vrms",
+        )
+        absent = outcome_for(
+            adapt_e0_characterization(missing, POINT),
+            "converter.full_scale_vrms",
+        )
+        assert refused.status is E0MappingStatus.REFUSED
+        assert absent.status is E0MappingStatus.NOT_OBSERVED
+
+    def test_a_target_outside_converter_raises_rather_than_vanishing(
+        self, monkeypatch
+    ):
+        """CLAUDE.md rule 11: the ingestion function must not drop a field.
+
+        ``e0_informed_converter`` rebuilds only the converter. A mapping added
+        later that targets another section would be reported CONSUMED by the
+        audit and silently absent from the budget — a field reaching the
+        contract, the report and the audit while ingestion drops it, which is
+        the failure this repository has already been bitten by twice.
+        """
+        import tap_tone_pi.uncertainty.acquisition.e0_adapter as adapter
+
+        rehomed = tuple(
+            (
+                dataclasses.replace(m, target="front_end.gain_db")
+                if m.target == "converter.hp_corner_hz"
+                else m
+            )
+            for m in adapter.E0_MAPPINGS
+        )
+        monkeypatch.setattr(adapter, "E0_MAPPINGS", rehomed)
+
+        adaptation = adapter.adapt_e0_characterization(executed(), POINT)
+        assert "front_end.gain_db" in adaptation.measured()
+
+        with pytest.raises(E0AdapterError, match="outside the converter section"):
+            adapter.e0_informed_converter(base_budget().converter, adaptation)
 
 
 class TestProvenanceIntegrity:
