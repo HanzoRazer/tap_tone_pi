@@ -523,6 +523,7 @@ def analyze_alpha_beta(
     # Bracing
     brace_stiffness_total: float = 0.0,
     brace_mass_total: float = 0.0,
+    brace_count: int = 0,
 ) -> AlphaBetaResult:
     """
     Full α/β analysis to predict in-box frequency from free-plate frequency.
@@ -537,8 +538,10 @@ def analyze_alpha_beta(
         f_free_Hz: Measured or calculated free-plate frequency (Hz)
         boundary: Boundary condition type
         cavity_depth: Cavity depth for air loading (m)
-        brace_stiffness_total: Total brace stiffness (N/m)
+        brace_stiffness_total: Total brace stiffness (N/m) - informational
         brace_mass_total: Total brace mass (kg)
+        brace_count: Number of braces (drives the empirical stiffening
+            factor in compute_alpha; 0 means no brace stiffening)
 
     Returns:
         AlphaBetaResult with full analysis
@@ -552,6 +555,7 @@ def analyze_alpha_beta(
         b=b,
         boundary=boundary,
         brace_stiffness_total=brace_stiffness_total,
+        brace_count=brace_count,
     )
 
     # Compute β

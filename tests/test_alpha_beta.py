@@ -260,6 +260,52 @@ class TestAnalyzeAlphaBeta:
         )
         assert result.f_box_Hz < result.f_free_Hz
 
+    def test_brace_count_reaches_alpha(self):
+        """brace_count must be wired through to compute_alpha."""
+        result = analyze_alpha_beta(
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            h=2.8e-3,
+            a=0.5,
+            b=0.38,
+            f_free_Hz=150.0,
+            brace_count=5,
+        )
+        assert result.alpha_info["brace_count"] == 5
+        assert result.alpha_info["alpha_braces"] > 1.0
+
+    def test_braces_raise_alpha_and_box_frequency(self):
+        """Adding braces must stiffen the assembly and lift f_box."""
+        common = dict(
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            h=2.8e-3,
+            a=0.5,
+            b=0.38,
+            f_free_Hz=150.0,
+        )
+        unbraced = analyze_alpha_beta(**common)
+        braced = analyze_alpha_beta(**common, brace_count=5)
+
+        assert braced.alpha > unbraced.alpha
+        assert braced.f_box_Hz > unbraced.f_box_Hz
+
+    def test_brace_count_defaults_to_no_stiffening(self):
+        """Omitting brace_count leaves the bracing factor neutral."""
+        result = analyze_alpha_beta(
+            E_L=12e9,
+            E_C=0.8e9,
+            rho=420,
+            h=2.8e-3,
+            a=0.5,
+            b=0.38,
+            f_free_Hz=150.0,
+        )
+        assert result.alpha_info["brace_count"] == 0
+        assert result.alpha_info["alpha_braces"] == 1.0
+
     def test_to_dict_works(self):
         """Result should be serializable to dict."""
         result = analyze_alpha_beta(
