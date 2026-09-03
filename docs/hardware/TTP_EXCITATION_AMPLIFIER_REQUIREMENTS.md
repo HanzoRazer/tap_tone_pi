@@ -129,7 +129,7 @@ requires the measured maximum intended drive.
 | --- | --- |
 | Mute under Analyzer control | required |
 | Shutdown under Analyzer control | required |
-| State at power-up | muted | 
+| State at power-up | muted |
 
 Muting at power-up is a requirement rather than a nicety: the drive path is
 mechanically coupled to the specimen, and a transient at power-up is a physical
@@ -160,7 +160,7 @@ DC-detect and short-circuit protection with error reporting (*manufacturer*).
 | --- | --- |
 | Supply voltage | `TBD_MEASURE` — bounded below by the required output, above by the enclosure's available rails |
 | Available rails in the TTP enclosure | `UNRESOLVED` — see [PCB envelope](TTP_EXCITATION_PCB_ENVELOPE.md) |
-| Supply topology | single supply preferred | 
+| Supply topology | single supply preferred |
 
 The reference family operates from a *single 4.5 V to 26 V supply*
 (*manufacturer*), so this requirement is satisfiable across a wide range. Which
@@ -174,7 +174,7 @@ what is needed.
 | --- | --- |
 | Continuous dissipation | `TBD_MEASURE` |
 | Heatsinking | `UNRESOLVED` — depends on dissipation and enclosure ventilation |
-| Ambient range | commercial indoor laboratory use | 
+| Ambient range | commercial indoor laboratory use |
 
 Thermal drift is not only a component-survival question here. The protocol asks
 whether exciter heating changes the measured result, and if it does, the thermal
