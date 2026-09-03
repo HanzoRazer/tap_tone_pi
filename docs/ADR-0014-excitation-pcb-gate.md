@@ -22,8 +22,9 @@ are cheap, the reference designs are plentiful, and it is very easy to lay out a
 board now. A 50 W Class-D module is a fifteen-minute schematic. What is *not*
 available is any of the information that would make it the right board:
 
-- No TTP enclosure exists to measure, so its outline, height, mounting, rails,
-  keep-outs and the distance to the analog acquisition section are all unknown.
+- No measured TTP enclosure — nobody has yet established whether a case even
+  exists — so its outline, height, mounting, rails, keep-outs and the distance
+  to the analog acquisition section are all unknown.
 - No measurement of the drive an exciter actually needs to produce a usable
   modal response on a plate. The exciters' rated powers are tolerance figures,
   not requirements.
@@ -49,7 +50,7 @@ The gate has a verdict, recorded in this file's header and checked by
 
 | Input | State | Established by |
 | --- | --- | --- |
-| PCB envelope known | `UNRESOLVED` | [enclosure survey](hardware/TTP_EXCITATION_PCB_ENVELOPE.md) — the enclosure does not exist to measure |
+| PCB envelope known | `UNRESOLVED` | [enclosure survey](hardware/TTP_EXCITATION_PCB_ENVELOPE.md) — `ENCLOSURE_EXISTENCE_NOT_VERIFIED`; nobody has looked for a case |
 | DAC interface known | partial | manufacturer maximum 2.1 Vrms; output impedance not published |
 | Power rail known | `UNRESOLVED` | enclosure survey |
 | 4 Ω and 8 Ω load requirement confirmed | **yes** | manufacturer data for the three registered candidates |

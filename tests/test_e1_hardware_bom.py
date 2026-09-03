@@ -1737,16 +1737,50 @@ class TestTheProductionChain:
 
 
 class TestTheEnclosureEnvelope:
-    def test_the_committed_survey_records_no_enclosure_to_measure(self, checker):
+    def test_the_committed_survey_records_that_nobody_has_looked(self, checker):
         text = checker.ENVELOPE_PATH.read_text(encoding="utf-8")
         status = checker.header_field(text, "survey_status")
-        assert status == "ENCLOSURE_NOT_AVAILABLE_FOR_MEASUREMENT"
+        assert status == "ENCLOSURE_EXISTENCE_NOT_VERIFIED"
         assert checker.validate_pcb_envelope(text, status) == []
 
-    def test_that_status_is_distinct_from_merely_unmeasured(self, checker):
-        # They differ in what would clear them, so they are separate states.
-        assert "NOT_PERFORMED" in checker.ENVELOPE_STATUSES
-        assert "ENCLOSURE_NOT_AVAILABLE_FOR_MEASUREMENT" in checker.ENVELOPE_STATUSES
+    def test_the_statuses_are_an_evidence_ladder_not_a_switch(self, checker):
+        # The census distinction, applied to a case: nobody looked, someone
+        # looked and found none, one exists but is unmeasured, measured. Each
+        # is cleared by something different, so none may absorb another.
+        assert checker.ENVELOPE_STATUSES == (
+            "ENCLOSURE_EXISTENCE_NOT_VERIFIED",
+            "ENCLOSURE_NOT_AVAILABLE_FOR_MEASUREMENT",
+            "NOT_PERFORMED",
+            "PERFORMED",
+        )
+
+    def test_absence_is_not_inferred_from_an_unbuilt_analyzer(self, checker):
+        # The correction this state exists for. An unbuilt Analyzer establishes
+        # that no Analyzer was built, not that no case is on a shelf - an empty
+        # project box does not depend on the ADC arriving, and the census's ten
+        # categories never covered one.
+        text = flat(checker.ENVELOPE_PATH.read_text(encoding="utf-8"))
+        assert "does not establish absence" in text
+        assert "Nobody has looked for an enclosure" in text
+
+    def test_an_unverified_enclosure_cannot_carry_a_measured_dimension(self, checker):
+        text = envelope_document(
+            "ENCLOSURE_EXISTENCE_NOT_VERIFIED", ("usable width", "42 mm")
+        )
+        problems = checker.validate_pcb_envelope(
+            text, "ENCLOSURE_EXISTENCE_NOT_VERIFIED"
+        )
+        assert any("nothing has been measured" in p for p in problems)
+
+    def test_finding_a_case_does_not_open_the_layout_gate(self, checker):
+        # Looking on a shelf resolves the status and supplies no dimension and
+        # no drive requirement, which are what the gate actually needs.
+        gate = checker.PCB_GATE_PATH.read_text(encoding="utf-8")
+        assert checker.validate_pcb_gate(gate, "NOT_PERFORMED", "NOT_EXECUTED") == []
+        problems = checker.validate_pcb_gate(
+            "**gate_verdict:** `READY_FOR_SCHEMATIC`", "NOT_PERFORMED", "EXECUTED"
+        )
+        assert problems
 
     def test_an_unknown_status_is_refused(self, checker):
         text = envelope_document("PROBABLY_FINE", ("usable width", "TBD"))
@@ -1935,7 +1969,7 @@ class TestThePcbGate:
     def test_blocked_is_legal_with_nothing_measured(self, checker, gate):
         assert (
             checker.validate_pcb_gate(
-                gate, "ENCLOSURE_NOT_AVAILABLE_FOR_MEASUREMENT", "NOT_EXECUTED"
+                gate, "ENCLOSURE_EXISTENCE_NOT_VERIFIED", "NOT_EXECUTED"
             )
             == []
         )

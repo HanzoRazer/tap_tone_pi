@@ -203,6 +203,7 @@ no transfer function computed on this chain may be presented as force-normalized
 
 | Gate | State | Closed by |
 | --- | --- | --- |
+| Enclosure exists at all | `ENCLOSURE_EXISTENCE_NOT_VERIFIED` | somebody looking — [PCB envelope](TTP_EXCITATION_PCB_ENVELOPE.md) |
 | Enclosure envelope known | `UNRESOLVED` | physical measurement — [PCB envelope](TTP_EXCITATION_PCB_ENVELOPE.md) |
 | Available power rails confirmed | `UNRESOLVED` | enclosure survey |
 | DAC output characteristics confirmed | manufacturer maximum only | E0 / bench measurement |

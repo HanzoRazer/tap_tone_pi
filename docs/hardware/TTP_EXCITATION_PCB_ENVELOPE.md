@@ -1,6 +1,6 @@
 # TTP Excitation PCB — Enclosure Envelope
 
-**survey_status:** `ENCLOSURE_NOT_AVAILABLE_FOR_MEASUREMENT`
+**survey_status:** `ENCLOSURE_EXISTENCE_NOT_VERIFIED`
 **Dev Order:** DO-108P
 **Consequence:** PCB geometry is `UNRESOLVED`, and the layout gate in
 [ADR-0014](../ADR-0014-excitation-pcb-gate.md) is `BLOCKED`.
@@ -9,28 +9,26 @@
 
 ## Why the status is what it is
 
-There is no TTP Analyzer enclosure to measure. This is a stronger and more useful
-statement than "the survey has not been performed", so it gets its own status
-rather than borrowing that one.
+**Nobody has looked for an enclosure.** That is the whole of the current
+evidence, and the status says exactly that and nothing more.
 
-The two states differ in what would change them:
+This document will become the dimensional authority for a PCB, so its states are
+an evidence ladder rather than a two-way switch. They are the same distinction
+the [ownership census](TTP_E1_OWNERSHIP_CENSUS.md) draws between `UNKNOWN`,
+`CONFIRMED_ABSENT` and `CONFIRMED_PRESENT`, applied to a case:
 
 | Status | Means | Cleared by |
 | --- | --- | --- |
-| `ENCLOSURE_NOT_AVAILABLE_FOR_MEASUREMENT` | No enclosure exists to put calipers on | an enclosure existing |
+| `ENCLOSURE_EXISTENCE_NOT_VERIFIED` | Nobody has looked | somebody looking |
+| `ENCLOSURE_NOT_AVAILABLE_FOR_MEASUREMENT` | Someone looked and found no enclosure | an enclosure existing |
 | `NOT_PERFORMED` | An enclosure exists; nobody has measured it | somebody measuring it |
 | `PERFORMED` | Measured, with every dimension carrying a real value | — |
 
-Recording this as `NOT_PERFORMED` would imply a case sitting on a bench waiting
-for a tape measure, and would make the survey look like an afternoon's work
-rather than a gate on hardware that does not exist.
+### Why not the stronger status
 
-### How that was established
-
-Not by a census category — the [ownership census](TTP_E1_OWNERSHIP_CENSUS.md)
-enumerates ten equipment categories and an enclosure is not among them, so
-nobody has looked *for an enclosure* as such. It follows instead from the build
-state the campaign records already carry:
+An earlier revision of this document read
+`ENCLOSURE_NOT_AVAILABLE_FOR_MEASUREMENT`, reasoning from the campaign's own
+build state:
 
 ```
 Pi 5 (owned) -> ADC-001 -> characterize (E0) -> design AFE-001
@@ -40,14 +38,23 @@ Pi 5 (owned) -> ADC-001 -> characterize (E0) -> design AFE-001
    blocked: ADC-001 is CONFIRMED_ABSENT, E0 is NOT EXECUTED
 ```
 
-The Analyzer prototype has not been built, and an enclosure for an instrument
-that does not exist cannot be measured. That is an inference from documented
-state, and it is labelled as one.
+**That inference does not establish absence.** It establishes that no *Analyzer*
+has been built. An empty project case, a prototype shell, or an enclosure left
+over from earlier work could be on a shelf right now: none of those depends on
+the ADC arriving, and none of them was in the census's ten equipment categories,
+so nothing in this repository has ever looked. Recording absence on that
+reasoning would be the census's own error — treating silence as a finding — in a
+document that a board outline will later be derived from.
 
-**It is not a claim that no enclosure will ever be chosen.** If a candidate case
-is selected ahead of the build — a stock extruded or ABS enclosure, say — then a
-physical unit exists, this status becomes `NOT_PERFORMED`, and the table below
-becomes an afternoon's work.
+**Settling it is cheap and it is an observation, not an analysis.** Someone looks
+on the shelf. If there is a case, this becomes `NOT_PERFORMED` and the table
+below is an afternoon's work. If there is not, it becomes
+`ENCLOSURE_NOT_AVAILABLE_FOR_MEASUREMENT` — the same words as before, but then
+backed by somebody having looked.
+
+Either way the layout gate stays `BLOCKED`, because the gate needs measured
+dimensions and a measured drive requirement, and finding a case supplies
+neither.
 
 ## The survey
 
@@ -102,6 +109,10 @@ does not lower the required output power by a single milliwatt.
 
 Blocked: schematic capture, layout, Gerber generation, connector placement,
 thermal design, and the final supply-rail choice.
+
+**The cheapest open action in this document is looking on a shelf.** It resolves
+the status above, and it is the one gate input that needs no bench, no purchase
+and no authorization.
 
 Not blocked, and proceeding: the requirement statements, the candidate registry
 in the [E1 BOM](TTP_E1_HARDWARE_BOM.md), the

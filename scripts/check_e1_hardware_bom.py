@@ -1263,10 +1263,14 @@ EXCITATION_DOCUMENTS = (
     PCB_GATE_PATH,
 )
 
-# The enclosure has three states, not two. "No enclosure exists to measure" and
-# "an enclosure exists and nobody measured it" differ in what would clear them,
-# and collapsing them makes a hardware gate look like an afternoon's work.
+# The enclosure has four states, and they are an evidence ladder rather than a
+# switch - the same distinction the ownership census draws between UNKNOWN,
+# CONFIRMED_ABSENT and CONFIRMED_PRESENT, applied to a case. "Nobody has looked"
+# is not "someone looked and found none": the second is a finding, and inferring
+# it from an unbuilt Analyzer would be treating silence as evidence in the
+# document a board outline gets derived from.
 ENVELOPE_STATUSES = (
+    "ENCLOSURE_EXISTENCE_NOT_VERIFIED",
     "ENCLOSURE_NOT_AVAILABLE_FOR_MEASUREMENT",
     "NOT_PERFORMED",
     "PERFORMED",
