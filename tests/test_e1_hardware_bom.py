@@ -1404,9 +1404,7 @@ class TestScopedTiers:
         specs = {r["candidate_id"]: spec(r["candidate_id"]) for r in rows}
         assert checker.validate_tier_completeness(rows, specs) == []
 
-    def test_a_force_transducer_cannot_be_filed_into_the_commercial_tier(
-        self, checker
-    ):
+    def test_a_force_transducer_cannot_be_filed_into_the_commercial_tier(self, checker):
         # The failure this rule exists for: the commercial path acquiring a
         # force channel by accretion, so that it reads as a complete rig at a
         # commodity price. Its defining property is that it measures no force.
@@ -1592,3 +1590,388 @@ class TestTheCommittedCommercialTier:
         rows = [candidate("stinger", tier="COMMERCIAL_PROTOTYPE")]
         specs = [spec(rows[0]["candidate_id"], manufacturer="fabricated")]
         assert checker.check_candidate_datasheets({"entries": []}, rows, specs) == []
+
+
+# ---------------------------------------------------------------------------
+# DO-108P — the commercial excitation documents
+#
+# The candidate registry above feeds four documents and one gate. What these
+# hold is the way a requirements document fills itself in: a TBD_MEASURE quietly
+# becoming a number, an enclosure survey reading complete on rows nobody
+# measured, a gate opening because the work was ready rather than the evidence -
+# and the one that would matter most, a force appearing in a chain that has no
+# force channel.
+# ---------------------------------------------------------------------------
+
+
+def flat(text: str) -> str:
+    """Collapse whitespace, so a prose assertion survives a line rewrap.
+
+    These documents are hard-wrapped. A sentence assertion that failed because
+    the sentence moved across a line boundary would be a test about formatting,
+    which is not what any of these are checking.
+    """
+    return " ".join(text.split())
+
+
+def amplifier_document(*rows: tuple[str, str]) -> str:
+    """An Output range section, for testing what the checker does with it."""
+    body = "\n".join(f"| {prop} | {value} |" for prop, value in rows)
+    return "\n".join(
+        [
+            "# Requirements",
+            "",
+            "## Load compatibility",
+            "",
+            "| Property | Value |",
+            "| --- | --- |",
+            "| Nominal load | 4 and 8 ohm |",
+            "",
+            "## Output range",
+            "",
+            "| Property | Value |",
+            "| --- | --- |",
+            body,
+            "",
+            "## Gain",
+            "",
+            "nothing here",
+        ]
+    )
+
+
+def envelope_document(status: str, *rows: tuple[str, str]) -> str:
+    body = "\n".join(
+        f"| {name} | {value} | measurement | pending |" for name, value in rows
+    )
+    return "\n".join(
+        [
+            f"**survey_status:** `{status}`",
+            "",
+            "| Parameter | Value | Method | Evidence |",
+            "| --- | --- | --- | --- |",
+            body,
+        ]
+    )
+
+
+class TestTheExcitationDocumentsExist:
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "TTP_COMMERCIAL_EXCITATION_ARCHITECTURE.md",
+            "TTP_EXCITATION_AMPLIFIER_REQUIREMENTS.md",
+            "TTP_EXCITATION_PCB_ENVELOPE.md",
+            "TTP_EXCITER_POWER_CHARACTERIZATION_PROTOCOL.md",
+        ],
+    )
+    def test_document_present(self, name):
+        assert (HARDWARE / name).exists()
+
+    def test_the_gate_adr_follows_the_repository_convention(self, checker):
+        # docs/ADR-NNNN-topic.md, not a new docs/decisions/ directory.
+        assert checker.PCB_GATE_PATH.exists()
+        assert checker.PCB_GATE_PATH.parent.name == "docs"
+        assert not (REPO_ROOT / "docs" / "decisions").exists()
+
+    def test_the_committed_documents_validate(self, checker):
+        candidates = checker.parse_optional_table(
+            checker.BOM_PATH, checker.CANDIDATE_KEY
+        )
+        specs = checker.parse_optional_table(checker.BOM_PATH, checker.SPEC_KEY)
+        assert checker.check_excitation_documents(candidates, specs) == []
+
+
+class TestTheProductionChain:
+    def test_the_committed_architecture_puts_the_amplifier_inside_the_chain(
+        self, checker
+    ):
+        text = checker.ARCHITECTURE_PATH.read_text(encoding="utf-8")
+        assert checker.validate_excitation_architecture(text) == []
+
+    def test_a_chain_without_an_amplifier_is_refused(self, checker):
+        text = "\n".join(
+            [
+                "DAC",
+                "ELECTRODYNAMIC EXCITER",
+                "controlled waveform emission",
+                "controlled physical excitation",
+                "measured dynamic input force",
+            ]
+        )
+        problems = checker.validate_excitation_architecture(text)
+        assert any("INTERNAL POWER AMPLIFIER" in p for p in problems)
+
+    def test_an_exciter_driven_before_the_amplifier_is_refused(self, checker):
+        # The ordering is the architectural claim, not decoration.
+        text = "\n".join(
+            [
+                "DAC",
+                "ELECTRODYNAMIC EXCITER",
+                "INTERNAL POWER AMPLIFIER",
+                "controlled waveform emission",
+                "controlled physical excitation",
+                "measured dynamic input force",
+            ]
+        )
+        problems = checker.validate_excitation_architecture(text)
+        assert any("DAC -> amplifier -> exciter" in p for p in problems)
+
+    def test_the_capability_states_are_recorded_locally(self, checker):
+        # Ruling 4: recorded here rather than by importing a fragment of the
+        # unmerged capability-census document.
+        text = checker.ARCHITECTURE_PATH.read_text(encoding="utf-8")
+        assert "controlled waveform emission     = implemented" in text
+        assert "external physical transducer required" in text
+        assert "absent from the commercial path" in text
+        assert not (REPO_ROOT / "docs" / "ANALYZER_CAPABILITY_MATRIX.md").exists()
+
+    def test_the_product_does_not_require_a_standalone_amplifier(self, checker):
+        text = flat(checker.ARCHITECTURE_PATH.read_text(encoding="utf-8"))
+        assert "does not presume a standalone external amplifier" in text
+
+    def test_the_microphone_stays_the_zero_added_mass_baseline(self, checker):
+        text = flat(checker.ARCHITECTURE_PATH.read_text(encoding="utf-8"))
+        assert "adds no attached mass" in text
+        assert "microphone remains the baseline response sensor" in text
+
+
+class TestTheEnclosureEnvelope:
+    def test_the_committed_survey_records_no_enclosure_to_measure(self, checker):
+        text = checker.ENVELOPE_PATH.read_text(encoding="utf-8")
+        status = checker.header_field(text, "survey_status")
+        assert status == "ENCLOSURE_NOT_AVAILABLE_FOR_MEASUREMENT"
+        assert checker.validate_pcb_envelope(text, status) == []
+
+    def test_that_status_is_distinct_from_merely_unmeasured(self, checker):
+        # They differ in what would clear them, so they are separate states.
+        assert "NOT_PERFORMED" in checker.ENVELOPE_STATUSES
+        assert "ENCLOSURE_NOT_AVAILABLE_FOR_MEASUREMENT" in checker.ENVELOPE_STATUSES
+
+    def test_an_unknown_status_is_refused(self, checker):
+        text = envelope_document("PROBABLY_FINE", ("usable width", "TBD"))
+        problems = checker.validate_pcb_envelope(text, "PROBABLY_FINE")
+        assert any("unknown envelope survey_status" in p for p in problems)
+
+    def test_a_performed_survey_with_any_tbd_is_refused(self, checker):
+        text = envelope_document(
+            "PERFORMED", ("usable width", "42 mm"), ("max height", "TBD")
+        )
+        problems = checker.validate_pcb_envelope(text, "PERFORMED")
+        assert any("still TBD" in p for p in problems)
+
+    def test_a_fully_measured_survey_is_accepted(self, checker):
+        text = envelope_document(
+            "PERFORMED", ("usable width", "42 mm"), ("max height", "12 mm")
+        )
+        assert checker.validate_pcb_envelope(text, "PERFORMED") == []
+
+    def test_an_absent_enclosure_cannot_carry_a_measured_dimension(self, checker):
+        # A measurement of something that does not exist.
+        text = envelope_document(
+            "ENCLOSURE_NOT_AVAILABLE_FOR_MEASUREMENT", ("usable width", "42 mm")
+        )
+        problems = checker.validate_pcb_envelope(
+            text, "ENCLOSURE_NOT_AVAILABLE_FOR_MEASUREMENT"
+        )
+        assert any("nothing has been measured" in p for p in problems)
+
+    def test_every_committed_dimension_is_still_tbd(self, checker):
+        rows = checker.parse_table(checker.ENVELOPE_PATH, "Parameter")
+        assert rows
+        for row in rows:
+            assert not checker.is_set(row["Value"]), row["Parameter"]
+
+
+class TestAmplifierPowerIsNotInherited:
+    def test_the_committed_output_range_is_entirely_unmeasured(self, checker):
+        text = checker.AMPLIFIER_PATH.read_text(encoding="utf-8")
+        assert (
+            checker.validate_amplifier_requirements(text, "NOT_EXECUTED", set()) == []
+        )
+
+    def test_a_number_appearing_before_the_bench_runs_is_refused(self, checker):
+        text = amplifier_document(("Required continuous output power", "1.5 W"))
+        problems = checker.validate_amplifier_requirements(text, "NOT_EXECUTED", set())
+        assert any("needs a measurement" in p for p in problems)
+
+    def test_the_same_number_is_accepted_once_the_bench_has_run(self, checker):
+        text = amplifier_document(("Required continuous output power", "1.5 W"))
+        assert checker.validate_amplifier_requirements(text, "EXECUTED", set()) == []
+
+    def test_an_exciter_rated_power_may_not_become_the_requirement(self, checker):
+        # EXC-006, and the rule the whole requirements document is built around:
+        # 24 W is what the DAEX25FHE-4 tolerates, not what a plate needs.
+        text = amplifier_document(("Required continuous output power", "24 W"))
+        problems = checker.validate_amplifier_requirements(
+            text, "EXECUTED", {10.0, 24.0}
+        )
+        assert any(
+            "tolerates is not what the amplifier must deliver" in p for p in problems
+        )
+
+    def test_a_measured_figure_unrelated_to_any_rating_passes(self, checker):
+        text = amplifier_document(("Required continuous output power", "1.5 W"))
+        assert (
+            checker.validate_amplifier_requirements(text, "EXECUTED", {10.0, 24.0})
+            == []
+        )
+
+    def test_the_ratings_are_read_from_the_committed_candidates(self, checker):
+        candidates = checker.parse_optional_table(
+            checker.BOM_PATH, checker.CANDIDATE_KEY
+        )
+        specs = checker.parse_optional_table(checker.BOM_PATH, checker.SPEC_KEY)
+        ratings = checker.exciter_rated_powers(
+            candidates, {s["spec_for"]: s for s in specs}
+        )
+        assert {10.0, 24.0} <= ratings
+
+    def test_both_candidate_loads_are_covered(self, checker):
+        # The VISATON is 8 ohm and the Daytons are 4. The requirement covers
+        # both rather than restating the odd one out.
+        text = checker.AMPLIFIER_PATH.read_text(encoding="utf-8")
+        assert "**4 Ω and 8 Ω both required**" in text
+
+    def test_one_excitation_channel_is_stated_in_both_documents(self, checker):
+        # A stereo reference part does not make the architecture two-channel.
+        amplifier = checker.AMPLIFIER_PATH.read_text(encoding="utf-8")
+        architecture = checker.ARCHITECTURE_PATH.read_text(encoding="utf-8")
+        assert "mono excitation path" in amplifier
+        assert "**1** excitation channel" in amplifier
+        assert "one exciter" in amplifier
+        assert "drives one exciter" in amplifier or "one exciter" in architecture
+
+    def test_the_amplifier_family_is_never_written_as_a_selection(self, checker):
+        text = checker.AMPLIFIER_PATH.read_text(encoding="utf-8")
+        assert "**Selection status:** `CANDIDATE`" in text
+        assert "Selected amplifier = TPA3116D2" not in text
+        assert "candidate, not a selection" in text
+
+
+class TestNoForceEntersTheCommercialPath:
+    def test_the_committed_documents_state_no_force_in_newtons(self, checker):
+        texts = {
+            path.name: path.read_text(encoding="utf-8")
+            for path in checker.EXCITATION_DOCUMENTS
+        }
+        assert checker.validate_no_specimen_force_claim(texts) == []
+
+    def test_a_bare_newton_figure_is_refused(self, checker):
+        problems = checker.validate_no_specimen_force_claim(
+            {"doc.md": "The exciter delivers 1.8 N into the plate."}
+        )
+        assert any("measures no force" in p for p in problems)
+
+    def test_the_same_figure_is_accepted_as_a_motor_force_scale(self, checker):
+        assert (
+            checker.validate_no_specimen_force_claim(
+                {"doc.md": "The motor-force scale is 1.8 N at this current."}
+            )
+            == []
+        )
+
+    def test_the_amplifier_requirements_prohibit_recording_an_input_force(
+        self, checker
+    ):
+        text = checker.AMPLIFIER_PATH.read_text(encoding="utf-8")
+        assert "prohibited — no force channel exists" in text
+
+    def test_the_protocol_never_claims_a_calibrated_force(self, checker):
+        text = checker.DRIVE_PROTOCOL_PATH.read_text(encoding="utf-8").lower()
+        for claim in (
+            "calibrated force",
+            "measured input force",
+            "force channel exists",
+        ):
+            assert claim not in text
+        assert "there is no force channel" in text
+
+
+class TestTheProtocolRecordsWhatItMustIdentify:
+    @pytest.fixture(scope="class")
+    def protocol(self, checker):
+        return checker.DRIVE_PROTOCOL_PATH.read_text(encoding="utf-8")
+
+    def test_it_is_recorded_as_unexecuted(self, checker, protocol):
+        assert checker.header_field(protocol, "execution_status") == "NOT_EXECUTED"
+
+    @pytest.mark.parametrize(
+        "identity",
+        ["exciter identity", "stinger identity", "tip identity", "amplifier gain"],
+    )
+    def test_every_energized_step_records_identity(self, protocol, identity):
+        assert identity in protocol
+
+    def test_masses_are_measured_rather_than_targeted(self, protocol):
+        assert "measured, not target" in protocol
+
+    def test_electrical_and_response_quantities_are_recorded_separately(self, protocol):
+        assert "drive-side electrical, measured" in protocol
+        assert "response-side, measured" in protocol
+        # And the derived one is labelled as derived rather than measured.
+        assert "marked derived" in protocol
+
+    def test_the_stinger_contact_question_is_asked_with_the_amplifier_off(
+        self, protocol
+    ):
+        assert "Plate contact, amplifier off" in protocol
+
+    def test_the_emi_interaction_is_a_numbered_step(self, protocol):
+        assert "EMI interaction with the ADC and microphone" in protocol
+
+    def test_the_bl_comparison_is_left_empirical(self, protocol):
+        assert "empirical questions, not datasheet conclusions" in protocol
+
+
+class TestThePcbGate:
+    @pytest.fixture(scope="class")
+    def gate(self, checker):
+        return checker.PCB_GATE_PATH.read_text(encoding="utf-8")
+
+    def test_the_committed_gate_is_blocked(self, checker, gate):
+        assert checker.header_field(gate, "gate_verdict") == "BLOCKED"
+
+    def test_blocked_is_legal_with_nothing_measured(self, checker, gate):
+        assert (
+            checker.validate_pcb_gate(
+                gate, "ENCLOSURE_NOT_AVAILABLE_FOR_MEASUREMENT", "NOT_EXECUTED"
+            )
+            == []
+        )
+
+    def test_the_gate_cannot_open_without_an_envelope(self, checker):
+        text = "**gate_verdict:** `READY_FOR_SCHEMATIC`"
+        problems = checker.validate_pcb_gate(text, "NOT_PERFORMED", "EXECUTED")
+        assert any("a layout needs an envelope" in p for p in problems)
+
+    def test_the_gate_cannot_open_without_a_measured_drive(self, checker):
+        text = "**gate_verdict:** `READY_FOR_SCHEMATIC`"
+        problems = checker.validate_pcb_gate(text, "PERFORMED", "NOT_EXECUTED")
+        assert any("unmeasured requirement" in p for p in problems)
+
+    def test_the_gate_opens_when_both_inputs_exist(self, checker):
+        text = "**gate_verdict:** `READY_FOR_SCHEMATIC`"
+        assert checker.validate_pcb_gate(text, "PERFORMED", "EXECUTED") == []
+
+    def test_an_unknown_verdict_is_refused(self, checker):
+        problems = checker.validate_pcb_gate(
+            "**gate_verdict:** `PROBABLY_FINE`", "PERFORMED", "EXECUTED"
+        )
+        assert any("unknown PCB gate verdict" in p for p in problems)
+
+    def test_a_closed_gate_is_recorded_as_the_expected_outcome(self, gate):
+        assert "normal outcome, not a failure" in gate
+
+    def test_no_schematic_or_layout_was_produced(self):
+        # The order's hard boundary. Nothing this order touched may be a board.
+        # Scoped to the directories DO-108P wrote in rather than the whole repo,
+        # which would spend a minute walking .git, build/ and the run archives.
+        suffixes = {".kicad_pcb", ".kicad_sch", ".kicad_pro", ".gbr", ".brd", ".sch"}
+        for directory in ("docs", "scripts", "contracts"):
+            found = [
+                path.name
+                for path in (REPO_ROOT / directory).rglob("*")
+                if path.suffix in suffixes
+            ]
+            assert found == [], f"{directory}: {found}"

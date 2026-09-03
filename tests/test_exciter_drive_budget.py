@@ -144,9 +144,7 @@ class TestRejectedInputs:
         with pytest.raises(budget.InvalidDrive):
             budget.drive_budget(load_ohm=4.0, vrms=2.0, moving_mass_g=-1.0)
 
-    def test_the_cli_reports_a_bad_input_rather_than_a_traceback(
-        self, budget, capsys
-    ):
+    def test_the_cli_reports_a_bad_input_rather_than_a_traceback(self, budget, capsys):
         code = budget.main(["--load-ohm", "0", "--vrms", "2"])
         assert code == 2
         assert "invalid drive condition" in capsys.readouterr().err
@@ -173,9 +171,7 @@ class TestOutputIsDeterministic:
         assert "not force delivered to the specimen" in payload["caveat"]
         assert payload["specimen_force_n"] == "NOT_MEASURED"
 
-    def test_the_json_reports_unavailable_as_a_string_not_null(
-        self, budget, capsys
-    ):
+    def test_the_json_reports_unavailable_as_a_string_not_null(self, budget, capsys):
         # null would invite a downstream reader to coalesce it to 0.
         budget.main(["--load-ohm", "8", "--vrms", "2", "--json"])
         payload = json.loads(capsys.readouterr().out)

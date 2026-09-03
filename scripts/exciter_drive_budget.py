@@ -71,8 +71,7 @@ def drive_budget(
         )
     if vrms < 0:
         raise InvalidDrive(
-            f"vrms must not be negative, got {vrms!r} - an rms quantity is a "
-            "magnitude"
+            f"vrms must not be negative, got {vrms!r} - an rms quantity is a magnitude"
         )
     if bl_tm is not None and bl_tm <= 0:
         raise InvalidDrive(
@@ -164,9 +163,7 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="moving mass Mms in grams; recorded, not used to derive anything",
     )
-    parser.add_argument(
-        "--json", action="store_true", help="emit JSON instead of text"
-    )
+    parser.add_argument("--json", action="store_true", help="emit JSON instead of text")
     args = parser.parse_args(argv)
 
     try:

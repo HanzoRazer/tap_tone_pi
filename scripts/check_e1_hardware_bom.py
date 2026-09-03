@@ -368,7 +368,16 @@ def is_set(value: object) -> bool:
 def parse_table(
     path: Path, key: str, required: tuple[str, ...] = ()
 ) -> list[dict[str, str]]:
-    """Read the first pipe table whose header contains ``key``.
+    """Read the first pipe table in ``path`` whose header contains ``key``."""
+    return parse_table_lines(
+        path.name, path.read_text(encoding="utf-8").splitlines(), key, required
+    )
+
+
+def parse_table_lines(
+    name: str, lines: list[str], key: str, required: tuple[str, ...] = ()
+) -> list[dict[str, str]]:
+    """Read the first pipe table in ``lines`` whose header contains ``key``.
 
     Deliberately strict in two ways. A row whose cell count does not match the
     header is reported rather than silently padded, because a shifted column
@@ -379,7 +388,7 @@ def parse_table(
     """
     rows: list[dict[str, str]] = []
     header: list[str] | None = None
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in lines:
         stripped = line.strip()
         if not stripped.startswith("|"):
             if header is not None and rows:
@@ -394,17 +403,15 @@ def parse_table(
             continue
         if len(cells) != len(header):
             raise ValueError(
-                f"{path.name}: row has {len(cells)} cells, header has "
+                f"{name}: row has {len(cells)} cells, header has "
                 f"{len(header)}: {cells[:2]}"
             )
         rows.append(dict(zip(header, cells)))
     if header is None:
-        raise ValueError(f"{path.name}: no table with a {key!r} column")
+        raise ValueError(f"{name}: no table with a {key!r} column")
     missing = [column for column in required if column not in header]
     if missing:
-        raise ValueError(
-            f"{path.name}: table is missing column(s) {', '.join(missing)}"
-        )
+        raise ValueError(f"{name}: table is missing column(s) {', '.join(missing)}")
     return rows
 
 
@@ -1233,6 +1240,297 @@ def validate_census_bom_agreement(
     return problems
 
 
+# --- DO-108P: the commercial excitation documents ---------------------------
+#
+# The BOM checks above hold the candidate registry. These hold the four
+# documents that registry now feeds, and the gate they close onto. The failure
+# they exist for is a requirement document that fills itself in: a `TBD_MEASURE`
+# quietly becoming a number, an enclosure survey reading complete on rows nobody
+# measured, and - the one that would matter most - a force appearing in a chain
+# that has no force channel.
+
+ARCHITECTURE_PATH = HARDWARE / "TTP_COMMERCIAL_EXCITATION_ARCHITECTURE.md"
+AMPLIFIER_PATH = HARDWARE / "TTP_EXCITATION_AMPLIFIER_REQUIREMENTS.md"
+ENVELOPE_PATH = HARDWARE / "TTP_EXCITATION_PCB_ENVELOPE.md"
+DRIVE_PROTOCOL_PATH = HARDWARE / "TTP_EXCITER_POWER_CHARACTERIZATION_PROTOCOL.md"
+PCB_GATE_PATH = REPO_ROOT / "docs" / "ADR-0014-excitation-pcb-gate.md"
+
+EXCITATION_DOCUMENTS = (
+    ARCHITECTURE_PATH,
+    AMPLIFIER_PATH,
+    ENVELOPE_PATH,
+    DRIVE_PROTOCOL_PATH,
+    PCB_GATE_PATH,
+)
+
+# The enclosure has three states, not two. "No enclosure exists to measure" and
+# "an enclosure exists and nobody measured it" differ in what would clear them,
+# and collapsing them makes a hardware gate look like an afternoon's work.
+ENVELOPE_STATUSES = (
+    "ENCLOSURE_NOT_AVAILABLE_FOR_MEASUREMENT",
+    "NOT_PERFORMED",
+    "PERFORMED",
+)
+PROTOCOL_EXECUTION_STATES = ("NOT_EXECUTED", "EXECUTED")
+GATE_VERDICTS = ("BLOCKED", "READY_FOR_SCHEMATIC")
+
+# The placeholder that marks a number the bench has to produce. It is not a
+# stylistic choice: a blank or a plausible-looking figure in these rows is how a
+# board gets sized against something nobody observed.
+MEASURE_PLACEHOLDER = "TBD_MEASURE"
+
+# The production chain, in the order the signal travels. The amplifier being
+# *between* the DAC and the exciter is the architectural claim; a chain that
+# lost it would describe a product driving an exciter from a line output.
+EXCITATION_CHAIN_ORDER = (
+    "DAC",
+    "INTERNAL POWER AMPLIFIER",
+    "ELECTRODYNAMIC EXCITER",
+)
+
+# Capability states the architecture document carries locally, pending the
+# unmerged capability-census work.
+REQUIRED_CAPABILITY_LINES = (
+    "controlled waveform emission",
+    "controlled physical excitation",
+    "measured dynamic input force",
+)
+
+# A newton figure is only ever a motor-force scale in these documents. Anything
+# else would be a force at the specimen, which no channel measures.
+_NEWTONS = re.compile(r"\b\d+(?:\.\d+)?\s*(?:N\b|newtons?\b)")
+_MOTOR_SCALE_TERMS = ("motor-force scale", "motor force scale", "BL")
+
+_HEADER_FIELD = r"^\*\*{name}:\*\*\s*`([A-Z_]+)`"
+
+
+def header_field(text: str, name: str) -> str:
+    """A ``**name:** `VALUE``` declaration from a document header."""
+    match = re.search(_HEADER_FIELD.format(name=re.escape(name)), text, re.MULTILINE)
+    return match.group(1) if match else ""
+
+
+def section(text: str, heading: str) -> list[str]:
+    """The lines under a ``## heading``, up to the next heading of any level."""
+    lines = text.splitlines()
+    start: int | None = None
+    for index, line in enumerate(lines):
+        if start is None:
+            if line.strip().lower().lstrip("# ").startswith(heading.lower()) and (
+                line.startswith("#")
+            ):
+                start = index + 1
+            continue
+        if line.startswith("#"):
+            return lines[start:index]
+    return lines[start:] if start is not None else []
+
+
+def validate_excitation_architecture(text: str) -> list[str]:
+    """The production chain is stated, and the amplifier is inside it."""
+    problems: list[str] = []
+
+    positions = [text.find(stage) for stage in EXCITATION_CHAIN_ORDER]
+    for stage, position in zip(EXCITATION_CHAIN_ORDER, positions):
+        if position < 0:
+            problems.append(
+                f"the architecture document never names {stage!r} - the "
+                "production chain is incomplete"
+            )
+    if all(position >= 0 for position in positions) and positions != sorted(positions):
+        problems.append(
+            "the production chain does not run DAC -> amplifier -> exciter; an "
+            "exciter driven straight from a line output is a different product"
+        )
+
+    lowered = text.lower()
+    for capability in REQUIRED_CAPABILITY_LINES:
+        if capability not in lowered:
+            problems.append(
+                f"the architecture document records no state for {capability!r}"
+            )
+    return problems
+
+
+def validate_pcb_envelope(text: str, status: str) -> list[str]:
+    """The survey may not read complete on rows nobody measured.
+
+    Guarded in both directions, for the same reason the ownership census is. A
+    `PERFORMED` survey carrying `TBD` would let a layout start against whichever
+    rows happened to be filled in; an unavailable enclosure carrying a measured
+    dimension would be a measurement of something that does not exist.
+    """
+    problems: list[str] = []
+    if status not in ENVELOPE_STATUSES:
+        problems.append(f"unknown envelope survey_status {status!r}")
+
+    try:
+        rows = parse_table_lines(
+            ENVELOPE_PATH.name, text.splitlines(), "Parameter", ("Parameter", "Value")
+        )
+    except ValueError as exc:
+        return problems + [f"cannot read the envelope survey table: {exc}"]
+
+    measured = [row for row in rows if is_set(row.get("Value"))]
+    unmeasured = [row for row in rows if not is_set(row.get("Value"))]
+
+    if status == "PERFORMED" and unmeasured:
+        problems.append(
+            f"the envelope survey reads PERFORMED but {len(unmeasured)} "
+            "dimension(s) are still TBD - a partly measured envelope is an "
+            "unknown one, not a small one"
+        )
+    if status != "PERFORMED" and measured:
+        problems.append(
+            f"the envelope survey reads {status} but {len(measured)} "
+            "dimension(s) carry a value - nothing has been measured"
+        )
+    if not rows:
+        problems.append("the envelope survey table has no rows")
+    return problems
+
+
+def exciter_rated_powers(
+    candidates: list[dict[str, str]] | None, specs: dict[str, dict[str, str]]
+) -> set[float]:
+    """Wattages printed on the commercial exciter candidates' datasheets."""
+    ratings: set[float] = set()
+    for row in candidates or []:
+        if row.get("selection_tier") not in TIER_CHAIN_SCOPE:
+            continue
+        if row.get("component_class") != "shaker":
+            continue
+        key = specs.get(row.get(CANDIDATE_KEY, ""), {}).get("key_specification", "")
+        for found in re.findall(r"(\d+(?:\.\d+)?)\s*W\b", str(key)):
+            ratings.add(float(found))
+    return ratings
+
+
+def validate_amplifier_requirements(
+    text: str, protocol_state: str, ratings: set[float]
+) -> list[str]:
+    """Required output stays unmeasured until it is measured, and is never
+    inherited from what an exciter tolerates.
+
+    Two failures, one rule each. The output envelope filling itself in while the
+    bench protocol is unexecuted is the first; a required output power that is
+    an exciter's rated power wearing a different label is the second. The second
+    check only bites once somebody writes a number, which is exactly when it is
+    needed.
+    """
+    problems: list[str] = []
+    rows = section(text, "Output range")
+    if not rows:
+        return ["the amplifier requirements name no Output range section"]
+
+    try:
+        table = parse_table_lines(
+            AMPLIFIER_PATH.name, rows, "Property", ("Property", "Value")
+        )
+    except ValueError as exc:
+        return [f"cannot read the amplifier output-range table: {exc}"]
+
+    for row in table:
+        # Markdown code-spans are formatting, not content: `TBD_MEASURE` and
+        # TBD_MEASURE are the same claim and must validate the same way.
+        value = str(row.get("Value", "")).strip().strip("`").strip()
+        prop = row.get("Property", "?")
+        if protocol_state != "EXECUTED" and value != MEASURE_PLACEHOLDER:
+            problems.append(
+                f"amplifier output range {prop!r} reads {value!r} while the "
+                f"characterization protocol is {protocol_state} - a measured "
+                f"figure needs a measurement, so it must read {MEASURE_PLACEHOLDER}"
+            )
+        for found in re.findall(r"(\d+(?:\.\d+)?)\s*W\b", value):
+            if float(found) in ratings:
+                problems.append(
+                    f"amplifier output range {prop!r} is {found} W, which is a "
+                    "registered exciter's rated power - what an exciter "
+                    "tolerates is not what the amplifier must deliver"
+                )
+    return problems
+
+
+def validate_no_specimen_force_claim(documents: dict[str, str]) -> list[str]:
+    """No newton figure in the commercial path except a motor-force scale.
+
+    The boundary the whole commercial architecture rests on. The chain has no
+    force channel, so a force at the plate cannot be measured, derived, or
+    quoted - and ``BL x Irms`` is the one number that could be mistaken for one.
+    Where it appears it must say what it is on the same line.
+    """
+    problems: list[str] = []
+    for name, text in documents.items():
+        for line in text.splitlines():
+            if not _NEWTONS.search(line):
+                continue
+            if any(term in line for term in _MOTOR_SCALE_TERMS):
+                continue
+            problems.append(
+                f"{name}: {line.strip()[:70]!r} states a force in newtons "
+                "without naming it a motor-force scale - the commercial chain "
+                "measures no force"
+            )
+    return problems
+
+
+def validate_pcb_gate(
+    text: str, envelope_status: str, protocol_state: str
+) -> list[str]:
+    """The layout gate opens on evidence, and on nothing else."""
+    problems: list[str] = []
+    verdict = header_field(text, "gate_verdict")
+    if verdict not in GATE_VERDICTS:
+        problems.append(f"unknown PCB gate verdict {verdict!r}")
+        return problems
+
+    if verdict == "READY_FOR_SCHEMATIC":
+        if envelope_status != "PERFORMED":
+            problems.append(
+                "the PCB gate reads READY_FOR_SCHEMATIC while the enclosure "
+                f"survey is {envelope_status} - a layout needs an envelope"
+            )
+        if protocol_state != "EXECUTED":
+            problems.append(
+                "the PCB gate reads READY_FOR_SCHEMATIC while the drive "
+                f"characterization is {protocol_state} - the output stage "
+                "would be sized against an unmeasured requirement"
+            )
+    return problems
+
+
+def check_excitation_documents(
+    candidates: list[dict[str, str]] | None, specs: list[dict[str, str]] | None
+) -> list[str]:
+    """The DO-108P documents, and the gate they close onto."""
+    missing = [path.name for path in EXCITATION_DOCUMENTS if not path.exists()]
+    if missing:
+        return [f"missing excitation document {name}" for name in missing]
+
+    texts = {
+        path.name: path.read_text(encoding="utf-8") for path in EXCITATION_DOCUMENTS
+    }
+    envelope_status = header_field(texts[ENVELOPE_PATH.name], "survey_status")
+    protocol_state = header_field(texts[DRIVE_PROTOCOL_PATH.name], "execution_status")
+
+    problems: list[str] = []
+    if protocol_state not in PROTOCOL_EXECUTION_STATES:
+        problems.append(f"unknown protocol execution_status {protocol_state!r}")
+
+    problems += validate_excitation_architecture(texts[ARCHITECTURE_PATH.name])
+    problems += validate_pcb_envelope(texts[ENVELOPE_PATH.name], envelope_status)
+    problems += validate_amplifier_requirements(
+        texts[AMPLIFIER_PATH.name],
+        protocol_state,
+        exciter_rated_powers(candidates, {s.get(SPEC_KEY, ""): s for s in specs or []}),
+    )
+    problems += validate_no_specimen_force_claim(texts)
+    problems += validate_pcb_gate(
+        texts[PCB_GATE_PATH.name], envelope_status, protocol_state
+    )
+    return problems
+
+
 def report(title: str, problems: Iterable[str]) -> int:
     found = list(problems)
     if not found:
@@ -1285,6 +1583,7 @@ def main(argv: list[str] | None = None) -> int:
         "candidate-datasheets",
         check_candidate_datasheets(manifest, candidates, specs),
     )
+    count += report("excitation", check_excitation_documents(candidates, specs))
 
     if args.summary:
         print()
