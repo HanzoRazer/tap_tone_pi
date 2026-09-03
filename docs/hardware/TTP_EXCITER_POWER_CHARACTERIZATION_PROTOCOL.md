@@ -1,7 +1,8 @@
 # TTP Exciter Power Characterization — Bench Protocol
 
-**Status:** protocol defined. **Not executed.** No step below has been performed
-and no value below exists.
+**execution_status:** `NOT_EXECUTED`
+**Status:** protocol defined. No step below has been performed and no value
+below exists.
 **Dev Order:** DO-108P defines it; a successor bench order executes it.
 **Prerequisite hardware:** none of it is possessed — see the
 [ownership census](TTP_E1_OWNERSHIP_CENSUS.md).
