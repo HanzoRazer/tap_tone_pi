@@ -1026,7 +1026,7 @@ class TestTheCommittedCandidateTables:
     def test_the_candidate_tables_exist(self, candidates, specs):
         assert candidates and specs
 
-    def test_all_three_tiers_are_represented(self, checker, candidates):
+    def test_every_declared_tier_is_represented(self, checker, candidates):
         assert set(checker.group_candidates_by_tier(candidates)) == set(
             checker.SELECTION_TIERS
         )
@@ -1052,19 +1052,25 @@ class TestTheCommittedCandidateTables:
         assert "RECOMMEND_PURCHASE" not in {r["procurement_action"] for r in candidates}
         assert {r["procurement_action"] for r in candidates} == {"HOLD", "USE_OWNED"}
 
-    def test_measured_force_is_present_in_every_tier(self, checker, candidates):
+    def test_measured_force_is_present_in_every_whole_chain_tier(
+        self, checker, candidates
+    ):
         by_tier = checker.group_candidates_by_tier(candidates)
         for tier, rows in by_tier.items():
+            if tier in checker.TIER_CHAIN_SCOPE:
+                continue
             classes = {r["component_class"] for r in rows}
             assert "force_transducer" in classes, tier
             assert "force_conditioner" in classes, tier
 
-    def test_the_response_sensor_is_a_microphone_in_every_tier(
+    def test_the_response_sensor_is_a_microphone_in_every_whole_chain_tier(
         self, checker, candidates, specs
     ):
         # 4.11: no accelerometer may become the E1 response sensor here.
         by_id = {s["spec_for"]: s for s in specs}
         for tier, rows in checker.group_candidates_by_tier(candidates).items():
+            if tier in checker.TIER_CHAIN_SCOPE:
+                continue
             mics = [r for r in rows if r["component_class"] == "microphone"]
             assert len(mics) == 1, tier
             model = by_id[mics[0]["candidate_id"]]["key_specification"].lower()
@@ -1351,3 +1357,238 @@ class TestOwnershipBackedActions:
         host = next(r for r in bom if r["local_id"] == "HOST-001")
         assert host["status"] == "SELECTED"  # design selection, unchanged
         assert checker.rung(host["status"]) < checker.rung("ORDERED")
+
+
+# ---------------------------------------------------------------------------
+# DO-108P — the commercial excitation tier
+#
+# DO-104S added tiers that are each a complete rig. DO-108P adds one that is
+# deliberately not: the excitation stage of a commercial TTP, scoped to the
+# contact-excitation chain and carrying no force channel at all.
+#
+# Two failures are worth holding here. A scoped tier could be read as an
+# incomplete rig and quietly "finished" by someone adding a force transducer to
+# it — which would invent a measurement the commercial path does not make. And a
+# manufacturer value could drift from the document it came from, which is how a
+# requirement ends up sized against a number nobody published.
+# ---------------------------------------------------------------------------
+
+
+class TestScopedTiers:
+    def test_a_whole_chain_tier_owes_every_mandatory_role(self, checker):
+        assert checker.mandatory_roles_for("PREFERRED_E1") == (
+            checker.MANDATORY_ROLE_CLASSES
+        )
+
+    def test_a_scoped_tier_owes_only_its_own_chains_roles(self, checker):
+        owed = checker.mandatory_roles_for("COMMERCIAL_PROTOTYPE")
+        assert set(owed) == {"shaker", "amplifier", "stinger", "contact_tip"}
+        # The point of the exemption: it does not owe a force chain.
+        assert "force_transducer" not in owed
+        assert "force_conditioner" not in owed
+
+    def test_a_scoped_tier_still_fails_if_it_drops_its_own_role(self, checker):
+        rows = [
+            candidate(cls, tier="COMMERCIAL_PROTOTYPE")
+            for cls in ("shaker", "stinger", "contact_tip")
+        ]
+        specs = {r["candidate_id"]: spec(r["candidate_id"]) for r in rows}
+        problems = checker.validate_tier_completeness(rows, specs)
+        assert any("amplifier" in p and "incomplete" in p for p in problems)
+
+    def test_a_scoped_tier_complete_within_its_scope_passes(self, checker):
+        rows = [
+            candidate(cls, tier="COMMERCIAL_PROTOTYPE")
+            for cls in ("shaker", "amplifier", "stinger", "contact_tip")
+        ]
+        specs = {r["candidate_id"]: spec(r["candidate_id"]) for r in rows}
+        assert checker.validate_tier_completeness(rows, specs) == []
+
+    def test_a_force_transducer_cannot_be_filed_into_the_commercial_tier(
+        self, checker
+    ):
+        # The failure this rule exists for: the commercial path acquiring a
+        # force channel by accretion, so that it reads as a complete rig at a
+        # commodity price. Its defining property is that it measures no force.
+        rows = [candidate("force_transducer", tier="COMMERCIAL_PROTOTYPE")]
+        problems = checker.validate_tier_scope(rows)
+        assert any("scoped to contact_excitation" in p for p in problems)
+
+    def test_a_response_candidate_cannot_be_filed_into_the_commercial_tier(
+        self, checker
+    ):
+        rows = [candidate("microphone", tier="COMMERCIAL_PROTOTYPE")]
+        assert checker.validate_tier_scope(rows)
+
+    def test_scope_validation_leaves_whole_chain_tiers_alone(self, checker):
+        rows, _ = complete_tier(tier="PREFERRED_E1")
+        assert checker.validate_tier_scope(rows) == []
+
+    def test_an_excitation_candidate_is_in_scope(self, checker):
+        rows = [candidate("shaker", tier="COMMERCIAL_PROTOTYPE")]
+        assert checker.validate_tier_scope(rows) == []
+
+
+class TestTheCommittedCommercialTier:
+    @pytest.fixture(scope="class")
+    def candidates(self, checker):
+        rows = checker.parse_optional_table(checker.BOM_PATH, checker.CANDIDATE_KEY)
+        return [r for r in rows if r["selection_tier"] == "COMMERCIAL_PROTOTYPE"]
+
+    @pytest.fixture(scope="class")
+    def specs(self, checker):
+        rows = checker.parse_optional_table(checker.BOM_PATH, checker.SPEC_KEY)
+        return {r["spec_for"]: r for r in rows}
+
+    @pytest.fixture(scope="class")
+    def manifest(self):
+        return json.loads(
+            (HARDWARE / "TTP_E1_DATASHEET_MANIFEST.json").read_text(encoding="utf-8")
+        )
+
+    def test_all_three_exciter_candidates_are_registered(self, candidates, specs):
+        models = {
+            specs[r["candidate_id"]]["model"]
+            for r in candidates
+            if r["component_class"] == "shaker"
+        }
+        assert models == {"DAEX25CT-4", "DAEX25FHE-4", "EX 30 S, Art. No. 4532"}
+
+    def test_the_candidates_use_the_existing_role_namespace(self, candidates):
+        # Ruling 1: no competing EXC-* authority. Every commercial candidate
+        # fills an existing canonical role row.
+        assert {r["role_local_id"] for r in candidates} == {
+            "SHAKER-001",
+            "AMP-001",
+            "STINGER-001",
+            "TIP-001",
+        }
+
+    def test_the_tier_carries_no_force_chain(self, candidates):
+        classes = {r["component_class"] for r in candidates}
+        assert "force_transducer" not in classes
+        assert "force_conditioner" not in classes
+
+    def test_nothing_is_selected_owned_or_bought(self, candidates):
+        assert {r["ownership"] for r in candidates} == {"CONFIRMED_ABSENT"}
+        assert {r["procurement_action"] for r in candidates} == {"HOLD"}
+
+    def test_the_tier_is_unpriced_rather_than_cheap(self, checker, candidates):
+        for row in candidates:
+            assert checker.as_money(row["unit_cost_usd"]) is None
+            assert row["unit_cost_usd"].strip() in checker.COST_NON_VALUES
+            assert row["extended_cost_usd"].strip() == row["unit_cost_usd"].strip()
+
+    @pytest.mark.parametrize(
+        "model, values",
+        [
+            (
+                "DAEX25CT-4",
+                (
+                    "Re 3.6 ohms",
+                    "Fs 306 Hz",
+                    "Mms 1.29 g",
+                    "BL 1.54 Tm",
+                    "10 W RMS",
+                    "4 ohms nominal",
+                ),
+            ),
+            (
+                "DAEX25FHE-4",
+                (
+                    "Re 4.3 ohms",
+                    "Fs 224 Hz",
+                    "Mms 1.61 g",
+                    "BL 3.63 Tm",
+                    "24 W RMS",
+                    "4 ohms nominal",
+                ),
+            ),
+        ],
+    )
+    def test_the_dayton_values_are_the_datasheet_values(self, specs, model, values):
+        row = next(s for s in specs.values() if s["model"] == model)
+        for value in values:
+            assert value in row["key_specification"], f"{model}: {value}"
+
+    def test_the_dayton_panel_response_caveat_survives(self, specs):
+        # Both sheets qualify their response curve as a foam-core panel
+        # measurement that depends on the driven surface. Dropping that turns a
+        # comparison aid into a claim about a soundboard.
+        rows = [s for s in specs.values() if s["model"].startswith("DAEX25")]
+        assert len(rows) == 2
+        for row in rows:
+            assert "foam-core" in row["key_specification"]
+
+    def test_the_visaton_gaps_stay_explicit_and_are_never_zero(self, specs):
+        row = next(s for s in specs.values() if s["model"].startswith("EX 30 S"))
+        assert "not published" in row["key_specification"]
+        for absent in ("BL", "Mms", "Fs", "Re", "Qts", "Cms"):
+            assert absent in row["key_specification"]
+        assert "not derived here" in row["key_specification"]
+
+    def test_the_visaton_load_is_not_rewritten_to_match_the_daytons(self, specs):
+        # The candidates genuinely differ: 4 ohm Daytons, an 8 ohm Visaton. The
+        # requirement covers both rather than the odd one out being restated.
+        row = next(s for s in specs.values() if s["model"].startswith("EX 30 S"))
+        assert "8 ohms nominal" in row["key_specification"]
+
+    def test_the_amplifier_is_a_family_not_a_selection(self, specs):
+        row = specs["AMP-CP-001"]
+        assert "reference family, not a selection" in row["model"]
+        assert "TPA3116D2" in row["model"]
+
+    def test_the_amplifier_control_surface_is_recorded(self, specs):
+        key = specs["AMP-CP-001"]["key_specification"]
+        for feature in ("PLIMIT", "MUTE", "SDZ", "FAULTZ", "4.5-26 V"):
+            assert feature in key
+
+    def test_every_manufacturer_candidate_rests_on_a_retrieved_document(
+        self, checker, candidates, specs, manifest
+    ):
+        covered = {
+            cid
+            for entry in manifest["entries"]
+            for cid in entry.get("covers_candidates", []) or []
+        }
+        for row in candidates:
+            cid = row["candidate_id"]
+            if specs[cid]["manufacturer"].strip().lower() == "fabricated":
+                continue
+            assert cid in covered, cid
+
+    def test_those_documents_carry_real_retrieved_digests(self, manifest):
+        entries = [
+            e
+            for e in manifest["entries"]
+            if any(
+                cid.endswith("-CP-001")
+                or cid.endswith("-CP-002")
+                or cid.endswith("-CP-003")
+                for cid in e.get("covers_candidates", []) or []
+            )
+        ]
+        assert len(entries) == 4
+        for entry in entries:
+            assert len(entry["sha256"]) == 64
+            assert int(entry["byte_length"]) > 0
+            assert entry["retrieved_utc"].endswith("Z")
+            # Manufacturer-hosted, not a distributor page.
+            assert entry["source_url"].startswith("https://")
+            assert "parts-express" not in entry["source_url"]
+
+    def test_the_datasheet_checker_would_notice_an_uncovered_candidate(
+        self, checker, manifest
+    ):
+        # Coverage used to be required for the preferred tier only. The
+        # commercial tier's numbers are quoted straight into a requirement
+        # document, so an uncovered candidate there is the same failure.
+        rows = [candidate("shaker", tier="COMMERCIAL_PROTOTYPE")]
+        specs = [spec(rows[0]["candidate_id"], manufacturer="Dayton Audio")]
+        problems = checker.check_candidate_datasheets({"entries": []}, rows, specs)
+        assert any("COMMERCIAL_PROTOTYPE candidate" in p for p in problems)
+
+    def test_a_fabricated_commercial_part_needs_no_datasheet(self, checker):
+        rows = [candidate("stinger", tier="COMMERCIAL_PROTOTYPE")]
+        specs = [spec(rows[0]["candidate_id"], manufacturer="fabricated")]
+        assert checker.check_candidate_datasheets({"entries": []}, rows, specs) == []

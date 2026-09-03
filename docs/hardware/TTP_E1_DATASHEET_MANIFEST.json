@@ -8,6 +8,7 @@
     "retrieval": "Every digest here is the SHA-256 of the bytes actually served at source_url, retrieved with an HTTP client and hashed unmodified. No digest is computed over a rendered, extracted, or HTML-to-Markdown representation of a document - that would be a digest of something that is not the manufacturer's document. A source that could not be retrieved as a document is cited in the selection rationale as supporting information and is not a member of this manifest.",
     "distributor_sources": "Distributor pages establish current price, stock, and lead time. They are not technical authority and do not appear here. Technical claims trace to manufacturer documents only.",
     "local_archive": "local_archive_ref is null for every entry: retrieval was to an ephemeral working directory that is not preserved. The digest is the durable identity, which is the point of recording it.",
+    "operator_copy_crosscheck": "operator_copy_verified is true where an operator-supplied local copy of the same document was hashed and found byte-identical to the bytes retrieved from source_url. It is a cross-check, not an identity: the digest above is still the retrieved document, and the local copy is not archived here. The field exists because a specification the operator read and a specification the repository recorded being provably the same file is worth stating; where they had differed, the retrieved document would still be the record and the divergence would have been written into technical_role. Absent on entries predating DO-108P, where no local copy was offered.",
     "candidate_coverage": "covers_candidates is declared, never inferred. A document covers a candidate only where that candidate's specification actually rests on it. An empty list means the document was retrieved during the survey and informed a rejection rather than a selection."
   },
   "generated_at": "2026-08-25T00:00:00Z",
@@ -190,7 +191,79 @@
         "AMP-RG-001"
       ],
       "local_archive_ref": null
+    },
+    {
+      "component_id": "SHAKER-001",
+      "manufacturer": "Dayton Audio",
+      "model": "DAEX25CT-4",
+      "document_title": "DAEX25CT-4 Coin Type 25mm Exciter 10W 4 Ohm specifications",
+      "document_revision": "not versioned in the document",
+      "document_format": "pdf",
+      "source_url": "https://www.daytonaudio.com/images/resources/295-220--dayton-audio-daex25ct-4-specifications.pdf",
+      "retrieved_utc": "2026-09-02T06:41:12Z",
+      "sha256": "bfccdd7102201393dbf7c7ed5d00bed9911d67e45c9bb4c825b9c377a1976feb",
+      "byte_length": 281057,
+      "technical_role": "Commercial-prototype exciter candidate: 4 ohm nominal, Re 3.6 ohm, Fs 306 Hz, Mms 1.29 g, BL 1.54 Tm, 10 W RMS. The published frequency response is a foam-core panel response, explicitly qualified by the manufacturer as depending on the driven surface - it establishes no behaviour on a soundboard",
+      "operator_copy_verified": true,
+      "local_archive_ref": null,
+      "covers_candidates": [
+        "SHAKER-CP-001"
+      ]
+    },
+    {
+      "component_id": "SHAKER-001",
+      "manufacturer": "Dayton Audio",
+      "model": "DAEX25FHE-4",
+      "document_title": "DAEX25FHE-4 Framed High Efficiency 25mm Exciter specifications",
+      "document_revision": "not versioned in the document",
+      "document_format": "pdf",
+      "source_url": "https://www.daytonaudio.com/images/resources/295-224--dayton-audio-daex25fhe-4-specifications.pdf",
+      "retrieved_utc": "2026-09-02T06:41:15Z",
+      "sha256": "7399e59d6e187ca7a9c666f4a4181b624728c676d69e6c06f13569516355005a",
+      "byte_length": 284136,
+      "technical_role": "Commercial-prototype exciter candidate: 4 ohm nominal, Re 4.3 ohm, Fs 224 Hz, Mms 1.61 g, BL 3.63 Tm, 24 W RMS. Higher BL and higher moving mass than the DAEX25CT-4 - which of those matters on a plate is an empirical question, not a datasheet conclusion. Same foam-core response qualification",
+      "operator_copy_verified": true,
+      "local_archive_ref": null,
+      "covers_candidates": [
+        "SHAKER-CP-002"
+      ]
+    },
+    {
+      "component_id": "SHAKER-001",
+      "manufacturer": "VISATON GmbH & Co. KG",
+      "model": "EX 30 S, Art. No. 4532",
+      "document_title": "EX 30 S Technische Daten / Technical Data",
+      "document_revision": "2025 issue; drawing dated 2024-02-16",
+      "document_format": "pdf",
+      "source_url": "https://www.visaton.de/sites/default/files/dd_product/EX%2030%20S_3.pdf",
+      "retrieved_utc": "2026-09-02T06:46:44Z",
+      "sha256": "639ad2fe3cbc912ef874655fce762dfbf82fd4583491cb76ad58d4440cd74bb5",
+      "byte_length": 615921,
+      "technical_role": "Commercial-prototype exciter candidate, electrodynamic bending-wave plate exciter: 8 ohm nominal, 10 W maximum long-term power per DIN EN 60268-5, 20.5 mm voice coil, 40 g net weight. The document publishes no BL, Mms, Fs, Re, Qts or Cms - the absence is the record, and none of those values is derived elsewhere",
+      "operator_copy_verified": true,
+      "local_archive_ref": null,
+      "covers_candidates": [
+        "SHAKER-CP-003"
+      ]
+    },
+    {
+      "component_id": "AMP-001",
+      "manufacturer": "Texas Instruments",
+      "model": "TPA3116D2 / TPA3118D2 / TPA3130D2",
+      "document_title": "TPA3116D2 15-W, 30-W, 50-W Filter-Free Class-D Stereo Amplifier Family With AM Avoidance",
+      "document_revision": "SLOS708G, April 2012, revised December 2017",
+      "document_format": "pdf",
+      "source_url": "https://www.ti.com/lit/ds/symlink/tpa3116d2.pdf",
+      "retrieved_utc": "2026-09-02T06:41:09Z",
+      "sha256": "4339471f438d786c444b4776925e75cf3a4ceafb8d6fad5de709d080670271a0",
+      "byte_length": 2662209,
+      "technical_role": "Reference implementation family for the commercial excitation output stage - CANDIDATE, not a selection. Establishes the properties the requirement document cites: 4.5-26 V supply, selectable 20/26/32/36 dB gain, PLIMIT power limit, MUTE, SDZ, FAULTZ fault reporting, differential and single-ended inputs, 32-pin HTSSOP 11.00 x 6.20 mm body",
+      "operator_copy_verified": true,
+      "local_archive_ref": null,
+      "covers_candidates": [
+        "AMP-CP-001"
+      ]
     }
   ],
-  "dev_order": "DO-104S"
+  "dev_order": "DO-104S; commercial-prototype excitation entries added by DO-108P"
 }

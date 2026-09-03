@@ -92,7 +92,37 @@ INSPECTION_STATUSES = (
 # never come to depend on a vendor choice, because then rejecting a vendor would
 # break the register.
 
-SELECTION_TIERS = ("RESEARCH_MINIMUM", "PREFERRED_E1", "REFERENCE_GRADE")
+SELECTION_TIERS = (
+    "RESEARCH_MINIMUM",
+    "PREFERRED_E1",
+    "REFERENCE_GRADE",
+    "COMMERCIAL_PROTOTYPE",
+)
+
+# --- DO-108P: scoped tiers -------------------------------------------------
+#
+# The first three tiers are whole-chain tiers: each is one complete way to build
+# the E1 rig, so each must supply every mandatory role. COMMERCIAL_PROTOTYPE is
+# not. It enumerates the excitation stage of a commercial TTP and says nothing
+# about the host, ADC, microphone, fixture or cabling.
+#
+# A scoped tier is checked in both directions, and the second direction is the
+# one that matters. It must fill every mandatory role *inside* its declared
+# chains, and it may carry candidates *only* inside them - so no force
+# transducer can be filed into the commercial path, whose defining property is
+# that it has no force channel. Without the second rule, the tier would slowly
+# acquire a force chain by accretion and nobody would notice which document had
+# changed.
+TIER_CHAIN_SCOPE = {
+    "COMMERCIAL_PROTOTYPE": ("contact_excitation",),
+}
+
+# Tiers whose manufacturer values are load-bearing, and which therefore need a
+# retrieved document behind every non-fabricated candidate. The commercial tier
+# earns its place here because its numbers are quoted into a requirement
+# document; a reference-only candidate may rest on a page that was read but not
+# retrievable.
+DATASHEET_BACKED_TIERS = ("PREFERRED_E1", "COMMERCIAL_PROTOTYPE")
 
 FUNCTIONAL_CHAINS = (
     "force_measurement",
@@ -711,6 +741,44 @@ def validate_measured_force(
     return problems
 
 
+def mandatory_roles_for(tier: str) -> tuple[str, ...]:
+    """The roles ``tier`` must fill: all of them, or its declared chains'.
+
+    A whole-chain tier answers "how would we build the whole rig". A scoped tier
+    answers a narrower question, and holding it to the full role list would
+    demand it invent a microphone and a stand nobody researched.
+    """
+    scope = TIER_CHAIN_SCOPE.get(tier)
+    if scope is None:
+        return MANDATORY_ROLE_CLASSES
+    return tuple(
+        cls for cls in MANDATORY_ROLE_CLASSES if CLASS_TO_CHAIN.get(cls) in scope
+    )
+
+
+def validate_tier_scope(candidates: list[dict[str, str]]) -> list[str]:
+    """A scoped tier carries candidates only inside the chains it declares.
+
+    This is where the commercial excitation path's defining property is
+    enforced: it has no force channel, so no candidate may be filed into it for
+    the force-measurement chain. A tier that quietly grew one would read as a
+    complete rig at a commodity price, which is a claim nobody made.
+    """
+    problems: list[str] = []
+    for row in candidates:
+        tier = row.get("selection_tier", "")
+        scope = TIER_CHAIN_SCOPE.get(tier)
+        if scope is None:
+            continue
+        chain = row.get("functional_chain", "")
+        if chain not in scope:
+            problems.append(
+                f"{row.get(CANDIDATE_KEY, '?')}: {tier} is scoped to "
+                f"{', '.join(scope)} and cannot carry a {chain!r} candidate"
+            )
+    return problems
+
+
 def validate_tier_completeness(
     candidates: list[dict[str, str]], specs: dict[str, dict[str, str]]
 ) -> list[str]:
@@ -721,6 +789,8 @@ def validate_tier_completeness(
     ICP conditioner instead. Deciding this from the tier's own microphone spec is
     the point - it means a tier cannot look complete by carrying a preamp its
     chain never uses, nor incomplete for correctly omitting one.
+
+    A scoped tier is held to the roles of its own chains, not to all of them.
     """
     problems: list[str] = []
     for tier, rows in sorted(group_candidates_by_tier(candidates).items()):
@@ -728,7 +798,7 @@ def validate_tier_completeness(
             continue
         present = {row.get("component_class", "") for row in rows}
 
-        for required in MANDATORY_ROLE_CLASSES:
+        for required in mandatory_roles_for(tier):
             if required not in present:
                 problems.append(
                     f"{tier} is incomplete: no candidate for the required role "
@@ -911,6 +981,7 @@ def check_candidates(
             )
 
     problems += validate_tier_vocabulary(candidates)
+    problems += validate_tier_scope(candidates)
     problems += validate_candidate_identity(candidates, bom)
     problems += validate_functional_chain(candidates)
     problems += validate_measured_force(candidates, by_id)
@@ -926,11 +997,14 @@ def check_candidate_datasheets(
     candidates: list[dict[str, str]] | None,
     specs: list[dict[str, str]] | None,
 ) -> list[str]:
-    """Preferred candidates resting on manufacturer documents must be covered.
+    """Candidates resting on manufacturer documents must be covered.
 
     Coverage is declared by the manifest rather than inferred, and it is checked
-    only for the preferred tier: a rejected or reference-only candidate may
-    legitimately rest on a page that was read but not retrievable as a document.
+    only where a tier's numbers are load-bearing: the preferred tier, and the
+    commercial-prototype tier whose whole purpose is to carry manufacturer
+    values into a requirement document. A rejected or reference-only candidate
+    may legitimately rest on a page that was read but not retrievable as a
+    document.
     """
     if candidates is None or specs is None:
         return []
@@ -953,7 +1027,8 @@ def check_candidate_datasheets(
     fabricated = {"fabricated", "assorted", "custom build"}
     by_id = {spec.get(SPEC_KEY, ""): spec for spec in specs}
     for row in candidates:
-        if row.get("selection_tier") != "PREFERRED_E1":
+        tier = row.get("selection_tier", "")
+        if tier not in DATASHEET_BACKED_TIERS:
             continue
         cid = row.get(CANDIDATE_KEY, "")
         maker = str(by_id.get(cid, {}).get("manufacturer", "")).strip().lower()
@@ -961,7 +1036,7 @@ def check_candidate_datasheets(
             continue
         if cid not in covered:
             problems.append(
-                f"{cid} is a PREFERRED_E1 candidate from {maker!r} but no "
+                f"{cid} is a {tier} candidate from {maker!r} but no "
                 "datasheet manifest entry covers it"
             )
     return problems
@@ -1246,11 +1321,15 @@ def main(argv: list[str] | None = None) -> int:
                     r for r in rows if r["unit_cost_usd"].strip() == "QUOTE_REQUIRED"
                 ]
                 unknown = [r for r in rows if r["unit_cost_usd"].strip() == "UNKNOWN"]
+                # A tier with nothing priced has no subset to sum. Printing
+                # $0.00 for it would render an unestablished cost as free -
+                # the exact coercion the cost rules exist to refuse.
                 total = sum(as_money(r["extended_cost_usd"]) or 0.0 for r in priced)
+                partial = f"partial ${total:,.2f}" if priced else "not priced"
                 print(
                     f"{tier:<20} {len(rows):<7} "
                     f"{len(priced)} / {len(quoted)} / {len(unknown)}"
-                    f"   partial ${total:,.2f}"
+                    f"   {partial}"
                 )
             print(
                 "\nPartial totals cover priced rows only. An unpriced row is not "
