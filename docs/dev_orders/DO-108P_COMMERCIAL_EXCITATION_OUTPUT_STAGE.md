@@ -52,10 +52,13 @@ implementation. The rulings, as given:
 4. **Do not create or cherry-pick `ANALYZER_CAPABILITY_MATRIX.md.`** It belongs
    to unmerged technical-manual work. Record the capability dependency locally
    and reconcile when that work lands.
-5. **Enclosure state per physical truth.** No enclosure exists, so
-   `ENCLOSURE_NOT_AVAILABLE_FOR_MEASUREMENT`, not `NOT_PERFORMED`. Missing
-   enclosure measurement blocks the PCB gate only; the rest of the order
-   proceeds.
+5. **Enclosure state per physical truth**, not per inference. The first
+   implementation wrote `ENCLOSURE_NOT_AVAILABLE_FOR_MEASUREMENT`, reasoning
+   from an unbuilt Analyzer. Review corrected it: that reasoning does not
+   establish absence, since an empty case or an earlier prototype shell could be
+   in hand and was never in the census's ten categories. The recorded state is
+   `ENCLOSURE_EXISTENCE_NOT_VERIFIED` — nobody has looked. Missing enclosure
+   measurement blocks the PCB gate only; the rest of the order proceeds.
 6. **Branch from `main`.**
 7. **Repository ADR convention wins:** `docs/ADR-0014-excitation-pcb-gate.md`,
    not a new `docs/decisions/` directory.
@@ -133,7 +136,7 @@ recorded per entry as a cross-check rather than as identity.
 | --- | --- |
 | Excitation electrical requirements defined, with unmeasured values marked | met — every output figure reads `TBD_MEASURE` |
 | Exciter candidates normalized, distinguishing specification from unknown | met — VISATON's absent BL/Mms/Fs stay absent |
-| Mechanical/enclosure envelope specified | met — and recorded as physically unavailable |
+| Mechanical/enclosure envelope specified | met — every dimension TBD, existence unverified |
 | Bench characterization protocol defined | met — P0–P9, `NOT_EXECUTED` |
 | Validation and arithmetic utility | met — checker extended, calculator added |
 | PCB layout not begun | met — no schematic, no layout, no Gerbers |
@@ -150,6 +153,22 @@ agentic features; grant-writing changes.
 `alpha_beta.py` is clean and committed on `main`, so the dirty-tree concern in
 the original handoff no longer applies. It was not touched regardless; its
 provenance is irrelevant to this order.
+
+## Follow-ups raised, and deliberately not done here
+
+**[DO-108G — Gap Inventory Reconciliation](backlog/DO-108G_GAP_INVENTORY_EXCITATION_RECONCILIATION.md)**
+(queued). `docs/01_GAP_INVENTORY.md` §7.3 still reads "Signal-gen software ready;
+transducer/amp/mic hardware not built", which now understates what exists and
+flattens what is missing. The gap to record is that commercial controlled
+physical excitation is architecturally defined with registered candidate
+hardware, but no chain has been assembled or bench-qualified. That file is a
+repository-wide authority, so it is changed by its own order rather than as a
+side effect of this one.
+
+**Enclosure existence** is unverified and cheap to settle: somebody looks on a
+shelf. It resolves
+[the envelope status](../hardware/TTP_EXCITATION_PCB_ENVELOPE.md) and opens no
+gate, because the gate needs dimensions and a drive requirement.
 
 ## What unlocks the next order
 
