@@ -135,6 +135,27 @@ PRs should include:
 - test/validation steps run
 - any output shape changes called out explicitly
 
+### Evidence-bearing PRs
+
+If a PR makes a material claim about measurement, uncertainty, hardware state,
+calibration, acquisition, a physical experiment, an analyzer capability, or
+validation, it also carries a claim record. The
+[PR Admission Protocol](docs/TTP_PR_ADMISSION_PROTOCOL.md) explains what that
+means; `.github/pull_request_template.md` carries the fields.
+
+The rule it exists for:
+
+> Do not increase the strength of a claim beyond the strength of the evidence
+> supporting it.
+
+Green tests are not by themselves evidence of a valid physical measurement, and
+a manufacturer specification does not become a measured TTP quantity without an
+executed measurement. Routine work — refactors, formatting, typos, dependency
+bumps — makes no such claim and needs no claim record.
+
+The protocol is **advisory**. It owns no scientific or hardware state; it asks a
+PR to report truthfully what the existing authorities already say.
+
 ### Commit Messages
 
 Use conventional commit format: `type(scope): short description`
