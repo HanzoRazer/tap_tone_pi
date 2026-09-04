@@ -4,7 +4,8 @@
 campaign). No component has been *received* by this campaign, so no component
 carries a campaign acquisition record. Possession and acquisition are separate
 axes and this register now carries both.
-**Dev Order:** DO-104P; deliberately unchanged by DO-104S
+**Dev Order:** DO-104P; deliberately unchanged by DO-104S; no row added by
+DO-108P, for the same reason
 
 This register is the authority on **what is physically in hand**. The
 [BOM](TTP_E1_HARDWARE_BOM.md) records what is *chosen*; this file records what
@@ -96,6 +97,41 @@ The recommendation lives in the
 the datasheets behind it live in the
 [datasheet manifest](TTP_E1_DATASHEET_MANIFEST.json). Rows here stay `TBD` and
 `NOT_RECEIVED` until something arrives and someone reads a serial number off it.
+
+## Why DO-108P adds no row either, and what happens when it must
+
+DO-108P registered a `COMMERCIAL_PROTOTYPE` excitation tier in the
+[BOM](TTP_E1_HARDWARE_BOM.md): three inexpensive electrodynamic exciters, a
+Class-D amplifier reference family, and a fabricated stinger and tip. Nothing
+arrived. The [census](TTP_E1_OWNERSHIP_CENSUS.md) still reads `CONFIRMED_ABSENT`
+for both `SHAKER-001` and `AMP-001`, so this register is unchanged, exactly as it
+was under DO-104S. Candidates are design identity; this file is physical
+identity.
+
+**The role rows are shared, and the architectures are not.** `SHAKER-001` and
+`AMP-001` are role slots in the measurement chain, and two different
+architectures now propose candidates for them: the E1 reference chain and the
+commercial excitation stage. A role row is a slot, not a product, which is why
+one row can hold both sets of candidates without either becoming a selection.
+
+That has a consequence the moment hardware appears, and it is easier to write it
+down now than to argue about it later:
+
+> If a commercial exciter and a reference shaker are ever possessed **at the same
+> time**, they are two physical objects and they get two rows. The second is
+> `SHAKER-002`, under the existing rule that local IDs are permanent and never
+> reused.
+
+Recording both against `SHAKER-001` would make `excitation_device_id` ambiguous
+in every campaign record that referenced it — which is the failure the permanence
+rule exists to prevent, arriving through a side door.
+
+The commercial architecture also changes what a populated chain would *contain*,
+not merely what it costs. It has no force transducer and no conditioner. If the
+commercial stage is ever built, `FORCE-001` and `PRECOND-001` stay
+`CONFIRMED_ABSENT` for it, and no run on that chain may record an
+`excitation_force` of any kind. See
+[the commercial excitation architecture](TTP_COMMERCIAL_EXCITATION_ARCHITECTURE.md).
 
 ## Inspection status vocabulary
 

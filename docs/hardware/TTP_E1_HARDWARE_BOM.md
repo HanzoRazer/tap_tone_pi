@@ -1,7 +1,8 @@
 # TTP E1 — Hardware Bill of Materials
 
 **Status:** framework only. No component is procured. No component is owned.
-**Dev Order:** DO-104P; tiered candidates added under DO-104S
+**Dev Order:** DO-104P; tiered candidates added under DO-104S; the
+`COMMERCIAL_PROTOTYPE` excitation tier added under DO-108P
 **Validator:** `python scripts/check_e1_hardware_bom.py`
 
 This is the canonical BOM. Where any other document names a component, this file
@@ -68,6 +69,7 @@ without touching the row that the register keys on.
 | `RESEARCH_MINIMUM` | The cheapest chain that still measures force, keeps the exciter grounded, and produces defensible evidence. Not a compromise on the measurement, only on grade |
 | `PREFERRED_E1` | The preferred *technical* configuration for Phase I E1, judged on suitability, integration risk, traceability, lead time and cost together. Not "whatever fits a budget" — no budget ceiling is authorized |
 | `REFERENCE_GRADE` | What the chain looks like when traceability and instrument grade are prioritized over cost |
+| `COMMERCIAL_PROTOTYPE` | The excitation stage of a commercial TTP Analyzer: an inexpensive electrodynamic exciter driven by an amplifier **inside** the instrument. **Scoped to the contact-excitation chain**, and deliberately carrying no force channel |
 
 A tier is **complete** when it supplies every mandatory role. Mandatory roles are
 the twelve classes below; `attenuator` and `mic_preamp` are conditional and are
@@ -85,6 +87,32 @@ stand_base  reference_structure  cabling
 A CCP/IEPE microphone is conditioned by the ICP conditioner instead, and a tier
 that chooses one legitimately has no preamp row. `attenuator` is required only
 if that tier's force level budget overruns the ADC input window.
+
+### Scoped tiers, and why `COMMERCIAL_PROTOTYPE` is not an incomplete chain
+
+The first three tiers are **whole-chain** tiers: each is one complete way to
+build the E1 measurement rig, so each must supply every mandatory role.
+
+`COMMERCIAL_PROTOTYPE` is a **scoped** tier. It enumerates candidates for the
+contact-excitation chain only — exciter, amplifier, stinger, contact tip — and
+says nothing about the host, ADC, microphone, fixture or cabling. That is not an
+omission to be filled in later. DO-108P defines the commercial excitation output
+stage, and inventing a microphone or a stand for a tier nobody has researched
+would be exactly the invention the rest of this document exists to prevent.
+
+The validator enforces the scope in both directions. A scoped tier must fill
+every mandatory role **inside** its declared chains, and may carry candidates
+**only** inside them. The second half is the one that matters:
+
+> No candidate may be filed into `COMMERCIAL_PROTOTYPE` for the
+> `force_measurement` chain.
+
+The commercial path has no force channel. That is its defining property, not a
+gap — see
+[the commercial excitation architecture](TTP_COMMERCIAL_EXCITATION_ARCHITECTURE.md).
+A scoped tier is therefore never a candidate for a complete rig, and a reader
+comparing tier tables must not read it as a cheap alternative to
+`RESEARCH_MINIMUM`. It answers a different question.
 
 ### Ownership after the census
 
@@ -150,6 +178,18 @@ and must never be read as zero. `UNKNOWN` means not yet established.
 | STAND-RG-001 | STAND-001 | stand_base | mechanical_support | REFERENCE_GRADE | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
 | REF-RG-001 | REF-STRUCT-001 | reference_structure | mechanical_support | REFERENCE_GRADE | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
 | CABLE-RG-001 | CABLE-001 | cabling | interconnect | REFERENCE_GRADE | 1 | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | — | 2026-08-25 | HOLD | CONFIRMED_ABSENT |
+| SHAKER-CP-001 | SHAKER-001 | shaker | contact_excitation | COMMERCIAL_PROTOTYPE | 1 | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | — | — | HOLD | CONFIRMED_ABSENT |
+| SHAKER-CP-002 | SHAKER-001 | shaker | contact_excitation | COMMERCIAL_PROTOTYPE | 1 | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | — | — | HOLD | CONFIRMED_ABSENT |
+| SHAKER-CP-003 | SHAKER-001 | shaker | contact_excitation | COMMERCIAL_PROTOTYPE | 1 | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | — | — | HOLD | CONFIRMED_ABSENT |
+| AMP-CP-001 | AMP-001 | amplifier | contact_excitation | COMMERCIAL_PROTOTYPE | 1 | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN | — | — | HOLD | CONFIRMED_ABSENT |
+| STINGER-CP-001 | STINGER-001 | stinger | contact_excitation | COMMERCIAL_PROTOTYPE | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | — | HOLD | CONFIRMED_ABSENT |
+| TIP-CP-001 | TIP-001 | contact_tip | contact_excitation | COMMERCIAL_PROTOTYPE | 1 | UNKNOWN | UNKNOWN | FABRICATED | UNKNOWN | — | — | HOLD | CONFIRMED_ABSENT |
+
+**No `COMMERCIAL_PROTOTYPE` row carries a price, and none carries a market
+date.** DO-108P retrieved manufacturer documents; it checked no distributor, so
+`availability`, `lead_time` and `checked_date` stay empty rather than being
+filled from memory of what these parts usually cost. An unchecked market is
+`UNKNOWN`, not cheap.
 
 **Reference grade has no `mic_preamp` row, and that is correct.** Its microphone
 is CCP-powered and is conditioned by the four-channel ICP conditioner that also
@@ -201,6 +241,12 @@ established the prices above and establish nothing below.
 | STAND-RG-001 | fabricated | grounded stand and base | none | As STAND-RM-001 | mechanical only | TTP E1 hardware requirements |
 | REF-RG-001 | fabricated | machined reference plate | none | Machined to documented geometry so the structure is reproducible rather than merely stable | mechanical only | TTP E1 hardware requirements |
 | CABLE-RG-001 | assorted | sensor, RCA, XLR and drive cabling | none | As CABLE-PE-001 | carries every electrical interface | TTP E1 interface matrix |
+| SHAKER-CP-001 | Dayton Audio | DAEX25CT-4 | from the internal amplifier output | 4 ohms nominal, Re 3.6 ohms, Le 0.07 mH at 1 kHz, Fs 306 Hz, Qts 1.07, Mms 1.29 g, Cms 0.0002 mm/N, BL 1.54 Tm, 25 mm voice coil, 10 W RMS. Qms, Qes, Sd, Vd, Vas, Xmax, SPL and usable frequency range are printed N/A; total device mass is not stated. Published response was measured on a 12x12x0.5 inch foam-core board, not a soundboard | drive path only — no ADC channel | Dayton Audio DAEX25CT-4 specification sheet |
+| SHAKER-CP-002 | Dayton Audio | DAEX25FHE-4 | from the internal amplifier output | 4 ohms nominal, Re 4.3 ohms, Le 0.10 mH at 1 kHz, Fs 224 Hz, Qts 0.78, Mms 1.61 g, Cms 0.0003 mm/N, BL 3.63 Tm, 25 mm voice coil, 24 W RMS. Qms, Qes, Sd, Vd, Vas, Xmax, SPL and usable frequency range are printed N/A; total device mass is not stated. Same foam-core response caveat as SHAKER-CP-001 | drive path only — no ADC channel | Dayton Audio DAEX25FHE-4 specification sheet |
+| SHAKER-CP-003 | VISATON | EX 30 S, Art. No. 4532 | from the internal amplifier output | Electrodynamic bending-wave plate exciter. 8 ohms nominal, 10 W maximum long-term power per DIN EN 60268-5, 20.5 mm voice coil, 40 g net weight, -25 to 70 C. **BL, Mms, Fs, Re, Qts and Cms are not published in the manufacturer sheet** and are not derived here | drive path only — no ADC channel | VISATON EX 30 S data sheet |
+| AMP-CP-001 | Texas Instruments | TPA3116D2 / TPA3118D2 (reference family, not a selection) | 4.5 V to 26 V single supply | Filter-free Class-D family. Supply 4.5-26 V; selectable 20/26/32/36 dB gain latched at power-up; PLIMIT programmable power limit; MUTE, SDZ and FAULTZ (high = normal, low = fault); differential and single-ended inputs; integrated over-voltage, under-voltage, over-temperature, DC-detect and short-circuit protection; 32-pin HTSSOP, 11.00 x 6.20 mm body | drive path only — no ADC channel | TPA3116D2, TPA3118D2, TPA3130D2 datasheet SLOS708G |
+| STINGER-CP-001 | fabricated | light stinger for a commodity exciter | none | Axially stiff, laterally compliant, low effective mass; mass measured not assumed. Geometry unresolved until an exciter is chosen | mechanical only | TTP commercial excitation architecture |
+| TIP-CP-001 | fabricated | contact tip | none | Documented geometry, measurable mass, replaceable without replacing the exciter | mechanical only | TTP commercial excitation architecture |
 
 ### Tier totals — partial, and labelled as such
 
@@ -212,6 +258,12 @@ counted as zero, and a total that omits them is not a tier cost:
 | `RESEARCH_MINIMUM` | 4 of 13 | **1,799.88** | 9 | 2 |
 | `PREFERRED_E1` | 3 of 13 | **788.90** | 10 | 5 |
 | `REFERENCE_GRADE` | 2 of 12 | **239.90** | 10 | 6 |
+| `COMMERCIAL_PROTOTYPE` | 0 of 6 | **not priced** | 6 | 0 |
+
+`COMMERCIAL_PROTOTYPE` has no partial total at all, and that is the honest
+representation. Nothing in it was priced, so there is no subset to sum. Its cost
+is not "low" and not "zero" — it is unestablished, and it will stay that way
+until someone checks a distributor and records the date.
 
 A refurbished PCB 480C02 was observed at $370.39 (WiAutomation, checked
 2026-08-25). It is deliberately **not** in the preferred-tier total: that tier is

@@ -92,7 +92,37 @@ INSPECTION_STATUSES = (
 # never come to depend on a vendor choice, because then rejecting a vendor would
 # break the register.
 
-SELECTION_TIERS = ("RESEARCH_MINIMUM", "PREFERRED_E1", "REFERENCE_GRADE")
+SELECTION_TIERS = (
+    "RESEARCH_MINIMUM",
+    "PREFERRED_E1",
+    "REFERENCE_GRADE",
+    "COMMERCIAL_PROTOTYPE",
+)
+
+# --- DO-108P: scoped tiers -------------------------------------------------
+#
+# The first three tiers are whole-chain tiers: each is one complete way to build
+# the E1 rig, so each must supply every mandatory role. COMMERCIAL_PROTOTYPE is
+# not. It enumerates the excitation stage of a commercial TTP and says nothing
+# about the host, ADC, microphone, fixture or cabling.
+#
+# A scoped tier is checked in both directions, and the second direction is the
+# one that matters. It must fill every mandatory role *inside* its declared
+# chains, and it may carry candidates *only* inside them - so no force
+# transducer can be filed into the commercial path, whose defining property is
+# that it has no force channel. Without the second rule, the tier would slowly
+# acquire a force chain by accretion and nobody would notice which document had
+# changed.
+TIER_CHAIN_SCOPE = {
+    "COMMERCIAL_PROTOTYPE": ("contact_excitation",),
+}
+
+# Tiers whose manufacturer values are load-bearing, and which therefore need a
+# retrieved document behind every non-fabricated candidate. The commercial tier
+# earns its place here because its numbers are quoted into a requirement
+# document; a reference-only candidate may rest on a page that was read but not
+# retrievable.
+DATASHEET_BACKED_TIERS = ("PREFERRED_E1", "COMMERCIAL_PROTOTYPE")
 
 FUNCTIONAL_CHAINS = (
     "force_measurement",
@@ -338,7 +368,16 @@ def is_set(value: object) -> bool:
 def parse_table(
     path: Path, key: str, required: tuple[str, ...] = ()
 ) -> list[dict[str, str]]:
-    """Read the first pipe table whose header contains ``key``.
+    """Read the first pipe table in ``path`` whose header contains ``key``."""
+    return parse_table_lines(
+        path.name, path.read_text(encoding="utf-8").splitlines(), key, required
+    )
+
+
+def parse_table_lines(
+    name: str, lines: list[str], key: str, required: tuple[str, ...] = ()
+) -> list[dict[str, str]]:
+    """Read the first pipe table in ``lines`` whose header contains ``key``.
 
     Deliberately strict in two ways. A row whose cell count does not match the
     header is reported rather than silently padded, because a shifted column
@@ -349,7 +388,7 @@ def parse_table(
     """
     rows: list[dict[str, str]] = []
     header: list[str] | None = None
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in lines:
         stripped = line.strip()
         if not stripped.startswith("|"):
             if header is not None and rows:
@@ -364,17 +403,15 @@ def parse_table(
             continue
         if len(cells) != len(header):
             raise ValueError(
-                f"{path.name}: row has {len(cells)} cells, header has "
+                f"{name}: row has {len(cells)} cells, header has "
                 f"{len(header)}: {cells[:2]}"
             )
         rows.append(dict(zip(header, cells)))
     if header is None:
-        raise ValueError(f"{path.name}: no table with a {key!r} column")
+        raise ValueError(f"{name}: no table with a {key!r} column")
     missing = [column for column in required if column not in header]
     if missing:
-        raise ValueError(
-            f"{path.name}: table is missing column(s) {', '.join(missing)}"
-        )
+        raise ValueError(f"{name}: table is missing column(s) {', '.join(missing)}")
     return rows
 
 
@@ -711,6 +748,44 @@ def validate_measured_force(
     return problems
 
 
+def mandatory_roles_for(tier: str) -> tuple[str, ...]:
+    """The roles ``tier`` must fill: all of them, or its declared chains'.
+
+    A whole-chain tier answers "how would we build the whole rig". A scoped tier
+    answers a narrower question, and holding it to the full role list would
+    demand it invent a microphone and a stand nobody researched.
+    """
+    scope = TIER_CHAIN_SCOPE.get(tier)
+    if scope is None:
+        return MANDATORY_ROLE_CLASSES
+    return tuple(
+        cls for cls in MANDATORY_ROLE_CLASSES if CLASS_TO_CHAIN.get(cls) in scope
+    )
+
+
+def validate_tier_scope(candidates: list[dict[str, str]]) -> list[str]:
+    """A scoped tier carries candidates only inside the chains it declares.
+
+    This is where the commercial excitation path's defining property is
+    enforced: it has no force channel, so no candidate may be filed into it for
+    the force-measurement chain. A tier that quietly grew one would read as a
+    complete rig at a commodity price, which is a claim nobody made.
+    """
+    problems: list[str] = []
+    for row in candidates:
+        tier = row.get("selection_tier", "")
+        scope = TIER_CHAIN_SCOPE.get(tier)
+        if scope is None:
+            continue
+        chain = row.get("functional_chain", "")
+        if chain not in scope:
+            problems.append(
+                f"{row.get(CANDIDATE_KEY, '?')}: {tier} is scoped to "
+                f"{', '.join(scope)} and cannot carry a {chain!r} candidate"
+            )
+    return problems
+
+
 def validate_tier_completeness(
     candidates: list[dict[str, str]], specs: dict[str, dict[str, str]]
 ) -> list[str]:
@@ -721,6 +796,8 @@ def validate_tier_completeness(
     ICP conditioner instead. Deciding this from the tier's own microphone spec is
     the point - it means a tier cannot look complete by carrying a preamp its
     chain never uses, nor incomplete for correctly omitting one.
+
+    A scoped tier is held to the roles of its own chains, not to all of them.
     """
     problems: list[str] = []
     for tier, rows in sorted(group_candidates_by_tier(candidates).items()):
@@ -728,7 +805,7 @@ def validate_tier_completeness(
             continue
         present = {row.get("component_class", "") for row in rows}
 
-        for required in MANDATORY_ROLE_CLASSES:
+        for required in mandatory_roles_for(tier):
             if required not in present:
                 problems.append(
                     f"{tier} is incomplete: no candidate for the required role "
@@ -911,6 +988,7 @@ def check_candidates(
             )
 
     problems += validate_tier_vocabulary(candidates)
+    problems += validate_tier_scope(candidates)
     problems += validate_candidate_identity(candidates, bom)
     problems += validate_functional_chain(candidates)
     problems += validate_measured_force(candidates, by_id)
@@ -926,11 +1004,14 @@ def check_candidate_datasheets(
     candidates: list[dict[str, str]] | None,
     specs: list[dict[str, str]] | None,
 ) -> list[str]:
-    """Preferred candidates resting on manufacturer documents must be covered.
+    """Candidates resting on manufacturer documents must be covered.
 
     Coverage is declared by the manifest rather than inferred, and it is checked
-    only for the preferred tier: a rejected or reference-only candidate may
-    legitimately rest on a page that was read but not retrievable as a document.
+    only where a tier's numbers are load-bearing: the preferred tier, and the
+    commercial-prototype tier whose whole purpose is to carry manufacturer
+    values into a requirement document. A rejected or reference-only candidate
+    may legitimately rest on a page that was read but not retrievable as a
+    document.
     """
     if candidates is None or specs is None:
         return []
@@ -953,7 +1034,8 @@ def check_candidate_datasheets(
     fabricated = {"fabricated", "assorted", "custom build"}
     by_id = {spec.get(SPEC_KEY, ""): spec for spec in specs}
     for row in candidates:
-        if row.get("selection_tier") != "PREFERRED_E1":
+        tier = row.get("selection_tier", "")
+        if tier not in DATASHEET_BACKED_TIERS:
             continue
         cid = row.get(CANDIDATE_KEY, "")
         maker = str(by_id.get(cid, {}).get("manufacturer", "")).strip().lower()
@@ -961,7 +1043,7 @@ def check_candidate_datasheets(
             continue
         if cid not in covered:
             problems.append(
-                f"{cid} is a PREFERRED_E1 candidate from {maker!r} but no "
+                f"{cid} is a {tier} candidate from {maker!r} but no "
                 "datasheet manifest entry covers it"
             )
     return problems
@@ -1158,6 +1240,301 @@ def validate_census_bom_agreement(
     return problems
 
 
+# --- DO-108P: the commercial excitation documents ---------------------------
+#
+# The BOM checks above hold the candidate registry. These hold the four
+# documents that registry now feeds, and the gate they close onto. The failure
+# they exist for is a requirement document that fills itself in: a `TBD_MEASURE`
+# quietly becoming a number, an enclosure survey reading complete on rows nobody
+# measured, and - the one that would matter most - a force appearing in a chain
+# that has no force channel.
+
+ARCHITECTURE_PATH = HARDWARE / "TTP_COMMERCIAL_EXCITATION_ARCHITECTURE.md"
+AMPLIFIER_PATH = HARDWARE / "TTP_EXCITATION_AMPLIFIER_REQUIREMENTS.md"
+ENVELOPE_PATH = HARDWARE / "TTP_EXCITATION_PCB_ENVELOPE.md"
+DRIVE_PROTOCOL_PATH = HARDWARE / "TTP_EXCITER_POWER_CHARACTERIZATION_PROTOCOL.md"
+PCB_GATE_PATH = REPO_ROOT / "docs" / "ADR-0014-excitation-pcb-gate.md"
+
+EXCITATION_DOCUMENTS = (
+    ARCHITECTURE_PATH,
+    AMPLIFIER_PATH,
+    ENVELOPE_PATH,
+    DRIVE_PROTOCOL_PATH,
+    PCB_GATE_PATH,
+)
+
+# The enclosure has four states, and they are an evidence ladder rather than a
+# switch - the same distinction the ownership census draws between UNKNOWN,
+# CONFIRMED_ABSENT and CONFIRMED_PRESENT, applied to a case. "Nobody has looked"
+# is not "someone looked and found none": the second is a finding, and inferring
+# it from an unbuilt Analyzer would be treating silence as evidence in the
+# document a board outline gets derived from.
+ENVELOPE_STATUSES = (
+    "ENCLOSURE_EXISTENCE_NOT_VERIFIED",
+    "ENCLOSURE_NOT_AVAILABLE_FOR_MEASUREMENT",
+    "NOT_PERFORMED",
+    "PERFORMED",
+)
+PROTOCOL_EXECUTION_STATES = ("NOT_EXECUTED", "EXECUTED")
+GATE_VERDICTS = ("BLOCKED", "READY_FOR_SCHEMATIC")
+
+# The placeholder that marks a number the bench has to produce. It is not a
+# stylistic choice: a blank or a plausible-looking figure in these rows is how a
+# board gets sized against something nobody observed.
+MEASURE_PLACEHOLDER = "TBD_MEASURE"
+
+# The production chain, in the order the signal travels. The amplifier being
+# *between* the DAC and the exciter is the architectural claim; a chain that
+# lost it would describe a product driving an exciter from a line output.
+EXCITATION_CHAIN_ORDER = (
+    "DAC",
+    "INTERNAL POWER AMPLIFIER",
+    "ELECTRODYNAMIC EXCITER",
+)
+
+# Capability states the architecture document carries locally, pending the
+# unmerged capability-census work.
+REQUIRED_CAPABILITY_LINES = (
+    "controlled waveform emission",
+    "controlled physical excitation",
+    "measured dynamic input force",
+)
+
+# A newton figure is only ever a motor-force scale in these documents. Anything
+# else would be a force at the specimen, which no channel measures.
+_NEWTONS = re.compile(r"\b\d+(?:\.\d+)?\s*(?:N\b|newtons?\b)")
+_MOTOR_SCALE_TERMS = ("motor-force scale", "motor force scale", "BL")
+
+_HEADER_FIELD = r"^\*\*{name}:\*\*\s*`([A-Z_]+)`"
+
+
+def header_field(text: str, name: str) -> str:
+    """A ``**name:** `VALUE``` declaration from a document header."""
+    match = re.search(_HEADER_FIELD.format(name=re.escape(name)), text, re.MULTILINE)
+    return match.group(1) if match else ""
+
+
+def section(text: str, heading: str) -> list[str]:
+    """The lines under a ``## heading``, up to the next heading of any level."""
+    lines = text.splitlines()
+    start: int | None = None
+    for index, line in enumerate(lines):
+        if start is None:
+            if line.strip().lower().lstrip("# ").startswith(heading.lower()) and (
+                line.startswith("#")
+            ):
+                start = index + 1
+            continue
+        if line.startswith("#"):
+            return lines[start:index]
+    return lines[start:] if start is not None else []
+
+
+def validate_excitation_architecture(text: str) -> list[str]:
+    """The production chain is stated, and the amplifier is inside it."""
+    problems: list[str] = []
+
+    positions = [text.find(stage) for stage in EXCITATION_CHAIN_ORDER]
+    for stage, position in zip(EXCITATION_CHAIN_ORDER, positions):
+        if position < 0:
+            problems.append(
+                f"the architecture document never names {stage!r} - the "
+                "production chain is incomplete"
+            )
+    if all(position >= 0 for position in positions) and positions != sorted(positions):
+        problems.append(
+            "the production chain does not run DAC -> amplifier -> exciter; an "
+            "exciter driven straight from a line output is a different product"
+        )
+
+    lowered = text.lower()
+    for capability in REQUIRED_CAPABILITY_LINES:
+        if capability not in lowered:
+            problems.append(
+                f"the architecture document records no state for {capability!r}"
+            )
+    return problems
+
+
+def validate_pcb_envelope(text: str, status: str) -> list[str]:
+    """The survey may not read complete on rows nobody measured.
+
+    Guarded in both directions, for the same reason the ownership census is. A
+    `PERFORMED` survey carrying `TBD` would let a layout start against whichever
+    rows happened to be filled in; an unavailable enclosure carrying a measured
+    dimension would be a measurement of something that does not exist.
+    """
+    problems: list[str] = []
+    if status not in ENVELOPE_STATUSES:
+        problems.append(f"unknown envelope survey_status {status!r}")
+
+    try:
+        rows = parse_table_lines(
+            ENVELOPE_PATH.name, text.splitlines(), "Parameter", ("Parameter", "Value")
+        )
+    except ValueError as exc:
+        return problems + [f"cannot read the envelope survey table: {exc}"]
+
+    measured = [row for row in rows if is_set(row.get("Value"))]
+    unmeasured = [row for row in rows if not is_set(row.get("Value"))]
+
+    if status == "PERFORMED" and unmeasured:
+        problems.append(
+            f"the envelope survey reads PERFORMED but {len(unmeasured)} "
+            "dimension(s) are still TBD - a partly measured envelope is an "
+            "unknown one, not a small one"
+        )
+    if status != "PERFORMED" and measured:
+        problems.append(
+            f"the envelope survey reads {status} but {len(measured)} "
+            "dimension(s) carry a value - nothing has been measured"
+        )
+    if not rows:
+        problems.append("the envelope survey table has no rows")
+    return problems
+
+
+def exciter_rated_powers(
+    candidates: list[dict[str, str]] | None, specs: dict[str, dict[str, str]]
+) -> set[float]:
+    """Wattages printed on the commercial exciter candidates' datasheets."""
+    ratings: set[float] = set()
+    for row in candidates or []:
+        if row.get("selection_tier") not in TIER_CHAIN_SCOPE:
+            continue
+        if row.get("component_class") != "shaker":
+            continue
+        key = specs.get(row.get(CANDIDATE_KEY, ""), {}).get("key_specification", "")
+        for found in re.findall(r"(\d+(?:\.\d+)?)\s*W\b", str(key)):
+            ratings.add(float(found))
+    return ratings
+
+
+def validate_amplifier_requirements(
+    text: str, protocol_state: str, ratings: set[float]
+) -> list[str]:
+    """Required output stays unmeasured until it is measured, and is never
+    inherited from what an exciter tolerates.
+
+    Two failures, one rule each. The output envelope filling itself in while the
+    bench protocol is unexecuted is the first; a required output power that is
+    an exciter's rated power wearing a different label is the second. The second
+    check only bites once somebody writes a number, which is exactly when it is
+    needed.
+    """
+    problems: list[str] = []
+    rows = section(text, "Output range")
+    if not rows:
+        return ["the amplifier requirements name no Output range section"]
+
+    try:
+        table = parse_table_lines(
+            AMPLIFIER_PATH.name, rows, "Property", ("Property", "Value")
+        )
+    except ValueError as exc:
+        return [f"cannot read the amplifier output-range table: {exc}"]
+
+    for row in table:
+        # Markdown code-spans are formatting, not content: `TBD_MEASURE` and
+        # TBD_MEASURE are the same claim and must validate the same way.
+        value = str(row.get("Value", "")).strip().strip("`").strip()
+        prop = row.get("Property", "?")
+        if protocol_state != "EXECUTED" and value != MEASURE_PLACEHOLDER:
+            problems.append(
+                f"amplifier output range {prop!r} reads {value!r} while the "
+                f"characterization protocol is {protocol_state} - a measured "
+                f"figure needs a measurement, so it must read {MEASURE_PLACEHOLDER}"
+            )
+        for found in re.findall(r"(\d+(?:\.\d+)?)\s*W\b", value):
+            if float(found) in ratings:
+                problems.append(
+                    f"amplifier output range {prop!r} is {found} W, which is a "
+                    "registered exciter's rated power - what an exciter "
+                    "tolerates is not what the amplifier must deliver"
+                )
+    return problems
+
+
+def validate_no_specimen_force_claim(documents: dict[str, str]) -> list[str]:
+    """No newton figure in the commercial path except a motor-force scale.
+
+    The boundary the whole commercial architecture rests on. The chain has no
+    force channel, so a force at the plate cannot be measured, derived, or
+    quoted - and ``BL x Irms`` is the one number that could be mistaken for one.
+    Where it appears it must say what it is on the same line.
+    """
+    problems: list[str] = []
+    for name, text in documents.items():
+        for line in text.splitlines():
+            if not _NEWTONS.search(line):
+                continue
+            if any(term in line for term in _MOTOR_SCALE_TERMS):
+                continue
+            problems.append(
+                f"{name}: {line.strip()[:70]!r} states a force in newtons "
+                "without naming it a motor-force scale - the commercial chain "
+                "measures no force"
+            )
+    return problems
+
+
+def validate_pcb_gate(
+    text: str, envelope_status: str, protocol_state: str
+) -> list[str]:
+    """The layout gate opens on evidence, and on nothing else."""
+    problems: list[str] = []
+    verdict = header_field(text, "gate_verdict")
+    if verdict not in GATE_VERDICTS:
+        problems.append(f"unknown PCB gate verdict {verdict!r}")
+        return problems
+
+    if verdict == "READY_FOR_SCHEMATIC":
+        if envelope_status != "PERFORMED":
+            problems.append(
+                "the PCB gate reads READY_FOR_SCHEMATIC while the enclosure "
+                f"survey is {envelope_status} - a layout needs an envelope"
+            )
+        if protocol_state != "EXECUTED":
+            problems.append(
+                "the PCB gate reads READY_FOR_SCHEMATIC while the drive "
+                f"characterization is {protocol_state} - the output stage "
+                "would be sized against an unmeasured requirement"
+            )
+    return problems
+
+
+def check_excitation_documents(
+    candidates: list[dict[str, str]] | None, specs: list[dict[str, str]] | None
+) -> list[str]:
+    """The DO-108P documents, and the gate they close onto."""
+    missing = [path.name for path in EXCITATION_DOCUMENTS if not path.exists()]
+    if missing:
+        return [f"missing excitation document {name}" for name in missing]
+
+    texts = {
+        path.name: path.read_text(encoding="utf-8") for path in EXCITATION_DOCUMENTS
+    }
+    envelope_status = header_field(texts[ENVELOPE_PATH.name], "survey_status")
+    protocol_state = header_field(texts[DRIVE_PROTOCOL_PATH.name], "execution_status")
+
+    problems: list[str] = []
+    if protocol_state not in PROTOCOL_EXECUTION_STATES:
+        problems.append(f"unknown protocol execution_status {protocol_state!r}")
+
+    problems += validate_excitation_architecture(texts[ARCHITECTURE_PATH.name])
+    problems += validate_pcb_envelope(texts[ENVELOPE_PATH.name], envelope_status)
+    problems += validate_amplifier_requirements(
+        texts[AMPLIFIER_PATH.name],
+        protocol_state,
+        exciter_rated_powers(candidates, {s.get(SPEC_KEY, ""): s for s in specs or []}),
+    )
+    problems += validate_no_specimen_force_claim(texts)
+    problems += validate_pcb_gate(
+        texts[PCB_GATE_PATH.name], envelope_status, protocol_state
+    )
+    return problems
+
+
 def report(title: str, problems: Iterable[str]) -> int:
     found = list(problems)
     if not found:
@@ -1210,6 +1587,7 @@ def main(argv: list[str] | None = None) -> int:
         "candidate-datasheets",
         check_candidate_datasheets(manifest, candidates, specs),
     )
+    count += report("excitation", check_excitation_documents(candidates, specs))
 
     if args.summary:
         print()
@@ -1246,11 +1624,15 @@ def main(argv: list[str] | None = None) -> int:
                     r for r in rows if r["unit_cost_usd"].strip() == "QUOTE_REQUIRED"
                 ]
                 unknown = [r for r in rows if r["unit_cost_usd"].strip() == "UNKNOWN"]
+                # A tier with nothing priced has no subset to sum. Printing
+                # $0.00 for it would render an unestablished cost as free -
+                # the exact coercion the cost rules exist to refuse.
                 total = sum(as_money(r["extended_cost_usd"]) or 0.0 for r in priced)
+                partial = f"partial ${total:,.2f}" if priced else "not priced"
                 print(
                     f"{tier:<20} {len(rows):<7} "
                     f"{len(priced)} / {len(quoted)} / {len(unknown)}"
-                    f"   partial ${total:,.2f}"
+                    f"   {partial}"
                 )
             print(
                 "\nPartial totals cover priced rows only. An unpriced row is not "

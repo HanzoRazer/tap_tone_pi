@@ -38,6 +38,38 @@ Pi 5 (owned)  ->  ADC-001 prototype  ->  characterize (E0)  ->  design AFE-001
 owned Pi 5, execute T1–T7. **Next software order:** B-018, the complete E0
 acquisition integration.
 
+**Also delivered, on its own branch:**
+[DO-108P — Commercial Excitation Output Stage / PCB Envelope](DO-108P_COMMERCIAL_EXCITATION_OUTPUT_STAGE.md),
+branched independently from `main` as
+`feat/do-108p-excitation-output-stage`. It defines the commercial excitation
+architecture, registers three inexpensive exciters and a Class-D amplifier
+family in the E1 BOM under a new scoped `COMMERCIAL_PROTOTYPE` tier, states the
+amplifier requirements with every output figure `TBD_MEASURE`, and defines the
+bench protocol that would measure them.
+
+| Item | State |
+| --- | --- |
+| DO-108P documents, candidates, utility, tests | COMPLETE, on a branch — **not merged** |
+| Commercial exciter / amplifier selection | none — `SELECTION_DEFERRED` unchanged |
+| `SHAKER-001`, `AMP-001` ownership | unchanged — `CONFIRMED_ABSENT` |
+| TTP Analyzer enclosure | `ENCLOSURE_EXISTENCE_NOT_VERIFIED` — nobody has looked for a case; the cheapest open action in the order |
+| Exciter drive characterization protocol | defined, `NOT_EXECUTED` |
+| [ADR-0014](../ADR-0014-excitation-pcb-gate.md) PCB layout gate | **`BLOCKED`** — no schematic, no layout |
+
+Hardware development remains paused. DO-108P authorized no purchase and moved
+nothing on the acquisition ladder; it establishes what a commercial excitation
+board must satisfy so that the numbers are measured rather than invented.
+
+**Raised by DO-108P, queued:**
+[DO-108G — Gap Inventory Reconciliation](backlog/DO-108G_GAP_INVENTORY_EXCITATION_RECONCILIATION.md).
+`docs/01_GAP_INVENTORY.md` §7.3 is stale: commercial controlled physical
+excitation is now architecturally defined with registered candidate hardware,
+but no chain has been assembled or bench-qualified. That file is a
+repository-wide authority and gets its own order.
+
+**Not claimed here:** DO-107B is unmerged and its state is not restated by this
+order. A working branch containing it is not a merge.
+
 **Nothing is promoted.** DO-101B remains queued and unresumed; per the binding
 sequence its promotion belongs to its own docs/status commit.
 
