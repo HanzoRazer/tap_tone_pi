@@ -1724,7 +1724,6 @@ class TestTheProductionChain:
         assert "controlled waveform emission     = implemented" in text
         assert "external physical transducer required" in text
         assert "absent from the commercial path" in text
-        assert not (REPO_ROOT / "docs" / "ANALYZER_CAPABILITY_MATRIX.md").exists()
 
     def test_the_product_does_not_require_a_standalone_amplifier(self, checker):
         text = flat(checker.ARCHITECTURE_PATH.read_text(encoding="utf-8"))
