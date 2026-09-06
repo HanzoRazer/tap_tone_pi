@@ -55,17 +55,30 @@ whether the underlying model is correct.
 
 ## When it applies
 
-It applies to a PR making a **material evidence-bearing claim** — one that
-asserts something about measurement, uncertainty, hardware state, calibration,
-acquisition, physical experiment, analyzer capability, or validation.
+It applies to a PR making a **material evidence-bearing claim**.
+
+### What counts as a material claim
+
+This protocol owns the normative definition. Everywhere else in the repository
+quotes it or links here; nothing else defines it:
+
+> **A material claim is a claim whose acceptance could change a reviewer's
+> understanding of TTP's scientific validity, measurement capability, hardware
+> state, uncertainty, validation status, or readiness for physical use.**
+
+Typical material topics: measurement results, uncertainty statements, hardware
+possession or selection state, calibration or acquisition claims, physical
+experiments, analyzer capability maturity, or validation standing.
 
 It does **not** apply to routine work: a refactor, a formatting pass, a typo, a
 dependency bump, a test that exercises existing behaviour without asserting a new
-capability. A green refactor needs no evidence dossier, and demanding one would
+capability. Implementation detail that does not change those meanings is not
+material. A green refactor needs no evidence dossier, and demanding one would
 make the protocol something people route around.
 
-The question to ask is not "did I touch hardware code" but **"does this PR make a
-statement someone could later cite as evidence?"** If yes, it is in scope.
+The question to ask is not "did I touch hardware code" but **"could a reviewer
+later cite this PR as evidence about what TTP can measure, what hardware it has,
+or what has been validated?"** If yes, it is in scope.
 
 ## Vocabulary: the authority map
 
@@ -217,10 +230,14 @@ A note on the last row: *"TTP has no force measurement"* is a false universal �
 the bending subsystem measures force. *"No dynamic force channel was found in
 `contracts/` during the declared census"* is true and useful.
 
-## The claim record
+## The evidence record
 
-For each material claim, a PR should be able to answer this chain. The
-[pull request template](../.github/pull_request_template.md) carries it.
+**This is the section the PR template links to.** An evidence-bearing PR copies
+what it needs from here into its body; a routine PR never opens it. The default
+template asks one question and gets out of the way — the dossier lives here so
+that answering *No* costs a contributor nothing.
+
+For each material claim, a PR should be able to answer this chain.
 
 ```text
 CLAIM ID
@@ -241,6 +258,88 @@ EVIDENCE REFERENCE       where a reviewer can inspect or reproduce it
 Fields that genuinely do not apply are marked `n/a` **with a reason**, not
 deleted. A missing `LIMITATION` is usually a claim whose limits were not
 considered rather than one that has none.
+
+### Worked example — datasheet rating is not a TTP requirement
+
+Copy this shape when a PR cites a manufacturer figure. The discipline is the
+separation of observation, provenance, inference, and limitation — not the
+length of the form.
+
+```text
+CLAIM ID                 CLAIM-1
+CLAIM                    The manufacturer datasheet states an RMS Power
+                         Handling of 24 watts for the DAEX25FHE-4 exciter
+CLAIM CLASS              Input provenance / hardware specification
+SOURCE / INSTRUMENT      Manufacturer datasheet for DAEX25FHE-4
+OBSERVATION              The parameter table lists "RMS Power Handling:
+                         24 watts". The sheet states no continuous, thermal,
+                         or duty-cycle rating separate from that figure
+PROVENANCE               DATASHEET (Provenance, acquisition quantities)
+SUPPORTED INFERENCE      The manufacturer's documented rated-power value for
+                         this candidate is 24 W under the manufacturer's
+                         stated conditions
+SCOPE                    That part number; the datasheet revision whose digest
+                         is in the manifest; no TTP bench measurement
+LIMITATION / BLIND SPOT  Does not establish a TTP operating requirement, an
+                         amplifier sizing target, a figure TTP has delivered,
+                         or that 24 W is safe or appropriate for a plate
+UNRESOLVED CONDITION     Required TTP excitation voltage, current and power
+                         remain to be established experimentally
+FALSIFIER                Execute the commercial excitation bench
+                         characterization and determine the minimum useful
+                         electrical drive envelope; or a datasheet revision
+                         that changes the rated figure
+EVIDENCE REFERENCE       Datasheet manifest entry, by SHA-256 digest
+```
+
+**Note the wording.** The datasheet's parameter is *RMS Power Handling*, so that
+is what the claim says. An earlier draft of this example wrote "24 W
+continuous" — a stronger characterization than the source establishes, and
+exactly the error this document exists to catch. A protocol that demonstrated
+evidence discipline using an overstatement of its own source would be teaching
+the opposite of its rule.
+
+This is the same boundary recorded under *A rated component figure is not a
+system requirement* above. The claim record makes the limit visible in the PR
+rather than hoping a reviewer remembers the rule.
+
+### Authority states touched
+
+Where a PR moves a state that some authority owns, report the move and name the
+authority that ruled it. Reporting is the whole job here: the PR does not get to
+decide the state.
+
+```text
+| State | Before | After | Authority that ruled it |
+```
+
+### Promotions to declare
+
+An evidence-bearing PR confirms each of these, or explains why it does not
+apply:
+
+```text
+No hardware state promoted (CANDIDATE -> SELECTED, SELECTED -> OWNED,
+    UNKNOWN -> CONFIRMED_ABSENT, ...) without the ruling that authorizes it
+No DATASHEET or DERIVED value reported as MEASURED
+No NOT_EXECUTED record carrying a result
+No fixture or synthetic data described as hardware evidence
+No component rating reported as a system requirement
+Universal claims (never, all, proves, does not exist) carry a bounded universe
+```
+
+Each line is one of the demonstrated boundaries above, in the form an author can
+check against their own diff.
+
+### Admission state
+
+```text
+DRAFT / INVESTIGATING     claims not yet bounded
+READY FOR REVIEW          claims bounded to their evidence
+```
+
+A physical experiment additionally declares the measurement contract in the next
+section.
 
 ## Measurement contract for experiments
 
@@ -326,6 +425,30 @@ verified, requirements documented, tests green — and enclosure unmeasured, exc
 unqualified, required power unmeasured, EMI uncharacterized. Documentation work
 `PASS`; PCB evidence gate `BLOCKED`. Both statements are true at once, and a
 protocol that forced them into one verdict would have produced a false one.
+
+## Reviewer triage
+
+```text
+1. Material claim?
+   NO  -> ordinary review. Stop.
+   YES -> continue.
+
+2. Named source/instrument?
+3. Observation separated from inference?
+4. Provenance explicit?
+5. Scope bounded?
+6. Limitation / unresolved condition visible?
+7. Evidence state silently promoted?
+```
+
+**Step 1 is a gate, not a formality.** A reviewer must not withhold approval
+from an ordinary PR for lacking a claim record it never needed — that is the
+failure mode that turns a discipline into paperwork, and it costs more than the
+claims it would catch.
+
+Where a reviewer and an author disagree about materiality, the definition above
+decides it, and the tie-break is the reviewer's: they are the party whose
+understanding the definition is written in terms of.
 
 ## What automation may and may not do
 
@@ -429,9 +552,39 @@ about the instrument — and the next ADR number is contested by open PR #39.
 - **This document could go stale** against the enums it maps. That is the one
   risk automation addresses.
 
+### Revision history
+
+Chronology, kept because the correction history is part of why this document
+exists:
+
+```text
+TTP-PR-ADMISSION-001     the protocol, the vocabulary map, the demonstrated
+                         boundaries, the vocabulary-drift test
+        |
+        v
+review                   identified contributor-friction risk: the default
+                         template asked every PR for the full dossier, and
+                         "material" was used without being defined
+        |
+        v
+TTP-PR-ADMISSION-001A    conditional template, canonical materiality
+                         definition, worked example, reviewer triage
+```
+
+001A changed no vocabulary, no scientific state, no hardware state, and added no
+enforcement. It made the protocol lighter to comply with, not weaker.
+
+**Prose-only enforcement remains deliberate.** It was raised in the same review
+and is recorded here as a maturity boundary rather than an open defect: nothing
+yet demonstrates that automation would catch a claim a reviewer missed, and
+building it first would be this protocol's own failure — a mechanism asserting
+more than its evidence supports.
+
 ### Deliberately left to reviewer judgment
 
-Whether a claim is "material"; whether a stated limitation is the *right*
-limitation; whether a falsifier would actually falsify; whether an inference
-follows from its observation. All four are semantic, and a machine deciding them
-would be the failure this protocol names.
+Whether a borderline change meets the material-claim definition above; whether
+a stated limitation is the *right* limitation; whether a falsifier would
+actually falsify; whether an inference follows from its observation. Those are
+semantic judgments. A machine deciding them would be the failure this protocol
+names. The definition of "material" reduces subjectivity; it does not eliminate
+edge cases.
