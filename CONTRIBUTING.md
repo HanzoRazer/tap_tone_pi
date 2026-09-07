@@ -137,11 +137,14 @@ PRs should include:
 
 ### Evidence-bearing PRs
 
-If a PR makes a material claim about measurement, uncertainty, hardware state,
-calibration, acquisition, a physical experiment, an analyzer capability, or
-validation, it also carries a claim record. The
-[PR Admission Protocol](docs/TTP_PR_ADMISSION_PROTOCOL.md) explains what that
-means; `.github/pull_request_template.md` carries the fields.
+If a PR makes a **material** claim, it also carries an evidence record.
+[The PR Admission Protocol](docs/TTP_PR_ADMISSION_PROTOCOL.md#what-counts-as-a-material-claim)
+holds the definition of *material* — it is the only place that defines it, so
+check there rather than relying on a summary. The protocol also carries the
+record's fields and a worked example.
+
+The PR template asks one Yes/No question. Answering *No* means the evidence
+record does not apply; it never means verification does not apply.
 
 The rule it exists for:
 
@@ -154,7 +157,9 @@ executed measurement. Routine work — refactors, formatting, typos, dependency
 bumps — makes no such claim and needs no claim record.
 
 The protocol is **advisory**. It owns no scientific or hardware state; it asks a
-PR to report truthfully what the existing authorities already say.
+PR to report truthfully what the existing authorities already say. No lint or
+required check parses PR bodies; that stays deferred until the discipline has
+proven useful without becoming paperwork.
 
 ### Commit Messages
 

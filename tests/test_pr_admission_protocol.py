@@ -18,6 +18,7 @@ repository.
 from __future__ import annotations
 
 import importlib.util
+import re
 from pathlib import Path
 
 import pytest
@@ -65,6 +66,18 @@ def template() -> str:
 def flat(text: str) -> str:
     """Collapse whitespace so a prose assertion survives a line rewrap."""
     return " ".join(text.split())
+
+
+def normalized(text: str) -> str:
+    """``flat``, plus markdown blockquote and emphasis markers removed.
+
+    The canonical definition is a bolded blockquote in the protocol and a
+    bolded blockquote in the template. Comparing the *sentence* means comparing
+    it without the presentation markers that wrap it, or a rewrap from ``> **x**``
+    to ``**x**`` would read as a definition change.
+    """
+    without_quotes = re.sub(r"^\s*>\s?", "", text, flags=re.MULTILINE)
+    return " ".join(without_quotes.replace("**", "").split())
 
 
 class TestTheDocumentsExist:
@@ -184,7 +197,11 @@ class TestTheProtocolClaimsNoAuthority:
 
     def test_it_names_what_is_left_to_reviewer_judgment(self, protocol):
         assert "Deliberately left to reviewer judgment" in protocol
-        assert "material" in protocol
+        # Materiality has a definition; only borderline application stays
+        # judgment. The section must not treat "material" as undefined.
+        text = flat(protocol)
+        assert "borderline change meets the material-claim definition" in text
+        assert "does not eliminate edge cases" in text
 
 
 class TestTheAxesDoNotCollapse:
@@ -261,62 +278,249 @@ class TestEveryRuleHasADemonstratedExample:
         assert (REPO_ROOT / "docs" / "ANALYZER_CAPABILITY_MATRIX.md").exists()
 
 
-class TestTheClaimRecord:
+# The canonical normative definition. The protocol owns it; the template quotes
+# it verbatim because a contributor needs the criterion at the point of decision;
+# CONTRIBUTING links to it and must not establish a rival. Held as one constant
+# here so a drifted copy fails rather than quietly becoming a second authority.
+CANONICAL_MATERIAL_DEFINITION = (
+    "A material claim is a claim whose acceptance could change a reviewer's "
+    "understanding of TTP's scientific validity, measurement capability, "
+    "hardware state, uncertainty, validation status, or readiness for physical "
+    "use."
+)
+
+# Wording that would constitute defining materiality rather than citing it.
+DEFINITION_SHAPED = "could change a reviewer's understanding"
+
+
+class TestMaterialClaimDefinition:
+    """One normative definition, quoted where needed, redefined nowhere.
+
+    T7, as ruled: not three files carrying identical prose, but one owner, one
+    verbatim quotation at the point of use, and no competing third definition.
+    The definition reduces subjectivity; borderline application stays judgment.
+    """
+
+    def test_the_protocol_owns_the_definition(self, protocol):
+        assert "What counts as a material claim" in protocol
+        assert CANONICAL_MATERIAL_DEFINITION in normalized(protocol)
+
+    def test_the_protocol_states_it_exactly_once(self, protocol):
+        # A second copy inside the owning document is the same drift risk, one
+        # file earlier than the one T7 was written about.
+        assert normalized(protocol).count(CANONICAL_MATERIAL_DEFINITION) == 1
+
+    def test_the_protocol_claims_the_ownership_explicitly(self, protocol):
+        text = flat(protocol)
+        assert "This protocol owns the normative definition" in text
+        assert "nothing else defines it" in text
+
+    def test_the_template_quotes_it_verbatim(self, template):
+        # Verbatim, because the contributor decides at the template and should
+        # not have to follow a link to learn the criterion.
+        assert CANONICAL_MATERIAL_DEFINITION in normalized(template)
+
+    def test_contributing_links_rather_than_redefines(self):
+        text = CONTRIBUTING_PATH.read_text(encoding="utf-8")
+        assert "TTP_PR_ADMISSION_PROTOCOL.md#what-counts-as-a-material-claim" in text
+        assert DEFINITION_SHAPED not in flat(text)
+        assert "only place that defines it" in flat(text)
+
+    def test_no_fourth_definition_appears_anywhere_else(self):
+        # Bounded to the three documents this increment governs, which is the
+        # population actually examined.
+        for path in (REPO_ROOT / "README.md", REPO_ROOT / "CLAUDE.md"):
+            if path.exists():
+                assert DEFINITION_SHAPED not in flat(path.read_text(encoding="utf-8"))
+
+
+class TestTheDefaultTemplateIsShort:
+    """T-friction: answering No must cost a contributor nothing.
+
+    The parent template put the whole dossier inline, so a routine PR scrolled
+    past eleven empty headings after being told to stop. 001A moved the record
+    into the protocol and left a gate behind.
+    """
+
+    def test_the_gate_is_asked(self, template):
+        assert "## Material evidence-bearing claim?" in template
+        assert "**No**" in template
+        assert "**Yes**" in template
+
+    def test_the_dossier_is_not_inline(self, template):
+        # The fields live in the protocol now. Their presence here would mean
+        # the move did not happen.
+        for field in (
+            "**Claim class:**",
+            "**Source / instrument:**",
+            "**Falsifier:**",
+            "**Evidence reference:**",
+        ):
+            assert field not in template
+
+    def test_the_template_stays_small(self, template):
+        # Not a style rule: length is the friction being removed. The parent
+        # template was ~120 lines; a routine contributor should see a fraction.
+        assert len(template.splitlines()) < 45
+
+    def test_the_yes_path_links_to_the_record_and_the_example(self, template):
+        assert "TTP_PR_ADMISSION_PROTOCOL.md#the-evidence-record" in template
+        assert "worked-example" in template
+
+    def test_the_anchor_targets_exist_in_the_protocol(self, protocol):
+        # A dead anchor would send an evidence-bearing author nowhere.
+        assert "## The evidence record" in protocol
+        assert "### Worked example — datasheet rating is not a TTP requirement" in (
+            protocol
+        )
+
+    def test_routine_work_is_exempt_from_the_record(self, template, protocol):
+        assert "routine work" in flat(template).lower()
+        assert "apply to routine work" in flat(protocol)
+
+    def test_verification_is_still_required_of_routine_prs(self, template):
+        # T8. "No material claim" must not become "no testing reported".
+        text = flat(template)
+        assert "## Verification" in template
+        assert "Required for every PR, routine or not" in text
+        assert "never from saying what was run" in text
+
+
+class TestTheEvidenceRecordMovedToTheProtocol:
     @pytest.mark.parametrize(
         "field",
         [
-            "Claim class",
-            "Source / instrument",
-            "Observation",
-            "Provenance",
-            "Supported inference",
-            "Scope",
-            "Limitation / blind spot",
-            "Unresolved condition",
-            "Falsifier",
-            "Evidence reference",
+            "CLAIM ID",
+            "CLAIM CLASS",
+            "SOURCE / INSTRUMENT",
+            "OBSERVATION",
+            "PROVENANCE",
+            "SUPPORTED INFERENCE",
+            "SCOPE",
+            "LIMITATION / BLIND SPOT",
+            "UNRESOLVED CONDITION",
+            "FALSIFIER",
+            "EVIDENCE REFERENCE",
         ],
     )
-    def test_the_template_carries_every_field(self, template, field):
-        assert field in template
+    def test_the_protocol_carries_every_field(self, protocol, field):
+        assert field in protocol
 
-    def test_the_protocol_and_the_template_agree_on_the_fields(self, protocol):
-        # Two documents listing the chain differently is the same drift problem
-        # the vocabulary map has, one layer up.
-        for field in ("CLAIM CLASS", "PROVENANCE", "FALSIFIER", "SCOPE"):
-            assert field in protocol
+    def test_the_record_says_it_is_what_the_template_links_to(self, protocol):
+        assert "This is the section the PR template links to" in flat(protocol)
 
-    def test_routine_work_is_exempt(self, template, protocol):
-        assert "Routine work" in template
-        assert "apply to routine work" in flat(protocol)
-
-    def test_absent_fields_are_marked_not_deleted(self, template, protocol):
-        assert "n/a" in template
+    def test_absent_fields_are_marked_not_deleted(self, protocol):
         assert "with a reason" in flat(protocol)
 
-    def test_the_promotion_checklist_covers_the_demonstrated_failures(self, template):
-        text = flat(template)
+    def test_the_promotion_checklist_moved_intact(self, protocol):
+        text = flat(protocol)
         for promotion in (
-            "`CANDIDATE` → `SELECTED`",
-            "reported as `MEASURED`",
-            "No `NOT_EXECUTED` record carries a result",
-            "No component rating is reported as a system requirement",
+            "No hardware state promoted",
+            "No DATASHEET or DERIVED value reported as MEASURED",
+            "No NOT_EXECUTED record carrying a result",
+            "No component rating reported as a system requirement",
         ):
             assert promotion in text
 
-    def test_readiness_is_not_a_green_test_suite(self, template, protocol):
-        assert "READY FOR REVIEW" in template
-        assert "DRAFT / INVESTIGATING" in template
+    def test_readiness_is_not_a_green_test_suite(self, protocol):
+        assert "READY FOR REVIEW" in protocol
+        assert "DRAFT / INVESTIGATING" in protocol
         assert "not** ready for review merely because" in protocol
 
-    def test_the_three_standing_statements_are_present(self, template):
-        text = flat(template)
-        assert (
-            "A passing software test does not establish a valid physical measurement"
-            in text
-        )
-        assert "does not become a measured TTP quantity" in text
-        assert "Commanded excitation is not measured mechanical input force" in text
+
+class TestReviewerTriage:
+    def test_the_triage_exists(self, protocol):
+        assert "## Reviewer triage" in protocol
+
+    @pytest.mark.parametrize(
+        "step",
+        [
+            "Material claim?",
+            "Named source/instrument?",
+            "Observation separated from inference?",
+            "Provenance explicit?",
+            "Scope bounded?",
+            "Limitation / unresolved condition visible?",
+            "Evidence state silently promoted?",
+        ],
+    )
+    def test_each_triage_step_is_present(self, protocol, step):
+        assert step in protocol
+
+    def test_step_one_is_a_gate_that_protects_ordinary_prs(self, protocol):
+        # The friction failure runs both ways: a reviewer withholding approval
+        # for a missing record that was never required is the same problem.
+        text = flat(protocol)
+        assert "Step 1 is a gate, not a formality" in text
+        assert "must not withhold approval" in text
+
+
+class TestWorkedClaimExample:
+    """A filled end-to-end example lowers contributor error more than more prose."""
+
+    def test_the_protocol_carries_a_datasheet_rating_example(self, protocol):
+        text = flat(protocol).lower()
+        assert "Worked example" in protocol
+        assert "DATASHEET" in protocol
+        assert "24 w" in text
+        assert "SUPPORTED INFERENCE" in protocol
+        assert "LIMITATION / BLIND SPOT" in protocol
+
+    def test_it_uses_the_manufacturers_own_terminology(self, protocol):
+        # T4-adjacent, and the defect 001A corrected: the Dayton sheet's
+        # parameter is "RMS Power Handling", not a continuous rating. A protocol
+        # teaching evidence discipline must not overstate its own source.
+        #
+        # Scoped to the example block: "24 W continuous" appears elsewhere in
+        # the protocol as the quoted wording of the corrected draft, which is
+        # the record of the fix rather than a live overstatement.
+        example = flat(_worked_example(protocol))
+        assert "RMS Power Handling" in example
+        assert "24 W continuous" not in example
+
+    def test_the_correction_itself_is_recorded(self, protocol):
+        text = flat(protocol)
+        assert "stronger characterization than the source establishes" in text
+        assert '"24 W continuous"' in text
+
+    def test_the_rating_is_never_labelled_measured(self, protocol):
+        # T4. The example's provenance is DATASHEET and must stay there.
+        example = _worked_example(protocol)
+        assert "PROVENANCE               DATASHEET" in example
+        assert "MEASURED" not in example
+
+    def test_it_does_not_assert_a_required_ttp_power(self, protocol):
+        # T5. The whole point of the example. Scoped to the example block: the
+        # Hardware PRs section carries "TTP requires a 24 W amplifier" as an
+        # explicit must-NOT-become, which is the rule rather than a violation.
+        example = flat(_worked_example(protocol))
+        for promotion in (
+            "TTP requires 24 W",
+            "TTP requires a 24 W",
+            "required TTP excitation power is 24 W",
+        ):
+            assert promotion not in example
+
+    def test_it_states_what_the_rating_does_not_support(self, protocol):
+        example = flat(_worked_example(protocol))
+        assert "Does not establish a TTP operating requirement" in example
+        assert "amplifier sizing target" in example
+        assert "safe or appropriate for a plate" in example
+
+    def test_it_points_at_bench_characterization_as_the_validation_step(self, protocol):
+        # T6. The unresolved condition must name the experiment that resolves
+        # it, not merely say "unknown".
+        example = flat(_worked_example(protocol))
+        assert "remain to be established experimentally" in example
+        assert "bench" in example.lower()
+        assert "minimum useful" in example
+
+
+def _worked_example(protocol: str) -> str:
+    """The worked example's fenced block, so assertions cannot stray outside it."""
+    start = protocol.index("### Worked example")
+    end = protocol.index("**Note the wording.**", start)
+    return protocol[start:end]
 
 
 class TestUniversalClaims:
