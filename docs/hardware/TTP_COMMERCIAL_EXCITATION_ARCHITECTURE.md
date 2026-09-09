@@ -102,11 +102,26 @@ controlled physical excitation   = external physical transducer required
 measured dynamic input force     = absent from the commercial path
 ```
 
-These are recorded in this document deliberately. A repository-wide analyzer
-capability matrix is being written under separate, unmerged work; when it lands,
-these three lines are what it must reconcile with. Importing a fragment of that
-document here to hold three rows would fork an authority that does not exist yet
-on this branch.
+These are recorded in this document deliberately. **At the time DO-108P was
+written, the repository-wide analyzer capability matrix was unmerged**, so
+importing a fragment of it here to hold three rows would have forked an authority
+that did not yet exist on that branch. These three lines were recorded as what
+that document would have to reconcile with once it landed.
+
+**It subsequently landed** as `6c5366f`, and
+[DO-108H](../dev_orders/DO-108H_CAPABILITY_MATRIX_RECONCILIATION.md) performed
+the promised reconciliation. Its finding:
+
+> No substantive capability-state conflict. All three lines reconcile with
+> [the merged matrix](../ANALYZER_CAPABILITY_MATRIX.md) — the first two through
+> different vocabulary, the third through different scope.
+
+The matrix carries the physical-excitation distinction on its **executability**
+axis rather than in its maturity column, and its statement about force is
+repository-wide where this one is specific to the commercial path. Both
+differences are recorded in the order record; neither is a disagreement. These
+three lines stand as written, and the decision to record them locally was correct
+when it was made and remains correct now.
 
 ## 5. The missing physical subsystem
 
