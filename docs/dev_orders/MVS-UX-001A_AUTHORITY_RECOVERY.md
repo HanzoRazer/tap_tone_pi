@@ -457,7 +457,8 @@ recorded as `CONFLICTING` or with a `SUPERSEDE_CANDIDATE` disposition instead.
   `cognitive_load_sensitivity` caps directives (1 when high, else 2);
   `initiative_tolerance` = `user_led` suppresses proactive suggestions;
   `guidance_density` = `very_low`/`low` cuts directives to summary-only. The other
-  four are updated, decayed and persisted, and **read by nothing**.
+  four are updated, decayed and persisted, and **have no reader** in a
+  repository-wide search at `27e92bd`.
 - **Source:** `agentic/spine/policy.py` (`decide`, `_max_directives_for_load`,
   initiative gate, guidance-density gate).
 - **Owner:** `AGENT_DECISION_POLICY_V1.md`.
@@ -641,9 +642,10 @@ recorded as `CONFLICTING` or with a `SUPERSEDE_CANDIDATE` disposition instead.
   added in `9293b2d`.
 - **Owner:** the PyQt guidance engine.
 - **Consumers:** the GUI event stream.
-- **Evidence:** `tap_tone_pi/agent/wolf_guidance.py` does not exist on disk, is
-  not tracked, and has no history on any branch. `generate_wolf_guidance` is
-  defined nowhere. The import therefore fails on every call and the blanket
+- **Evidence:** `tap_tone_pi/agent/wolf_guidance.py` is absent from the working
+  tree (source and bytecode), is not tracked at `27e92bd`, and has no history in
+  any local or remote-tracking ref. No tracked file at `27e92bd` defines
+  `generate_wolf_guidance`. The import therefore fails on every call and the blanket
   `except` hides it.
 - **Conflict:** **latent, with ADR-0010.** If the import ever resolved, guidance
   would be generated from a fabricated result carrying an invented confidence — a
@@ -864,7 +866,7 @@ Every contradiction found. None was resolved.
 | K6 | `HARD` "cannot override" vs two reachable override paths | `quality_policy.py:31` vs `operator_loop.py:768`, `cli/main.py:608`, `gui/measurement_flow.py:238` | P08 |
 | K7 | Comment says `decide()` returns dicts; code guarantees directives | `operator_loop.py:161` vs `policy._coerce_directive` | P15 |
 | K8 | D12's premise vs a live Claude-backed engine and an agent-development handoff | handoff D12 vs `analyzer/guidance/engine.py`, `AGENTIC_LAYER_DEV_HANDOFF.md:4` | §12 |
-| K9 | **Latent implementation finding.** A dead GUI path fabricates a wolf result with `MagicMock` and `confidence = 0.8`, importing a module that does not exist, swallowed by `except Exception: pass` | `analyzer/guidance/engine.py` vs ADR-0010 | P40 |
+| K9 | **Latent implementation finding.** A dead GUI path fabricates a wolf result with `MagicMock` and `confidence = 0.8`, importing a module absent from the repository at `27e92bd`, swallowed by `except Exception: pass` | `analyzer/guidance/engine.py` vs ADR-0010 | P40 |
 
 **K9 is recorded here and nowhere else**, per ruling: no backlog artifact was
 created and nothing was fixed. It is listed as blocker B6 so that it cannot be
@@ -998,7 +1000,7 @@ development.
 | ID | Proposition | Disposition | Basis |
 | --- | --- | --- | --- |
 | C1 | Operable without acoustics / signal-processing / lab expertise | **PARTIALLY_SUPPORTED** | DO-100 — current authority — states it for the guided entry point (*"without requiring the user to begin by selecting an analyzer, scientific model, FFT mode, or calculator"*; *"Never ask for a scientific parameter until the workflow has explained why it is needed"*). The design review states a first-time happy path (*"should be one command"*) and `ttp quick`, `ttp demo` and `ttp setup` implement one. It is not stated as a product-wide requirement; the quickstart and user guide assume technical skill; the one observed session contradicts it as current reality; and the zero-config path runs no quality gate. |
-| C2 | Sophomore comprehension as the minimum target | **NOT_WITNESSED** | "Sophomore" and any reading-level target appear nowhere. |
+| C2 | Sophomore comprehension as the minimum target | **NOT_WITNESSED** | Neither "sophomore" nor any reading-level target appears in a tracked file at `27e92bd`. |
 | C3 | MVS is a guaranteed floor, not a permanent novice identity | **NOT_SUPPORTED** | The repository models the user as an **identity stage** (`UserStage`), and no guaranteed-floor construct exists outside DO-100's entry principle. One clause holds: the identity is not permanent — `FIRST_RUN → NOVICE → REGULAR` advances automatically. But the top stage is declared, not earned (P28), disclosure is gated on identity, and the stage is computed two ways (K2). The repository's ontology and this proposition diverge; that divergence is the finding. |
 | C4 | DO → UNDERSTAND → INSPECT | **PARTIALLY_SUPPORTED** | Progressive disclosure is real and deliberate (FTUE, `ExplanationMode`, stage knobs, `guidance_density` gate, CHANGELOG). The three named levels are absent — `PROPOSED_DESIGN`. `representation_preference` anticipated representational adaptation and was never wired (P22). |
 | C5 | Representation depth cannot change measurement, protocol state or evidence | **PARTIALLY_SUPPORTED** | Structurally true on every path examined; ADR-0010 and DO-100 state the separation. Not directly tested under representation change; advisory audit placement contested (K5). |
