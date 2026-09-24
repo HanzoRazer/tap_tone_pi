@@ -12,6 +12,8 @@ checks only hold a record to what it is entitled to claim.
 
 from __future__ import annotations
 
+import builtins
+import importlib.util
 import json
 import subprocess
 import sys
@@ -24,6 +26,11 @@ from tap_tone_pi.prototype import (
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CHECKER = REPO_ROOT / "scripts" / "ttp_prototype_check.py"
+
+CHECKER_SPEC = importlib.util.spec_from_file_location("ttp_prototype_check", CHECKER)
+assert CHECKER_SPEC is not None and CHECKER_SPEC.loader is not None
+CHECKER_MODULE = importlib.util.module_from_spec(CHECKER_SPEC)
+CHECKER_SPEC.loader.exec_module(CHECKER_MODULE)
 
 
 def _codes(run: dict) -> list[str]:
@@ -280,6 +287,30 @@ class TestExecutedRunNeedsOrigin:
         run["status"] = "NOT_EXECUTED"
         run["witnessed"] = False
         assert "PROTO_NOT_EXECUTED_CLAIMS_ORIGIN" in _codes(run)
+
+
+class TestSchemaDependencyFailure:
+    def test_missing_jsonschema_fails_closed(
+        self, tmp_path: Path, monkeypatch, capsys
+    ) -> None:
+        path = tmp_path / "ttp_prototype_run.json"
+        path.write_text(json.dumps(_r2()), encoding="utf-8")
+
+        real_import = builtins.__import__
+
+        def import_without_jsonschema(name, *args, **kwargs):
+            if name == "jsonschema":
+                raise ImportError("simulated missing jsonschema")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", import_without_jsonschema)
+
+        result = CHECKER_MODULE.main([str(path)])
+        captured = capsys.readouterr()
+
+        assert result == 1
+        assert "required dependency 'jsonschema' is not installed" in captured.err
+        assert "internally consistent" not in captured.out
 
 
 class TestCheckerCli:

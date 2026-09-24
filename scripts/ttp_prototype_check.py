@@ -8,6 +8,7 @@
 Verifies that a prototype run says only what its own record supports:
 
   * the document deserializes and validates against ttp_prototype_run_v1;
+    inability to load the schema validator is itself a validation failure;
   * an R0 run does not claim controlled excitation, and an R2 run carries
     emission provenance for the signal it commanded;
   * an R1 run measures the mass it added;
@@ -60,11 +61,13 @@ def unwrap(payload: Any) -> Any:
 
 
 def check_schema(payload: Any) -> list[str]:
-    """Validate the document against its contract, where jsonschema is present."""
+    """Validate the document against its contract; unavailable validation fails closed."""
     try:
         import jsonschema
     except ImportError:
-        return ["NOTE: jsonschema is not installed; schema not checked"]
+        return [
+            "schema validation unavailable: required dependency 'jsonschema' is not installed"
+        ]
     schema_path = CONTRACTS / f"{PROTOTYPE_RUN_SCHEMA_VERSION}.schema.json"
     schema = read_json(schema_path)
     try:
