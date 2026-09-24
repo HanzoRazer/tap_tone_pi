@@ -51,6 +51,12 @@
         "ttp_preliminary_repeatability_study",
         "ttp_hardware_campaign"
       ]
+    },
+    "prototype-team": {
+      "description": "TTP-PROTOTYPE-001 prototype commissioning evidence (off-the-shelf PROTOTYPE track; force-free, additive to the DO-103 measured-force campaign)",
+      "schemas": [
+        "ttp_prototype_run"
+      ]
     }
   },
   "policies": {
@@ -244,6 +250,15 @@
       "schema_version_const": "ttp_hardware_campaign_v1",
       "status": "stable",
       "version": "1.1.0"
+    },
+    "ttp_prototype_run": {
+      "description": "Prototype commissioning run for the TTP-PROTOTYPE-001 off-the-shelf PROTOTYPE track: stage (R0/R1/R2), manual-or-commanded excitation, microphone-only response, an explicit no-measured-force boundary, R1 added mass, R2 emission provenance, and SHA-256 raw-artifact identity. Additive to and distinct from ttp_hardware_campaign_v1; carries no measured-force, reference-grade, or hardware-qualification claim.",
+      "file": "ttp_prototype_run_v1.schema.json",
+      "owner": "prototype-team",
+      "path": "contracts/ttp_prototype_run_v1.schema.json",
+      "schema_version_const": "ttp_prototype_run_v1",
+      "status": "stable",
+      "version": "1.0.0"
     },
     "ttp_preliminary_repeatability_study": {
       "description": "Bounded preliminary repeatability study with run accounting, descriptive metrics, evidence origin, per-run acquisition provenance, per-run hardware-campaign condition, acquisition sequence, contact-assembly masses, and stated limitations",

@@ -1,0 +1,387 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/ttp_prototype_run_v1.schema.json",
+  "title": "TTPPrototypeCommissioningRun",
+  "description": "One prototype commissioning run for the TTP-PROTOTYPE-001 PROTOTYPE track: an economical, off-the-shelf physical chain used to close a measurement loop and gather engineering evidence. This is NOT the DO-103 measured-force campaign. A prototype run may use manual or commanded excitation and a microphone-only response path, and it may carry NO measured force channel. It shares the provenance vocabulary of ttp_hardware_campaign_v1 (evidence_origin, witnessed, SHA-256 artifact identity) but does not share its physical claim: nothing here asserts measured force, reference-grade accuracy, or qualified/production hardware. A run that has not executed says so, and a run that was halted at a gate is recorded rather than deleted.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "generated_at",
+    "stage",
+    "specimen_id",
+    "status",
+    "excitation",
+    "response",
+    "force",
+    "artifacts",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "ttp_prototype_run_v1"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "stage": {
+      "type": "string",
+      "enum": ["R0", "R1", "R2"],
+      "description": "R0 real-material manual-tap acquisition; R1 known added-mass challenge; R2 commanded closed excitation loop. The stage bounds what the run may claim: R0 is manual and cannot claim controlled excitation; R1 requires an actual measured added mass; R2 requires emission provenance for a commanded signal."
+    },
+    "specimen_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["NOT_EXECUTED", "EXECUTED", "HALTED_AT_GATE", "BLOCKED_BY_GATE"],
+      "description": "Reuses the ttp_hardware_campaign_v1 outcome vocabulary. A NOT_EXECUTED run is a prepared record with nothing captured; a HALTED_AT_GATE or BLOCKED_BY_GATE run is a real, retained result and names why it stopped."
+    },
+    "evidence_origin": {
+      "type": ["string", "null"],
+      "enum": ["HARDWARE", "FIXTURE", "SYNTHETIC", null],
+      "description": "Reused verbatim from the campaign vocabulary. Only HARDWARE is hardware evidence. Required in practice on an EXECUTED run; null while NOT_EXECUTED."
+    },
+    "witnessed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the run met the stricter witnessed standard. Only HARDWARE-origin evidence may carry it; a fixture or synthetic run may not."
+    },
+    "halt_reason": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "description": "Why a HALTED_AT_GATE or BLOCKED_BY_GATE run stopped. A halted run is recorded, not deleted."
+    },
+    "excitation": {
+      "$ref": "#/$defs/excitation"
+    },
+    "response": {
+      "$ref": "#/$defs/response"
+    },
+    "force": {
+      "$ref": "#/$defs/force_boundary"
+    },
+    "added_mass": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/added_mass"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/external_artifact"
+      }
+    },
+    "quality_result": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/quality_result"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "environment": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/environment"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "$defs": {
+    "excitation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How the specimen was excited. MANUAL is a hand tap and carries no controlled-excitation chain. COMMANDED is a TTP-emitted waveform driven through an output device, amplifier, and exciter, and must carry emission provenance.",
+      "required": ["excitation_mode", "excitation_method"],
+      "properties": {
+        "excitation_mode": {
+          "type": "string",
+          "enum": ["MANUAL", "COMMANDED"]
+        },
+        "excitation_method": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Free description, e.g. 'manual_tap' or 'stepped_sine_sweep'."
+        },
+        "commanded_amplitude": {
+          "type": ["number", "null"],
+          "description": "The commanded electrical amplitude of a COMMANDED excitation. This is a commanded electrical quantity, never an applied mechanical force."
+        },
+        "commanded_amplitude_unit": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "output_device_id": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "amplifier_id": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "exciter_id": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "coupling_id": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "drive_point_id": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "emission_provenance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/emission_provenance"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "emission_provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Provenance of a commanded emitted signal. Present for a COMMANDED excitation; it records what TTP emitted, not what force reached the specimen.",
+      "required": ["emitted_signal_id"],
+      "properties": {
+        "emitted_signal_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "excitation_contract_id": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "waveform_kind": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "sample_rate_hz": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The response sensing path. The prototype senses non-contact by microphone, so no sensor mass is added to the specimen.",
+      "required": ["response_path", "input_device_id", "sample_rate_hz"],
+      "properties": {
+        "response_path": {
+          "type": "string",
+          "const": "MICROPHONE"
+        },
+        "microphone_id": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "input_device_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sample_rate_hz": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "channel_count": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "gain_setting": {
+          "type": ["string", "null"],
+          "minLength": 1
+        }
+      }
+    },
+    "force_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The force-measurement boundary. The prototype does not measure force by default. A run may claim measured force only when it carries a force_chain: a commanded electrical signal is never, by itself, an applied mechanical force.",
+      "required": ["measured_force_claimed"],
+      "properties": {
+        "measured_force_claimed": {
+          "type": "boolean"
+        },
+        "force_chain": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/force_chain"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "force_chain": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The force-measurement chain that would substantiate a measured-force claim. Its calibration vocabulary is reused from the campaign channel model.",
+      "required": ["force_sensor_id", "calibration_traceability"],
+      "properties": {
+        "force_sensor_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "calibration_traceability": {
+          "type": "string",
+          "enum": ["TRACEABLE", "NOMINAL", "UNKNOWN"]
+        },
+        "calibration_reference": {
+          "type": ["string", "null"],
+          "minLength": 1
+        }
+      }
+    },
+    "added_mass": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A known mass deliberately added for an R1 challenge. The measured mass is what any later delta is computed from; the nominal value is recorded beside it and never substituted for it.",
+      "required": ["mass_challenge_id", "added_mass_g"],
+      "properties": {
+        "mass_challenge_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "added_mass_g": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "nominal_added_mass_g": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "mass_location_id": {
+          "type": ["string", "null"],
+          "minLength": 1
+        }
+      }
+    },
+    "external_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One retained raw measurement held outside this repository. Identity is the SHA-256 digest; the locator is where a copy may currently be found, and local_path_hint is explicitly ephemeral. Same conventions as ttp_hardware_campaign_v1.",
+      "required": [
+        "artifact_id",
+        "kind",
+        "sha256",
+        "byte_count",
+        "media_type",
+        "storage_locator",
+        "repository_tracked"
+      ],
+      "properties": {
+        "artifact_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "byte_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "storage_locator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capture_run_id": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "repository_tracked": {
+          "type": "boolean"
+        },
+        "local_path_hint": {
+          "type": ["string", "null"],
+          "minLength": 1
+        }
+      }
+    },
+    "quality_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The deterministic quality-gate outcome for the run, carried verbatim from the existing gate. Advisory or narrative text may never change this result.",
+      "required": ["verdict"],
+      "properties": {
+        "verdict": {
+          "type": "string",
+          "minLength": 1
+        },
+        "policy_version": {
+          "type": ["string", "null"],
+          "minLength": 1
+        }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Recorded conditions. null means unknown and stays unknown; no normalization is applied.",
+      "properties": {
+        "temp_c": {
+          "type": ["number", "null"]
+        },
+        "rh_pct": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "ambient_noise_note": {
+          "type": ["string", "null"],
+          "minLength": 1
+        }
+      }
+    }
+  }
+}
