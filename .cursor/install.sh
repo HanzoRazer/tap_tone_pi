@@ -22,6 +22,7 @@ SYS_PKGS=(
   libxrender1 libxi6 libfontconfig1 libfreetype6
   xvfb x11-utils
   python3-tk tk
+  python-is-python3
   pulseaudio pulseaudio-utils libasound2-plugins
 )
 
