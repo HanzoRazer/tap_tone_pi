@@ -7,6 +7,11 @@
 # The daemon listens on a fixed unix socket (/tmp/ttp-pulse.socket) that
 # /etc/pulse/client.conf (written by install.sh) points every client at, so
 # capture works from any agent shell regardless of XDG_RUNTIME_DIR.
+#
+# AGENT-ONLY / DISPOSABLE IMAGE, Debian/Ubuntu + PulseAudio assumed. This starts
+# a headless PulseAudio daemon and loads virtual audio modules for the whole
+# machine; it is meant for a throwaway Cursor Cloud Agent VM, not a workstation.
+# See .cursor/README.md for the full operational contract.
 set -euo pipefail
 
 SOCK=/tmp/ttp-pulse.socket

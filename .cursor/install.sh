@@ -1,6 +1,23 @@
 #!/usr/bin/env bash
 # Cloud Agent install: idempotent setup of tap_tone_pi's runtime + dev deps.
 # Runs after the repository is checked out. Safe to re-run.
+#
+# AGENT-ONLY / DISPOSABLE IMAGE. This script is for a throwaway Cursor Cloud
+# Agent VM, not a developer workstation. It deliberately makes machine-wide
+# changes that would be inappropriate on a shared or personal machine:
+#   - installs system packages via apt-get;
+#   - writes /etc/asound.conf (routes ALSA's default device to PulseAudio);
+#   - writes /etc/pulse/client.conf (pins a fixed PulseAudio socket);
+#   - installs Python packages into the SYSTEM interpreter with
+#     `pip --break-system-packages` (see the Python section below).
+# Do not run it on a machine whose global audio or Python configuration you care
+# about. See .cursor/README.md for the full operational contract.
+#
+# RUNTIME ASSUMPTION (explicit contract). A Debian/Ubuntu-based image with:
+#   - `sudo` available non-interactively, and `apt-get`;
+#   - the Debian/Ubuntu package names listed in SYS_PKGS below;
+#   - PulseAudio (started per-boot by start.sh).
+# On any other distribution or package-manager these commands do not apply.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -49,9 +66,13 @@ autospawn = no
 EOF
 
 # ---- Python packages -------------------------------------------------------
-# System interpreter is PEP 668 "externally managed"; this is a disposable
-# Cloud Agent VM, so installing into it (with the override) is intentional and
-# gives every shell a global `ttp` / `pytest` without venv activation.
+# System interpreter is PEP 668 "externally managed"; this is a disposable Cloud
+# Agent VM dedicated to this repository, so installing into it (with the
+# override) is an intentional, reviewed choice: it gives every shell a global
+# `ttp` / `pytest` without venv activation. The trade-off is deliberate — the
+# environment is less isolated than a venv, so this image should not be reused
+# for unrelated projects that might collide on dependencies. Not a defect to
+# "fix" with a venv here; revisit only if the image stops being repo-dedicated.
 PIP=(python3 -m pip install --break-system-packages -q)
 
 "${PIP[@]}" -r requirements-dev.txt -r requirements.txt
