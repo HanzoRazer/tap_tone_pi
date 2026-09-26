@@ -10,6 +10,7 @@ buys nothing, and grants nothing.
 | `adjudication_id` | `TTP-R0-ADJ-001` |
 | `governing_gate` | DO-104O / `TTP-AUTH-001` (`SELECTION_DEFERRED`) |
 | `scope` | **R0 only** — first physical acoustic evidence gate |
+| `acquisition_chain_selection` | **P-A** — recorded 2026-09-26 by the repository owner (see next section) |
 | `authorizes_procurement` | **NO** |
 | `authorizes_measurement` | **NO** |
 | `authorizes_R1_R2_exciter_amp_pcb` | **NO** |
@@ -18,7 +19,44 @@ buys nothing, and grants nothing.
 > **Core boundary.** Releasing the `SELECTION_DEFERRED` ruling, selecting the
 > acquisition chain, authorizing spend, and accepting bench/handling risk are
 > **human decisions**. This document surfaces exactly the facts and open questions
-> those decisions need. It does not make them.
+> those decisions need. The acquisition-chain selection recorded in the next
+> section was made by the repository owner; **procurement authorization remains a
+> separate, outstanding human sign-off** and is not granted here.
+
+---
+
+## 0. Adjudicated decision (D1–D4) — repository owner, 2026-09-26
+
+The option space and its reasoning are in §5; this section records the decision
+made against it.
+
+```text
+TTP-R0-ADJ-001 — DECISION
+
+D1  ACQUISITION PATH        SELECT P-A
+    self-contained USB measurement microphone with its own (integrated) ADC
+
+D2  E0 DEPENDENCY           NOT A PREDECESSOR FOR R0 UNDER P-A
+    E0 remains on the E1 / reference-track path
+
+D3  MICROPHONE             SELECT USB measurement-mic class
+    exact make/model fail-closed until D5 market/spec re-verification
+
+D4  SPECIMEN / SUPPORT      AUTHORIZE existing real-wood specimen + free-free foam
+    exact execution identity (see D4) recorded before execution
+
+D5                         MANDATORY BEFORE PROCUREMENT
+
+P-B                        DEFERRED TO E1 TRACK
+E0                         NOT REQUIRED FOR R0
+R0 PROCUREMENT             NOT YET AUTHORIZED
+NEXT RECORD                TTP-AUTH-002 (R0 subset only)
+```
+
+This resolves the acquisition-chain **selection** (the first of the two §7
+sign-offs). It does **not** authorize procurement or measurement: the second
+sign-off (`TTP-AUTH-002`) is still required, with the exact USB-microphone model
+held fail-closed until D5 is complete.
 
 ---
 
@@ -124,8 +162,10 @@ against a real specimen, which is what R0 is.
 
 ## 5. Unresolved DO-104O / ADC-001 decisions (the human sign-off set)
 
-Each item below is an **open decision**, not a recommendation. R0 cannot be
-authorized until D1–D4 are decided and D5 is honored.
+Each item below framed the option space. **D1–D4 are now decided (see §0);** the
+analysis is retained so the decision can be read against its reasoning. D5 remains
+mandatory before any purchase, and procurement authorization (§7 sign-off 2) is
+still outstanding.
 
 ### D1 — Audio input device / ADC path  *(central, and where DO-104O is blocked)*
 
@@ -141,7 +181,7 @@ Two candidate minimum-R0 input paths exist; the choice is open:
 
 | Candidate path | What it is | What it requires | Governance touched |
 | --- | --- | --- | --- |
-| **P-A: self-contained USB measurement mic** | a mic with its own ADC (e.g. a UMIK-class measurement microphone) | one device; no HAT, no preamp | Decouples R0 from `ADC-001`, B-015, and E0 — R0 makes no calibrated claim and does not use the E1 ADC. Still a `MIC-001` selection (D3). |
+| **P-A: self-contained USB measurement mic** | a mic with its own ADC (e.g. a UMIK-class measurement microphone) | one device; no HAT, no preamp | Decouples R0 from the **E1 registry role `ADC-001`** (and from B-015 / E0). The USB mic still contains an ADC *function*; it simply does not instantiate the E1 `ADC-001` role. R0 makes no calibrated claim. Still a `MIC-001` selection (D3). |
 | **P-B: HiFiBerry ADC HAT + separate mic** | the E1-style HAT ADC plus an electret/measurement mic (+ preamp if unpowered) | `ADC-001` procured; possibly `PREAMP-001` | Couples R0 to the deferred `ADC-001` selection (B-015), the aliasing question (B-014), and the E0 dependency (D2). |
 
 > **Open question for D1:** is R0 authorized on **P-A** (fastest to first evidence,
@@ -154,7 +194,8 @@ E0 (ADC bench characterization) is `PREPARED / NOT EXECUTED`, gated on `ADC-001`
 being received, and it produces the aliasing (B-014) and successor (B-015)
 evidence. E0 involves **no microphone and no plate**. Whether R0 must wait for E0:
 
-- Under **P-A**, R0 does not use `ADC-001`, so E0 is not on the R0 path — E0 remains
+- Under **P-A**, R0 does not instantiate the E1 registry role `ADC-001` (its ADC
+  function is integrated in the USB mic), so E0 is not on the R0 path — E0 remains
   a separate E1-track prerequisite.
 - Under **P-B**, R0 rides the un-characterized `ADC-001`. R0 claims nothing
   calibrated, but B-014 (no anti-alias filter) and B-015 (unverified successor)
@@ -174,9 +215,22 @@ is made here.
 ### D4 — Specimen and support
 
 R0 needs at least one **real wood specimen** and a **free-free support** (foam
-blocks). Neither is in the identity register. Confirm what is on hand versus what
-must be sourced, and fix the marked tap location and support condition so
-repeatability means something.
+blocks). Neither is in the identity register. "Real wood specimen" is too loose
+once R0 is executable, so before procurement authorization the **minimum
+execution identity** must be recorded. These are repeatability/provenance facts,
+not calibration claims:
+
+- specimen ID;
+- material / species (if known);
+- dimensions;
+- support locations / condition;
+- marked tap location;
+- microphone position / distance;
+- orientation.
+
+Decided (§0): the existing real-wood specimen plus a simple free-free foam
+support are authorized *as the class*; the concrete execution identity above is
+recorded in the `TTP-AUTH-002` run sheet before any capture.
 
 ### D5 — Market data is perishable
 
@@ -207,12 +261,14 @@ from the R0 inventory.
 
 R0 stops here until a human records both, in that order:
 
-1. **Acquisition-chain selection.** Decide D1–D4: the input path (P-A or P-B),
-   the microphone, the specimen/support, and — under P-B — the D2 E0 dependency.
-2. **Procurement authorization.** Release `SELECTION_DEFERRED` for the R0 subset
-   only, with market data re-verified (D5). Per `TTP-AUTH-001`'s own rule, this is
-   recorded as a **new** authorization record (e.g. `TTP-AUTH-002`), not by editing
-   the deferral.
+1. **Acquisition-chain selection.** — **RECORDED (§0), 2026-09-26.** P-A selected;
+   USB measurement-mic class; existing real-wood specimen + free-free foam;
+   E0 not required for R0; exact mic model and specimen execution identity held
+   for the run sheet.
+2. **Procurement authorization.** — **OUTSTANDING.** Release `SELECTION_DEFERRED`
+   for the R0 subset only, with market data re-verified (D5). Per `TTP-AUTH-001`'s
+   own rule, this is recorded as a **new** authorization record (`TTP-AUTH-002`),
+   not by editing the deferral.
 
 Only after both does R0 move from *authorized* to *executed*, and execution
 itself requires physical hardware and an operator — neither of which this
