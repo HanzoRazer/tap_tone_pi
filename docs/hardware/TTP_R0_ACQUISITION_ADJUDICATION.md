@@ -25,10 +25,16 @@ buys nothing, and grants nothing.
 
 ---
 
-## 0. Adjudicated decision (D1–D4) — repository owner, 2026-09-26
+## 0. Adjudicated decision (D1–D4)
 
-The option space and its reasoning are in §5; this section records the decision
-made against it.
+**Decided by:** the repository owner (the human authority named in
+`TTP-AUTH-001`, Ross Echols), 2026-09-26.
+**Engineering analysis:** the option space and reasoning in §5 were
+assistant-prepared and carry no authority; they inform the decision, they do not
+make it. The assistant is not the repository owner and not the procurement
+authority.
+
+This section records the repository owner's decision against the analysis in §5.
 
 ```text
 TTP-R0-ADJ-001 — DECISION
@@ -177,22 +183,22 @@ candidate) does **not** publish the same input specification and is unverified.
 gain, coupling, sample architecture, channel count, or simultaneous-acquisition
 assumptions **requires the architecture gate to be re-run first**.
 
-Two candidate minimum-R0 input paths exist; the choice is open:
+Before adjudication, two candidate minimum-R0 input paths were considered:
 
 | Candidate path | What it is | What it requires | Governance touched |
 | --- | --- | --- | --- |
 | **P-A: self-contained USB measurement mic** | a mic with its own ADC (e.g. a UMIK-class measurement microphone) | one device; no HAT, no preamp | Decouples R0 from the **E1 registry role `ADC-001`** (and from B-015 / E0). The USB mic still contains an ADC *function*; it simply does not instantiate the E1 `ADC-001` role. R0 makes no calibrated claim. Still a `MIC-001` selection (D3). |
 | **P-B: HiFiBerry ADC HAT + separate mic** | the E1-style HAT ADC plus an electret/measurement mic (+ preamp if unpowered) | `ADC-001` procured; possibly `PREAMP-001` | Couples R0 to the deferred `ADC-001` selection (B-015), the aliasing question (B-014), and the E0 dependency (D2). |
 
-> **Open question for D1:** is R0 authorized on **P-A** (fastest to first evidence,
-> avoids the deferred ADC selection) or **P-B** (reuses the E1-track ADC, at the
-> cost of resolving B-015 / B-014 / E0 first)?
+> **Decision recorded in §0:** P-A selected (fastest to first evidence, avoids the
+> deferred ADC selection); P-B deferred to the E1 track.
 
 ### D2 — Is R0 gated on E0 execution?
 
 E0 (ADC bench characterization) is `PREPARED / NOT EXECUTED`, gated on `ADC-001`
 being received, and it produces the aliasing (B-014) and successor (B-015)
-evidence. E0 involves **no microphone and no plate**. Whether R0 must wait for E0:
+evidence. E0 involves **no microphone and no plate**. Whether R0 must wait for E0
+was considered as:
 
 - Under **P-A**, R0 does not instantiate the E1 registry role `ADC-001` (its ADC
   function is integrated in the USB mic), so E0 is not on the R0 path — E0 remains
@@ -202,15 +208,18 @@ evidence. E0 involves **no microphone and no plate**. Whether R0 must wait for E
   are open against that board. Decision: run E0 first, or accept an
   uncharacterized board for uncalibrated R0 captures and record the limitation.
 
-> **Open question for D2:** does R0 proceed before E0, or is E0 a hard predecessor
-> under P-B?
+> **Decision recorded in §0:** with P-A selected, E0 is not an R0 predecessor; it
+> remains on the E1/reference track. (The P-B analysis is retained for the E1
+> track's later use.)
 
 ### D3 — Microphone (`MIC-001`, non-contact per prototype decision D3)
 
 `MIC-001` model is unlocked. Reference-tier microphones are quote-only in the E1
 BOM. Prototype candidates named to date are an electret / EM272-class capsule
-(needs `PREAMP-001`) or a self-contained USB measurement mic (P-A). No selection
-is made here.
+(needs `PREAMP-001`) or a self-contained USB measurement mic (P-A).
+
+> **Decision recorded in §0:** USB measurement-mic class selected; the exact
+> make/model remains fail-closed pending D5 market/spec re-verification.
 
 ### D4 — Specimen and support
 
@@ -248,7 +257,7 @@ exciter / shaker                 NOT AUTHORIZED
 amplifier                        NOT AUTHORIZED
 force-measurement chain          NOT AUTHORIZED
 custom AFE / PCB development      NOT AUTHORIZED
-E0 execution                     NOT DECIDED HERE (see D2)
+E0 execution                     NOT AUTHORIZED HERE; NOT REQUIRED FOR R0 UNDER P-A
 procurement / purchase           NOT AUTHORIZED
 ```
 
