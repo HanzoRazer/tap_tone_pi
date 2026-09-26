@@ -48,8 +48,8 @@ D2  E0 DEPENDENCY           NOT A PREDECESSOR FOR R0 UNDER P-A
 D3  MICROPHONE             SELECT USB measurement-mic class
     exact make/model fail-closed until D5 market/spec re-verification
 
-D4  SPECIMEN / SUPPORT      AUTHORIZE existing real-wood specimen + free-free foam
-    exact execution identity (see D4) recorded before execution
+D4  SPECIMEN / SUPPORT      NO PHYSICAL ITEM SELECTED OR CLAIMED
+    use only an actually available specimen/support condition identified at execution
 
 D5                         MANDATORY BEFORE PROCUREMENT
 
@@ -99,12 +99,12 @@ Ownership state is taken from
 | Audio input device (ADC) | `ADC-001` | **Absent** (`CONFIRMED_ABSENT`) | Design-selected only (HiFiBerry DAC+ ADC Pro); see B-015. |
 | Microphone (non-contact) | `MIC-001` | **Absent** (`CONFIRMED_ABSENT`) | Model never locked. |
 | Mic preamp (electret path only) | `PREAMP-001` | **Absent** (`CONFIRMED_ABSENT`) | Needed only if the chosen mic is an unpowered capsule. |
-| Real wood specimen | — | **Unconfirmed** | Not in the register; inventory question below. |
-| Free-free support (foam blocks) | — | **Unconfirmed** | Trivial to source; confirm on hand. |
-| Striker (dowel / pencil / knuckle) | — | **Trivial** | No procurement. |
-| Pi power / cooling / storage / cabling | — | **Unconfirmed** | Confirm adequacy for headless bench use. |
+| Physical specimen | — | **Not established by this record** | R0 requires a real specimen, but this adjudication does not invent or pre-identify one. |
+| Specimen support condition | — | **Not established by this record** | Use and record the actual support condition present for the run; no placeholder fixture is specified here. |
+| Tap implement | — | **Not established by this record** | Record what is actually used; this adjudication does not pre-select a dowel, pencil, knuckle, or other implement. |
+| Pi power / cooling / storage / cabling | — | **Not established by this record** | Verify the actual bench configuration before execution. |
 
-Exact model/specification gaps to resolve are listed in §5.
+No dimensions, positions, fixture geometry, or other physical values are created in this adjudication. Those facts are recorded only after the corresponding physical item exists and can be measured or identified.
 
 ---
 
@@ -134,8 +134,8 @@ gap is entirely equipment.
 | Audio input device | §5 D1 (which ADC / input path) |
 | Microphone | §5 D3 (which non-contact mic) |
 | Preamp | only if an unpowered capsule is chosen (§5 D3) |
-| Real wood specimen + support | §5 D4 |
-| Pi power/cooling/storage/cabling | confirm adequacy |
+| Physical specimen + support condition | §5 D4 — establish from actual items present for the run |
+| Pi power/cooling/storage/cabling | verify actual bench configuration before execution |
 
 ---
 
@@ -223,23 +223,19 @@ BOM. Prototype candidates named to date are an electret / EM272-class capsule
 
 ### D4 — Specimen and support
 
-R0 needs at least one **real wood specimen** and a **free-free support** (foam
-blocks). Neither is in the identity register. "Real wood specimen" is too loose
-once R0 is executable, so before procurement authorization the **minimum
-execution identity** must be recorded. These are repeatability/provenance facts,
-not calibration claims:
+R0 requires a real physical specimen and a repeatable support condition, but this
+adjudication does **not** assert that either item already exists, does not select a
+specific specimen or fixture, and does not introduce placeholder dimensions,
+positions, or geometry.
 
-- specimen ID;
-- material / species (if known);
-- dimensions;
-- support locations / condition;
-- marked tap location;
-- microphone position / distance;
-- orientation.
+Decision recorded in §0: no physical specimen/support item is selected or claimed
+by this record. Before R0 execution, the operator records only facts that can be
+observed from the actual bench setup, such as the specimen identity or description,
+the support condition actually used, the tap location actually marked, and the
+microphone placement actually established.
 
-Decided (§0): the existing real-wood specimen plus a simple free-free foam
-support are authorized *as the class*; the concrete execution identity above is
-recorded in the `TTP-AUTH-002` run sheet before any capture.
+If a dimension or position has not been physically measured, it remains absent;
+it is not represented by a nominal, target, guessed, or placeholder value.
 
 ### D5 — Market data is perishable
 
@@ -261,8 +257,7 @@ E0 execution                     NOT AUTHORIZED HERE; NOT REQUIRED FOR R0 UNDER 
 procurement / purchase           NOT AUTHORIZED
 ```
 
-The digital gram scale and known masses (an R1 need) are deliberately excluded
-from the R0 inventory.
+R1-only equipment is not introduced into this R0 record.
 
 ---
 
@@ -271,9 +266,9 @@ from the R0 inventory.
 R0 stops here until a human records both, in that order:
 
 1. **Acquisition-chain selection.** — **RECORDED (§0), 2026-09-26.** P-A selected;
-   USB measurement-mic class; existing real-wood specimen + free-free foam;
-   E0 not required for R0; exact mic model and specimen execution identity held
-   for the run sheet.
+   USB measurement-mic class; E0 not required for R0. No specimen, support fixture,
+   physical dimensions, or placement values are claimed by this adjudication.
+   Those facts are recorded only from the actual bench setup before execution.
 2. **Procurement authorization.** — **OUTSTANDING.** Release `SELECTION_DEFERRED`
    for the R0 subset only, with market data re-verified (D5). Per `TTP-AUTH-001`'s
    own rule, this is recorded as a **new** authorization record (`TTP-AUTH-002`),
