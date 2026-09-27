@@ -6,7 +6,7 @@
 | `verification_date` | 2026-09-27 |
 | `scope` | current market + Linux/Pi/UAC compatibility for the P-A R0 acquisition device |
 | `source_decision` | `TTP-R0-ADJ-001` (P-A) |
-| `authorization_state` | `TTP-AUTH-002` = `PREPARED_NOT_AUTHORIZED`; `exact_microphone` = `UNRESOLVED` |
+| `authorization_state` | `TTP-AUTH-002` = `PREPARED_NOT_AUTHORIZED`; `exact_microphone` = `miniDSP UMIK-1` (selected 2026-09-27) |
 | `procurement_authorized` | NO |
 | `measurement_authorized` | NO |
 | `ownership_changed` | NO |
@@ -207,19 +207,24 @@ S12  avnirvana.com/threads/...umm-6...ubuntu-linux...             community     
 
 ## Human selection block
 
-To be completed by the repository owner (not by tooling):
+Recorded by the repository owner (not by tooling):
 
 ```text
-exact_microphone selected:
-    <manufacturer + exact model>   (choose from VERIFIED_ELIGIBLE candidates)
+TTP-R0-D5-001 — HUMAN SELECTION
 
-selection_date:
-selected_by:            repository owner
-rationale:
-
-D5:                     COMPLETE (on selection)
-procurement_authorized: still NO  (requires a separate TTP-AUTH-002 grant)
+exact_microphone selected:  miniDSP UMIK-1
+selection_date:             2026-09-27
+selected_by:                repository owner
+rationale:                  Minimum verified P-A device for R0: UAC1,
+                            Linux-driverless, 24-bit/48 kHz, per-serial
+                            calibration available, currently obtainable.
+                            UMIK-2 is eligible but unnecessary for the R0
+                            evidence objective.
+D5:                         COMPLETE
+procurement_authorized:     NO   (requires a separate TTP-AUTH-002 grant)
 ```
 
-Until the owner records a selection, `exact_microphone` remains `UNRESOLVED` in
-`TTP_R0_PROCUREMENT_AUTHORIZATION.md`, and no purchase is authorized.
+The selection is recorded in `TTP_R0_PROCUREMENT_AUTHORIZATION.md`
+(`exact_microphone = miniDSP UMIK-1`). Selection is not authorization: no purchase
+is authorized until an explicit `TTP-AUTH-002` grant, with a purchase-time market
+re-check.

@@ -13,7 +13,7 @@ It authorizes nothing in its current state.
 | `scope` | R0 acquisition subset only |
 | `source_decision` | `TTP-R0-ADJ-001` |
 | `acquisition_path` | P-A — USB measurement microphone with integrated ADC |
-| `exact_microphone` | `UNRESOLVED` |
+| `exact_microphone` | `miniDSP UMIK-1` (selected 2026-09-27 by the repository owner; see §3) |
 | `market_reverification` | `OUTSTANDING` |
 | `procurement_authorized` | `NO` |
 | `measurement_authorized` | `NO` |
@@ -84,9 +84,28 @@ compatibility point that remains unresolved for a chosen model keeps procurement
 `BLOCKED` for that model; uncertainty is not filled with a "probably compatible"
 value.
 
-`exact_microphone` remains `UNRESOLVED`, `procurement_authorized` `NO`, and
-`measurement_authorized` `NO`, pending the repository owner's selection from the
-`VERIFIED_ELIGIBLE` candidates and a separate `TTP-AUTH-002` grant.
+### Human selection (recorded)
+
+The repository owner selected the exact model on **2026-09-27**:
+
+```text
+TTP-R0-D5-001 — HUMAN SELECTION
+
+exact_microphone selected:  miniDSP UMIK-1
+selection_date:             2026-09-27
+selected_by:                repository owner
+rationale:                  Minimum verified P-A device for R0: UAC1,
+                            Linux-driverless, 24-bit/48 kHz, per-serial
+                            calibration available, currently obtainable.
+                            UMIK-2 is eligible but unnecessary for the R0
+                            evidence objective.
+D5:                         COMPLETE
+procurement_authorized:     NO
+```
+
+Selection is not authorization. `procurement_authorized` stays `NO` and
+`measurement_authorized` stays `NO` until a separate, explicit `TTP-AUTH-002`
+grant is recorded in §5 (with a purchase-time market re-check).
 
 ---
 
@@ -101,7 +120,8 @@ HOST-001
 
 MIC-001 / R0 USB acquisition device
     USB measurement microphone with integrated ADC (P-A class).
-    Exact identity UNRESOLVED until D5.
+    Selected 2026-09-27 (repository owner): miniDSP UMIK-1 (USB Audio Class 1.0,
+    Linux-driverless, 24-bit/48 kHz, per-serial calibration). Not purchased here.
 
 other R0 physical items
     Not automatically authorized. Any additional item (cabling, mounting,
