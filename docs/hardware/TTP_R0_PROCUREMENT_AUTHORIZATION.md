@@ -113,10 +113,9 @@ other R0 physical items
     actual procurement need at authorization time.
 ```
 
-The specimen and support are not procurement items under this record:
-`TTP-R0-ADJ-001` authorized the existing real-wood specimen and a free-free foam
-support **as a class**, and their concrete identity is recorded in the run sheet
-at execution time, not purchased here.
+The specimen, support condition, tap implement, physical dimensions, and
+placement values are not procurement facts established by this record. They are
+recorded only from the actual bench configuration when R0 is later executed.
 
 ---
 
