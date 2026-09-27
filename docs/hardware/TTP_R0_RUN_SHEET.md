@@ -130,7 +130,7 @@ operator notes:
 Capture through the existing path:
 
 ```bash
-ttp record --device <actual-device>
+ttp record --device <actual-device> --out <actual-run-output-directory>
 ```
 
 For each run, record:
@@ -168,9 +168,13 @@ After capture, prepare a `ttp_prototype_run.json` and validate it read-only.
 Reuse the existing contract and checker; do **not** create a new schema or a new
 checker.
 
-Required R0 semantic state (structural guidance only — do **not** fabricate
-`run_id`, `specimen_id`, `input_device_id`, `sample_rate_hz`, timestamps,
-artifact hashes, or `evidence_origin` before execution):
+Required R0 semantic state (**non-executable fragment**). This shows only the
+R0-specific fields and constraints; it is **not** a complete
+`ttp_prototype_run_v1` document and will not pass the checker if copied as-is.
+After a real run, add every schema-required field from actual observations and
+artifacts. Do **not** fabricate `schema_version`, `run_id`, `generated_at`,
+`specimen_id`, `input_device_id`, `sample_rate_hz`, `artifacts`,
+`limitations`, timestamps, hashes, or `evidence_origin`:
 
 ```json
 {
@@ -187,6 +191,12 @@ artifact hashes, or `evidence_origin` before execution):
     "measured_force_claimed": false
   }
 }
+
+# Non-executable fragment only.
+# A complete post-run document must also contain actual values for:
+# schema_version, run_id, generated_at, specimen_id, artifacts, limitations,
+# response.input_device_id, response.sample_rate_hz, and any other required
+# schema fields that apply to the observed run.
 ```
 
 R0 constraints the checker enforces:
