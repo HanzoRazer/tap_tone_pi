@@ -64,33 +64,29 @@ connected to Pi/TTP
 
 ## §3 D5 verification table
 
-**Not populated.** No product is assumed here. Blank means *not yet verified* —
-it does not mean "a TBD product exists." D5 is performed separately (§ handoff
-D5); this record only holds the place for its results.
+D5 was performed on **2026-09-27**. Full candidate detail, per-fact evidence, and
+the source ledger are in
+[`TTP_R0_D5_MICROPHONE_VERIFICATION.md`](TTP_R0_D5_MICROPHONE_VERIFICATION.md)
+(`TTP-R0-D5-001`). This section is the compact summary. Prices/stock are
+observations dated 2026-09-27 and must be re-checked at purchase time. No single
+model is written into `exact_microphone`: selection is a separate human step.
 
-| Fact | Verified value |
-| --- | --- |
-| manufacturer | |
-| exact model | |
-| manufacturer product URL/source | |
-| verification date | |
-| current availability | |
-| current price | |
-| Linux compatibility | |
-| Raspberry Pi / ARM compatibility | |
-| USB Audio Class behavior | |
-| driver requirement | |
-| supported sample rate(s) | |
-| channel count | |
-| bit depth, if documented | |
-| calibration file availability, if applicable | |
-| serial-specific calibration, if applicable | |
-| vendor status / discontinued? | |
-| seller / purchase source | |
+| Candidate | Disposition | Linux | Pi/ARM | UAC | Sample rate | Cal file | Availability / price (2026-09-27) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| miniDSP UMIK-1 | `VERIFIED_ELIGIBLE` | VERIFIED (mfr) | UNRESOLVED | UAC1 | 24-bit @ 48 kHz | per-serial `.txt` | In stock; $79 (miniDSP) / $139.98 (Parts Express) |
+| miniDSP UMIK-2 | `VERIFIED_ELIGIBLE` | VERIFIED (mfr) | UNRESOLVED | UAC2 | 32-bit @ 44.1–192 kHz | per-serial | In stock; $195 (miniDSP) / ~$280–$325 retail |
+| Dayton Audio UMM-6 | `UNRESOLVED` | works, mono/stereo caveat | Pi-4 detected, enum caveat | UAC1 | **UNRESOLVED (not stated)** | per-serial `.txt` | Parts Express $79.99; SoundImports out of stock |
 
-If any material compatibility point remains unresolved after D5, procurement
-authorization is `BLOCKED`; uncertainty is not filled with a "probably compatible"
-model.
+Two candidates are `VERIFIED_ELIGIBLE` (miniDSP UMIK-1, miniDSP UMIK-2); the
+Dayton UMM-6 is `UNRESOLVED` because its official sample-rate/bit-depth are not
+stated and its Linux/Pi handling is only community-documented. A material
+compatibility point that remains unresolved for a chosen model keeps procurement
+`BLOCKED` for that model; uncertainty is not filled with a "probably compatible"
+value.
+
+`exact_microphone` remains `UNRESOLVED`, `procurement_authorized` `NO`, and
+`measurement_authorized` `NO`, pending the repository owner's selection from the
+`VERIFIED_ELIGIBLE` candidates and a separate `TTP-AUTH-002` grant.
 
 ---
 
