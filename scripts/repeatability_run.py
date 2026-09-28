@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -106,6 +107,12 @@ def _default_persist(**kwargs: Any) -> Any:
     return persist_capture(**kwargs)
 
 
+def _default_write_raw(path: Path, audio: Any, sample_rate: int) -> None:
+    from tap_tone_pi.io.wav import write_wav_mono
+
+    write_wav_mono(path, audio, sample_rate)
+
+
 def _validate_evidence(evidence: dict[str, Any]) -> str | None:
     """Validate emitted V1 against its TTP-owned schema, where jsonschema exists.
 
@@ -139,6 +146,7 @@ def run_repeatability(
     capture_fn: Callable[..., Any] = _default_capture,
     analyze_fn: Callable[..., Any] = _default_analyze,
     persist_fn: Callable[..., Any] = _default_persist,
+    write_raw_fn: Callable[[Path, Any, int], None] = _default_write_raw,
     now_fn: Callable[[], str] = _utc_now,
     software_version: str | None = None,
     analysis_settings: dict[str, Any] | None = None,
@@ -149,10 +157,29 @@ def run_repeatability(
     and legacy summary. ``capture_fn``/``analyze_fn``/``persist_fn`` are injected
     so this runs without audio hardware in tests.
     """
+    required = repetitions_required if repetitions_required is not None else takes
+    if takes <= 0 or required <= 0 or sample_rate <= 0:
+        raise ValueError(
+            "takes, repetitions_required, and sample_rate must be positive"
+        )
+    if not math.isfinite(seconds) or seconds <= 0:
+        raise ValueError("seconds must be finite and positive")
+    if not math.isfinite(max_frequency_variance_pct) or max_frequency_variance_pct < 0:
+        raise ValueError("max_frequency_variance_pct must be finite and nonnegative")
+
     out_root = Path(out_dir).expanduser().resolve()
     out_root.mkdir(parents=True, exist_ok=True)
+    # Reusing a run directory could overwrite earlier evidence or duplicate IDs.
+    if any(out_root.iterdir()):
+        raise ValueError(f"output directory must be empty: {out_root}")
 
-    required = repetitions_required if repetitions_required is not None else takes
+    effective_config = _analysis_config() if analyze_fn is _default_analyze else None
+    effective_settings = (
+        asdict(effective_config)
+        if effective_config is not None
+        else analysis_settings
+        or {"analysis_callable": getattr(analyze_fn, "__name__", "unknown")}
+    )
 
     attempts: list[dict[str, Any]] = []
     freqs: list[float] = []
@@ -171,11 +198,15 @@ def run_repeatability(
             "status": None,
             "reason": None,
             "source": None,
+            "raw_audio": None,
             "dominant_hz": None,
             "rms": None,
             "clipped": None,
             "confidence": None,
+            "peaks": [],
         }
+        attempt_root = out_root / attempt["attempt_id"]
+        attempt_root.mkdir()
         try:
             cap = capture_fn(
                 device=device,
@@ -183,21 +214,61 @@ def run_repeatability(
                 channels=1,
                 seconds=seconds,
             )
-            res = analyze_fn(cap.audio, cap.sample_rate)
-            persisted = persist_fn(
-                out_dir=str(out_root),
-                label=label_take,
-                sample_rate=cap.sample_rate,
-                audio=cap.audio,
-                analysis=res,
-            )
+        except Exception as exc:  # noqa: BLE001 - capture failures are evidence
+            attempt["status"] = "REJECTED"
+            attempt["reason"] = f"capture_error: {type(exc).__name__}: {exc}"
+        else:
+            try:
+                raw_path = attempt_root / "raw_audio.wav"
+                write_raw_fn(raw_path, cap.audio, cap.sample_rate)
+                attempt["raw_audio"] = str(raw_path)
+            except Exception as exc:  # noqa: BLE001 - raw-write failure is recorded
+                attempt["status"] = "REJECTED"
+                attempt["reason"] = f"persistence_error: {type(exc).__name__}: {exc}"
+
+        if attempt["status"] is None:
+            try:
+                res = (
+                    _default_analyze(
+                        cap.audio, cap.sample_rate, config=effective_config
+                    )
+                    if effective_config is not None
+                    else analyze_fn(cap.audio, cap.sample_rate)
+                )
+            except Exception as exc:  # noqa: BLE001 - raw audio already saved
+                attempt["status"] = "REJECTED"
+                attempt["reason"] = f"analysis_error: {type(exc).__name__}: {exc}"
+
+        if attempt["status"] is None:
+            try:
+                persisted = persist_fn(
+                    # persist_capture uses second-resolution timestamps; isolate every
+                    # take so two fast captures cannot overwrite one another.
+                    out_dir=str(attempt_root),
+                    label=label_take,
+                    sample_rate=cap.sample_rate,
+                    audio=cap.audio,
+                    analysis=res,
+                )
+            except Exception as exc:  # noqa: BLE001 - raw audio already saved
+                attempt["status"] = "REJECTED"
+                attempt["reason"] = f"persistence_error: {type(exc).__name__}: {exc}"
+
+        if attempt["status"] is None:
             dom = getattr(res, "dominant_hz", None)
             attempt["source"] = str(getattr(persisted, "capture_dir", "")) or None
             attempt["dominant_hz"] = dom
             attempt["rms"] = getattr(res, "rms", None)
             attempt["clipped"] = getattr(res, "clipped", None)
             attempt["confidence"] = getattr(res, "confidence", None)
-            if dom is not None:
+            attempt["peaks"] = [
+                {"freq_hz": p.freq_hz, "magnitude": p.magnitude}
+                for p in getattr(res, "peaks", [])[:8]
+            ]
+            if attempt["clipped"]:
+                attempt["status"] = "REJECTED"
+                attempt["reason"] = "clipped"
+            elif dom is not None:
                 attempt["status"] = "ACCEPTED"
                 freqs.append(float(dom))
                 if attempt["rms"] is not None:
@@ -209,12 +280,6 @@ def run_repeatability(
                 # frequency.
                 attempt["status"] = "REJECTED"
                 attempt["reason"] = "no_dominant_frequency"
-        except Exception as exc:  # noqa: BLE001 - any capture/analysis failure is a recorded reject
-            attempt["status"] = "REJECTED"
-            attempt["reason"] = (
-                f"capture_or_analysis_error: {type(exc).__name__}: {exc}"
-            )
-
         attempts.append(attempt)
         legacy_results.append(
             {
@@ -225,6 +290,7 @@ def run_repeatability(
                 "rms": attempt["rms"],
                 "clipped": attempt["clipped"],
                 "confidence": attempt["confidence"],
+                "peaks": attempt["peaks"],
             }
         )
         print(
@@ -239,6 +305,18 @@ def run_repeatability(
     # padded, so no value is invented.
     rms_arg = rms_values if len(rms_values) == len(freqs) else None
     conf_arg = conf_values if len(conf_values) == len(freqs) else None
+    omitted_optional_metrics = {
+        "rms": [
+            a["attempt_id"]
+            for a in attempts
+            if a["status"] == "ACCEPTED" and a["rms"] is None
+        ],
+        "confidence": [
+            a["attempt_id"]
+            for a in attempts
+            if a["status"] == "ACCEPTED" and a["confidence"] is None
+        ],
+    }
 
     # observation_window_seconds is intentionally NOT passed: the V1 schema is
     # additionalProperties:false and does not include it, so setting it would
@@ -273,9 +351,8 @@ def run_repeatability(
             "max_frequency_variance_pct": max_frequency_variance_pct,
             "note": "instrument configuration and output; not a laboratory acceptance threshold",
         },
-        "analysis_settings": analysis_settings
-        if analysis_settings is not None
-        else asdict(_analysis_config()),
+        "analysis_settings": effective_settings,
+        "omitted_optional_metrics": omitted_optional_metrics,
         "source_capture_dirs": [a["source"] for a in attempts if a["source"]],
         "attempts": attempts,
         "evidence_artifact": "repeatability_evidence.json",
