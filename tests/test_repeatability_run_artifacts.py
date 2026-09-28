@@ -45,6 +45,7 @@ class FakeRes:
     rms: float = 0.05
     clipped: bool = False
     confidence: float = 0.9
+    peaks: tuple = ()
 
 
 @dataclass
@@ -55,8 +56,8 @@ class FakePersist:
 def _fns(plan: list[tuple], tmp_path: Path):
     """Build injected capture/analyze/persist fns driven by a per-take plan.
 
-    Each plan step is ("ok", freq_hz), ("none",) for an unusable tap (analysis
-    returns no dominant frequency), or ("raise",) for a capture failure.
+    Each plan step is ("ok", freq_hz), ("none",), ("raise",) for capture,
+    ("analysis_raise",), or ("persist_raise",).
     """
     state = {"i": 0, "last": None}
 
@@ -71,30 +72,46 @@ def _fns(plan: list[tuple], tmp_path: Path):
 
     def analyze_fn(audio, sample_rate):
         step = state["last"]
+        if step[0] == "analysis_raise":
+            raise RuntimeError("simulated analysis error")
         if step[0] == "none":
             return FakeRes(dominant_hz=None)
+        if step[0] == "missing_metrics":
+            return FakeRes(dominant_hz=float(step[1]), rms=None, confidence=None)
+        if step[0] == "clipped":
+            return FakeRes(dominant_hz=float(step[1]), clipped=True)
         return FakeRes(dominant_hz=float(step[1]))
 
     def persist_fn(**kw):
-        d = tmp_path / "caps" / str(kw["label"])
+        if state["last"][0] == "persist_raise":
+            raise RuntimeError("simulated persistence error")
+        d = Path(kw["out_dir"]) / "capture_20260928T120000Z"
         d.mkdir(parents=True, exist_ok=True)
+        (d / "audio.wav").write_text(str(kw["audio"]), encoding="utf-8")
         return FakePersist(capture_dir=str(d))
 
-    return capture_fn, analyze_fn, persist_fn
+    def write_raw_fn(path, audio, sample_rate):
+        path.write_text(str(audio), encoding="utf-8")
+
+    return capture_fn, analyze_fn, persist_fn, write_raw_fn
 
 
 def _run(tmp_path: Path, plan: list[tuple], **kw):
-    capture_fn, analyze_fn, persist_fn = _fns(plan, tmp_path)
+    capture_fn, analyze_fn, persist_fn, write_raw_fn = _fns(plan, tmp_path)
+    takes = kw.pop("takes", len(plan))
+    seconds = kw.pop("seconds", 1.0)
+    sample_rate = kw.pop("sample_rate", 48000)
     return MOD.run_repeatability(
         out_dir=str(tmp_path / "run"),
         device=0,
-        takes=len(plan),
-        seconds=1.0,
-        sample_rate=48000,
+        takes=takes,
+        seconds=seconds,
+        sample_rate=sample_rate,
         label="R001C002",
         capture_fn=capture_fn,
         analyze_fn=analyze_fn,
         persist_fn=persist_fn,
+        write_raw_fn=write_raw_fn,
         now_fn=lambda: "2026-09-28T00:00:00Z",
         software_version="test-1.2.3",
         analysis_settings={"unit_test": True},
@@ -138,9 +155,39 @@ class TestAcceptedRejectedAccounting:
         assert m["accepted"] == 1 and m["rejected"] == 1
         assert len(m["attempts"]) == 2  # nothing silently dropped
         rej = [a for a in m["attempts"] if a["status"] == "REJECTED"][0]
-        assert rej["reason"].startswith("capture_or_analysis_error:")
+        assert rej["reason"].startswith("capture_error:")
         assert rej["dominant_hz"] is None
         assert rej["source"] is None
+
+    def test_analysis_failure_preserves_raw_audio(self, tmp_path: Path) -> None:
+        result = _run(tmp_path, [("analysis_raise",)])
+        attempt = result["manifest"]["attempts"][0]
+        assert attempt["reason"].startswith("analysis_error:")
+        assert Path(attempt["raw_audio"]).read_text() == "audio-0"
+        assert attempt["source"] is None
+
+    def test_persistence_failure_preserves_raw_audio(self, tmp_path: Path) -> None:
+        result = _run(tmp_path, [("persist_raise", 185.0)])
+        attempt = result["manifest"]["attempts"][0]
+        assert attempt["reason"].startswith("persistence_error:")
+        assert Path(attempt["raw_audio"]).read_text() == "audio-0"
+        assert attempt["source"] is None
+
+    def test_same_second_captures_remain_distinct(self, tmp_path: Path) -> None:
+        result = _run(tmp_path, [("ok", 185.0), ("ok", 186.0)])
+        first, second = result["manifest"]["attempts"]
+        assert first["source"] != second["source"]
+        assert (Path(first["source"]) / "audio.wav").read_text() == "audio-0"
+        assert (Path(second["source"]) / "audio.wav").read_text() == "audio-1"
+        assert Path(first["raw_audio"]).read_text() == "audio-0"
+        assert Path(second["raw_audio"]).read_text() == "audio-1"
+
+    def test_clipped_capture_is_preserved_but_excluded(self, tmp_path: Path) -> None:
+        result = _run(tmp_path, [("clipped", 185.0), ("ok", 186.0)])
+        first = result["manifest"]["attempts"][0]
+        assert first["reason"] == "clipped"
+        assert Path(first["raw_audio"]).exists()
+        assert result["evidence"]["repetitions_completed"] == 1
 
 
 class TestNoFrequencySynthesis:
@@ -194,6 +241,29 @@ class TestArtifactsOnDisk:
         for key in ("takes", "device", "sample_rate", "seconds", "label", "results"):
             assert key in takes
         assert len(takes["results"]) == 2
+        assert all("peaks" in take for take in takes["results"])
+
+    def test_missing_optional_metric_is_explicit(self, tmp_path: Path) -> None:
+        result = _run(tmp_path, [("missing_metrics", 185.0), ("ok", 186.0)])
+        assert result["evidence"]["repetitions_completed"] == 2
+        assert "rms_mean" not in result["evidence"]
+        assert result["manifest"]["omitted_optional_metrics"] == {
+            "rms": ["attempt_01"],
+            "confidence": ["attempt_01"],
+        }
+
+    def test_invalid_configuration_before_capture(self, tmp_path: Path) -> None:
+        import pytest
+
+        for override in (
+            {"takes": 0},
+            {"repetitions_required": 0},
+            {"seconds": -1},
+            {"max_frequency_variance_pct": -1},
+            {"sample_rate": 0},
+        ):
+            with pytest.raises(ValueError):
+                _run(tmp_path / str(override), [("ok", 185.0)], **override)
 
     def test_manifest_records_software_version_and_sources(
         self, tmp_path: Path
