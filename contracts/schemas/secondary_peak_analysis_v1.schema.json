@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "secondary_peak_analysis_v1.schema.json",
+  "title": "Secondary Peak Analysis V1",
+  "description": "Detailed characterization of a single identified spectral peak: bandwidth, decay, two independent Q estimates, and analysis confidence, with raw-WAV provenance. Characterizes a measured peak only; it assigns no wood quality, tone quality, historical equivalence, or suitability. Optional metrics are absent (not sentinel values) when unresolved; their names are listed in blocked_fields. A NOT_RESOLVED secondary result never invalidates the primary frequency observation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "source_wav_sha256",
+    "peak_id",
+    "peak_frequency_hz",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "secondary_peak_analysis_v1",
+      "description": "Schema version identifier"
+    },
+    "source_wav_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 of the original WAV bytes this analysis derives from"
+    },
+    "peak_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifier of the selected peak (e.g. p1, A0) as named by primary extraction"
+    },
+    "peak_frequency_hz": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Frequency of the selected peak (Hz); chosen by primary extraction, not re-selected here"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["RESOLVED", "PARTIAL", "NOT_RESOLVED"],
+      "description": "RESOLVED: bandwidth and decay both resolved; PARTIAL: exactly one; NOT_RESOLVED: neither (primary peak still valid)"
+    },
+    "peak_magnitude_db": {
+      "type": "number",
+      "maximum": 0,
+      "description": "Peak magnitude in dB relative to the spectrum maximum (<= 0)"
+    },
+    "bandwidth_3db_hz": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Resolved -3 dB (half-power) bandwidth (Hz); absent when crossings are unresolved"
+    },
+    "q_from_bandwidth": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Q = f0 / (f2 - f1) from the half-power bandwidth; independent of q_from_decay"
+    },
+    "decay_tau_s": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Amplitude decay time constant tau = 1/alpha (s) from the exponential envelope fit"
+    },
+    "q_from_decay": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Q = 1/(2*zeta) from the exponential envelope fit; independent of q_from_bandwidth"
+    },
+    "log_decrement": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Logarithmic decrement delta from successive envelope peaks; cross-check diagnostic only"
+    },
+    "q_agreement_pct": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Agreement between q_from_bandwidth and q_from_decay (100 = identical); present only when both exist"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Analysis-confidence scalar (not scientific truth); mean of confidence_components"
+    },
+    "confidence_components": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Component scores used to construct confidence, retained so the scalar is not opaque",
+      "properties": {
+        "snr": { "type": "number", "minimum": 0, "maximum": 1 },
+        "bandwidth": { "type": "number", "minimum": 0, "maximum": 1 },
+        "decay_r2": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "fit_window_s": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Duration of the envelope segment used for the decay fit (s)"
+    },
+    "noise_floor_db": {
+      "type": "number",
+      "description": "Estimated noise floor in dB relative to the spectrum maximum"
+    },
+    "snr_db": {
+      "type": "number",
+      "description": "Peak signal-to-noise ratio (dB) = peak_magnitude_db - noise_floor_db"
+    },
+    "method_flags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Which methods contributed (e.g. bandwidth_halfpower, decay_curvefit, logdec_cross_check)"
+    },
+    "blocked_fields": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Names of fields that could not be resolved and are therefore absent"
+    }
+  }
+}

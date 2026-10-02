@@ -42,7 +42,8 @@
         "tap_peaks",
         "moe_result",
         "manifest",
-        "wood_flitch_record"
+        "wood_flitch_record",
+        "secondary_peak_analysis"
       ]
     },
     "grant-readiness-team": {
@@ -201,6 +202,15 @@
       "schema_version_const": "session_timeline_v1",
       "status": "stable",
       "version": "2.0.0"
+    },
+    "secondary_peak_analysis": {
+      "description": "Detailed characterization of one identified spectral peak: -3 dB bandwidth, decay time constant, two independent Q estimates (half-power and envelope-fit, never merged), log-decrement cross-check, and analysis confidence, with raw-WAV SHA-256 provenance. Optional/advanced; a NOT_RESOLVED result never invalidates the primary frequency observation. Carries no wood- or tone-quality claim.",
+      "file": "secondary_peak_analysis_v1.schema.json",
+      "owner": "measurement-team",
+      "path": "contracts/schemas/secondary_peak_analysis_v1.schema.json",
+      "schema_version_const": "secondary_peak_analysis_v1",
+      "status": "stable",
+      "version": "1.0.0"
     },
     "tap_peaks": {
       "description": "FFT peak detection results from tap recordings with WAV provenance",
