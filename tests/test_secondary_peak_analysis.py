@@ -185,6 +185,7 @@ def test_agreement_absent_when_one_q_missing():
     assert rec.q_from_bandwidth is None
     assert rec.q_agreement_pct is None
     assert "q_agreement_pct" not in rec.to_dict()
+    assert "q_agreement_pct" in rec.blocked_fields
 
 
 # --------------------------------------------------------------------------
@@ -251,4 +252,6 @@ def test_status_not_resolved_keeps_primary_frequency():
     rec = _analyze(sig, CLEAN_F0, search_bandwidth_hz=1.0)
     assert rec.status == "NOT_RESOLVED"
     assert rec.peak_frequency_hz == CLEAN_F0
+    assert "log_decrement" in rec.blocked_fields
+    assert "q_agreement_pct" in rec.blocked_fields
     jsonschema.validate(rec.to_dict(), _schema())
