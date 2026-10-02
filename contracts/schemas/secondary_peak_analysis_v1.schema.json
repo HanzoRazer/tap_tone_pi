@@ -39,6 +39,7 @@
     },
     "peak_magnitude_db": {
       "type": "number",
+      "maximum": 0,
       "description": "Peak magnitude in dB relative to the spectrum maximum (<= 0)"
     },
     "bandwidth_3db_hz": {
