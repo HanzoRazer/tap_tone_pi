@@ -110,3 +110,25 @@ def test_secondary_missing_peak_id_is_nonblocking(tmp_path, monkeypatch, capsys)
     assert out.exists()
     assert not sec.exists()
     assert "skipping secondary" in capsys.readouterr().out
+
+
+def test_secondary_default_output_path(tmp_path, monkeypatch):
+    wav = _write_wav(tmp_path)
+    out = tmp_path / "primary.json"
+    _run(
+        monkeypatch,
+        [
+            "--wav",
+            str(wav),
+            "--outfile",
+            str(out),
+            "--secondary",
+            "--peak-id",
+            "p1",
+        ],
+    )
+    sec = tmp_path / "secondary_peak_analysis.json"
+    assert sec.exists()
+    rec = json.loads(sec.read_text())
+    assert rec["schema_version"] == "secondary_peak_analysis_v1"
+    assert rec["peak_id"] == "p1"
