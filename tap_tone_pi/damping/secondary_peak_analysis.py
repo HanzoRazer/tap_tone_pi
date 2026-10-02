@@ -253,6 +253,8 @@ def analyze_secondary_peak(
     ):
         log_decrement = float(ld["delta_mean"])
         method_flags.append("logdec_cross_check")
+    else:
+        blocked_fields.append("log_decrement")
 
     # --- Independent-Q agreement (only when both exist) -----------------------
     q_agreement_pct: float | None = None
@@ -261,6 +263,8 @@ def analyze_secondary_peak(
         if mean_q > 0:
             rel_diff = abs(q_from_bandwidth - q_from_decay) / mean_q
             q_agreement_pct = float(max(0.0, min(100.0, 100.0 * (1.0 - rel_diff))))
+    if q_agreement_pct is None:
+        blocked_fields.append("q_agreement_pct")
 
     # --- Confidence: a transparent mean of component scores -------------------
     snr_score = _clamp01(snr_db / 40.0)
