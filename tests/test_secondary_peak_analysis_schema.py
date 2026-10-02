@@ -110,6 +110,12 @@ class TestSchemaShape:
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(rec, _schema())
 
+    def test_positive_peak_magnitude_db_rejected(self):
+        rec = _full()
+        rec["peak_magnitude_db"] = 0.1
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(rec, _schema())
+
     def test_unknown_field_rejected(self):
         rec = _minimal()
         rec["wood_quality"] = "excellent"
